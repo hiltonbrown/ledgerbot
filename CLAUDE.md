@@ -53,6 +53,7 @@ Copy `.env.example` to `.env.local` and configure:
 - `POSTGRES_URL`: PostgreSQL connection string
 - `BLOB_READ_WRITE_TOKEN`: Vercel Blob storage token
 - `AI_GATEWAY_API_KEY`: Required for non-Vercel deployments (OIDC used on Vercel)
+- `AI_GATEWAY_URL`: Optional, override when using a custom Gateway domain
 - `REDIS_URL`: Optional, enables resumable streams
 
 ## Architecture

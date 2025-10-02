@@ -51,32 +51,37 @@ Open the file `lib/ai/providers.ts` in your code editor.
 **What to look for:**
 
 ```typescript
-const provider = createOpenAI({
-  baseURL: 'https://gateway.ai.anthropic.com/v1',
+const gateway = createGateway({
   apiKey: process.env.AI_GATEWAY_API_KEY,
+  baseURL: process.env.AI_GATEWAY_URL,
 });
 ```
 
-This code tells your application to route all AI requests through the Vercel AI Gateway.
+This code configures the Vercel AI Gateway client that routes requests through your gateway project.
+
+> Make sure `createGateway` is imported from `@ai-sdk/gateway` at the top of the file.
 
 ### 1.2 Check the Models Configuration
 
 In the same file, scroll down to see the model definitions:
 
 ```typescript
-export const customModel = (apiIdentifier: string) => {
-  return provider(apiIdentifier);
-};
-
-export const chat = provider('grok-2-vision-1212');
-export const reasoning = provider('grok-3-mini');
-export const title = provider('grok-2-1212');
-export const artifact = provider('grok-2-1212');
+export const myProvider = customProvider({
+  languageModels: {
+    'chat-model': gateway.languageModel('xai/grok-2-vision-1212'),
+    'chat-model-reasoning': wrapLanguageModel({
+      model: gateway.languageModel('xai/grok-3-mini'),
+      middleware: extractReasoningMiddleware({ tagName: 'think' }),
+    }),
+    'title-model': gateway.languageModel('xai/grok-2-1212'),
+    'artifact-model': gateway.languageModel('xai/grok-2-1212'),
+  },
+});
 ```
 
-These are the AI models currently configured to use the gateway.
+These are the Grok models currently configured to use the gateway.
 
-**✅ Checkpoint**: You should see the gateway baseURL and model definitions.
+**✅ Checkpoint**: You should see the gateway configuration and model definitions.
 
 ---
 
@@ -144,16 +149,16 @@ Let's break down what's happening in `lib/ai/providers.ts`.
 ### 3.1 The Provider Setup
 
 ```typescript
-const provider = createOpenAI({
-  baseURL: 'https://gateway.ai.anthropic.com/v1',
+const gateway = createGateway({
   apiKey: process.env.AI_GATEWAY_API_KEY,
+  baseURL: process.env.AI_GATEWAY_URL,
 });
 ```
 
 **What this does:**
-- `createOpenAI()`: Creates an OpenAI-compatible provider (xAI uses OpenAI's API format)
-- `baseURL`: Points to Vercel AI Gateway endpoint instead of directly to xAI
-- `apiKey`: Reads from environment variables for authentication
+- `createGateway()`: Creates a client that speaks to the Vercel AI Gateway
+- `baseURL`: Optional override for custom Gateway domains (defaults to Vercel managed URL)
+- `apiKey`: Reads from environment variables for local authentication
 
 ### 3.2 Model Types
 
@@ -546,48 +551,45 @@ Want to use OpenAI, Anthropic, or another provider? Here's how:
 **In `lib/ai/providers.ts`:**
 
 ```typescript
-import { createOpenAI } from '@ai-sdk/openai';
-
-const provider = createOpenAI({
-  baseURL: 'https://gateway.ai.anthropic.com/v1',
+const gateway = createGateway({
   apiKey: process.env.AI_GATEWAY_API_KEY,
 });
 
-// Update models
-export const chat = provider('gpt-4-turbo-preview');
-export const reasoning = provider('gpt-4-turbo-preview');
-export const title = provider('gpt-3.5-turbo');
-export const artifact = provider('gpt-4-turbo-preview');
+export const myProvider = customProvider({
+  languageModels: {
+    'chat-model': gateway.languageModel('openai/gpt-4.1'),
+    'chat-model-reasoning': gateway.languageModel('openai/o3-mini'),
+    'title-model': gateway.languageModel('openai/gpt-4o-mini'),
+    'artifact-model': gateway.languageModel('openai/gpt-4.1'),
+  },
+});
 ```
 
-**Add to `.env.local`:**
-```env
-OPENAI_API_KEY=sk-...
-```
+Configure the OpenAI credentials in your Vercel AI Gateway dashboard; no additional environment variables are required locally beyond the gateway API key.
 
 #### Option 2: Use Anthropic Claude
 
 **In `lib/ai/providers.ts`:**
 
 ```typescript
-import { createAnthropic } from '@ai-sdk/anthropic';
-
-const provider = createAnthropic({
-  baseURL: 'https://gateway.ai.anthropic.com/v1',
+const gateway = createGateway({
   apiKey: process.env.AI_GATEWAY_API_KEY,
 });
 
-// Update models
-export const chat = provider('claude-3-5-sonnet-20241022');
-export const reasoning = provider('claude-3-5-sonnet-20241022');
-export const title = provider('claude-3-haiku-20240307');
-export const artifact = provider('claude-3-5-sonnet-20241022');
+export const myProvider = customProvider({
+  languageModels: {
+    'chat-model': gateway.languageModel('anthropic/claude-3.5-sonnet'),
+    'chat-model-reasoning': wrapLanguageModel({
+      model: gateway.languageModel('anthropic/claude-3.5-sonnet'),
+      middleware: extractReasoningMiddleware({ tagName: 'think' }),
+    }),
+    'title-model': gateway.languageModel('anthropic/claude-3.5-haiku'),
+    'artifact-model': gateway.languageModel('anthropic/claude-3.5-sonnet'),
+  },
+});
 ```
 
-**Add to `.env.local`:**
-```env
-ANTHROPIC_API_KEY=sk-ant-...
-```
+Enable the Anthropic provider inside the Vercel AI Gateway dashboard so the gateway can authenticate on your behalf.
 
 ### Enable Redis for Resumable Streams
 
