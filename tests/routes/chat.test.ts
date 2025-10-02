@@ -1,3 +1,4 @@
+import { DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
 import { getMessageByErrorCode } from "@/lib/errors";
 import { generateUUID } from "@/lib/utils";
 import { expect, test } from "../fixtures";
@@ -46,7 +47,7 @@ test.describe
         data: {
           id: chatId,
           message: TEST_PROMPTS.SKY.MESSAGE,
-          selectedChatModel: "chat-model",
+          selectedChatModel: DEFAULT_CHAT_MODEL,
           selectedVisibilityType: "private",
         },
       });
@@ -75,7 +76,7 @@ test.describe
         data: {
           id: chatId,
           message: TEST_PROMPTS.GRASS.MESSAGE,
-          selectedChatModel: "chat-model",
+          selectedChatModel: DEFAULT_CHAT_MODEL,
           selectedVisibilityType: "private",
         },
       });
@@ -138,7 +139,7 @@ test.describe
             ],
             createdAt: new Date().toISOString(),
           },
-          selectedChatModel: "chat-model",
+          selectedChatModel: DEFAULT_CHAT_MODEL,
           selectedVisibilityType: "private",
         },
       });
@@ -192,7 +193,7 @@ test.describe
             ],
             createdAt: new Date().toISOString(),
           },
-          selectedChatModel: "chat-model",
+          selectedChatModel: DEFAULT_CHAT_MODEL,
           selectedVisibilityType: "private",
         },
       });
@@ -242,7 +243,7 @@ test.describe
             ],
             createdAt: new Date().toISOString(),
           },
-          selectedChatModel: "chat-model",
+          selectedChatModel: DEFAULT_CHAT_MODEL,
           selectedVisibilityType: "private",
         },
       });
@@ -285,7 +286,7 @@ test.describe
             ],
             createdAt: new Date().toISOString(),
           },
-          selectedChatModel: "chat-model",
+          selectedChatModel: DEFAULT_CHAT_MODEL,
           selectedVisibilityType: "private",
         },
       });
@@ -332,7 +333,7 @@ test.describe
             ],
             createdAt: new Date().toISOString(),
           },
-          selectedChatModel: "chat-model",
+          selectedChatModel: DEFAULT_CHAT_MODEL,
           selectedVisibilityType: "public",
         },
       });

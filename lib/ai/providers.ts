@@ -5,6 +5,7 @@ import {
   wrapLanguageModel,
 } from "ai";
 import { isTestEnvironment } from "../constants";
+import { chatModels } from "./models";
 
 const vercelGateway = createGateway({
   apiKey: process.env.AI_GATEWAY_API_KEY,
@@ -15,14 +16,17 @@ export const myProvider = isTestEnvironment
   ? (() => {
       const {
         artifactModel,
-        chatModel,
-        reasoningModel,
+        createMockLanguageModel,
         titleModel,
       } = require("./models.mock");
+
+      const chatLanguageModels = Object.fromEntries(
+        chatModels.map(({ id }) => [id, createMockLanguageModel()])
+      );
+
       return customProvider({
         languageModels: {
-          "chat-model": chatModel,
-          "chat-model-reasoning": reasoningModel,
+          ...chatLanguageModels,
           "title-model": titleModel,
           "artifact-model": artifactModel,
         },
@@ -30,11 +34,23 @@ export const myProvider = isTestEnvironment
     })()
   : customProvider({
       languageModels: {
-        "chat-model": vercelGateway.languageModel("xai/grok-2-vision-1212"),
-        "chat-model-reasoning": wrapLanguageModel({
-          model: vercelGateway.languageModel("xai/grok-3-mini"),
-          middleware: extractReasoningMiddleware({ tagName: "think" }),
-        }),
+        ...Object.fromEntries(
+          chatModels.map(({ id, vercelId, isReasoning }) => {
+            const model = vercelGateway.languageModel(vercelId);
+
+            if (!isReasoning) {
+              return [id, model];
+            }
+
+            return [
+              id,
+              wrapLanguageModel({
+                model,
+                middleware: extractReasoningMiddleware({ tagName: "think" }),
+              }),
+            ];
+          })
+        ),
         "title-model": vercelGateway.languageModel("xai/grok-2-1212"),
         "artifact-model": vercelGateway.languageModel("xai/grok-2-1212"),
       },

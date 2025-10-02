@@ -34,9 +34,11 @@ function PureChatHeader({
 
   const shouldShowNewChat = !open || windowWidth < 768;
 
-  const themeToggleLabel = !isMounted
-    ? "Toggle theme"
-    : (resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode");
+  const themeToggleLabel = isMounted
+    ? resolvedTheme === "dark"
+      ? "Switch to light mode"
+      : "Switch to dark mode"
+    : "Toggle theme";
   const themeToggleIcon = useMemo(() => {
     if (!isMounted) {
       return <Moon className="size-4" />;
