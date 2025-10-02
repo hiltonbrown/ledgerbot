@@ -9,6 +9,7 @@ import {
 } from "@playwright/test";
 import { generateId } from "ai";
 import { getUnixTime } from "date-fns";
+import { chatModels } from "@/lib/ai/models";
 import { ChatPage } from "./pages/chat";
 
 export type UserContext = {
@@ -51,8 +52,16 @@ export async function createAuthenticatedContext({
 
   const chatPage = new ChatPage(page);
   await chatPage.createNewChat();
-  await chatPage.chooseModelFromSelector("chat-model-reasoning");
-  await expect(chatPage.getSelectedModel()).resolves.toEqual("Reasoning model");
+  const reasoningModel = chatModels.find((model) => model.isReasoning);
+
+  if (!reasoningModel) {
+    throw new Error("Reasoning chat model not found");
+  }
+
+  await chatPage.chooseModelFromSelector(reasoningModel.id);
+  await expect(chatPage.getSelectedModel()).resolves.toEqual(
+    reasoningModel.name
+  );
 
   await page.waitForTimeout(1000);
   await context.storageState({ path: storageFile });
