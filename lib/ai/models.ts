@@ -33,19 +33,6 @@ export const chatModels: ChatModel[] = [
     description: "Speed-optimized Gemini model with strong reasoning",
     vercelId: "google/gemini-2.5-flash",
   },
-  {
-    id: "google-gemini-2-5-flash-lite",
-    name: "Google Gemini 2.5 Flash Lite",
-    description: "Lightweight Gemini option ideal for rapid iterations",
-    vercelId: "google/gemini-2.5-flash-lite",
-  },
-  {
-    id: "xai-grok-4-fast-reasoning",
-    name: "xAI Grok 4 Fast Reasoning",
-    description: "Reasoning-focused Grok model with chain-of-thought output",
-    vercelId: "xai/grok-4-fast-reasoning",
-    isReasoning: true,
-  },
 ];
 
 export const chatModelIds = chatModels.map((model) => model.id);
