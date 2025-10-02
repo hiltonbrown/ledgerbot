@@ -49,11 +49,16 @@ pnpm install
 
 # 3. Configure environment
 cp .env.example .env.local
-# Fill in required keys: Postgres, Clerk, Vercel
+# Fill in required keys: Postgres, Clerk, Vercel AI Gateway
 
 # Example Clerk keys
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
 CLERK_SECRET_KEY=your_clerk_secret_key
+
+# Vercel AI Gateway (local development uses the API key)
+AI_GATEWAY_API_KEY=your_gateway_key
+# Optional: custom domain for the gateway (defaults to Vercel managed URL)
+# AI_GATEWAY_URL=https://your-custom-gateway.vercel.sh/v1/ai
 
 # 4. Run locally
 pnpm dev
