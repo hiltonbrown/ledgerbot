@@ -99,13 +99,13 @@ test.describe("Chat activity", () => {
   });
 
   test("Call weather tool", async () => {
-    await chatPage.sendUserMessage("What's the weather in sf?");
+    await chatPage.sendUserMessage("What's the weather in Brisbane?");
     await chatPage.isGenerationComplete();
 
     const assistantMessage = await chatPage.getRecentAssistantMessage();
 
     expect(assistantMessage.content).toBe(
-      "The current temperature in San Francisco is 17°C."
+      "The current temperature in Brisbane is 24°C."
     );
   });
 

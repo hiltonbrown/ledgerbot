@@ -257,7 +257,7 @@ As we move forward, Silicon Valley continues to reinvent itself. While some pred
         type: "tool-call",
         toolCallId: "call_456",
         toolName: "getWeather",
-        input: JSON.stringify({ latitude: 37.7749, longitude: -122.4194 }),
+        input: JSON.stringify({ latitude: -27.4698, longitude: 153.0251 }),
       },
       {
         type: "finish",
@@ -269,7 +269,7 @@ As we move forward, Silicon Valley continues to reinvent itself. While some pred
 
   if (compareMessages(recentMessage, TEST_PROMPTS.GET_WEATHER_RESULT)) {
     return [
-      ...textToDeltas("The current temperature in San Francisco is 17°C."),
+      ...textToDeltas("The current temperature in Brisbane is 24°C."),
       {
         type: "finish",
         finishReason: "stop",

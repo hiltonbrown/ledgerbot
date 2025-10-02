@@ -43,15 +43,15 @@ type WeatherAtLocation = {
 };
 
 const SAMPLE = {
-  latitude: 37.763_283,
-  longitude: -122.412_86,
+  latitude: -27.4698,
+  longitude: 153.0251,
   generationtime_ms: 0.027_894_973_754_882_812,
-  utc_offset_seconds: 0,
-  timezone: "GMT",
-  timezone_abbreviation: "GMT",
+  utc_offset_seconds: 36_000,
+  timezone: "Australia/Brisbane",
+  timezone_abbreviation: "AEST",
   elevation: 18,
   current_units: { time: "iso8601", interval: "seconds", temperature_2m: "°C" },
-  current: { time: "2024-10-07T19:30", interval: 900, temperature_2m: 29.3 },
+  current: { time: "2024-10-07T19:30", interval: 900, temperature_2m: 24 },
   hourly_units: { time: "iso8601", temperature_2m: "°C" },
   hourly: {
     time: [
@@ -181,18 +181,18 @@ const SAMPLE = {
       "2024-10-11",
     ],
     sunrise: [
-      "2024-10-07T07:15",
-      "2024-10-08T07:16",
-      "2024-10-09T07:17",
-      "2024-10-10T07:18",
-      "2024-10-11T07:19",
+      "2024-10-07T05:25",
+      "2024-10-08T05:24",
+      "2024-10-09T05:23",
+      "2024-10-10T05:22",
+      "2024-10-11T05:21",
     ],
     sunset: [
-      "2024-10-07T19:00",
-      "2024-10-08T18:58",
-      "2024-10-09T18:57",
-      "2024-10-10T18:55",
-      "2024-10-11T18:54",
+      "2024-10-07T17:46",
+      "2024-10-08T17:47",
+      "2024-10-09T17:48",
+      "2024-10-10T17:49",
+      "2024-10-11T17:49",
     ],
   },
 };
