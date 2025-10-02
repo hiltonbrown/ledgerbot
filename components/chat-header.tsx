@@ -7,7 +7,6 @@ import { memo, useEffect, useMemo, useState } from "react";
 import { useWindowSize } from "usehooks-ts";
 import { SidebarToggle } from "@/components/sidebar-toggle";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { PlusIcon } from "./icons";
 import { useSidebar } from "./ui/sidebar";
 import { VisibilitySelector, type VisibilityType } from "./visibility-selector";
@@ -84,10 +83,7 @@ function PureChatHeader({
 
       <Button
         aria-label={themeToggleLabel}
-        className={cn(
-          "order-4 h-8 w-8 md:h-9 md:w-9",
-          shouldShowNewChat ? "ml-1" : "ml-auto"
-        )}
+        className="order-4 ml-auto h-8 w-8 md:h-9 md:w-9"
         disabled={!isMounted}
         onClick={handleThemeToggle}
         size="icon"
