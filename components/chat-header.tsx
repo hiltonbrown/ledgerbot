@@ -50,10 +50,6 @@ function PureChatHeader({
   }, [isMounted, resolvedTheme]);
 
   const handleThemeToggle = () => {
-    if (!isMounted) {
-      return;
-    }
-
     const nextTheme = resolvedTheme === "dark" ? "light" : "dark";
     setTheme(nextTheme);
   };
