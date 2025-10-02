@@ -4,11 +4,15 @@ import { Moon, Sun } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { memo, useEffect, useMemo, useState } from "react";
+import { useSWRConfig } from "swr";
+import { unstable_serialize } from "swr/infinite";
 import { useWindowSize } from "usehooks-ts";
 import { SidebarToggle } from "@/components/sidebar-toggle";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { PlusIcon } from "./icons";
+import { getChatHistoryPaginationKey } from "./sidebar-history";
+import { toast } from "./toast";
 import { useSidebar } from "./ui/sidebar";
 import { VisibilitySelector, type VisibilityType } from "./visibility-selector";
 
@@ -24,9 +28,11 @@ function PureChatHeader({
   const router = useRouter();
   const { open } = useSidebar();
   const { resolvedTheme, setTheme } = useTheme();
+  const { mutate } = useSWRConfig();
 
   const { width: windowWidth } = useWindowSize();
   const [isMounted, setIsMounted] = useState(false);
+  const [isCreatingConversation, setIsCreatingConversation] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
@@ -56,6 +62,52 @@ function PureChatHeader({
     setTheme(nextTheme);
   };
 
+  const handleCreateConversation = async () => {
+    if (isCreatingConversation) {
+      return;
+    }
+
+    setIsCreatingConversation(true);
+
+    try {
+      const payload: { visibility: VisibilityType } = {
+        visibility: "private",
+      };
+
+      const response = await fetch("/api/conversations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        toast({
+          type: "error",
+          description:
+            errorBody?.message ??
+            "Failed to start a new conversation. Please try again.",
+        });
+        return;
+      }
+
+      const { id: nextChatId } = (await response.json()) as { id: string };
+
+      mutate(unstable_serialize(getChatHistoryPaginationKey));
+      router.push(`/chat/${nextChatId}`);
+    } catch (error) {
+      console.error("Error creating conversation", error);
+      toast({
+        type: "error",
+        description: "Failed to start a new conversation. Please try again.",
+      });
+    } finally {
+      setIsCreatingConversation(false);
+    }
+  };
+
   return (
     <header className="sticky top-0 flex items-center gap-2 bg-background px-2 py-1.5 md:px-2">
       <SidebarToggle />
@@ -63,10 +115,8 @@ function PureChatHeader({
       {shouldShowNewChat && (
         <Button
           className="order-2 ml-auto h-8 px-2 md:order-1 md:ml-0 md:h-fit md:px-2"
-          onClick={() => {
-            router.push("/");
-            router.refresh();
-          }}
+          disabled={isCreatingConversation}
+          onClick={handleCreateConversation}
           variant="outline"
         >
           <PlusIcon />

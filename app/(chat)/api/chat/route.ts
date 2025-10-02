@@ -26,7 +26,7 @@ import { createDocument } from "@/lib/ai/tools/create-document";
 import { getWeather } from "@/lib/ai/tools/get-weather";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
 import { updateDocument } from "@/lib/ai/tools/update-document";
-import { isProductionEnvironment } from "@/lib/constants";
+import { isProductionEnvironment, UNTITLED_CHAT_TITLE } from "@/lib/constants";
 import {
   createStreamId,
   deleteChatById,
@@ -36,6 +36,7 @@ import {
   saveChat,
   saveMessages,
   updateChatLastContextById,
+  updateChatTitleById,
 } from "@/lib/db/queries";
 import { ChatSDKError } from "@/lib/errors";
 import type { ChatMessage } from "@/lib/types";
@@ -126,9 +127,21 @@ export async function POST(request: Request) {
 
     const chat = await getChatById({ id });
 
+    let messagesFromDb: Awaited<ReturnType<typeof getMessagesByChatId>> = [];
+
     if (chat) {
       if (chat.userId !== session.user.id) {
         return new ChatSDKError("forbidden:chat").toResponse();
+      }
+
+      messagesFromDb = await getMessagesByChatId({ id });
+
+      if (messagesFromDb.length === 0 && chat.title === UNTITLED_CHAT_TITLE) {
+        const title = await generateTitleFromUserMessage({
+          message,
+        });
+
+        await updateChatTitleById({ chatId: id, title });
       }
     } else {
       const title = await generateTitleFromUserMessage({
@@ -143,7 +156,6 @@ export async function POST(request: Request) {
       });
     }
 
-    const messagesFromDb = await getMessagesByChatId({ id });
     const uiMessages = [...convertToUIMessages(messagesFromDb), message];
 
     const { longitude, latitude, city, country } = geolocation(request);

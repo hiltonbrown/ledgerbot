@@ -4,6 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { toast as sonnerToast } from "sonner";
 import useSWR, { useSWRConfig } from "swr";
 import { unstable_serialize } from "swr/infinite";
 import { ChatHeader } from "@/components/chat-header";
@@ -20,6 +21,7 @@ import {
 import { useArtifactSelector } from "@/hooks/use-artifact";
 import { useAutoResume } from "@/hooks/use-auto-resume";
 import { useChatVisibility } from "@/hooks/use-chat-visibility";
+import { chatModels } from "@/lib/ai/models";
 import type { Vote } from "@/lib/db/schema";
 import { ChatSDKError } from "@/lib/errors";
 import type { Attachment, ChatMessage } from "@/lib/types";
@@ -63,6 +65,7 @@ export function Chat({
   const [showCreditCardAlert, setShowCreditCardAlert] = useState(false);
   const [currentModelId, setCurrentModelId] = useState(initialChatModel);
   const currentModelIdRef = useRef(currentModelId);
+  const previousModelIdRef = useRef(initialChatModel);
 
   useEffect(() => {
     currentModelIdRef.current = currentModelId;
@@ -147,6 +150,25 @@ export function Chat({
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const isArtifactVisible = useArtifactSelector((state) => state.isVisible);
 
+  useEffect(() => {
+    if (!messages.length) {
+      previousModelIdRef.current = currentModelId;
+      return;
+    }
+
+    if (previousModelIdRef.current !== currentModelId) {
+      const nextModelName =
+        chatModels.find((model) => model.id === currentModelId)?.name ||
+        currentModelId;
+
+      sonnerToast.info(
+        `Model changed to ${nextModelName} for this conversation.`
+      );
+    }
+
+    previousModelIdRef.current = currentModelId;
+  }, [currentModelId, messages.length]);
+
   useAutoResume({
     autoResume,
     initialMessages,
@@ -169,7 +191,7 @@ export function Chat({
           isReadonly={isReadonly}
           messages={messages}
           regenerate={regenerate}
-          selectedModelId={initialChatModel}
+          selectedModelId={currentModelId}
           setMessages={setMessages}
           status={status}
           votes={votes}
