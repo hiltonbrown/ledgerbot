@@ -191,11 +191,20 @@ export async function POST(request: Request) {
           experimental_transform: smoothStream({ chunking: "word" }),
           tools: {
             getWeather,
-            createDocument: createDocument({ session, dataStream }),
-            updateDocument: updateDocument({ session, dataStream }),
+            createDocument: createDocument({
+              session,
+              dataStream,
+              modelId: selectedChatModel,
+            }),
+            updateDocument: updateDocument({
+              session,
+              dataStream,
+              modelId: selectedChatModel,
+            }),
             requestSuggestions: requestSuggestions({
               session,
               dataStream,
+              modelId: selectedChatModel,
             }),
           },
           experimental_telemetry: {
