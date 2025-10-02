@@ -99,7 +99,6 @@ function PureChatHeader({
         variant="ghost"
       >
         {themeToggleIcon}
-        <span className="sr-only">{themeToggleLabel}</span>
       </Button>
     </header>
   );
