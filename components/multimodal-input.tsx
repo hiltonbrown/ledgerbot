@@ -61,6 +61,7 @@ function PureMultimodalInput({
   setInput,
   status,
   stop,
+  clearError,
   attachments,
   setAttachments,
   messages,
@@ -70,7 +71,7 @@ function PureMultimodalInput({
   selectedVisibilityType,
   selectedModelId,
   onModelChange,
-  selectedTools,
+  selectedTools = [],
   onToolsChange,
   usage,
 }: {
@@ -79,6 +80,7 @@ function PureMultimodalInput({
   setInput: Dispatch<SetStateAction<string>>;
   status: UseChatHelpers<ChatMessage>["status"];
   stop: () => void;
+  clearError: UseChatHelpers<ChatMessage>["clearError"];
   attachments: Attachment[];
   setAttachments: Dispatch<SetStateAction<Attachment[]>>;
   messages: UIMessage[];
@@ -88,10 +90,12 @@ function PureMultimodalInput({
   selectedVisibilityType: VisibilityType;
   selectedModelId: string;
   onModelChange?: (modelId: string) => void;
-  selectedTools: string[];
+  selectedTools?: string[];
   onToolsChange?: (tools: string[]) => void;
   usage?: AppUsage;
 }) {
+  const isAwaitingResponse = status === "submitted" || status === "streaming";
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
 
@@ -269,9 +273,12 @@ function PureMultimodalInput({
         className="rounded-xl border border-border bg-background p-3 shadow-xs transition-all duration-200 focus-within:border-border hover:border-muted-foreground/50"
         onSubmit={(event) => {
           event.preventDefault();
-          if (status !== "ready") {
+          if (isAwaitingResponse) {
             toast.error("Please wait for the model to finish its response!");
           } else {
+            if (status === "error") {
+              clearError();
+            }
             submitForm();
           }
         }}
@@ -395,12 +402,13 @@ function PureAttachmentsButton({
   selectedModelId: string;
 }) {
   const isReasoningModel = isReasoningModelId(selectedModelId);
+  const isAwaitingResponse = status === "submitted" || status === "streaming";
 
   return (
     <Button
       className="aspect-square h-8 rounded-lg p-1 transition-colors hover:bg-accent"
       data-testid="attachments-button"
-      disabled={status !== "ready" || isReasoningModel}
+      disabled={isAwaitingResponse || isReasoningModel}
       onClick={(event) => {
         event.preventDefault();
         fileInputRef.current?.click();
@@ -474,10 +482,10 @@ function PureModelSelectorCompact({
 const ModelSelectorCompact = memo(PureModelSelectorCompact);
 
 function PureToolSelectorCompact({
-  selectedTools,
+  selectedTools = [],
   onToolsChange,
 }: {
-  selectedTools: string[];
+  selectedTools?: string[];
   onToolsChange?: (tools: string[]) => void;
 }) {
   const handleToolToggle = (toolId: string, checked: boolean) => {

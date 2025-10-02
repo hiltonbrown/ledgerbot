@@ -84,6 +84,7 @@ export function Chat({
     stop,
     regenerate,
     resumeStream,
+    clearError,
   } = useChat<ChatMessage>({
     id,
     messages: initialMessages,
@@ -190,6 +191,7 @@ export function Chat({
               attachments={attachments}
               chatId={id}
               input={input}
+              clearError={clearError}
               messages={messages}
               onModelChange={setCurrentModelId}
               onToolsChange={setSelectedTools}
@@ -212,6 +214,7 @@ export function Chat({
         attachments={attachments}
         chatId={id}
         input={input}
+        clearError={clearError}
         isReadonly={isReadonly}
         messages={messages}
         regenerate={regenerate}

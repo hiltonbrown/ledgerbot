@@ -1,9 +1,9 @@
 import type { NextConfig } from "next";
 
+const enablePartialPrerendering = process.env.NEXT_EXPERIMENTAL_PPR === "true";
+
 const nextConfig: NextConfig = {
-  experimental: {
-    ppr: true,
-  },
+  ...(enablePartialPrerendering ? { experimental: { ppr: true } } : {}),
   images: {
     remotePatterns: [
       {
