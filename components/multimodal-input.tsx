@@ -19,9 +19,16 @@ import {
 import { toast } from "sonner";
 import { useLocalStorage, useWindowSize } from "usehooks-ts";
 import { saveChatModelAsCookie } from "@/app/(chat)/actions";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { SelectItem } from "@/components/ui/select";
 import { chatModels, isReasoningModelId } from "@/lib/ai/models";
 import { myProvider } from "@/lib/ai/providers";
+import { availableTools, type Tool } from "@/lib/ai/tools";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
 import { cn } from "@/lib/utils";
@@ -40,6 +47,7 @@ import {
   ChevronDownIcon,
   CpuIcon,
   PaperclipIcon,
+  SparklesIcon,
   StopIcon,
 } from "./icons";
 import { PreviewAttachment } from "./preview-attachment";
@@ -62,6 +70,8 @@ function PureMultimodalInput({
   selectedVisibilityType,
   selectedModelId,
   onModelChange,
+  selectedTools,
+  onToolsChange,
   usage,
 }: {
   chatId: string;
@@ -78,6 +88,8 @@ function PureMultimodalInput({
   selectedVisibilityType: VisibilityType;
   selectedModelId: string;
   onModelChange?: (modelId: string) => void;
+  selectedTools: string[];
+  onToolsChange?: (tools: string[]) => void;
   usage?: AppUsage;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -324,6 +336,10 @@ function PureMultimodalInput({
               onModelChange={onModelChange}
               selectedModelId={selectedModelId}
             />
+            <ToolSelectorCompact
+              onToolsChange={onToolsChange}
+              selectedTools={selectedTools}
+            />
           </PromptInputTools>
 
           {status === "submitted" ? (
@@ -359,6 +375,9 @@ export const MultimodalInput = memo(
       return false;
     }
     if (prevProps.selectedModelId !== nextProps.selectedModelId) {
+      return false;
+    }
+    if (!equal(prevProps.selectedTools, nextProps.selectedTools)) {
       return false;
     }
 
@@ -453,6 +472,71 @@ function PureModelSelectorCompact({
 }
 
 const ModelSelectorCompact = memo(PureModelSelectorCompact);
+
+function PureToolSelectorCompact({
+  selectedTools,
+  onToolsChange,
+}: {
+  selectedTools: string[];
+  onToolsChange?: (tools: string[]) => void;
+}) {
+  const handleToolToggle = (toolId: string, checked: boolean) => {
+    if (checked) {
+      onToolsChange?.([...selectedTools, toolId]);
+    } else {
+      onToolsChange?.(selectedTools.filter((id) => id !== toolId));
+    }
+  };
+
+  const getDisplayText = () => {
+    if (selectedTools.length === 0) {
+      return "Tools";
+    }
+    if (selectedTools.length === 1) {
+      const tool = availableTools.find((t) => t.id === selectedTools[0]);
+      return tool?.name || "Tools";
+    }
+    return `${selectedTools.length} Tools`;
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        className="flex h-8 items-center gap-2 rounded-lg border-0 bg-background px-2 text-foreground shadow-none transition-colors hover:bg-accent focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+        type="button"
+      >
+        <SparklesIcon size={16} />
+        <span className="hidden font-medium text-xs sm:block">
+          {getDisplayText()}
+        </span>
+        <ChevronDownIcon size={16} />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="min-w-[200px] p-0">
+        <div className="flex flex-col gap-px">
+          {availableTools.map((tool) => (
+            <DropdownMenuCheckboxItem
+              checked={selectedTools.includes(tool.id)}
+              className="cursor-pointer"
+              key={tool.id}
+              onCheckedChange={(checked) =>
+                handleToolToggle(tool.id, checked as boolean)
+              }
+            >
+              <div className="flex flex-col">
+                <div className="font-medium text-xs">{tool.name}</div>
+                <div className="text-[10px] text-muted-foreground leading-tight">
+                  {tool.description}
+                </div>
+              </div>
+            </DropdownMenuCheckboxItem>
+          ))}
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+const ToolSelectorCompact = memo(PureToolSelectorCompact);
 
 function PureStopButton({
   stop,

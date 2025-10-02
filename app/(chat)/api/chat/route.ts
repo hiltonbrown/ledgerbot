@@ -100,11 +100,13 @@ export async function POST(request: Request) {
       message,
       selectedChatModel,
       selectedVisibilityType,
+      selectedTools,
     }: {
       id: string;
       message: ChatMessage;
       selectedChatModel: ChatModel["id"];
       selectedVisibilityType: VisibilityType;
+      selectedTools?: string[];
     } = requestBody;
 
     const session = await auth();
@@ -175,19 +177,26 @@ export async function POST(request: Request) {
 
     const stream = createUIMessageStream({
       execute: ({ writer: dataStream }) => {
+        const activeTools = isReasoningModelId(selectedChatModel)
+          ? []
+          : (selectedTools as (
+              | "getWeather"
+              | "createDocument"
+              | "updateDocument"
+              | "requestSuggestions"
+            )[]) || [
+              "getWeather",
+              "createDocument",
+              "updateDocument",
+              "requestSuggestions",
+            ];
+
         const result = streamText({
           model: myProvider.languageModel(selectedChatModel),
           system: systemPrompt({ selectedChatModel, requestHints }),
           messages: convertToModelMessages(uiMessages),
           stopWhen: stepCountIs(5),
-          experimental_activeTools: isReasoningModelId(selectedChatModel)
-            ? []
-            : [
-                "getWeather",
-                "createDocument",
-                "updateDocument",
-                "requestSuggestions",
-              ],
+          experimental_activeTools: activeTools,
           experimental_transform: smoothStream({ chunking: "word" }),
           tools: {
             getWeather,

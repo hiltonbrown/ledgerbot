@@ -1,6 +1,6 @@
 {
-  "name": "ai-chatbot",
-  "version": "3.1.0",
+  "name": "intellisync-chatbot",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbo",

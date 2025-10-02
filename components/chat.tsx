@@ -20,6 +20,7 @@ import {
 import { useArtifactSelector } from "@/hooks/use-artifact";
 import { useAutoResume } from "@/hooks/use-auto-resume";
 import { useChatVisibility } from "@/hooks/use-chat-visibility";
+import { defaultSelectedTools } from "@/lib/ai/tools";
 import type { Vote } from "@/lib/db/schema";
 import { ChatSDKError } from "@/lib/errors";
 import type { Attachment, ChatMessage } from "@/lib/types";
@@ -62,11 +63,18 @@ export function Chat({
   const [usage, setUsage] = useState<AppUsage | undefined>(initialLastContext);
   const [showCreditCardAlert, setShowCreditCardAlert] = useState(false);
   const [currentModelId, setCurrentModelId] = useState(initialChatModel);
+  const [selectedTools, setSelectedTools] =
+    useState<string[]>(defaultSelectedTools);
   const currentModelIdRef = useRef(currentModelId);
+  const selectedToolsRef = useRef(selectedTools);
 
   useEffect(() => {
     currentModelIdRef.current = currentModelId;
   }, [currentModelId]);
+
+  useEffect(() => {
+    selectedToolsRef.current = selectedTools;
+  }, [selectedTools]);
 
   const {
     messages,
@@ -91,6 +99,7 @@ export function Chat({
             message: request.messages.at(-1),
             selectedChatModel: currentModelIdRef.current,
             selectedVisibilityType: visibilityType,
+            selectedTools: selectedToolsRef.current,
             ...request.body,
           },
         };
@@ -183,7 +192,9 @@ export function Chat({
               input={input}
               messages={messages}
               onModelChange={setCurrentModelId}
+              onToolsChange={setSelectedTools}
               selectedModelId={currentModelId}
+              selectedTools={selectedTools}
               selectedVisibilityType={visibilityType}
               sendMessage={sendMessage}
               setAttachments={setAttachments}
