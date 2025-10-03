@@ -4,18 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Intellisync Chatbot is an AI-powered workspace application built on Next.js 15, featuring chat, document management, and collaborative AI tools. The app uses the Vercel AI SDK with xAI's Grok models and provides both conversational AI and artifact-based content creation.
+Intellisync Chatbot is an AI-powered workspace application built on Next.js 15, featuring chat, document management, and collaborative AI tools. The app uses the Vercel AI SDK with multiple AI providers (Anthropic Claude, OpenAI GPT-5, Google Gemini) and provides both conversational AI and artifact-based content creation.
 
 ## Key Technologies
 
-- **Framework**: Next.js 15 (canary) with experimental PPR (Partial Prerendering)
-- **AI SDK**: Vercel AI SDK with xAI Grok models via AI Gateway
+- **Framework**: Next.js 15 with experimental PPR (Partial Prerendering)
+- **AI SDK**: Vercel AI SDK with multiple providers (Anthropic Claude, OpenAI GPT-5, Google Gemini) via AI Gateway
 - **Database**: PostgreSQL with Drizzle ORM
-- **Authentication**: NextAuth.js 5.0 (beta)
+- **Authentication**: NextAuth.js 5.0 (beta) with support for both regular and guest users
 - **Storage**: Vercel Blob for file uploads
-- **Caching**: Redis for resumable streams
+- **Caching**: Redis for resumable streams (optional)
 - **Linting/Formatting**: Ultracite (Biome-based)
 - **Testing**: Playwright
+- **Monitoring**: TokenLens for token usage tracking
 
 ## Setup & Maintenance Notes
 ⚠️ Avoid editing node_modules or dependency source files.
@@ -61,29 +62,41 @@ Copy `.env.example` to `.env.local` and configure:
 ### Route Structure
 
 - `app/(auth)/`: Authentication routes (login, register) and NextAuth configuration
+  - `api/auth/guest/route.ts`: Guest user creation endpoint
 - `app/(chat)/`: Main chat interface and API routes
   - `api/chat/route.ts`: Primary chat endpoint with streaming
+  - `api/chat/[id]/stream/route.ts`: Stream resumption endpoint
   - `api/document/route.ts`: Document CRUD operations
   - `api/files/upload/route.ts`: File upload handler
   - `api/history/route.ts`: Chat history retrieval
   - `api/suggestions/route.ts`: Document suggestion system
   - `api/vote/route.ts`: Message voting
+- `app/(settings)/`: User settings and management
+  - `settings/user/`: User profile settings
+  - `settings/usage/`: Usage tracking and analytics
+  - `settings/integrations/`: Third-party integrations
+  - `settings/files/`: File management interface
 
 ### Core AI Implementation
 
 **AI Provider Configuration** (`lib/ai/providers.ts`):
 - Uses `@ai-sdk/gateway` to route requests through Vercel AI Gateway
 - Test environment uses mock models from `models.mock.ts`
-- Production models:
-  - `chat-model`: xai/grok-2-vision-1212 (multimodal with vision)
-  - `chat-model-reasoning`: xai/grok-3-mini with reasoning extraction
-  - `title-model`: xai/grok-2-1212 (for chat title generation)
-  - `artifact-model`: xai/grok-2-1212 (for document generation)
+- Available chat models (defined in `lib/ai/models.ts`):
+  - `anthropic-claude-sonnet-4-5`: Claude Sonnet 4.5 (default, balanced general-purpose)
+  - `openai-gpt-5`: GPT-5 (flagship OpenAI model)
+  - `openai-gpt-5-mini`: GPT-5 Mini (fast, cost-efficient)
+  - `google-gemini-2-5-flash`: Gemini 2.5 Flash (speed-optimized with reasoning)
+- Reasoning models use `extractReasoningMiddleware` with `<think>` tags
+- Additional specialized models:
+  - `title-model`: For chat title generation
+  - `artifact-model`: For document generation
 
 **System Prompts** (`lib/ai/prompts.ts`):
-- Reasoning model uses regular prompt only
-- Vision model includes artifacts system prompt for document creation
-- Prompts include geolocation hints from Vercel Functions
+- Reasoning models use regular prompt only
+- Non-reasoning models include artifacts system prompt for document creation
+- All prompts include geolocation hints from Vercel Functions (latitude, longitude, city, country)
+- Additional prompts: `codePrompt` (Python code generation), `sheetPrompt` (spreadsheet creation), `updateDocumentPrompt` (document improvement)
 
 **AI Tools** (`lib/ai/tools/`):
 - `createDocument`: Creates text, code, image, or sheet artifacts
@@ -127,19 +140,20 @@ Artifacts are special UI components that render AI-generated content in a side p
 ### Message Streaming
 
 Chat API (`app/(chat)/api/chat/route.ts`):
-1. Validates request, checks authentication and rate limits
+1. Validates request schema, checks authentication and rate limits
 2. Creates/validates chat ownership
 3. Loads message history and converts to UI format
-4. Streams AI response with tools enabled (except for reasoning model)
+4. Streams AI response with tools enabled (except for reasoning models)
 5. Saves messages to database on completion
-6. Tracks token usage via TokenLens integration
-7. Optional resumable streams via Redis (currently commented out)
+6. Tracks token usage via TokenLens integration with cached model catalog
+7. Optional resumable streams via Redis (available when REDIS_URL is configured)
 
 **Stream Configuration**:
 - Max duration: 60 seconds
 - Smooth streaming with word-level chunking
 - Step limit: 5 turns
-- Reasoning displayed to user when enabled
+- Reasoning extraction displayed to user when using reasoning models
+- UI message stream with `createUIMessageStream` for real-time updates
 
 ## Code Standards (Ultracite)
 
@@ -158,11 +172,20 @@ Run `pnpm lint` before committing. Most issues auto-fix with `pnpm format`.
 
 Playwright tests in `tests/`:
 - `e2e/`: End-to-end tests for chat, artifacts, reasoning, sessions
-- `routes/`: API route tests
-- `pages/`: Page object models for test organization
+- `routes/`: API route tests (chat, document)
+- `pages/`: Page object models for test organization (auth, chat, artifact)
+- `prompts/`: Test prompts and utilities
 - `helpers.ts`: Test utilities
+- `fixtures.ts`: Shared test fixtures
 
 Environment variable `PLAYWRIGHT=True` is set automatically by test script.
+
+**Test Configuration**:
+- Run with `pnpm test`
+- Test timeout: 240 seconds
+- 8 workers (local), 2 workers (CI)
+- HTML reporter for results
+- Trace retention on failure for debugging
 
 ## Common Workflows
 
@@ -188,3 +211,130 @@ Environment variable `PLAYWRIGHT=True` is set automatically by test script.
 3. Review migration in `lib/db/migrations/`
 4. Run `pnpm db:migrate` to apply locally
 5. Build handles migrations in production (`tsx lib/db/migrate && next build`)
+
+### Adding a New AI Model
+
+1. Add model configuration to `chatModels` array in `lib/ai/models.ts`
+2. Include `id`, `name`, `description`, `vercelId`, and optional `isReasoning` flag
+3. Ensure model is available through AI Gateway
+4. Update entitlements in `lib/ai/entitlements.ts` if model access is restricted
+5. Test with mock models in test environment
+
+# Using Gemini CLI for LedgerBot Codebase Analysis
+
+When analyzing your LedgerBot codebase or multiple files that might exceed context limits, use the Gemini CLI with its massive context window. Use `gemini -p` to leverage Google Gemini's large context capacity for your Next.js TypeScript AI application.
+
+## File and Directory Inclusion Syntax for LedgerBot
+
+Use the `@` syntax to include files and directories in your Gemini prompts. The paths should be relative to your LedgerBot project root:
+
+### LedgerBot-Specific Examples:
+
+**Single file analysis:**
+```bash
+gemini -p "@package.json Explain the dependencies and project configuration for this AI chatbot"
+
+gemini -p "@next.config.ts Analyze the Next.js configuration and any AI-specific settings"
+
+gemini -p "@middleware.ts Review the middleware implementation for authentication and routing"
+```
+
+**Multiple configuration files:**
+```bash
+gemini -p "@package.json @tsconfig.json @next.config.ts Analyze the complete TypeScript and Next.js setup"
+
+gemini -p "@drizzle.config.ts @lib/ Review the database configuration and schema implementation"
+```
+
+**Core application directories:**
+```bash
+gemini -p "@app/ Summarize the Next.js app router structure and API routes"
+
+gemini -p "@components/ Analyze the React component architecture and UI patterns"
+
+gemini -p "@lib/ Review the utility functions, database connections, and AI integrations"
+
+gemini -p "@hooks/ Examine the custom React hooks and state management"
+```
+
+**Full project analysis:**
+```bash
+gemini -p "@./ Give me a complete overview of this AI chatbot project structure"
+
+# Or use --all_files flag:
+gemini --all_files -p "Analyze the entire LedgerBot project architecture and AI integrations"
+```
+
+## LedgerBot Feature Verification Examples
+
+**Check AI/Chat implementation:**
+```bash
+gemini -p "@app/ @components/ @lib/ Is the AI chat functionality fully implemented? Show me the chat components and API routes"
+
+gemini -p "@app/api/ @lib/ Are the AI SDK integrations properly configured? List all AI provider connections"
+```
+
+**Verify authentication system:**
+```bash
+gemini -p "@middleware.ts @app/ @lib/ Is NextAuth authentication implemented? Show all auth-related middleware and API routes"
+
+gemini -p "@app/ @components/ Are protected routes and user sessions properly handled throughout the application?"
+```
+
+**Database and ORM verification:**
+```bash
+gemini -p "@lib/db/ @drizzle.config.ts Is the Drizzle ORM setup complete? Show the database schema and migration files"
+
+gemini -p "@lib/ @app/api/ Are database queries properly implemented with error handling?"
+```
+
+**UI/UX component analysis:**
+```bash
+gemini -p "@components/ @app/ Are Radix UI components properly integrated? Show the component library usage"
+
+gemini -p "@components/ @lib/ Is dark mode and theming implemented consistently across the application?"
+```
+
+**Development workflow verification:**
+```bash
+gemini -p "@tests/ @playwright.config.ts Is end-to-end testing properly set up with Playwright?"
+
+gemini -p "@biome.jsonc @package.json Are linting and formatting tools (Biome) configured correctly?"
+```
+
+**Security and middleware checks:**
+```bash
+gemini -p "@middleware.ts @app/api/ Are proper security headers and CORS policies implemented?"
+
+gemini -p "@lib/ @app/ Is input validation and sanitization implemented for user inputs and file uploads?"
+```
+
+**Performance and optimization:**
+```bash
+gemini -p "@app/ @components/ @lib/ Are Next.js performance optimizations (caching, streaming) properly implemented?"
+
+gemini -p "@package.json @next.config.ts Are bundle size optimizations and tree-shaking configured?"
+```
+
+## LedgerBot-Specific Use Cases
+
+Use gemini -p when:
+- Analyzing the complete AI chatbot architecture across app/, components/, and lib/
+- Reviewing Next.js 15 app router implementation and API routes
+- Understanding the Drizzle ORM database integration and schema
+- Checking Vercel AI SDK and provider configurations
+- Verifying TypeScript types and configurations across the project
+- Analyzing the React component hierarchy and state management
+- Reviewing authentication flows and middleware implementation
+- Checking test coverage and Playwright e2e test setup
+
+## Important Notes for LedgerBot
+
+- Paths in @ syntax are relative to your LedgerBot project root directory
+- The CLI will include file contents directly in the context for analysis
+- Perfect for analyzing the complex Next.js/TypeScript/AI SDK integration
+- Gemini's context window can handle your entire codebase including large files like pnpm-lock.yaml
+- Ideal for understanding the interaction between AI providers, database, and UI components
+- When checking implementations, reference the specific LedgerBot features like chat functionality, file uploads, or usage accounting
+
+This customized guide leverages your project's specific structure with directories like `app/`, `components/`, `lib/`, `hooks/`, and key configuration files to help you efficiently analyze your AI chatbot implementation using Gemini CLI.
