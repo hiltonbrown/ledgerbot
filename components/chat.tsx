@@ -20,7 +20,7 @@ import {
 import { useArtifactSelector } from "@/hooks/use-artifact";
 import { useAutoResume } from "@/hooks/use-auto-resume";
 import { useChatVisibility } from "@/hooks/use-chat-visibility";
-import { defaultSelectedTools } from "@/lib/ai/tools";
+import { defaultSelectedTools, type ToolId } from "@/lib/ai/tools";
 import type { Vote } from "@/lib/db/schema";
 import { ChatSDKError } from "@/lib/errors";
 import type { Attachment, ChatMessage } from "@/lib/types";
@@ -64,7 +64,7 @@ export function Chat({
   const [showCreditCardAlert, setShowCreditCardAlert] = useState(false);
   const [currentModelId, setCurrentModelId] = useState(initialChatModel);
   const [selectedTools, setSelectedTools] =
-    useState<string[]>(defaultSelectedTools);
+    useState<ToolId[]>(defaultSelectedTools);
   const currentModelIdRef = useRef(currentModelId);
   const selectedToolsRef = useRef(selectedTools);
 
@@ -190,8 +190,8 @@ export function Chat({
             <MultimodalInput
               attachments={attachments}
               chatId={id}
-              input={input}
               clearError={clearError}
+              input={input}
               messages={messages}
               onModelChange={setCurrentModelId}
               onToolsChange={setSelectedTools}
@@ -213,8 +213,8 @@ export function Chat({
       <Artifact
         attachments={attachments}
         chatId={id}
-        input={input}
         clearError={clearError}
+        input={input}
         isReadonly={isReadonly}
         messages={messages}
         regenerate={regenerate}

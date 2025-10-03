@@ -22,6 +22,7 @@ import { entitlementsByUserType } from "@/lib/ai/entitlements";
 import { type ChatModel, isReasoningModelId } from "@/lib/ai/models";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { myProvider } from "@/lib/ai/providers";
+import { defaultSelectedTools, type ToolId } from "@/lib/ai/tools";
 import { createDocument } from "@/lib/ai/tools/create-document";
 import { getWeather } from "@/lib/ai/tools/get-weather";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
@@ -177,19 +178,11 @@ export async function POST(request: Request) {
 
     const stream = createUIMessageStream({
       execute: ({ writer: dataStream }) => {
-        const activeTools = isReasoningModelId(selectedChatModel)
+        const activeTools: ToolId[] = isReasoningModelId(selectedChatModel)
           ? []
-          : (selectedTools as (
-              | "getWeather"
-              | "createDocument"
-              | "updateDocument"
-              | "requestSuggestions"
-            )[]) || [
-              "getWeather",
-              "createDocument",
-              "updateDocument",
-              "requestSuggestions",
-            ];
+          : selectedTools && selectedTools.length > 0
+            ? (selectedTools as ToolId[])
+            : defaultSelectedTools;
 
         const result = streamText({
           model: myProvider.languageModel(selectedChatModel),
@@ -203,17 +196,14 @@ export async function POST(request: Request) {
             createDocument: createDocument({
               session,
               dataStream,
-              modelId: selectedChatModel,
             }),
             updateDocument: updateDocument({
               session,
               dataStream,
-              modelId: selectedChatModel,
             }),
             requestSuggestions: requestSuggestions({
               session,
               dataStream,
-              modelId: selectedChatModel,
             }),
           },
           experimental_telemetry: {

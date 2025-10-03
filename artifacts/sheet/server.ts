@@ -6,11 +6,11 @@ import { createDocumentHandler } from "@/lib/artifacts/server";
 
 export const sheetDocumentHandler = createDocumentHandler<"sheet">({
   kind: "sheet",
-  onCreateDocument: async ({ title, dataStream, modelId }) => {
+  onCreateDocument: async ({ title, dataStream }) => {
     let draftContent = "";
 
     const { fullStream } = streamObject({
-      model: myProvider.languageModel(modelId),
+      model: myProvider.languageModel("artifact-model"),
       system: sheetPrompt,
       prompt: title,
       schema: z.object({
@@ -45,11 +45,11 @@ export const sheetDocumentHandler = createDocumentHandler<"sheet">({
 
     return draftContent;
   },
-  onUpdateDocument: async ({ document, description, dataStream, modelId }) => {
+  onUpdateDocument: async ({ document, description, dataStream }) => {
     let draftContent = "";
 
     const { fullStream } = streamObject({
-      model: myProvider.languageModel(modelId),
+      model: myProvider.languageModel("artifact-model"),
       system: updateDocumentPrompt(document.content, "sheet"),
       prompt: description,
       schema: z.object({

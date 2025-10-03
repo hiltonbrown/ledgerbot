@@ -18,10 +18,10 @@ export function IntegrationCard({ integration }: { integration: Integration }) {
   return (
     <div className="flex flex-col gap-3 rounded-lg border bg-muted/30 p-4">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="font-semibold text-foreground text-base">{integration.name}</h3>
-        <span
-          className="border capitalize font-medium rounded-full px-2 py-1 text-muted-foreground text-xs"
-        >
+        <h3 className="font-semibold text-base text-foreground">
+          {integration.name}
+        </h3>
+        <span className="rounded-full border px-2 py-1 font-medium text-muted-foreground text-xs capitalize">
           {status.replace("-", " ")}
         </span>
       </div>
