@@ -271,6 +271,7 @@ function PureMultimodalInput({
 
       <PromptInput
         className="rounded-xl border border-border bg-background p-3 shadow-xs transition-all duration-200 focus-within:border-border hover:border-muted-foreground/50"
+        suppressHydrationWarning
         onSubmit={(event) => {
           event.preventDefault();
           if (isAwaitingResponse) {
@@ -328,6 +329,7 @@ function PureMultimodalInput({
             placeholder="Send a message..."
             ref={textareaRef}
             rows={1}
+            suppressHydrationWarning
             value={input}
           />{" "}
           <Context {...contextProps} />
@@ -451,6 +453,7 @@ function PureModelSelectorCompact({
           });
         }
       }}
+      suppressHydrationWarning
       value={selectedModel?.name}
     >
       <Trigger
