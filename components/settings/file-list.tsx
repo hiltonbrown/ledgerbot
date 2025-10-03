@@ -10,7 +10,7 @@ export function FileList({ files }: { files: FileRecord[] }) {
 
   const grouped = useMemo(() => {
     return records.reduce<Record<string, FileRecord[]>>((acc, file) => {
-      acc[file.status] ||= [];
+      acc[file.status] = acc[file.status] || [];
       acc[file.status].push(file);
       return acc;
     }, {});
