@@ -70,25 +70,25 @@ export function SidebarUserNav({ user }: { user: User }) {
             data-testid="user-nav-menu"
             side="top"
           >
-          <DropdownMenuItem
-            className="cursor-pointer"
-            data-testid="user-nav-item-theme"
-            onSelect={() =>
-              setTheme(resolvedTheme === "dark" ? "light" : "dark")
-            }
-          >
-            {`Toggle ${resolvedTheme === "light" ? "dark" : "light"} mode`}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="cursor-pointer"
-            data-testid="user-nav-item-settings"
-            onSelect={() => {
-              router.push("/settings");
-            }}
-          >
-            Settings
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="cursor-pointer"
+              data-testid="user-nav-item-theme"
+              onSelect={() =>
+                setTheme(resolvedTheme === "dark" ? "light" : "dark")
+              }
+            >
+              {`Toggle ${resolvedTheme === "light" ? "dark" : "light"} mode`}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="cursor-pointer"
+              data-testid="user-nav-item-settings"
+              onSelect={() => {
+                router.push("/settings");
+              }}
+            >
+              Settings
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem asChild data-testid="user-nav-item-auth">
               <button
                 className="w-full cursor-pointer"

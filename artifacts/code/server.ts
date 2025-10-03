@@ -6,11 +6,11 @@ import { createDocumentHandler } from "@/lib/artifacts/server";
 
 export const codeDocumentHandler = createDocumentHandler<"code">({
   kind: "code",
-  onCreateDocument: async ({ title, dataStream, modelId }) => {
+  onCreateDocument: async ({ title, dataStream }) => {
     let draftContent = "";
 
     const { fullStream } = streamObject({
-      model: myProvider.languageModel(modelId),
+      model: myProvider.languageModel("artifact-model"),
       system: codePrompt,
       prompt: title,
       schema: z.object({
@@ -39,11 +39,11 @@ export const codeDocumentHandler = createDocumentHandler<"code">({
 
     return draftContent;
   },
-  onUpdateDocument: async ({ document, description, dataStream, modelId }) => {
+  onUpdateDocument: async ({ document, description, dataStream }) => {
     let draftContent = "";
 
     const { fullStream } = streamObject({
-      model: myProvider.languageModel(modelId),
+      model: myProvider.languageModel("artifact-model"),
       system: updateDocumentPrompt(document.content, "code"),
       prompt: description,
       schema: z.object({

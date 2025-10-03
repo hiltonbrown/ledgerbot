@@ -1,19 +1,26 @@
 "use client";
 
 import { useState } from "react";
+import type { UserSettings } from "@/app/(settings)/api/user/data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "../toast";
-import type { UserSettings } from "@/app/(settings)/api/user/data";
 
 export function UserPreferencesForm({ data }: { data: UserSettings }) {
   const [formState, setFormState] = useState(data);
   const [isSaving, setIsSaving] = useState(false);
 
-  const handleInputChange = (field: keyof UserSettings) =>
+  const handleInputChange =
+    (field: keyof UserSettings) =>
     (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       setFormState((state) => ({
         ...state,
@@ -21,7 +28,8 @@ export function UserPreferencesForm({ data }: { data: UserSettings }) {
       }));
     };
 
-  const handleCheckboxChange = (field: keyof UserSettings["notifications"]) =>
+  const handleCheckboxChange =
+    (field: keyof UserSettings["notifications"]) =>
     (event: React.ChangeEvent<HTMLInputElement>) => {
       setFormState((state) => ({
         ...state,
@@ -32,12 +40,13 @@ export function UserPreferencesForm({ data }: { data: UserSettings }) {
       }));
     };
 
-  const handleSelectChange = (field: "language" | "timezone") => (value: string) => {
-    setFormState((state) => ({
-      ...state,
-      [field]: value,
-    }));
-  };
+  const handleSelectChange =
+    (field: "language" | "timezone") => (value: string) => {
+      setFormState((state) => ({
+        ...state,
+        [field]: value,
+      }));
+    };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -86,7 +95,10 @@ export function UserPreferencesForm({ data }: { data: UserSettings }) {
         </div>
         <div className="space-y-2">
           <Label htmlFor="language">Language</Label>
-          <Select onValueChange={handleSelectChange("language")} value={formState.language}>
+          <Select
+            onValueChange={handleSelectChange("language")}
+            value={formState.language}
+          >
             <SelectTrigger id="language">
               <SelectValue placeholder="Select language" />
             </SelectTrigger>
@@ -99,14 +111,23 @@ export function UserPreferencesForm({ data }: { data: UserSettings }) {
         </div>
         <div className="space-y-2 md:col-span-2">
           <Label htmlFor="timezone">Timezone</Label>
-          <Select onValueChange={handleSelectChange("timezone")} value={formState.timezone}>
+          <Select
+            onValueChange={handleSelectChange("timezone")}
+            value={formState.timezone}
+          >
             <SelectTrigger id="timezone">
               <SelectValue placeholder="Select timezone" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="America/Los_Angeles">Pacific Time (PT)</SelectItem>
-              <SelectItem value="America/New_York">Eastern Time (ET)</SelectItem>
-              <SelectItem value="Europe/London">Greenwich Mean Time (GMT)</SelectItem>
+              <SelectItem value="America/Los_Angeles">
+                Pacific Time (PT)
+              </SelectItem>
+              <SelectItem value="America/New_York">
+                Eastern Time (ET)
+              </SelectItem>
+              <SelectItem value="Europe/London">
+                Greenwich Mean Time (GMT)
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -125,7 +146,9 @@ export function UserPreferencesForm({ data }: { data: UserSettings }) {
         </p>
       </div>
       <fieldset className="space-y-4">
-        <legend className="font-medium text-foreground text-sm">Notifications</legend>
+        <legend className="font-medium text-foreground text-sm">
+          Notifications
+        </legend>
         <div className="grid gap-3 md:grid-cols-3">
           <label className="flex items-start gap-3 rounded-md border p-3">
             <input
@@ -135,7 +158,9 @@ export function UserPreferencesForm({ data }: { data: UserSettings }) {
               type="checkbox"
             />
             <div>
-              <span className="font-medium text-foreground text-sm">Product updates</span>
+              <span className="font-medium text-foreground text-sm">
+                Product updates
+              </span>
               <p className="text-muted-foreground text-xs">
                 Highlights on new capabilities and templates.
               </p>
@@ -149,7 +174,9 @@ export function UserPreferencesForm({ data }: { data: UserSettings }) {
               type="checkbox"
             />
             <div>
-              <span className="font-medium text-foreground text-sm">Security alerts</span>
+              <span className="font-medium text-foreground text-sm">
+                Security alerts
+              </span>
               <p className="text-muted-foreground text-xs">
                 Receive login alerts and policy changes immediately.
               </p>
@@ -163,7 +190,9 @@ export function UserPreferencesForm({ data }: { data: UserSettings }) {
               type="checkbox"
             />
             <div>
-              <span className="font-medium text-foreground text-sm">Weekly summary</span>
+              <span className="font-medium text-foreground text-sm">
+                Weekly summary
+              </span>
               <p className="text-muted-foreground text-xs">
                 Friday recap of usage, artifacts, and automations.
               </p>

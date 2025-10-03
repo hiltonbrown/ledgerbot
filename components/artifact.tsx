@@ -337,8 +337,8 @@ function PureArtifact({
                     attachments={attachments}
                     chatId={chatId}
                     className="bg-background dark:bg-muted"
-                    input={input}
                     clearError={clearError}
+                    input={input}
                     messages={messages}
                     selectedModelId={selectedModelId}
                     selectedVisibilityType={selectedVisibilityType}

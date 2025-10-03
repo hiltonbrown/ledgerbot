@@ -1,11 +1,4 @@
-export type Tool = {
-  id: string;
-  name: string;
-  description: string;
-  icon?: string;
-};
-
-export const availableTools: Tool[] = [
+const TOOL_DEFINITIONS = [
   {
     id: "getWeather",
     name: "Weather",
@@ -26,13 +19,18 @@ export const availableTools: Tool[] = [
     name: "Request Suggestions",
     description: "Request suggestions from the AI",
   },
-];
+] as const;
 
-export const defaultSelectedTools = [
+export type Tool = (typeof TOOL_DEFINITIONS)[number];
+export type ToolId = Tool["id"];
+
+export const availableTools: Tool[] = [...TOOL_DEFINITIONS];
+
+export const toolIds: ToolId[] = availableTools.map((tool) => tool.id);
+
+export const defaultSelectedTools: ToolId[] = [
   "getWeather",
   "createDocument",
   "updateDocument",
   "requestSuggestions",
 ];
-
-export const toolIds = availableTools.map((tool) => tool.id);
