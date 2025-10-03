@@ -453,11 +453,11 @@ function PureModelSelectorCompact({
           });
         }
       }}
-      suppressHydrationWarning
       value={selectedModel?.name}
     >
       <Trigger
         className="flex h-8 items-center gap-2 rounded-lg border-0 bg-background px-2 text-foreground shadow-none transition-colors hover:bg-accent focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+        suppressHydrationWarning
         type="button"
       >
         <CpuIcon size={16} />
