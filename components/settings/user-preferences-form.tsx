@@ -43,7 +43,7 @@ export function UserPreferencesForm({ data }: { data: UserSettings }) {
     event.preventDefault();
     setIsSaving(true);
 
-    await new Promise((resolve) => setTimeout(resolve, 600));
+    // TODO: Replace with real async save operation, e.g. API call
 
     toast({
       type: "success",
