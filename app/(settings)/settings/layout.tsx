@@ -1,8 +1,8 @@
 import { cookies } from "next/headers";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { auth } from "../(auth)/auth";
-import { SettingsHeader } from "./_components/settings-header";
+import { auth } from "../../(auth)/auth";
+import { SettingsHeader } from "../_components/settings-header";
 
 export const experimental_ppr = true;
 

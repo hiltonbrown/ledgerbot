@@ -1,6 +1,6 @@
 import { SettingsSection } from "@/components/settings/settings-section";
 import { UsageSummary } from "@/components/settings/usage-summary";
-import { getUsageSummary } from "../api/usage/data";
+import { getUsageSummary } from "../../api/usage/data";
 
 export default function UsagePage() {
   const summary = getUsageSummary();
