@@ -6,9 +6,9 @@ import {
 import { SettingsSection } from "@/components/settings/settings-section";
 import { UsageSummary as UsageSummaryComponent } from "@/components/settings/usage-summary";
 import { Button } from "@/components/ui/button";
-import { getFileSummary } from "./api/files/data";
-import { getUsageSummary } from "./api/usage/data";
-import { getUserSettings } from "./api/user/data";
+import { getFileSummary } from "../api/files/data";
+import { getUsageSummary } from "../api/usage/data";
+import { getUserSettings } from "../api/user/data";
 
 const integrations: Integration[] = [
   {

@@ -1,6 +1,6 @@
 import { FileList } from "@/components/settings/file-list";
 import { SettingsSection } from "@/components/settings/settings-section";
-import { getFileSummary } from "../api/files/data";
+import { getFileSummary } from "../../api/files/data";
 
 export default function FilesPage() {
   const summary = getFileSummary();

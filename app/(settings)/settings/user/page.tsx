@@ -1,6 +1,6 @@
 import { SettingsSection } from "@/components/settings/settings-section";
 import { UserPreferencesForm } from "@/components/settings/user-preferences-form";
-import { getUserSettings } from "../api/user/data";
+import { getUserSettings } from "../../api/user/data";
 
 export default function UserSettingsPage() {
   const settings = getUserSettings();
