@@ -80,7 +80,12 @@ export const codeArtifact = new Artifact<"code", Metadata>({
       setArtifact((draftArtifact) => ({
         ...draftArtifact,
         content: streamPart.data,
-        isVisible: draftArtifact.isVisible || draftArtifact.content.length === 0,
+        isVisible:
+          draftArtifact.status === "streaming" &&
+          draftArtifact.content.length > 300 &&
+          draftArtifact.content.length < 310
+            ? true
+            : draftArtifact.isVisible,
         status: "streaming",
       }));
     }
