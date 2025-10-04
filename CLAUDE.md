@@ -11,7 +11,7 @@ Intellisync Chatbot is an AI-powered workspace application built on Next.js 15, 
 - **Framework**: Next.js 15 with experimental PPR (Partial Prerendering)
 - **AI SDK**: Vercel AI SDK with multiple providers (Anthropic Claude, OpenAI GPT-5, Google Gemini) via AI Gateway
 - **Database**: PostgreSQL with Drizzle ORM
-- **Authentication**: NextAuth.js 5.0 (beta) with support for both regular and guest users
+- **Authentication**: Clerk (clerk.com) - Modern authentication and user management
 - **Storage**: Vercel Blob for file uploads
 - **Caching**: Redis for resumable streams (optional)
 - **Linting/Formatting**: Ultracite (Biome-based)
@@ -50,7 +50,8 @@ pnpm test               # Run Playwright tests
 ## Environment Setup
 
 Copy `.env.example` to `.env.local` and configure:
-- `AUTH_SECRET`: Random secret for NextAuth (use `openssl rand -base64 32`)
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`: Clerk publishable key (get from https://dashboard.clerk.com/)
+- `CLERK_SECRET_KEY`: Clerk secret key (server-side only)
 - `POSTGRES_URL`: PostgreSQL connection string
 - `BLOB_READ_WRITE_TOKEN`: Vercel Blob storage token
 - `AI_GATEWAY_API_KEY`: Required for non-Vercel deployments (OIDC used on Vercel)
@@ -61,8 +62,7 @@ Copy `.env.example` to `.env.local` and configure:
 
 ### Route Structure
 
-- `app/(auth)/`: Authentication routes (login, register) and NextAuth configuration
-  - `api/auth/guest/route.ts`: Guest user creation endpoint
+- `app/(auth)/`: Authentication routes (login, register) using Clerk components
 - `app/(chat)/`: Main chat interface and API routes
   - `api/chat/route.ts`: Primary chat endpoint with streaming
   - `api/chat/[id]/stream/route.ts`: Stream resumption endpoint
@@ -115,7 +115,10 @@ Artifacts are special UI components that render AI-generated content in a side p
 ### Database Schema
 
 **Core Tables** (`lib/db/schema.ts`):
-- `User`: User accounts with email/password
+- `User`: User accounts synced with Clerk
+  - `clerkId`: Unique Clerk user ID (synced on first login)
+  - `clerkSynced`: Track sync status
+  - `email`: User email from Clerk
 - `Chat`: Conversations with visibility settings (public/private) and usage tracking
 - `Message_v2`: Multi-part messages (new format) with attachments
 - `Document`: Artifacts (text, code, image, sheet) linked to users
@@ -129,13 +132,20 @@ Artifacts are special UI components that render AI-generated content in a side p
 
 ### Authentication
 
-**User Types**:
-- `regular`: Standard authenticated users
-- `guest`: Temporary users created on demand (no password required)
+**Authentication Provider**: Clerk (clerk.com)
+
+**User Management**:
+- All users are authenticated via Clerk
+- Database automatically syncs Clerk users on first login
+- Helper functions in `lib/auth/clerk-helpers.ts`:
+  - `getAuthUser()`: Get authenticated user and sync with database
+  - `requireAuth()`: Require authentication or throw error
+  - `isAuthenticated()`: Check if user is authenticated
 
 **Rate Limiting**:
 - Entitlements defined in `lib/ai/entitlements.ts`
 - Enforced per user type (messages per day limit)
+- Currently all users have `regular` type
 
 ### Message Streaming
 
