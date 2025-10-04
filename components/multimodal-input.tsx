@@ -28,7 +28,7 @@ import {
 import { SelectItem } from "@/components/ui/select";
 import { chatModels, isReasoningModelId } from "@/lib/ai/models";
 import { myProvider } from "@/lib/ai/providers";
-import { availableTools, type Tool } from "@/lib/ai/tools";
+import { availableTools, type ToolId } from "@/lib/ai/tools";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
 import { cn } from "@/lib/utils";
@@ -90,8 +90,8 @@ function PureMultimodalInput({
   selectedVisibilityType: VisibilityType;
   selectedModelId: string;
   onModelChange?: (modelId: string) => void;
-  selectedTools?: string[];
-  onToolsChange?: (tools: string[]) => void;
+  selectedTools?: ToolId[];
+  onToolsChange?: (tools: ToolId[]) => void;
   usage?: AppUsage;
 }) {
   const isAwaitingResponse = status === "submitted" || status === "streaming";
@@ -488,10 +488,10 @@ function PureToolSelectorCompact({
   selectedTools = [],
   onToolsChange,
 }: {
-  selectedTools?: string[];
-  onToolsChange?: (tools: string[]) => void;
+  selectedTools?: ToolId[];
+  onToolsChange?: (tools: ToolId[]) => void;
 }) {
-  const handleToolToggle = (toolId: string, checked: boolean) => {
+  const handleToolToggle = (toolId: ToolId, checked: boolean) => {
     if (checked) {
       onToolsChange?.([...selectedTools, toolId]);
     } else {

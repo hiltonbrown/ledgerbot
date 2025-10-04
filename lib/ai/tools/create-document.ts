@@ -1,7 +1,6 @@
 import { tool, type UIMessageStreamWriter } from "ai";
 import type { Session } from "next-auth";
 import { z } from "zod";
-import type { ChatModel } from "@/lib/ai/models";
 import {
   artifactKinds,
   documentHandlersByArtifactKind,
@@ -12,14 +11,9 @@ import { generateUUID } from "@/lib/utils";
 type CreateDocumentProps = {
   session: Session;
   dataStream: UIMessageStreamWriter<ChatMessage>;
-  modelId: ChatModel["id"];
 };
 
-export const createDocument = ({
-  session,
-  dataStream,
-  modelId,
-}: CreateDocumentProps) =>
+export const createDocument = ({ session, dataStream }: CreateDocumentProps) =>
   tool({
     description:
       "Create a document for a writing or content creation activities. This tool will call other functions that will generate the contents of the document based on the title and kind.",
@@ -68,7 +62,6 @@ export const createDocument = ({
         title,
         dataStream,
         session,
-        modelId,
       });
 
       dataStream.write({ type: "data-finish", data: null, transient: true });

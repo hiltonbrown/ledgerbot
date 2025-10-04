@@ -1,7 +1,6 @@
 import { streamObject, tool, type UIMessageStreamWriter } from "ai";
 import type { Session } from "next-auth";
 import { z } from "zod";
-import type { ChatModel } from "@/lib/ai/models";
 import { getDocumentById, saveSuggestions } from "@/lib/db/queries";
 import type { Suggestion } from "@/lib/db/schema";
 import type { ChatMessage } from "@/lib/types";
@@ -11,13 +10,11 @@ import { myProvider } from "../providers";
 type RequestSuggestionsProps = {
   session: Session;
   dataStream: UIMessageStreamWriter<ChatMessage>;
-  modelId: ChatModel["id"];
 };
 
 export const requestSuggestions = ({
   session,
   dataStream,
-  modelId,
 }: RequestSuggestionsProps) =>
   tool({
     description: "Request suggestions for a document",
@@ -41,7 +38,7 @@ export const requestSuggestions = ({
       >[] = [];
 
       const { elementStream } = streamObject({
-        model: myProvider.languageModel(modelId),
+        model: myProvider.languageModel("artifact-model"),
         system:
           "You are a help writing assistant. Given a piece of writing, please offer suggestions to improve the piece of writing and describe the change. It is very important for the edits to contain full sentences instead of just words. Max 5 suggestions.",
         prompt: document.content,
