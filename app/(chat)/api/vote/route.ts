@@ -15,7 +15,7 @@ export async function GET(request: Request) {
 
   const user = await getAuthUser();
 
-  if (!user?.user) {
+  if (!user) {
     return new ChatSDKError("unauthorized:vote").toResponse();
   }
 
@@ -51,7 +51,7 @@ export async function PATCH(request: Request) {
 
   const user = await getAuthUser();
 
-  if (!user?.user) {
+  if (!user) {
     return new ChatSDKError("unauthorized:vote").toResponse();
   }
 

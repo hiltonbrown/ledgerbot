@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 
   const user = await getAuthUser();
 
-  if (!user?.user) {
+  if (!user) {
     return new ChatSDKError("unauthorized:chat").toResponse();
   }
 

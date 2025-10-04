@@ -20,7 +20,7 @@ export async function GET(request: Request) {
 
   const user = await getAuthUser();
 
-  if (!user?.user) {
+  if (!user) {
     return new ChatSDKError("unauthorized:document").toResponse();
   }
 
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
 
   const user = await getAuthUser();
 
-  if (!user?.user) {
+  if (!user) {
     return new ChatSDKError("not_found:document").toResponse();
   }
 
@@ -105,7 +105,7 @@ export async function DELETE(request: Request) {
 
   const user = await getAuthUser();
 
-  if (!user?.user) {
+  if (!user) {
     return new ChatSDKError("unauthorized:document").toResponse();
   }
 

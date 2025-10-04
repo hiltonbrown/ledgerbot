@@ -4,7 +4,7 @@ import { Chat } from "@/components/chat";
 import { DataStreamHandler } from "@/components/data-stream-handler";
 import { chatModelIds, DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
 import { generateUUID } from "@/lib/utils";
-import { auth } from "../(auth)/auth";
+import { getAuthUser } from "@/lib/auth/clerk-helpers";
 
 export default async function Page() {
   const user = await getAuthUser();
