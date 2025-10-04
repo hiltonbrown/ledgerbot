@@ -337,4 +337,35 @@ Use gemini -p when:
 - Ideal for understanding the interaction between AI providers, database, and UI components
 - When checking implementations, reference the specific LedgerBot features like chat functionality, file uploads, or usage accounting
 
-This customized guide leverages your project's specific structure with directories like `app/`, `components/`, `lib/`, `hooks/`, and key configuration files to help you efficiently analyze your AI chatbot implementation using Gemini CLI.
+# Using MCP Servers for Updated Documentation
+
+When working with external libraries or needing up-to-date documentation, leverage Model Context Protocol (MCP) servers to access current information beyond static docs.
+
+## Context7 MCP Server
+
+Use the Context7 server to retrieve up-to-date documentation and code examples for libraries:
+
+- **resolve-library-id**: Find the correct Context7-compatible library ID for a given package name.
+- **get-library-docs**: Fetch documentation, including code snippets and examples, for a resolved library ID.
+
+Example workflow:
+1. When implementing a feature requiring a new library, use `resolve-library-id` to get the library ID.
+2. Then use `get-library-docs` to obtain the latest documentation with practical examples.
+
+This ensures you have current, accurate information rather than relying on potentially outdated cached docs.
+
+## GitHub MCP Server
+
+For accessing GitHub repositories, issues, pull requests, and code:
+
+- Use GitHub MCP server tools to search repositories, view issues, browse code, or check recent commits.
+- Particularly useful for:
+  - Staying updated on dependency repositories
+  - Researching implementation patterns from open-source projects
+  - Checking for recent bug fixes or feature additions
+
+Note: Ensure MCP servers are properly configured and connected in your development environment. If GitHub MCP server is not available, consider setting it up for enhanced documentation access.
+
+# Engineering Practices
+⚠️ Preserve integrity of external dependencies.
+Do not alter files inside node_modules or any installed packages. Instead, use wrappers, patching tools, or configuration hooks. This practice supports clean upgrades, auditability, and prevents regressions when dependencies are updated.

@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
+import { auth } from "@clerk/nextjs/server";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { auth } from "../../(auth)/auth";
 import { SettingsHeader } from "../_components/settings-header";
 
 export const experimental_ppr = true;
@@ -11,12 +11,16 @@ export default async function SettingsLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [session, cookieStore] = await Promise.all([auth(), cookies()]);
+  const [clerkAuth, cookieStore] = await Promise.all([
+    auth(),
+    cookies(),
+  ]);
+
   const isCollapsed = cookieStore.get("sidebar_state")?.value !== "true";
 
   return (
     <SidebarProvider defaultOpen={!isCollapsed}>
-      <AppSidebar user={session?.user} />
+      <AppSidebar user={null} />
       <SidebarInset>
         <div className="flex min-h-svh flex-col">
           <header className="border-b bg-background">

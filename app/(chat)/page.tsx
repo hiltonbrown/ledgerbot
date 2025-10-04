@@ -7,10 +7,10 @@ import { generateUUID } from "@/lib/utils";
 import { auth } from "../(auth)/auth";
 
 export default async function Page() {
-  const session = await auth();
+  const user = await getAuthUser();
 
-  if (!session) {
-    redirect("/api/auth/guest");
+  if (!user) {
+    redirect("/login");
   }
 
   const id = generateUUID();
