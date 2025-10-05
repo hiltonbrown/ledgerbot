@@ -6,6 +6,14 @@
 - `public/` serves static assets, while `artifacts/` stores generated chat exports and other persisted outputs.
 - Playwright fixtures, helper utilities, and e2e specs live under `tests/`; keep new suites alongside existing folders for discoverability.
 
+## Authentication & User Sessions
+- Clerk is the sole auth provider. `app/layout.tsx` wraps the app in `ClerkProvider`, and the middleware in `middleware.ts` uses `clerkMiddleware` with `auth.protect()` to guard every non-public route.
+- Server components and API routes call `getAuthUser()` from `lib/auth/clerk-helpers.ts` to retrieve the current user. The helper syncs the Clerk record into the `User` table (creating it when necessary) and returns the shared `AuthUser` shape from `lib/types/auth.ts`.
+- Guest accounts are removed. `AuthUser.type` is now always `"regular"`, and all entitlement logic keys off that single type.
+- Client experiences pull profile data directly from Clerk. For example, `components/sidebar-user-nav.tsx` relies on `useUser()` / `useClerk()` while `components/app-sidebar.tsx` receives the server-fetched `AuthUser` for history lookups.
+- Database rows must include Clerk metadata. The `User` schema tracks `clerkId`, `clerkSynced`, and keeps the legacy `password` column only for temporary coexistence during migration.
+- Local development requires Clerk environment variables (`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, etc.); copy them into `.env.local` before running migrations or starting the app.
+
 ## Build, Test, and Development Commands
 - `pnpm dev` starts the local Next.js server with Turbo mode at `http://localhost:3000`.
 - `pnpm build` runs database migrations via `tsx lib/db/migrate` and then compiles the production bundle.
@@ -96,9 +104,9 @@ gemini -p "@app/api/ @lib/ Are the AI SDK integrations properly configured? List
 
 **Verify authentication system:**
 ```bash
-gemini -p "@middleware.ts @app/ @lib/ Is NextAuth authentication implemented? Show all auth-related middleware and API routes"
+gemini -p "@middleware.ts @app/ @lib/ Is Clerk authentication implemented? Show all auth-related middleware and API routes"
 
-gemini -p "@app/ @components/ Are protected routes and user sessions properly handled throughout the application?"
+gemini -p "@app/ @components/ Are Clerk-protected routes and user sessions properly handled throughout the application?"
 ```
 
 **Database and ORM verification:**
