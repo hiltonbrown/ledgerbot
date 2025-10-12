@@ -29,15 +29,7 @@ export function ClerkThemeProvider({ children }: ClerkThemeProviderProps) {
       colorNeutral: "hsl(var(--muted))",
       colorTextOnPrimaryBackground: "hsl(var(--primary-foreground))",
       colorAlphaShade: "hsl(var(--muted))",
-      fontFamily: "var(--font-geist)",
-      fontFamilyButtons: "var(--font-geist)",
       fontSize: "1rem",
-      fontWeight: {
-        normal: 400,
-        medium: 500,
-        semibold: 600,
-        bold: 700,
-      },
       borderRadius: "var(--radius)",
     },
     elements: {
