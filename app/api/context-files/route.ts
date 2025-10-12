@@ -79,28 +79,28 @@ export async function POST(request: Request) {
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
         { error: "File exceeds maximum size" },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
     if (!SUPPORTED_TYPES.includes(file.type)) {
       return NextResponse.json(
         { error: "File type not supported" },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
     if (fileCount >= entitlement.maxContextFiles) {
       return NextResponse.json(
         { error: "Context file limit reached" },
-        { status: 409 },
+        { status: 409 }
       );
     }
 
     if (currentUsage + file.size > maxStorage) {
       return NextResponse.json(
         { error: "Storage quota exceeded" },
-        { status: 413 },
+        { status: 413 }
       );
     }
 
@@ -123,6 +123,9 @@ export async function POST(request: Request) {
     return NextResponse.json(record);
   } catch (error) {
     console.error("Context file upload failed", error);
-    return NextResponse.json({ error: "Failed to upload file" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to upload file" },
+      { status: 500 }
+    );
   }
 }

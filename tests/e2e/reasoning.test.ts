@@ -14,9 +14,9 @@ test.describe("chat activity with reasoning", () => {
     await chatPage.isGenerationComplete();
 
     const assistantMessage = await chatPage.getRecentAssistantMessage();
-    expect(assistantMessage!.content).toBe("It's just blue duh!");
+    expect(assistantMessage?.content).toBe("It's just blue duh!");
 
-    expect(assistantMessage!.reasoning).toBe(
+    expect(assistantMessage?.reasoning).toBe(
       "The sky is blue because of rayleigh scattering!"
     );
   });

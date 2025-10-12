@@ -1,12 +1,9 @@
-import { SettingsSection } from "@/components/settings/settings-section";
 import { ContextFileList } from "@/components/settings/context-file-list";
 import { ContextFileUpload } from "@/components/settings/context-file-upload";
+import { SettingsSection } from "@/components/settings/settings-section";
 import { entitlementsByUserType } from "@/lib/ai/entitlements";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
-import {
-  getContextFilesByUserId,
-  getUserStorageUsage,
-} from "@/lib/db/queries";
+import { getContextFilesByUserId, getUserStorageUsage } from "@/lib/db/queries";
 
 export default async function FilesPage() {
   const user = await getAuthUser();
@@ -31,10 +28,7 @@ export default async function FilesPage() {
         description={`You are using ${usedMb} MB of ${capacityMb} MB available. Files uploaded here are automatically included in all conversations.`}
         title="Persistent context files"
       >
-        <ContextFileUpload
-          currentUsage={usedBytes}
-          maxStorage={maxStorage}
-        />
+        <ContextFileUpload currentUsage={usedBytes} maxStorage={maxStorage} />
         <ContextFileList files={files} />
       </SettingsSection>
     </div>

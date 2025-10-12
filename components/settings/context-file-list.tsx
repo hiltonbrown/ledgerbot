@@ -2,11 +2,10 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import type { ContextFile } from "@/lib/db/schema";
 import { FILE_TYPE_LABELS } from "@/lib/types";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 
 function formatStatus(status: ContextFile["status"]) {
   switch (status) {
@@ -36,7 +35,9 @@ export function ContextFileList({ files }: { files: ContextFile[] }) {
       });
 
       if (!response.ok) {
-        const data = await response.json().catch(() => ({ error: "Failed to delete file" }));
+        const data = await response
+          .json()
+          .catch(() => ({ error: "Failed to delete file" }));
         toast.error(data.error ?? "Failed to delete file");
         return;
       }
@@ -64,9 +65,9 @@ export function ContextFileList({ files }: { files: ContextFile[] }) {
 
       const updated = await response.json();
       setFileList((previous) =>
-        previous.map((item) => (item.id === updated.id ? updated : item)),
+        previous.map((item) => (item.id === updated.id ? updated : item))
       );
-      toast.success(!file.isPinned ? "File pinned" : "File unpinned");
+      toast.success(file.isPinned ? "File unpinned" : "File pinned");
     } catch (error) {
       console.error("Failed to update context file", error);
       toast.error("Failed to update file");
@@ -75,7 +76,7 @@ export function ContextFileList({ files }: { files: ContextFile[] }) {
 
   if (fileList.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+      <div className="rounded-lg border border-dashed p-6 text-center text-muted-foreground text-sm">
         No files uploaded yet.
       </div>
     );
@@ -89,8 +90,8 @@ export function ContextFileList({ files }: { files: ContextFile[] }) {
 
         return (
           <div
-            key={file.id}
             className="flex flex-col gap-3 rounded-lg border bg-muted/40 p-4 sm:flex-row sm:items-center sm:justify-between"
+            key={file.id}
           >
             <div className="space-y-1 text-sm">
               <div className="flex flex-wrap items-center gap-2">
@@ -108,7 +109,9 @@ export function ContextFileList({ files }: { files: ContextFile[] }) {
                 </p>
               ) : null}
               {file.errorMessage ? (
-                <p className="text-destructive text-xs">Error: {file.errorMessage}</p>
+                <p className="text-destructive text-xs">
+                  Error: {file.errorMessage}
+                </p>
               ) : null}
               <p className="text-muted-foreground text-xs">
                 Uploaded {new Date(file.createdAt).toLocaleString()}
@@ -117,25 +120,25 @@ export function ContextFileList({ files }: { files: ContextFile[] }) {
             <div className="flex items-center gap-2">
               <Button
                 onClick={() => handlePin(file)}
+                size="sm"
                 type="button"
                 variant="ghost"
-                size="sm"
               >
                 {file.isPinned ? "Unpin" : "Pin"}
               </Button>
               <Button
                 onClick={() => window.open(file.blobUrl, "_blank")}
+                size="sm"
                 type="button"
                 variant="ghost"
-                size="sm"
               >
                 View
               </Button>
               <Button
                 onClick={() => handleDelete(file.id)}
+                size="sm"
                 type="button"
                 variant="destructive"
-                size="sm"
               >
                 Delete
               </Button>

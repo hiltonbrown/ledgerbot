@@ -47,7 +47,8 @@ async function extractDocumentText(file: Blob, contentType: string) {
 
     return { extractedText: "" };
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to process file";
+    const message =
+      error instanceof Error ? error.message : "Failed to process file";
     return { extractedText: "", error: message };
   }
 }
@@ -90,10 +91,8 @@ export async function POST(request: Request) {
         access: "public",
       });
 
-      const { extractedText, error: processingError } = await extractDocumentText(
-        file,
-        file.type,
-      );
+      const { extractedText, error: processingError } =
+        await extractDocumentText(file, file.type);
 
       return NextResponse.json({
         ...data,

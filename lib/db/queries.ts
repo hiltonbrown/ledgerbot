@@ -1,5 +1,6 @@
 import "server-only";
 
+import { del } from "@vercel/blob";
 import {
   and,
   asc,
@@ -10,22 +11,20 @@ import {
   gte,
   inArray,
   lt,
-  sql,
   type SQL,
+  sql,
 } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { del } from "@vercel/blob";
 import type { ArtifactKind } from "@/components/artifact";
 import type { VisibilityType } from "@/components/visibility-selector";
 import { ChatSDKError } from "../errors";
 import type { AppUsage } from "../usage";
-import { generateUUID } from "../utils";
 import {
   type Chat,
+  type ContextFile,
   chat,
   contextFile,
-  type ContextFile,
   type DBMessage,
   document,
   message,
@@ -236,7 +235,7 @@ export async function createContextFile({
   } catch (_error) {
     throw new ChatSDKError(
       "bad_request:database",
-      "Failed to create context file",
+      "Failed to create context file"
     );
   }
 }
@@ -254,17 +253,22 @@ export async function getContextFilesByUserId({
       conditions.push(eq(contextFile.status, status));
     }
 
-    const whereCondition = conditions.length === 1 ? conditions[0] : and(...conditions);
+    const whereCondition =
+      conditions.length === 1 ? conditions[0] : and(...conditions);
 
     return await db
       .select()
       .from(contextFile)
       .where(whereCondition)
-      .orderBy(desc(contextFile.isPinned), desc(contextFile.lastUsedAt), desc(contextFile.createdAt));
+      .orderBy(
+        desc(contextFile.isPinned),
+        desc(contextFile.lastUsedAt),
+        desc(contextFile.createdAt)
+      );
   } catch (_error) {
     throw new ChatSDKError(
       "bad_request:database",
-      "Failed to fetch context files",
+      "Failed to fetch context files"
     );
   }
 }
@@ -297,7 +301,7 @@ export async function updateContextFileContent({
   } catch (_error) {
     throw new ChatSDKError(
       "bad_request:database",
-      "Failed to update context file",
+      "Failed to update context file"
     );
   }
 }
@@ -333,7 +337,7 @@ export async function deleteContextFile({
 
     throw new ChatSDKError(
       "bad_request:database",
-      "Failed to delete context file",
+      "Failed to delete context file"
     );
   }
 }
@@ -361,7 +365,8 @@ export async function getUserStorageUsage(userId: string) {
 
     const totalSize = usage?.totalSize ?? 0;
     const rawCount = usage?.fileCount ?? 0;
-    const fileCount = typeof rawCount === "bigint" ? Number(rawCount) : Number(rawCount);
+    const fileCount =
+      typeof rawCount === "bigint" ? Number(rawCount) : Number(rawCount);
 
     return {
       totalSize,
@@ -370,7 +375,7 @@ export async function getUserStorageUsage(userId: string) {
   } catch (_error) {
     throw new ChatSDKError(
       "bad_request:database",
-      "Failed to compute storage usage",
+      "Failed to compute storage usage"
     );
   }
 }

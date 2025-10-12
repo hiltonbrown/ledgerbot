@@ -1,9 +1,13 @@
-import { getContextFilesByUserId, touchContextFile } from '@/lib/db/queries';
-import type { ContextFile } from '@/lib/db/schema';
+import { getContextFilesByUserId, touchContextFile } from "@/lib/db/queries";
+import type { ContextFile } from "@/lib/db/schema";
 
 const DEFAULT_TOKEN_BUDGET = 10_000;
 
-function formatFileContext(file: ContextFile, text: string, truncated: boolean) {
+function formatFileContext(
+  file: ContextFile,
+  text: string,
+  truncated: boolean
+) {
   const header = [`## ${file.originalName}`];
   if (file.description) {
     header.push(`*Description: ${file.description}*`);
@@ -14,7 +18,7 @@ function formatFileContext(file: ContextFile, text: string, truncated: boolean) 
     body = `${body}\n\n[...content truncated due to token limit...]`;
   }
 
-  return `${header.join('\n')}\n\n${body}`.trim();
+  return `${header.join("\n")}\n\n${body}`.trim();
 }
 
 function estimateTokenCount(text: string): number {
@@ -25,9 +29,9 @@ function estimateTokenCount(text: string): number {
 }
 
 export async function buildUserContext(userId: string): Promise<string> {
-  const files = await getContextFilesByUserId({ userId, status: 'ready' });
+  const files = await getContextFilesByUserId({ userId, status: "ready" });
   if (files.length === 0) {
-    return '';
+    return "";
   }
 
   const sorted = [...files].sort((a, b) => {
@@ -52,7 +56,8 @@ export async function buildUserContext(userId: string): Promise<string> {
       continue;
     }
 
-    const tokenCount = file.tokenCount ?? estimateTokenCount(file.extractedText);
+    const tokenCount =
+      file.tokenCount ?? estimateTokenCount(file.extractedText);
     if (usedTokens + tokenCount > DEFAULT_TOKEN_BUDGET) {
       const remaining = DEFAULT_TOKEN_BUDGET - usedTokens;
       if (remaining > 100) {
@@ -69,14 +74,14 @@ export async function buildUserContext(userId: string): Promise<string> {
   }
 
   if (touched.length > 0) {
-    void Promise.all(touched.map((id) => touchContextFile(id))).catch(() => undefined);
+    void Promise.all(touched.map((id) => touchContextFile(id))).catch(() => {});
   }
 
   if (included.length === 0) {
-    return '';
+    return "";
   }
 
-  return `# User's Context Files\n\nThe following documents were uploaded by the user and should be considered when responding.\n\n${included.join('\n\n---\n\n')}\n\n# End of Context Files`;
+  return `# User's Context Files\n\nThe following documents were uploaded by the user and should be considered when responding.\n\n${included.join("\n\n---\n\n")}\n\n# End of Context Files`;
 }
 
 export function getContextTokenLimit(): number {
