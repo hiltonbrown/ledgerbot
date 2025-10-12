@@ -45,10 +45,10 @@ yarn-error.log*
 # TypeScript
 tsconfig.tsbuildinfo
 
-# IntelliJ IDEA
-.idea/
-
-# Editor directories
+# IDE directories
 .claude
 .kilocode
 .cursor
+.idea
+.next
+.vercel

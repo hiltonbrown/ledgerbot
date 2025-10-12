@@ -1,11 +1,11 @@
 import { tool, type UIMessageStreamWriter } from "ai";
-import type { AuthUser } from "@/lib/types/auth";
 import { z } from "zod";
 import {
   artifactKinds,
   documentHandlersByArtifactKind,
 } from "@/lib/artifacts/server";
 import type { ChatMessage } from "@/lib/types";
+import type { AuthUser } from "@/lib/types/auth";
 import { generateUUID } from "@/lib/utils";
 
 type CreateDocumentProps = {

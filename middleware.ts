@@ -7,6 +7,7 @@ const isPublicRoute = createRouteMatcher([
   "/register(.*)",
   "/api/webhooks(.*)",
   "/settings/user(.*)", // Allow Clerk UserProfile catch-all routes
+  "/account(.*)", // Allow Clerk UserProfile catch-all routes
   "/ping",
 ]);
 

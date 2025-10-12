@@ -147,7 +147,7 @@ function PureEditor({
 
   return (
     <div
-      className="prose prose-sm md:prose-base lg:prose-lg dark:prose-invert max-w-none w-full relative px-4 py-2"
+      className="prose prose-sm md:prose-base lg:prose-lg dark:prose-invert relative w-full max-w-none px-4 py-2"
       ref={containerRef}
     />
   );

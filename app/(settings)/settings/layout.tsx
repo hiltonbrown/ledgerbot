@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
-import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import { SettingsHeader } from "../_components/settings-header";
 
 export const experimental_ppr = true;

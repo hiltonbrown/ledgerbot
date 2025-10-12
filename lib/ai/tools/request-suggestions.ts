@@ -1,9 +1,9 @@
 import { streamObject, tool, type UIMessageStreamWriter } from "ai";
-import type { AuthUser } from "@/lib/types/auth";
 import { z } from "zod";
 import { getDocumentById, saveSuggestions } from "@/lib/db/queries";
 import type { Suggestion } from "@/lib/db/schema";
 import type { ChatMessage } from "@/lib/types";
+import type { AuthUser } from "@/lib/types/auth";
 import { generateUUID } from "@/lib/utils";
 import { myProvider } from "../providers";
 

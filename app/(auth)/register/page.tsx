@@ -12,10 +12,8 @@ export default function RegisterPage() {
             headerSubtitle: "text-muted-foreground text-sm",
             formButtonPrimary:
               "bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-medium",
-            formFieldInput:
-              "bg-muted border-border text-foreground rounded-md",
-            footerActionLink:
-              "text-primary hover:underline font-semibold",
+            formFieldInput: "bg-muted border-border text-foreground rounded-md",
+            footerActionLink: "text-primary hover:underline font-semibold",
             formFieldLabel: "text-foreground text-sm",
             dividerLine: "bg-border",
             dividerText: "text-muted-foreground text-sm",
@@ -24,8 +22,8 @@ export default function RegisterPage() {
             formFieldInputShowPasswordButton: "text-muted-foreground",
           },
         }}
-        routing="path"
         path="/register"
+        routing="path"
         signInUrl="/login"
       />
     </div>

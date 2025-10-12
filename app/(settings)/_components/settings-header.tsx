@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 const links = [
   { href: "/settings", label: "Overview" },
-  { href: "/settings/user", label: "User" },
+  { href: "/settings/personalisation", label: "Personalisation" },
   { href: "/settings/usage", label: "Usage" },
   { href: "/settings/files", label: "Files" },
   { href: "/settings/integrations", label: "Integrations" },
@@ -14,7 +14,7 @@ const links = [
 
 const labelsByPath: Record<string, string> = {
   "/settings": "Settings",
-  "/settings/user": "User Settings",
+  "/settings/personalisation": "Personalisation",
   "/settings/usage": "Usage Tracking",
   "/settings/files": "File Management",
   "/settings/integrations": "Integration Settings",

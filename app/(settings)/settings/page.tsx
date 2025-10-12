@@ -1,90 +1,89 @@
 import Link from "next/link";
+import { CpuIcon, FileIcon, GlobeIcon, SparklesIcon } from "@/components/icons";
 import {
   type Integration,
   IntegrationCard,
 } from "@/components/settings/integration-card";
+import { QuickActions } from "@/components/settings/quick-actions";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { UsageSummary as UsageSummaryComponent } from "@/components/settings/usage-summary";
 import { Button } from "@/components/ui/button";
 import { getFileSummary } from "../api/files/data";
 import { getUsageSummary } from "../api/usage/data";
-import { getUserSettings } from "../api/user/data";
 
 const integrations: Integration[] = [
   {
-    id: "slack",
-    name: "Slack",
+    id: "xero",
+    name: "Xero",
     description:
-      "Create channels, share message summaries, and push alerts to your workspace.",
+      "Sync invoices, expenses, and bank transactions. Automate reconciliation and generate financial reports.",
     status: "connected",
-    docsUrl: "https://api.slack.com/apps",
+    docsUrl: "https://developer.xero.com/documentation/",
   },
   {
-    id: "github",
-    name: "GitHub",
+    id: "myob",
+    name: "MYOB Business",
     description:
-      "Sync pull requests, triage issues, and review deployment history without leaving chat.",
+      "Connect accounts payable and receivable. Import transactions and export journals seamlessly.",
     status: "available",
-    docsUrl: "https://docs.github.com/en/rest",
+    docsUrl: "https://developer.myob.com/api/accountright/",
   },
   {
-    id: "notion",
-    name: "Notion",
+    id: "quickbooks",
+    name: "QuickBooks",
     description:
-      "Publish artifacts to documentation hubs and embed live dashboards.",
+      "Access chart of accounts, customers, and vendors. Create invoices and track payments in real-time.",
     status: "coming-soon",
-    docsUrl: "https://developers.notion.com/",
+    docsUrl: "https://developer.intuit.com/app/developer/qbo/docs/get-started",
+  },
+  {
+    id: "zoho",
+    name: "Zoho Books",
+    description:
+      "Manage estimates, bills, and purchase orders. Sync contacts and automate expense tracking workflows.",
+    status: "coming-soon",
+    docsUrl: "https://www.zoho.com/books/api/v3/",
   },
 ];
 
 export default function SettingsPage() {
-  const [userSettings, usageSummary, fileSummary] = [
-    getUserSettings(),
+  const [usageSummary, fileSummary] = [
     getUsageSummary(),
     getFileSummary(),
   ];
 
   const recentFiles = fileSummary.files.slice(0, 3);
 
+  const quickActions = [
+    {
+      label: "Customize AI Prompts",
+      href: "/settings/personalisation",
+      description: "Personalize system, code, and sheet generation prompts",
+      icon: <SparklesIcon size={20} />,
+    },
+    {
+      label: "View Usage Details",
+      href: "/settings/usage",
+      description: "Track AI token usage and conversation history",
+      icon: <CpuIcon size={20} />,
+    },
+    {
+      label: "Manage Files",
+      href: "/settings/files",
+      description: "View and manage uploaded files and storage",
+      icon: <FileIcon size={20} />,
+    },
+    {
+      label: "Configure Integrations",
+      href: "/settings/integrations",
+      description: "Connect accounting tools and third-party services",
+      icon: <GlobeIcon size={20} />,
+    },
+  ];
+
   return (
     <div className="space-y-8">
-      <SettingsSection
-        actions={
-          <Button asChild variant="outline">
-            <Link href="/settings/user">Manage profile</Link>
-          </Button>
-        }
-        description="Keep contact details current so teammates and billing contacts stay in sync."
-        title="Account overview"
-      >
-        <dl className="grid gap-6 md:grid-cols-3">
-          <div className="space-y-1">
-            <dt className="text-muted-foreground text-xs uppercase tracking-wide">
-              Name
-            </dt>
-            <dd className="font-medium text-foreground text-sm">
-              {userSettings.name}
-            </dd>
-          </div>
-          <div className="space-y-1">
-            <dt className="text-muted-foreground text-xs uppercase tracking-wide">
-              Email
-            </dt>
-            <dd className="font-medium text-foreground text-sm">
-              {userSettings.email}
-            </dd>
-          </div>
-          <div className="space-y-1">
-            <dt className="text-muted-foreground text-xs uppercase tracking-wide">
-              Role
-            </dt>
-            <dd className="font-medium text-foreground text-sm">
-              {userSettings.jobTitle}
-            </dd>
-          </div>
-        </dl>
-        <p className="text-muted-foreground text-sm">{userSettings.about}</p>
-      </SettingsSection>
+      <QuickActions actions={quickActions} />
 
       <SettingsSection
         actions={

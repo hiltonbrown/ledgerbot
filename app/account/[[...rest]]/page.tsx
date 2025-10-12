@@ -7,7 +7,7 @@ export default function AccountPage() {
   const { theme } = useTheme();
 
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-8">
+    <div className="flex h-full w-full items-center justify-center">
       <UserProfile
         appearance={{
           baseTheme: (theme === "dark" ? "dark" : "light") as any,

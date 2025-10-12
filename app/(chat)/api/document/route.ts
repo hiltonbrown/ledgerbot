@@ -1,5 +1,5 @@
-import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import type { ArtifactKind } from "@/components/artifact";
+import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import {
   deleteDocumentsByIdAfterTimestamp,
   getDocumentsById,

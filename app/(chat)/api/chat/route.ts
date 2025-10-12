@@ -16,8 +16,6 @@ import {
 import type { ModelCatalog } from "tokenlens/core";
 import { fetchModels } from "tokenlens/fetch";
 import { getUsage } from "tokenlens/helpers";
-import { getAuthUser } from "@/lib/auth/clerk-helpers";
-import type { UserType } from "@/lib/types/auth";
 import type { VisibilityType } from "@/components/visibility-selector";
 import { entitlementsByUserType } from "@/lib/ai/entitlements";
 import { type ChatModel, isReasoningModelId } from "@/lib/ai/models";
@@ -28,6 +26,7 @@ import { createDocument } from "@/lib/ai/tools/create-document";
 import { getWeather } from "@/lib/ai/tools/get-weather";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
 import { updateDocument } from "@/lib/ai/tools/update-document";
+import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import { isProductionEnvironment } from "@/lib/constants";
 import {
   createStreamId,
@@ -41,6 +40,7 @@ import {
 } from "@/lib/db/queries";
 import { ChatSDKError } from "@/lib/errors";
 import type { ChatMessage } from "@/lib/types";
+import type { UserType } from "@/lib/types/auth";
 import type { AppUsage } from "@/lib/usage";
 import { convertToUIMessages, generateUUID } from "@/lib/utils";
 import { generateTitleFromUserMessage } from "../../actions";

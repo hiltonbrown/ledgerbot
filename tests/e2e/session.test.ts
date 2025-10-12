@@ -50,8 +50,9 @@ test.describe
     }) => {
       await adaContext.page.goto("/");
 
-      const sidebarToggleButton =
-        adaContext.page.getByTestId("sidebar-toggle-button");
+      const sidebarToggleButton = adaContext.page.getByTestId(
+        "sidebar-toggle-button"
+      );
       await sidebarToggleButton.click();
 
       const userNavButton = adaContext.page.getByTestId("user-nav-button");
