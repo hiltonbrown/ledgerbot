@@ -156,6 +156,9 @@ function PureMultimodalInput({
           url: attachment.url,
           name: attachment.name,
           mediaType: attachment.contentType,
+          extractedText: attachment.extractedText,
+          fileSize: attachment.fileSize,
+          processingError: attachment.processingError,
         })),
         {
           type: "text",
@@ -196,12 +199,19 @@ function PureMultimodalInput({
 
       if (response.ok) {
         const data = await response.json();
-        const { url, pathname, contentType } = data;
+        const { url, pathname, contentType, extractedText, fileSize, processingError } = data;
+
+        if (processingError) {
+          toast.warning(`${file.name} uploaded, but could not be processed: ${processingError}`);
+        }
 
         return {
           url,
           name: pathname,
           contentType,
+          extractedText,
+          fileSize,
+          processingError,
         };
       }
       const { error } = await response.json();
@@ -263,6 +273,7 @@ function PureMultimodalInput({
       <input
         className="-top-4 -left-4 pointer-events-none fixed size-0.5 opacity-0"
         multiple
+        accept="image/*,.pdf,.docx,.xlsx"
         onChange={handleFileChange}
         ref={fileInputRef}
         tabIndex={-1}

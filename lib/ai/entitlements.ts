@@ -4,6 +4,9 @@ import { chatModelIds } from "./models";
 type Entitlements = {
   maxMessagesPerDay: number;
   availableChatModelIds: string[];
+  maxContextFiles: number;
+  maxContextTokens: number;
+  maxStorageBytes: number;
 };
 
 export const entitlementsByUserType: Record<UserType, Entitlements> = {
@@ -13,6 +16,9 @@ export const entitlementsByUserType: Record<UserType, Entitlements> = {
   regular: {
     maxMessagesPerDay: 100,
     availableChatModelIds: chatModelIds,
+    maxContextFiles: 50,
+    maxContextTokens: 10_000,
+    maxStorageBytes: 100 * 1024 * 1024,
   },
 
   /*

@@ -56,6 +56,86 @@ export const AttachmentIcon = () => {
   );
 };
 
+export const FileIcon = ({
+  size = 16,
+  className,
+}: {
+  size?: number;
+  className?: string;
+}) => {
+  return (
+    <svg
+      className={className}
+      height={size}
+      strokeLinejoin="round"
+      style={{ color: "currentcolor" }}
+      viewBox="0 0 16 16"
+      width={size}
+    >
+      <path
+        clipRule="evenodd"
+        d="M9.58579 0.5H4C2.89543 0.5 2 1.39543 2 2.5V13.5C2 14.6046 2.89543 15.5 4 15.5H12C13.1046 15.5 14 14.6046 14 13.5V5.91421C14 5.38285 13.7893 4.8732 13.4142 4.49815L10.0019 1.08579C9.6268 0.710714 9.11715 0.5 8.58579 0.5H9.58579ZM9.5 2.20711L12.2929 5H10C9.72386 5 9.5 4.77614 9.5 4.5V2.20711ZM4 2H8V4.5C8 5.60457 8.89543 6.5 10 6.5H12V13.5C12 13.7761 11.7761 14 11.5 14H4.5C4.22386 14 4 13.7761 4 13.5V2Z"
+        fill="currentColor"
+        fillRule="evenodd"
+      />
+    </svg>
+  );
+};
+
+export const FileTextIcon = ({
+  size = 16,
+  className,
+}: {
+  size?: number;
+  className?: string;
+}) => {
+  return (
+    <svg
+      className={className}
+      height={size}
+      strokeLinejoin="round"
+      style={{ color: "currentcolor" }}
+      viewBox="0 0 16 16"
+      width={size}
+    >
+      <path
+        clipRule="evenodd"
+        d="M4 0.5C2.89543 0.5 2 1.39543 2 2.5V13.5C2 14.6046 2.89543 15.5 4 15.5H12C13.1046 15.5 14 14.6046 14 13.5V5.70711C14 5.17635 13.7893 4.66718 13.4142 4.29212L9.70711 0.585012C9.33205 0.209947 8.82288 0 8.29212 0H4ZM8.5 1.70711L12.2929 5.5H10C9.17157 5.5 8.5 4.82843 8.5 4V1.70711ZM4 2H7V4C7 5.65685 8.34315 7 10 7H12V13.5C12 13.7761 11.7761 14 11.5 14H4.5C4.22386 14 4 13.7761 4 13.5V2Z"
+        fill="currentColor"
+        fillRule="evenodd"
+      />
+      <path d="M5 8.75C5 8.47386 5.22386 8.25 5.5 8.25H10.5C10.7761 8.25 11 8.47386 11 8.75C11 9.02614 10.7761 9.25 10.5 9.25H5.5C5.22386 9.25 5 9.02614 5 8.75Z" fill="currentColor" />
+      <path d="M5 11C5 10.7239 5.22386 10.5 5.5 10.5H9.5C9.77614 10.5 10 10.7239 10 11C10 11.2761 9.77614 11.5 9.5 11.5H5.5C5.22386 11.5 5 11.2761 5 11Z" fill="currentColor" />
+    </svg>
+  );
+};
+
+export const TableIcon = ({
+  size = 16,
+  className,
+}: {
+  size?: number;
+  className?: string;
+}) => {
+  return (
+    <svg
+      className={className}
+      height={size}
+      strokeLinejoin="round"
+      style={{ color: "currentcolor" }}
+      viewBox="0 0 16 16"
+      width={size}
+    >
+      <path
+        clipRule="evenodd"
+        d="M3 2C1.89543 2 1 2.89543 1 4V12C1 13.1046 1.89543 14 3 14H13C14.1046 14 15 13.1046 15 12V4C15 2.89543 14.1046 2 13 2H3ZM3 3.5H13C13.2761 3.5 13.5 3.72386 13.5 4V5.5H2.5V4C2.5 3.72386 2.72386 3.5 3 3.5ZM2.5 7V12C2.5 12.2761 2.72386 12.5 3 12.5H5.75V7H2.5ZM7.25 12.5H13C13.2761 12.5 13.5 12.2761 13.5 12V7H7.25V12.5Z"
+        fill="currentColor"
+        fillRule="evenodd"
+      />
+    </svg>
+  );
+};
+
 export const VercelIcon = ({ size = 17 }) => {
   return (
     <svg

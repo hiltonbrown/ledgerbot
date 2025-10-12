@@ -99,6 +99,8 @@ const PurePreviewMessage = ({
                     name: attachment.filename ?? "file",
                     contentType: attachment.mediaType,
                     url: attachment.url,
+                    processingError:
+                      (attachment as { processingError?: string }).processingError,
                   }}
                   key={attachment.url}
                 />
