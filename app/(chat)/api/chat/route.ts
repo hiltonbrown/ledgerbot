@@ -91,7 +91,7 @@ function includeAttachmentText(messages: ChatMessage[]): ChatMessage[] {
   return messages.map((message) => {
     const additionalTextParts = message.parts
       .filter(
-        (part): part is typeof part & { extractedText?: string; mediaType?: string } =>
+        (part): part is typeof part & { name?: string; extractedText?: string; mediaType?: string } =>
           part.type === "file",
       )
       .filter(
