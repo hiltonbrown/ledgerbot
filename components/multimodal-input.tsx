@@ -457,7 +457,7 @@ function PureModelSelectorCompact({
       });
       onModelChange?.(fallbackModel.id);
     }
-  }, [fallbackModel, onModelChange, selectedModelId]);
+  }, [fallbackModel, onModelChange, selectedModelId, chatModels]);
 
   const handleModelChange = (modelId: string) => {
     if (modelId === optimisticModelId) {
