@@ -265,7 +265,13 @@ export async function getContextFilesByUserId({
         desc(contextFile.lastUsedAt),
         desc(contextFile.createdAt)
       );
-  } catch (_error) {
+  } catch (error) {
+    console.error("Database error in getContextFilesByUserId:", {
+      userId,
+      status,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     throw new ChatSDKError(
       "bad_request:database",
       "Failed to fetch context files"
