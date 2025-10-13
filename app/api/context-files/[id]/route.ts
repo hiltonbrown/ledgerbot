@@ -7,7 +7,7 @@ import { contextFile } from "@/lib/db/schema";
 
 export async function GET(
   _request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const user = await getAuthUser();
 
@@ -15,10 +15,12 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { id } = await params;
+
   const [file] = await db
     .select()
     .from(contextFile)
-    .where(and(eq(contextFile.id, params.id), eq(contextFile.userId, user.id)))
+    .where(and(eq(contextFile.id, id), eq(contextFile.userId, user.id)))
     .limit(1);
 
   if (!file) {
@@ -30,7 +32,7 @@ export async function GET(
 
 export async function DELETE(
   _request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const user = await getAuthUser();
 
@@ -38,9 +40,11 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { id } = await params;
+
   try {
     const [deleted] = await deleteContextFile({
-      id: params.id,
+      id,
       userId: user.id,
     });
     if (!deleted) {
@@ -58,13 +62,15 @@ export async function DELETE(
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const user = await getAuthUser();
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const { id } = await params;
 
   const body = await request.json();
   const updates: Partial<{
@@ -92,7 +98,7 @@ export async function PATCH(
   const [updated] = await db
     .update(contextFile)
     .set(updates)
-    .where(and(eq(contextFile.id, params.id), eq(contextFile.userId, user.id)))
+    .where(and(eq(contextFile.id, id), eq(contextFile.userId, user.id)))
     .returning();
 
   if (!updated) {
