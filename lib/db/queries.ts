@@ -1,5 +1,6 @@
 import "server-only";
 
+import { del } from "@vercel/blob";
 import {
   and,
   asc,
@@ -11,6 +12,7 @@ import {
   inArray,
   lt,
   type SQL,
+  sql,
 } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
@@ -18,10 +20,11 @@ import type { ArtifactKind } from "@/components/artifact";
 import type { VisibilityType } from "@/components/visibility-selector";
 import { ChatSDKError } from "../errors";
 import type { AppUsage } from "../usage";
-import { generateUUID } from "../utils";
 import {
   type Chat,
+  type ContextFile,
   chat,
+  contextFile,
   type DBMessage,
   document,
   message,
@@ -196,6 +199,190 @@ export async function saveMessages({ messages }: { messages: DBMessage[] }) {
     return await db.insert(message).values(messages);
   } catch (_error) {
     throw new ChatSDKError("bad_request:database", "Failed to save messages");
+  }
+}
+
+export async function createContextFile({
+  userId,
+  name,
+  originalName,
+  blobUrl,
+  fileType,
+  fileSize,
+  description,
+}: {
+  userId: string;
+  name: string;
+  originalName: string;
+  blobUrl: string;
+  fileType: string;
+  fileSize: number;
+  description?: string;
+}) {
+  try {
+    return await db
+      .insert(contextFile)
+      .values({
+        userId,
+        name,
+        originalName,
+        blobUrl,
+        fileType,
+        fileSize,
+        description,
+      })
+      .returning();
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to create context file"
+    );
+  }
+}
+
+export async function getContextFilesByUserId({
+  userId,
+  status,
+}: {
+  userId: string;
+  status?: "processing" | "ready" | "failed";
+}): Promise<ContextFile[]> {
+  try {
+    const conditions: SQL[] = [eq(contextFile.userId, userId)];
+    if (status) {
+      conditions.push(eq(contextFile.status, status));
+    }
+
+    const whereCondition =
+      conditions.length === 1 ? conditions[0] : and(...conditions);
+
+    return await db
+      .select()
+      .from(contextFile)
+      .where(whereCondition)
+      .orderBy(
+        desc(contextFile.isPinned),
+        desc(contextFile.lastUsedAt),
+        desc(contextFile.createdAt)
+      );
+  } catch (error) {
+    console.error("Database error in getContextFilesByUserId:", {
+      userId,
+      status,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to fetch context files"
+    );
+  }
+}
+
+export async function updateContextFileContent({
+  id,
+  extractedText,
+  tokenCount,
+  status,
+  errorMessage,
+}: {
+  id: string;
+  extractedText?: string;
+  tokenCount?: number;
+  status: "ready" | "failed";
+  errorMessage?: string;
+}) {
+  try {
+    return await db
+      .update(contextFile)
+      .set({
+        extractedText,
+        tokenCount,
+        status,
+        errorMessage,
+        processedAt: new Date(),
+      })
+      .where(eq(contextFile.id, id))
+      .returning();
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to update context file"
+    );
+  }
+}
+
+export async function deleteContextFile({
+  id,
+  userId,
+}: {
+  id: string;
+  userId: string;
+}) {
+  try {
+    const [file] = await db
+      .select()
+      .from(contextFile)
+      .where(and(eq(contextFile.id, id), eq(contextFile.userId, userId)))
+      .limit(1);
+
+    if (!file) {
+      throw new ChatSDKError("not_found:database", "Context file not found");
+    }
+
+    await del(file.blobUrl);
+
+    return await db
+      .delete(contextFile)
+      .where(eq(contextFile.id, id))
+      .returning();
+  } catch (error) {
+    if (error instanceof ChatSDKError) {
+      throw error;
+    }
+
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to delete context file"
+    );
+  }
+}
+
+export async function touchContextFile(id: string) {
+  try {
+    await db
+      .update(contextFile)
+      .set({ lastUsedAt: new Date() })
+      .where(eq(contextFile.id, id));
+  } catch (_error) {
+    // Non-fatal: ignore
+  }
+}
+
+export async function getUserStorageUsage(userId: string) {
+  try {
+    const [usage] = await db
+      .select({
+        totalSize: sql<number>`COALESCE(SUM(${contextFile.fileSize}), 0)`,
+        fileCount: count(contextFile.id),
+      })
+      .from(contextFile)
+      .where(eq(contextFile.userId, userId));
+
+    const totalSize = usage?.totalSize ?? 0;
+    const rawCount = usage?.fileCount ?? 0;
+    const fileCount =
+      typeof rawCount === "bigint" ? Number(rawCount) : Number(rawCount);
+
+    return {
+      totalSize,
+      fileCount,
+    };
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to compute storage usage"
+    );
   }
 }
 

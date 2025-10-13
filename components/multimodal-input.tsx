@@ -156,6 +156,9 @@ function PureMultimodalInput({
           url: attachment.url,
           name: attachment.name,
           mediaType: attachment.contentType,
+          extractedText: attachment.extractedText,
+          fileSize: attachment.fileSize,
+          processingError: attachment.processingError,
         })),
         {
           type: "text",
@@ -196,12 +199,28 @@ function PureMultimodalInput({
 
       if (response.ok) {
         const data = await response.json();
-        const { url, pathname, contentType } = data;
+        const {
+          url,
+          pathname,
+          contentType,
+          extractedText,
+          fileSize,
+          processingError,
+        } = data;
+
+        if (processingError) {
+          toast.warning(
+            `${file.name} uploaded, but could not be processed: ${processingError}`
+          );
+        }
 
         return {
           url,
           name: pathname,
           contentType,
+          extractedText,
+          fileSize,
+          processingError,
         };
       }
       const { error } = await response.json();
@@ -261,6 +280,7 @@ function PureMultimodalInput({
         )}
 
       <input
+        accept="image/*,.pdf,.docx,.xlsx"
         className="-top-4 -left-4 pointer-events-none fixed size-0.5 opacity-0"
         multiple
         onChange={handleFileChange}
@@ -437,70 +457,39 @@ function PureModelSelectorCompact({
     setOptimisticModelId(selectedModelId);
   }, [selectedModelId]);
 
-  const fallbackModel = chatModels[0] ?? null;
-  const selectedModel =
-    chatModels.find((model) => model.id === optimisticModelId) ?? fallbackModel;
-
-  useEffect(() => {
-    if (!fallbackModel) {
-      return;
-    }
-
-    const isKnownModel = chatModels.some(
-      (model) => model.id === selectedModelId
-    );
-
-    if (!isKnownModel && selectedModelId !== fallbackModel.id) {
-      startTransition(() => {
-        setOptimisticModelId(fallbackModel.id);
-        void saveChatModelAsCookie(fallbackModel.id);
-      });
-      onModelChange?.(fallbackModel.id);
-    }
-  }, [fallbackModel, onModelChange, selectedModelId, chatModels]);
-
-  const handleModelChange = (modelId: string) => {
-    if (modelId === optimisticModelId) {
-      return;
-    }
-
-    const model = chatModels.find((m) => m.id === modelId);
-
-    if (!model) {
-      return;
-    }
-
-    startTransition(() => {
-      setOptimisticModelId(model.id);
-      void saveChatModelAsCookie(model.id);
-    });
-    onModelChange?.(model.id);
-  };
-
-  const hasModels = chatModels.length > 0;
+  const selectedModel = chatModels.find(
+    (model) => model.id === optimisticModelId
+  );
 
   return (
     <PromptInputModelSelect
-      disabled={!hasModels}
-      onValueChange={handleModelChange}
-      value={selectedModel?.id}
+      onValueChange={(modelName) => {
+        const model = chatModels.find((m) => m.name === modelName);
+        if (model) {
+          setOptimisticModelId(model.id);
+          onModelChange?.(model.id);
+          startTransition(() => {
+            saveChatModelAsCookie(model.id);
+          });
+        }
+      }}
+      value={selectedModel?.name}
     >
       <Trigger
         className="flex h-8 items-center gap-2 rounded-lg border-0 bg-background px-2 text-foreground shadow-none transition-colors hover:bg-accent focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
         suppressHydrationWarning
         type="button"
-        aria-label="Select a chat model"
       >
         <CpuIcon size={16} />
         <span className="hidden font-medium text-xs sm:block">
-          {selectedModel?.name ?? "Select a model"}
+          {selectedModel?.name}
         </span>
         <ChevronDownIcon size={16} />
       </Trigger>
       <PromptInputModelSelectContent className="min-w-[260px] p-0">
         <div className="flex flex-col gap-px">
           {chatModels.map((model) => (
-            <SelectItem key={model.id} value={model.id}>
+            <SelectItem key={model.id} value={model.name}>
               <div className="truncate font-medium text-xs">{model.name}</div>
               <div className="mt-px truncate text-[10px] text-muted-foreground leading-tight">
                 {model.description}

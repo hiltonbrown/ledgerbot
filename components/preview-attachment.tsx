@@ -1,7 +1,7 @@
 import Image from "next/image";
 import type { Attachment } from "@/lib/types";
 import { Loader } from "./elements/loader";
-import { CrossSmallIcon } from "./icons";
+import { CrossSmallIcon, FileIcon, FileTextIcon, TableIcon } from "./icons";
 import { Button } from "./ui/button";
 
 export const PreviewAttachment = ({
@@ -13,14 +13,11 @@ export const PreviewAttachment = ({
   isUploading?: boolean;
   onRemove?: () => void;
 }) => {
-  const { name, url, contentType } = attachment;
+  const { name, url, contentType, processingError } = attachment;
 
-  return (
-    <div
-      className="group relative size-16 overflow-hidden rounded-lg border bg-muted"
-      data-testid="input-attachment-preview"
-    >
-      {contentType?.startsWith("image") ? (
+  const renderPreview = () => {
+    if (contentType?.startsWith("image")) {
+      return (
         <Image
           alt={name ?? "An image attachment"}
           className="size-full object-cover"
@@ -28,15 +25,42 @@ export const PreviewAttachment = ({
           src={url}
           width={64}
         />
-      ) : (
-        <div className="flex size-full items-center justify-center text-muted-foreground text-xs">
-          File
-        </div>
-      )}
+      );
+    }
+
+    if (contentType === "application/pdf") {
+      return <FileTextIcon className="size-8 text-red-500" />;
+    }
+
+    if (contentType?.includes("wordprocessingml")) {
+      return <FileTextIcon className="size-8 text-blue-500" />;
+    }
+
+    if (contentType?.includes("spreadsheetml")) {
+      return <TableIcon className="size-8 text-green-500" />;
+    }
+
+    return <FileIcon className="size-8 text-muted-foreground" />;
+  };
+
+  return (
+    <div
+      className="group relative size-16 overflow-hidden rounded-lg border bg-muted"
+      data-testid="input-attachment-preview"
+    >
+      <div className="flex size-full items-center justify-center">
+        {renderPreview()}
+      </div>
 
       {isUploading && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/50">
           <Loader size={16} />
+        </div>
+      )}
+
+      {processingError && !isUploading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-red-500/80 px-1 text-center text-[10px] text-white">
+          Failed to process
         </div>
       )}
 

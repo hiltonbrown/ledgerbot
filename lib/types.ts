@@ -55,4 +55,19 @@ export type Attachment = {
   name: string;
   url: string;
   contentType: string;
+  fileSize?: number;
+  extractedText?: string;
+  processingError?: string;
+};
+
+export const FILE_TYPE_LABELS: Record<string, string> = {
+  "image/jpeg": "Image (JPEG)",
+  "image/png": "Image (PNG)",
+  "image/gif": "Image (GIF)",
+  "image/webp": "Image (WebP)",
+  "application/pdf": "PDF Document",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+    "Word Document",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+    "Excel Spreadsheet",
 };

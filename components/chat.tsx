@@ -179,7 +179,7 @@ export function Chat({
           isReadonly={isReadonly}
           messages={messages}
           regenerate={regenerate}
-          selectedModelId={currentModelId}
+          selectedModelId={initialChatModel}
           setMessages={setMessages}
           status={status}
           votes={votes}

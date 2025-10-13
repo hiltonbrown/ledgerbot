@@ -2,6 +2,7 @@ import type { InferSelectModel } from "drizzle-orm";
 import {
   boolean,
   foreignKey,
+  integer,
   json,
   jsonb,
   pgTable,
@@ -174,3 +175,27 @@ export const stream = pgTable(
 );
 
 export type Stream = InferSelectModel<typeof stream>;
+
+export const contextFile = pgTable("ContextFile", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  userId: uuid("userId")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  originalName: varchar("originalName", { length: 255 }).notNull(),
+  blobUrl: text("blobUrl").notNull(),
+  fileType: varchar("fileType", { length: 128 }).notNull(),
+  fileSize: integer("fileSize").notNull(),
+  extractedText: text("extractedText"),
+  tokenCount: integer("tokenCount"),
+  status: varchar("status", { length: 32 }).notNull().default("processing"),
+  errorMessage: text("errorMessage"),
+  description: text("description"),
+  tags: json("tags").$type<string[]>(),
+  isPinned: boolean("isPinned").default(false),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  lastUsedAt: timestamp("lastUsedAt"),
+  processedAt: timestamp("processedAt"),
+});
+
+export type ContextFile = InferSelectModel<typeof contextFile>;

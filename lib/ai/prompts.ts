@@ -37,18 +37,19 @@ export const regularPrompt =
   "You are a friendly assistant! Keep your responses concise and helpful.";
 
 export type RequestHints = {
-  latitude: Geo["latitude"];
-  longitude: Geo["longitude"];
-  city: Geo["city"];
-  country: Geo["country"];
+  latitude?: Geo["latitude"];
+  longitude?: Geo["longitude"];
+  city?: Geo["city"];
+  country?: Geo["country"];
+  userContext?: string;
 };
 
 export const getRequestPromptFromHints = (requestHints: RequestHints) => `\
 About the origin of user's request:
-- lat: ${requestHints.latitude}
-- lon: ${requestHints.longitude}
-- city: ${requestHints.city}
-- country: ${requestHints.country}
+- lat: ${requestHints.latitude ?? "unknown"}
+- lon: ${requestHints.longitude ?? "unknown"}
+- city: ${requestHints.city ?? "unknown"}
+- country: ${requestHints.country ?? "unknown"}
 `;
 
 export const systemPrompt = ({
@@ -59,12 +60,15 @@ export const systemPrompt = ({
   requestHints: RequestHints;
 }) => {
   const requestPrompt = getRequestPromptFromHints(requestHints);
+  const contextPrompt = requestHints.userContext
+    ? `\n\n${requestHints.userContext}`
+    : "";
 
   if (isReasoningModelId(selectedChatModel)) {
-    return `${regularPrompt}\n\n${requestPrompt}`;
+    return `${regularPrompt}\n\n${requestPrompt}${contextPrompt}`;
   }
 
-  return `${regularPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}`;
+  return `${regularPrompt}\n\n${requestPrompt}${contextPrompt}\n\n${artifactsPrompt}`;
 };
 
 export const codePrompt = `

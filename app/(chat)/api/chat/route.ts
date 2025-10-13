@@ -17,6 +17,7 @@ import type { ModelCatalog } from "tokenlens/core";
 import { fetchModels } from "tokenlens/fetch";
 import { getUsage } from "tokenlens/helpers";
 import type { VisibilityType } from "@/components/visibility-selector";
+import { buildUserContext } from "@/lib/ai/context-manager";
 import { entitlementsByUserType } from "@/lib/ai/entitlements";
 import { type ChatModel, isReasoningModelId } from "@/lib/ai/models";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
@@ -86,6 +87,38 @@ export function getStreamContext() {
   return globalStreamContext;
 }
 
+function includeAttachmentText(messages: ChatMessage[]): ChatMessage[] {
+  return messages.map((message) => {
+    const additionalTextParts = message.parts
+      .filter(
+        (
+          part
+        ): part is typeof part & {
+          name?: string;
+          extractedText?: string;
+          mediaType?: string;
+        } => part.type === "file"
+      )
+      .filter(
+        (part) =>
+          Boolean(part.extractedText) && !part.mediaType?.startsWith("image/")
+      )
+      .map((part) => ({
+        type: "text" as const,
+        text: `[Attachment: ${part.name ?? "file"}]\n${part.extractedText}\n[End Attachment]`,
+      }));
+
+    if (additionalTextParts.length === 0) {
+      return message;
+    }
+
+    return {
+      ...message,
+      parts: [...message.parts, ...additionalTextParts],
+    };
+  });
+}
+
 export async function POST(request: Request) {
   let requestBody: PostRequestBody;
 
@@ -150,6 +183,8 @@ export async function POST(request: Request) {
     const messagesFromDb = await getMessagesByChatId({ id });
     const uiMessages = [...convertToUIMessages(messagesFromDb), message];
 
+    const userContext = await buildUserContext(user.id);
+
     const { longitude, latitude, city, country } = geolocation(request);
 
     const requestHints: RequestHints = {
@@ -157,6 +192,7 @@ export async function POST(request: Request) {
       latitude,
       city,
       country,
+      userContext,
     };
 
     await saveMessages({
@@ -188,7 +224,7 @@ export async function POST(request: Request) {
         const result = streamText({
           model: myProvider.languageModel(selectedChatModel),
           system: systemPrompt({ selectedChatModel, requestHints }),
-          messages: convertToModelMessages(uiMessages),
+          messages: convertToModelMessages(includeAttachmentText(uiMessages)),
           stopWhen: stepCountIs(5),
           experimental_activeTools: activeTools,
           experimental_transform: smoothStream({ chunking: "word" }),
