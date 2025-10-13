@@ -17,7 +17,7 @@ function PureSuggestedActions({ chatId, sendMessage }: SuggestedActionsProps) {
   const suggestedActions = [
     "How do I resolve duplicate credit card transactions in Xero?",
     "How do I properly record GST on imported supplier invoices?",
-    "Help me plan a healthy meal prep for the week for my workdays.",
+    "Help me plan a healthy meal preparation for the week.",
     "Draft a professional email to clients about overdue invoices.",
   ];
 
