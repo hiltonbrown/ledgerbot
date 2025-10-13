@@ -89,32 +89,25 @@ export function getStreamContext() {
 
 function includeAttachmentText(messages: ChatMessage[]): ChatMessage[] {
   return messages.map((message) => {
-    const additionalTextParts = message.parts
-      .filter(
-        (
-          part
-        ): part is typeof part & {
-          name?: string;
-          extractedText?: string;
-          mediaType?: string;
-        } => part.type === "file"
-      )
-      .filter(
-        (part) =>
-          Boolean(part.extractedText) && !part.mediaType?.startsWith("image/")
-      )
-      .map((part) => ({
-        type: "text" as const,
-        text: `[Attachment: ${part.name ?? "file"}]\n${part.extractedText}\n[End Attachment]`,
-      }));
-
-    if (additionalTextParts.length === 0) {
-      return message;
-    }
+    const newParts = message.parts.map((part) => {
+      if (
+        part.type === "file" &&
+        "extractedText" in part &&
+        part.extractedText &&
+        !part.mediaType?.startsWith("image/")
+      ) {
+        // Replace file parts with extracted text for non-image files
+        return {
+          type: "text" as const,
+          text: `[Attachment: ${(part as any).name ?? "file"}]\n${part.extractedText}\n[End Attachment]`,
+        };
+      }
+      return part;
+    });
 
     return {
       ...message,
-      parts: [...message.parts, ...additionalTextParts],
+      parts: newParts,
     };
   });
 }
