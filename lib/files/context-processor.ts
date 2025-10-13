@@ -1,6 +1,6 @@
-import { updateContextFileContent } from '@/lib/db/queries';
+import { updateContextFileContent } from "@/lib/db/queries";
 
-import { extractDocxText, extractPdfText, extractXlsxData } from './parsers';
+import { extractDocxText, extractPdfText, extractXlsxData } from "./parsers";
 
 function estimateTokenCount(text: string | null | undefined): number {
   if (!text) {
@@ -12,7 +12,7 @@ function estimateTokenCount(text: string | null | undefined): number {
 export async function processContextFile(
   fileId: string,
   blobUrl: string,
-  fileType: string,
+  fileType: string
 ) {
   try {
     const response = await fetch(blobUrl);
@@ -21,29 +21,29 @@ export async function processContextFile(
     }
 
     const blob = await response.blob();
-    let extractedText = '';
+    let extractedText = "";
 
-    if (fileType === 'application/pdf') {
+    if (fileType === "application/pdf") {
       extractedText = await extractPdfText(blob);
-    } else if (fileType.includes('wordprocessingml')) {
+    } else if (fileType.includes("wordprocessingml")) {
       extractedText = await extractDocxText(blob);
-    } else if (fileType.includes('spreadsheetml')) {
+    } else if (fileType.includes("spreadsheetml")) {
       extractedText = await extractXlsxData(blob);
-    } else if (fileType.startsWith('image/')) {
-      extractedText = '';
+    } else if (fileType.startsWith("image/")) {
+      extractedText = "";
     }
 
     await updateContextFileContent({
       id: fileId,
       extractedText: extractedText || undefined,
       tokenCount: estimateTokenCount(extractedText),
-      status: 'ready',
+      status: "ready",
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = error instanceof Error ? error.message : "Unknown error";
     await updateContextFileContent({
       id: fileId,
-      status: 'failed',
+      status: "failed",
       errorMessage: message,
     });
   }

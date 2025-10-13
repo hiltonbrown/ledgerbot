@@ -4,11 +4,11 @@ import { AuthPage } from "../pages/auth";
 
 test.describe
   .serial("Authentication with Clerk", () => {
-    let authPage: AuthPage;
-    const testUser = generateRandomTestUser();
+    let _authPage: AuthPage;
+    const _testUser = generateRandomTestUser();
 
     test.beforeEach(({ page }) => {
-      authPage = new AuthPage(page);
+      _authPage = new AuthPage(page);
     });
 
     test("Unauthenticated users are redirected to login", async ({ page }) => {

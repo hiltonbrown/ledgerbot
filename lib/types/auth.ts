@@ -5,9 +5,9 @@
 
 export type UserType = "regular"; // Guest removed
 
-export interface AuthUser {
+export type AuthUser = {
   id: string; // Database UUID
   email: string;
   clerkId: string; // Clerk user ID
   type: UserType;
-}
+};

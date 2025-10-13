@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
+import { NextResponse } from "next/server";
 
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import { db, deleteContextFile } from "@/lib/db/queries";
@@ -7,7 +7,7 @@ import { contextFile } from "@/lib/db/schema";
 
 export async function GET(
   _request: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const user = await getAuthUser();
 
@@ -15,10 +15,12 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { id } = await params;
+
   const [file] = await db
     .select()
     .from(contextFile)
-    .where(and(eq(contextFile.id, params.id), eq(contextFile.userId, user.id)))
+    .where(and(eq(contextFile.id, id), eq(contextFile.userId, user.id)))
     .limit(1);
 
   if (!file) {
@@ -30,7 +32,7 @@ export async function GET(
 
 export async function DELETE(
   _request: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const user = await getAuthUser();
 
@@ -38,21 +40,29 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { id } = await params;
+
   try {
-    const [deleted] = await deleteContextFile({ id: params.id, userId: user.id });
+    const [deleted] = await deleteContextFile({
+      id,
+      userId: user.id,
+    });
     if (!deleted) {
       return NextResponse.json({ error: "File not found" }, { status: 404 });
     }
     return NextResponse.json(deleted);
   } catch (error) {
     console.error("Failed to delete context file", error);
-    return NextResponse.json({ error: "Failed to delete file" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to delete file" },
+      { status: 500 }
+    );
   }
 }
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const user = await getAuthUser();
 
@@ -60,8 +70,14 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { id } = await params;
+
   const body = await request.json();
-  const updates: Partial<{ description: string | null; isPinned: boolean; tags: string[] | null }> = {};
+  const updates: Partial<{
+    description: string | null;
+    isPinned: boolean;
+    tags: string[] | null;
+  }> = {};
 
   if ("description" in body) {
     updates.description = body.description ?? null;
@@ -82,7 +98,7 @@ export async function PATCH(
   const [updated] = await db
     .update(contextFile)
     .set(updates)
-    .where(and(eq(contextFile.id, params.id), eq(contextFile.userId, user.id)))
+    .where(and(eq(contextFile.id, id), eq(contextFile.userId, user.id)))
     .returning();
 
   if (!updated) {

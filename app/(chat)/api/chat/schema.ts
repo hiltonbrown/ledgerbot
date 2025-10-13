@@ -20,7 +20,7 @@ const filePartSchema = z.object({
   ] as const),
   name: z.string().min(1).max(255),
   url: z.string().url(),
-  extractedText: z.string().max(50000).optional(),
+  extractedText: z.string().max(50_000).optional(),
   fileSize: z.number().int().nonnegative().optional(),
   processingError: z.string().optional(),
 });

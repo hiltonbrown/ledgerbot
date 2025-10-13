@@ -35,7 +35,9 @@ export function ContextFileUpload({
         }
 
         if (usage + file.size > maxStorage) {
-          toast.error(`Uploading ${file.name} would exceed your storage quota.`);
+          toast.error(
+            `Uploading ${file.name} would exceed your storage quota.`
+          );
           continue;
         }
 
@@ -48,7 +50,9 @@ export function ContextFileUpload({
         });
 
         if (!response.ok) {
-          const data = await response.json().catch(() => ({ error: "Upload failed" }));
+          const data = await response
+            .json()
+            .catch(() => ({ error: "Upload failed" }));
           toast.error(data.error ?? "Failed to upload file");
           continue;
         }
@@ -72,16 +76,16 @@ export function ContextFileUpload({
   return (
     <div className="mb-6 flex flex-col gap-2">
       <input
-        ref={fileInputRef}
-        type="file"
-        multiple
         accept="image/*,.pdf,.docx,.xlsx"
         className="hidden"
+        multiple
         onChange={handleUpload}
+        ref={fileInputRef}
+        type="file"
       />
       <Button
-        onClick={() => fileInputRef.current?.click()}
         disabled={isUploading}
+        onClick={() => fileInputRef.current?.click()}
         type="button"
       >
         <UploadIcon className="mr-2 size-4" />

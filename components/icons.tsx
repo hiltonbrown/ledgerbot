@@ -104,8 +104,14 @@ export const FileTextIcon = ({
         fill="currentColor"
         fillRule="evenodd"
       />
-      <path d="M5 8.75C5 8.47386 5.22386 8.25 5.5 8.25H10.5C10.7761 8.25 11 8.47386 11 8.75C11 9.02614 10.7761 9.25 10.5 9.25H5.5C5.22386 9.25 5 9.02614 5 8.75Z" fill="currentColor" />
-      <path d="M5 11C5 10.7239 5.22386 10.5 5.5 10.5H9.5C9.77614 10.5 10 10.7239 10 11C10 11.2761 9.77614 11.5 9.5 11.5H5.5C5.22386 11.5 5 11.2761 5 11Z" fill="currentColor" />
+      <path
+        d="M5 8.75C5 8.47386 5.22386 8.25 5.5 8.25H10.5C10.7761 8.25 11 8.47386 11 8.75C11 9.02614 10.7761 9.25 10.5 9.25H5.5C5.22386 9.25 5 9.02614 5 8.75Z"
+        fill="currentColor"
+      />
+      <path
+        d="M5 11C5 10.7239 5.22386 10.5 5.5 10.5H9.5C9.77614 10.5 10 10.7239 10 11C10 11.2761 9.77614 11.5 9.5 11.5H5.5C5.22386 11.5 5 11.2761 5 11Z"
+        fill="currentColor"
+      />
     </svg>
   );
 };
@@ -345,25 +351,6 @@ export const RouteIcon = ({ size = 16 }: { size?: number }) => {
   );
 };
 
-export const FileIcon = ({ size = 16 }: { size?: number }) => {
-  return (
-    <svg
-      height={size}
-      strokeLinejoin="round"
-      style={{ color: "currentcolor" }}
-      viewBox="0 0 16 16"
-      width={size}
-    >
-      <path
-        clipRule="evenodd"
-        d="M14.5 13.5V6.5V5.41421C14.5 5.149 14.3946 4.89464 14.2071 4.70711L9.79289 0.292893C9.60536 0.105357 9.351 0 9.08579 0H8H3H1.5V1.5V13.5C1.5 14.8807 2.61929 16 4 16H12C13.3807 16 14.5 14.8807 14.5 13.5ZM13 13.5V6.5H9.5H8V5V1.5H3V13.5C3 14.0523 3.44772 14.5 4 14.5H12C12.5523 14.5 13 14.0523 13 13.5ZM9.5 5V2.12132L12.3787 5H9.5ZM5.13 5.00062H4.505V6.25062H5.13H6H6.625V5.00062H6H5.13ZM4.505 8H5.13H11H11.625V9.25H11H5.13H4.505V8ZM5.13 11H4.505V12.25H5.13H11H11.625V11H11H5.13Z"
-        fill="currentColor"
-        fillRule="evenodd"
-      />
-    </svg>
-  );
-};
-
 export const LoaderIcon = ({ size = 16 }: { size?: number }) => {
   return (
     <svg
@@ -439,9 +426,16 @@ export const LoaderIcon = ({ size = 16 }: { size?: number }) => {
   );
 };
 
-export const UploadIcon = ({ size = 16 }: { size?: number }) => {
+export const UploadIcon = ({
+  size = 16,
+  className,
+}: {
+  size?: number;
+  className?: string;
+}) => {
   return (
     <svg
+      className={className}
       data-testid="geist-icon"
       height={size}
       strokeLinejoin="round"

@@ -47,10 +47,7 @@ const integrations: Integration[] = [
 ];
 
 export default function SettingsPage() {
-  const [usageSummary, fileSummary] = [
-    getUsageSummary(),
-    getFileSummary(),
-  ];
+  const [usageSummary, fileSummary] = [getUsageSummary(), getFileSummary()];
 
   const recentFiles = fileSummary.files.slice(0, 3);
 

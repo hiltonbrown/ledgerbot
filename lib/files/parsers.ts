@@ -1,52 +1,52 @@
-import { inflateRawSync, inflateSync } from 'node:zlib';
+import { inflateRawSync, inflateSync } from "node:zlib";
 
 function decodeXmlEntities(value: string): string {
   return value
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&apos;/g, "'");
 }
 
 function decodePdfString(content: string): string {
-  let result = '';
+  let result = "";
   for (let index = 0; index < content.length; index += 1) {
     const char = content[index];
-    if (char === '\\') {
+    if (char === "\\") {
       const next = content[index + 1];
       switch (next) {
-        case 'n':
-          result += '\n';
+        case "n":
+          result += "\n";
           index += 1;
           break;
-        case 'r':
-          result += '\r';
+        case "r":
+          result += "\r";
           index += 1;
           break;
-        case 't':
-          result += '\t';
+        case "t":
+          result += "\t";
           index += 1;
           break;
-        case 'f':
-          result += '\f';
+        case "f":
+          result += "\f";
           index += 1;
           break;
-        case 'b':
-          result += '\b';
+        case "b":
+          result += "\b";
           index += 1;
           break;
-        case '(':
-        case ')':
-        case '\\':
+        case "(":
+        case ")":
+        case "\\":
           result += next;
           index += 1;
           break;
         case undefined:
           break;
         default: {
-          if (/[0-7]/.test(next ?? '')) {
-            let octal = next ?? '';
+          if (/[0-7]/.test(next ?? "")) {
+            let octal = next ?? "";
             for (let offset = 2; offset <= 3; offset += 1) {
               const digit = content[index + offset];
               if (digit && /[0-7]/.test(digit)) {
@@ -55,10 +55,10 @@ function decodePdfString(content: string): string {
                 break;
               }
             }
-            result += String.fromCharCode(parseInt(octal, 8));
+            result += String.fromCharCode(Number.parseInt(octal, 8));
             index += octal.length;
           } else {
-            result += next ?? '';
+            result += next ?? "";
             index += 1;
           }
         }
@@ -72,59 +72,59 @@ function decodePdfString(content: string): string {
 
 function extractTextFromPdfBuffer(buffer: Buffer): string {
   const textParts: string[] = [];
-  const decoded = buffer.toString('latin1');
+  const decoded = buffer.toString("latin1");
 
   const streamRegex = /stream[\r\n]+([\s\S]*?)[\r\n]+endstream/g;
   let streamMatch: RegExpExecArray | null;
 
   const tryExtract = (raw: Buffer | string) => {
-    const source = Buffer.isBuffer(raw) ? raw : Buffer.from(raw, 'latin1');
+    const source = Buffer.isBuffer(raw) ? raw : Buffer.from(raw, "latin1");
     let content: string;
     try {
-      content = inflateSync(source).toString('utf8');
+      content = inflateSync(source).toString("utf8");
     } catch (_) {
       try {
-        content = inflateRawSync(source).toString('utf8');
+        content = inflateRawSync(source).toString("utf8");
       } catch (_) {
-        content = source.toString('latin1');
+        content = source.toString("latin1");
       }
     }
 
     const textRegex = /\(([^)]*?)\)\s*T[Jj]/g;
     let match: RegExpExecArray | null;
     while ((match = textRegex.exec(content)) !== null) {
-      textParts.push(decodePdfString(match[1] ?? ''));
+      textParts.push(decodePdfString(match[1] ?? ""));
     }
   };
 
   while ((streamMatch = streamRegex.exec(decoded)) !== null) {
-    const streamContent = streamMatch[1] ?? '';
+    const streamContent = streamMatch[1] ?? "";
     tryExtract(streamContent);
   }
 
   const inlineRegex = /\(([^)]*?)\)\s*T[Jj]/g;
   let inlineMatch: RegExpExecArray | null;
   while ((inlineMatch = inlineRegex.exec(decoded)) !== null) {
-    textParts.push(decodePdfString(inlineMatch[1] ?? ''));
+    textParts.push(decodePdfString(inlineMatch[1] ?? ""));
   }
 
   return textParts
-    .map((part) => part.replace(/\s+/g, ' ').trim())
+    .map((part) => part.replace(/\s+/g, " ").trim())
     .filter(Boolean)
-    .join('\n');
+    .join("\n");
 }
 
-const CENTRAL_DIRECTORY_SIGNATURE = 0x02014b50;
-const LOCAL_FILE_HEADER_SIGNATURE = 0x04034b50;
-const END_OF_CENTRAL_DIRECTORY_SIGNATURE = 0x06054b50;
+const CENTRAL_DIRECTORY_SIGNATURE = 0x02_01_4b_50;
+const LOCAL_FILE_HEADER_SIGNATURE = 0x04_03_4b_50;
+const END_OF_CENTRAL_DIRECTORY_SIGNATURE = 0x06_05_4b_50;
 
-interface ZipEntry {
+type ZipEntry = {
   name: string;
   compressedSize: number;
   uncompressedSize: number;
   compressionMethod: number;
   localHeaderOffset: number;
-}
+};
 
 function findEndOfCentralDirectory(buffer: Buffer): number {
   for (let index = buffer.length - 22; index >= 0; index -= 1) {
@@ -132,7 +132,7 @@ function findEndOfCentralDirectory(buffer: Buffer): number {
       return index;
     }
   }
-  throw new Error('ZIP: End of central directory not found');
+  throw new Error("ZIP: End of central directory not found");
 }
 
 function parseZipEntries(buffer: Buffer): ZipEntry[] {
@@ -157,7 +157,7 @@ function parseZipEntries(buffer: Buffer): ZipEntry[] {
     const localHeaderOffset = buffer.readUInt32LE(cursor + 42);
     const nameStart = cursor + 46;
     const nameEnd = nameStart + fileNameLength;
-    const name = buffer.subarray(nameStart, nameEnd).toString('utf8');
+    const name = buffer.subarray(nameStart, nameEnd).toString("utf8");
 
     entries.push({
       name,
@@ -182,7 +182,7 @@ function extractZipEntry(buffer: Buffer, entryName: string): Buffer | null {
 
   const localHeaderOffset = entry.localHeaderOffset;
   if (buffer.readUInt32LE(localHeaderOffset) !== LOCAL_FILE_HEADER_SIGNATURE) {
-    throw new Error('ZIP: Invalid local file header');
+    throw new Error("ZIP: Invalid local file header");
   }
 
   const fileNameLength = buffer.readUInt16LE(localHeaderOffset + 26);
@@ -198,18 +198,15 @@ function extractZipEntry(buffer: Buffer, entryName: string): Buffer | null {
   if (entry.compressionMethod === 8) {
     return inflateRawSync(slice);
   }
-  throw new Error('ZIP: Unsupported compression method');
+  throw new Error("ZIP: Unsupported compression method");
 }
 
 function parseDocxXml(xml: string): string {
-  const texts = Array.from(xml.matchAll(/<w:t[^>]*>([\s\S]*?)<\/w:t>/g)).map((match) =>
-    decodeXmlEntities(match[1] ?? ''),
+  const texts = Array.from(xml.matchAll(/<w:t[^>]*>([\s\S]*?)<\/w:t>/g)).map(
+    (match) => decodeXmlEntities(match[1] ?? "")
   );
 
-  return texts
-    .join(' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return texts.join(" ").replace(/\s+/g, " ").trim();
 }
 
 function columnLabelToIndex(label: string): number {
@@ -222,9 +219,11 @@ function columnLabelToIndex(label: string): number {
 
 function parseSharedStrings(xml: string): string[] {
   const strings: string[] = [];
-  const matches = xml.matchAll(/<si>[\s\S]*?<t[^>]*>([\s\S]*?)<\/t>[\s\S]*?<\/si>/g);
+  const matches = xml.matchAll(
+    /<si>[\s\S]*?<t[^>]*>([\s\S]*?)<\/t>[\s\S]*?<\/si>/g
+  );
   for (const match of matches) {
-    strings.push(decodeXmlEntities((match[1] ?? '').trim()));
+    strings.push(decodeXmlEntities((match[1] ?? "").trim()));
   }
   return strings;
 }
@@ -235,49 +234,51 @@ function parseWorksheet(xml: string, sharedStrings: string[]): string {
   let rowMatch: RegExpExecArray | null;
 
   while ((rowMatch = rowRegex.exec(xml)) !== null) {
-    const rowContent = rowMatch[1] ?? '';
+    const rowContent = rowMatch[1] ?? "";
     const cells: string[] = [];
-    const cellRegex = /<c[^>]*r="([A-Z]+)\d+"[^>]*?(t="([a-z])")?[^>]*>([\s\S]*?)<\/c>/g;
+    const cellRegex =
+      /<c[^>]*r="([A-Z]+)\d+"[^>]*?(t="([a-z])")?[^>]*>([\s\S]*?)<\/c>/g;
     let cellMatch: RegExpExecArray | null;
 
     while ((cellMatch = cellRegex.exec(rowContent)) !== null) {
-      const columnLabel = cellMatch[1] ?? 'A';
+      const columnLabel = cellMatch[1] ?? "A";
       const type = cellMatch[3];
-      const valueMatch = /<v>([\s\S]*?)<\/v>/.exec(cellMatch[4] ?? '');
-      const inlineStringMatch = /<is>[\s\S]*?<t[^>]*>([\s\S]*?)<\/t>[\s\S]*?<\/is>/.exec(
-        cellMatch[4] ?? '',
-      );
+      const valueMatch = /<v>([\s\S]*?)<\/v>/.exec(cellMatch[4] ?? "");
+      const inlineStringMatch =
+        /<is>[\s\S]*?<t[^>]*>([\s\S]*?)<\/t>[\s\S]*?<\/is>/.exec(
+          cellMatch[4] ?? ""
+        );
       const columnIndex = columnLabelToIndex(columnLabel);
 
-      let cellValue = '';
-      if (type === 's') {
-        const sharedIndex = Number(valueMatch?.[1] ?? '');
-        cellValue = sharedStrings[sharedIndex] ?? '';
+      let cellValue = "";
+      if (type === "s") {
+        const sharedIndex = Number(valueMatch?.[1] ?? "");
+        cellValue = sharedStrings[sharedIndex] ?? "";
       } else if (inlineStringMatch) {
-        cellValue = decodeXmlEntities((inlineStringMatch[1] ?? '').trim());
+        cellValue = decodeXmlEntities((inlineStringMatch[1] ?? "").trim());
       } else if (valueMatch) {
-        cellValue = decodeXmlEntities((valueMatch[1] ?? '').trim());
+        cellValue = decodeXmlEntities((valueMatch[1] ?? "").trim());
       }
 
       cells[columnIndex] = cellValue;
     }
 
-    rows.push(cells.map((cell) => cell ?? ''));
+    rows.push(cells.map((cell) => cell ?? ""));
   }
 
-  return rows
-    .map((row) => row.join(','))
-    .join('\n');
+  return rows.map((row) => row.join(",")).join("\n");
 }
 
 function extractSheetNames(buffer: Buffer): { name: string; path: string }[] {
-  const workbookBuffer = extractZipEntry(buffer, 'xl/workbook.xml');
+  const workbookBuffer = extractZipEntry(buffer, "xl/workbook.xml");
   if (!workbookBuffer) {
     return [];
   }
 
-  const workbookXml = workbookBuffer.toString('utf8');
-  const sheetMatches = workbookXml.matchAll(/<sheet[^>]*name="([^"]+)"[^>]*sheetId="(\d+)"/g);
+  const workbookXml = workbookBuffer.toString("utf8");
+  const sheetMatches = workbookXml.matchAll(
+    /<sheet[^>]*name="([^"]+)"[^>]*sheetId="(\d+)"/g
+  );
   const sheets: { name: string; path: string }[] = [];
   for (const match of sheetMatches) {
     const sheetName = match[1];
@@ -289,10 +290,13 @@ function extractSheetNames(buffer: Buffer): { name: string; path: string }[] {
   if (sheets.length === 0) {
     const entryNames = parseZipEntries(buffer)
       .map((entry) => entry.name)
-      .filter((name) => name.startsWith('xl/worksheets/sheet') && name.endsWith('.xml'));
+      .filter(
+        (name) =>
+          name.startsWith("xl/worksheets/sheet") && name.endsWith(".xml")
+      );
     entryNames.forEach((name) => {
-      const baseName = name.split('/').at(-1) ?? 'Sheet';
-      sheets.push({ name: baseName.replace(/\.xml$/, ''), path: name });
+      const baseName = name.split("/").at(-1) ?? "Sheet";
+      sheets.push({ name: baseName.replace(/\.xml$/, ""), path: name });
     });
   }
 
@@ -306,23 +310,23 @@ export async function extractPdfText(blob: Blob): Promise<string> {
 
 export async function extractDocxText(blob: Blob): Promise<string> {
   const buffer = Buffer.from(await blob.arrayBuffer());
-  const documentBuffer = extractZipEntry(buffer, 'word/document.xml');
+  const documentBuffer = extractZipEntry(buffer, "word/document.xml");
   if (!documentBuffer) {
-    return '';
+    return "";
   }
-  return parseDocxXml(documentBuffer.toString('utf8'));
+  return parseDocxXml(documentBuffer.toString("utf8"));
 }
 
 export async function extractXlsxData(blob: Blob): Promise<string> {
   const buffer = Buffer.from(await blob.arrayBuffer());
-  const sharedStringsBuffer = extractZipEntry(buffer, 'xl/sharedStrings.xml');
+  const sharedStringsBuffer = extractZipEntry(buffer, "xl/sharedStrings.xml");
   const sharedStrings = sharedStringsBuffer
-    ? parseSharedStrings(sharedStringsBuffer.toString('utf8'))
+    ? parseSharedStrings(sharedStringsBuffer.toString("utf8"))
     : [];
 
   const sheets = extractSheetNames(buffer);
   if (sheets.length === 0) {
-    return '';
+    return "";
   }
 
   const sheetOutputs = sheets.map(({ name, path }) => {
@@ -330,9 +334,9 @@ export async function extractXlsxData(blob: Blob): Promise<string> {
     if (!worksheetBuffer) {
       return `Sheet: ${name}\n`;
     }
-    const csv = parseWorksheet(worksheetBuffer.toString('utf8'), sharedStrings);
+    const csv = parseWorksheet(worksheetBuffer.toString("utf8"), sharedStrings);
     return `Sheet: ${name}\n${csv}`.trim();
   });
 
-  return sheetOutputs.join('\n\n');
+  return sheetOutputs.join("\n\n");
 }
