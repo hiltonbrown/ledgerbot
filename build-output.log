@@ -1,0 +1,62 @@
+
+> intellisync-chatbot@0.1.0 build /home/hilton/Documents/ledgerbot
+> tsx lib/db/migrate && next build
+
+⏳ Running migrations...
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '42P06',
+  message: 'schema "drizzle" already exists, skipping',
+  file: 'schemacmds.c',
+  line: '132',
+  routine: 'CreateSchemaCommand'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '42P07',
+  message: 'relation "__drizzle_migrations" already exists, skipping',
+  file: 'parse_utilcmd.c',
+  line: '207',
+  routine: 'transformCreateStmt'
+}
+✅ Migrations completed in 417 ms
+   ▲ Next.js 15.4.7
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 14.0s
+   Linting and checking validity of types ...
+Failed to compile.
+
+./components/ui/chart.tsx:131:6
+Type error: No overload matches this call.
+  Overload 1 of 2, '(props: Props): Legend', gave the following error.
+    Type '{ content: ContentType | ((legendProps: any) => Element); iconSize?: number | undefined; iconType?: IconType | undefined; layout?: LayoutType | undefined; ... 495 more ...; onBBoxUpdate?: ((box: DOMRect | null) => void) | undefined; }' is not assignable to type 'IntrinsicClassAttributes<Legend>'.
+      Types of property 'ref' are incompatible.
+        Type 'LegacyRef<ReactElement<any, string | JSXElementConstructor<any>>> | undefined' is not assignable to type 'LegacyRef<Legend> | undefined'.
+          Type '(instance: ReactElement<any, string | JSXElementConstructor<any>> | null) => void | (() => VoidOrUndefinedOnly)' is not assignable to type 'LegacyRef<Legend> | undefined'.
+            Type '(instance: ReactElement<any, string | JSXElementConstructor<any>> | null) => void | (() => VoidOrUndefinedOnly)' is not assignable to type '(instance: Legend | null) => void | (() => VoidOrUndefinedOnly)'.
+              Types of parameters 'instance' and 'instance' are incompatible.
+                Type 'Legend | null' is not assignable to type 'ReactElement<any, string | JSXElementConstructor<any>> | null'.
+                  Type 'Legend' is missing the following properties from type 'ReactElement<any, string | JSXElementConstructor<any>>': type, key
+  Overload 2 of 2, '(props: Props, context: any): Legend', gave the following error.
+    Type '{ content: ContentType | ((legendProps: any) => Element); iconSize?: number | undefined; iconType?: IconType | undefined; layout?: LayoutType | undefined; ... 495 more ...; onBBoxUpdate?: ((box: DOMRect | null) => void) | undefined; }' is not assignable to type 'IntrinsicClassAttributes<Legend>'.
+      Types of property 'ref' are incompatible.
+        Type 'LegacyRef<ReactElement<any, string | JSXElementConstructor<any>>> | undefined' is not assignable to type 'LegacyRef<Legend> | undefined'.
+          Type '(instance: ReactElement<any, string | JSXElementConstructor<any>> | null) => void | (() => VoidOrUndefinedOnly)' is not assignable to type 'LegacyRef<Legend> | undefined'.
+            Type '(instance: ReactElement<any, string | JSXElementConstructor<any>> | null) => void | (() => VoidOrUndefinedOnly)' is not assignable to type '(instance: Legend | null) => void | (() => VoidOrUndefinedOnly)'.
+              Types of parameters 'instance' and 'instance' are incompatible.
+                Type 'Legend | null' is not assignable to type 'ReactElement<any, string | JSXElementConstructor<any>> | null'.
+                  Type 'Legend' is missing the following properties from type 'ReactElement<any, string | JSXElementConstructor<any>>': type, key
+
+[0m [90m 129 |[39m [36mexport[39m [36mfunction[39m [33mChartLegend[39m({ content[33m,[39m [33m...[39mprops }[33m:[39m [33mChartLegendProps[39m) {
+ [90m 130 |[39m   [36mreturn[39m (
+[31m[1m>[22m[39m[90m 131 |[39m     [33m<[39m[33mLegend[39m
+ [90m     |[39m      [31m[1m^[22m[39m
+ [90m 132 |[39m       {[33m...[39mprops}
+ [90m 133 |[39m       content[33m=[39m{
+ [90m 134 |[39m         content [33m?[39m[33m?[39m[0m
+Next.js build worker exited with code: 1 and signal: null
+ ELIFECYCLE  Command failed with exit code 1.

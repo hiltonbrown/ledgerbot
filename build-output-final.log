@@ -1,0 +1,179 @@
+
+> intellisync-chatbot@0.1.0 build /home/hilton/Documents/ledgerbot
+> tsx lib/db/migrate && next build
+
+⏳ Running migrations...
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '42P06',
+  message: 'schema "drizzle" already exists, skipping',
+  file: 'schemacmds.c',
+  line: '132',
+  routine: 'CreateSchemaCommand'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '42P07',
+  message: 'relation "__drizzle_migrations" already exists, skipping',
+  file: 'parse_utilcmd.c',
+  line: '207',
+  routine: 'transformCreateStmt'
+}
+✅ Migrations completed in 407 ms
+   ▲ Next.js 15.4.7
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+
+[2m[630.38ms][22m [@tailwindcss/postcss] app/globals.css
+[2m[  0.05ms][22m  [2m ↳ [22mQuick bail check
+[2m[535.10ms][22m  [2m ↳ [22mSetup compiler
+[2m[  0.35ms][22m    [2m ↳ [22mPostCSS AST -> Tailwind CSS AST
+[2m[534.73ms][22m    [2m ↳ [22mCreate compiler
+[2m[  0.08ms][22m  [2m ↳ [22mRegister full rebuild paths
+[2m[  1.26ms][22m  [2m ↳ [22mSetup scanner
+[2m[ 23.56ms][22m  [2m ↳ [22mScan for candidates
+[2m[  8.64ms][22m  [2m ↳ [22mRegister dependency messages
+[2m[ 34.20ms][22m  [2m ↳ [22mBuild utilities
+[2m[ 22.98ms][22m  [2m ↳ [22mOptimization
+[2m[  1.31ms][22m    [2m ↳ [22mAST -> CSS
+[2m[ 12.40ms][22m    [2m ↳ [22mLightning CSS
+[2m[  9.23ms][22m    [2m ↳ [22mCSS -> PostCSS AST
+[2m[  4.15ms][22m  [2m ↳ [22mUpdate PostCSS AST
+
+ ✓ Compiled successfully in 14.0s
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/27) ...
+   Generating static pages (6/27) 
+Error in getAuthUser: Error: Dynamic server usage: Route /settings/integrations couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at r (.next/server/chunks/3475.js:19:25993)
+    at m (.next/server/chunks/9966.js:1:9752)
+    at f (.next/server/chunks/3427.js:20:26299)
+    at async G (.next/server/chunks/3427.js:20:19923)
+    at async i (.next/server/chunks/8358.js:1:8377) {
+  description: "Route /settings/integrations couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+Error in getAuthUser: Error: Dynamic server usage: Route /settings couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at r (.next/server/chunks/3475.js:19:25993)
+    at m (.next/server/chunks/9966.js:1:9752)
+    at f (.next/server/chunks/3427.js:20:26299)
+    at async G (.next/server/chunks/3427.js:20:19923)
+    at async i (.next/server/chunks/8358.js:1:8377) {
+  description: "Route /settings couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+Error in getAuthUser: Error: Dynamic server usage: Route /settings/usage couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at r (.next/server/chunks/3475.js:19:25993)
+    at m (.next/server/chunks/9966.js:1:9752)
+    at f (.next/server/chunks/3427.js:20:26299)
+    at async G (.next/server/chunks/3427.js:20:19923)
+    at async i (.next/server/chunks/8358.js:1:8377) {
+  description: "Route /settings/usage couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+   Generating static pages (13/27) 
+   Generating static pages (20/27) 
+Error in getAuthUser: Error: Dynamic server usage: Route /settings/agents couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at r (.next/server/chunks/3475.js:19:25993)
+    at m (.next/server/chunks/9966.js:1:9752)
+    at f (.next/server/chunks/3427.js:20:26299)
+    at async G (.next/server/chunks/3427.js:20:19923)
+    at async i (.next/server/chunks/8358.js:1:8377) {
+  description: "Route /settings/agents couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+Error in getAuthUser: Error: Dynamic server usage: Route /settings/personalisation couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at r (.next/server/chunks/3475.js:19:25993)
+    at m (.next/server/chunks/9966.js:1:9752)
+    at f (.next/server/chunks/3427.js:20:26299)
+    at async G (.next/server/chunks/3427.js:20:19923)
+    at async i (.next/server/chunks/8358.js:1:8377) {
+  description: "Route /settings/personalisation couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+Error in getAuthUser: Error: Dynamic server usage: Route /settings/files couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at r (.next/server/chunks/3475.js:19:25993)
+    at m (.next/server/chunks/9966.js:1:9752)
+    at f (.next/server/chunks/3427.js:20:26299)
+    at async G (.next/server/chunks/3427.js:20:19923)
+    at async i (.next/server/chunks/8358.js:1:8377) {
+  description: "Route /settings/files couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+Error in getAuthUser: Error: Dynamic server usage: Route /settings/files couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at r (.next/server/chunks/3475.js:19:25993)
+    at m (.next/server/chunks/9966.js:1:9752)
+    at f (.next/server/chunks/3427.js:20:26299)
+    at async G (.next/server/chunks/3427.js:20:19923)
+    at async i (.next/server/chunks/8358.js:1:8377)
+    at async k (.next/server/app/(settings)/settings/files/page.js:2:20274) {
+  description: "Route /settings/files couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+Error in getAuthUser: Error: Dynamic server usage: Route / couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at r (.next/server/chunks/3475.js:19:25993)
+    at m (.next/server/chunks/9966.js:1:9752)
+    at f (.next/server/chunks/3427.js:20:26299)
+    at async G (.next/server/chunks/3427.js:20:19923)
+    at async i (.next/server/chunks/8358.js:1:8377) {
+  description: "Route / couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+Error in getAuthUser: Error: Dynamic server usage: Route / couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at r (.next/server/chunks/3475.js:19:25993)
+    at m (.next/server/chunks/9966.js:1:9752)
+    at f (.next/server/chunks/3427.js:20:26299)
+    at async G (.next/server/chunks/3427.js:20:19923)
+    at async i (.next/server/chunks/8358.js:1:8377)
+    at async l (.next/server/app/(chat)/page.js:2:9304) {
+  description: "Route / couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+ ✓ Generating static pages (27/27)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                 Size  First Load JS
+┌ ƒ /                                      178 B        1.21 MB
+├ ○ /_not-found                            996 B         106 kB
+├ ƒ /account/[[...rest]]                 3.48 kB         137 kB
+├ ƒ /api/chat                              169 B         106 kB
+├ ƒ /api/chat/[id]/stream                  169 B         106 kB
+├ ƒ /api/context-files                     169 B         106 kB
+├ ƒ /api/context-files/[id]                169 B         106 kB
+├ ƒ /api/document                          169 B         106 kB
+├ ƒ /api/files                             169 B         106 kB
+├ ƒ /api/files/upload                      169 B         106 kB
+├ ƒ /api/history                           169 B         106 kB
+├ ƒ /api/suggestions                       169 B         106 kB
+├ ƒ /api/usage                             169 B         106 kB
+├ ƒ /api/user                              169 B         106 kB
+├ ƒ /api/vote                              169 B         106 kB
+├ ƒ /chat/[id]                             178 B        1.21 MB
+├ ○ /login                               2.29 kB         141 kB
+├ ○ /opengraph-image-12cog0.png              0 B            0 B
+├ ○ /privacy                               169 B         106 kB
+├ ○ /register                            2.29 kB         141 kB
+├ ƒ /settings                            29.4 kB         192 kB
+├ ƒ /settings/agents                       169 B         106 kB
+├ ƒ /settings/files                       2.6 kB         149 kB
+├ ƒ /settings/integrations               2.81 kB         116 kB
+├ ƒ /settings/personalisation            4.74 kB         166 kB
+├ ƒ /settings/usage                       107 kB         220 kB
+├ ○ /terms                                 169 B         106 kB
+└ ○ /twitter-image-12cog0.png                0 B            0 B
++ First Load JS shared by all             105 kB
+  ├ chunks/073e7451-500c63729a0103f3.js  54.1 kB
+  ├ chunks/4138-869aeaa7f3ec157b.js      44.5 kB
+  └ other shared chunks (total)          6.82 kB
+
+
+ƒ Middleware                              130 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

@@ -93,10 +93,10 @@ export function ChartTooltipContent({
             return null;
           }
 
-          const key = item.dataKey ?? item.name ?? "";
+          const key = String(item.dataKey ?? item.name ?? "");
           const color =
             item.color ??
-            (key && config?.[key]?.color) ??
+            (key ? config?.[key]?.color : undefined) ??
             "hsl(var(--primary))";
           const displayLabel =
             (key && config?.[key]?.label) || item.name || key;
@@ -127,15 +127,12 @@ export type ChartLegendProps = LegendProps & {
 };
 
 export function ChartLegend({ content, ...props }: ChartLegendProps) {
-  return (
-    <Legend
-      {...props}
-      content={
-        content ??
-        ((legendProps: any) => <ChartLegendContent {...legendProps} />)
-      }
-    />
+  const defaultContent = (legendProps: any) => (
+    <ChartLegendContent {...legendProps} />
   );
+  // Extract ref to avoid type conflicts with recharts Legend component
+  const { ref: _ref, ...restProps } = props as any;
+  return <Legend {...restProps} content={content ?? defaultContent} />;
 }
 
 export function ChartLegendContent({ payload }: LegendProps) {
@@ -151,7 +148,9 @@ export function ChartLegendContent({ payload }: LegendProps) {
         const data = item as LegendPayload;
         const key = data.dataKey?.toString() ?? data.value?.toString() ?? "";
         const color =
-          data.color ?? (key && config?.[key]?.color) ?? "hsl(var(--primary))";
+          data.color ??
+          (key ? config?.[key]?.color : undefined) ??
+          "hsl(var(--primary))";
         const displayLabel = (key && config?.[key]?.label) || data.value || key;
 
         return (
