@@ -1,4 +1,5 @@
 import { SettingsSection } from "@/components/settings/settings-section";
+import { UsageBarChart } from "@/components/settings/usage-bar-chart";
 import { UsageSummary } from "@/components/settings/usage-summary";
 import { getUsageSummary } from "../../api/usage/data";
 
@@ -13,6 +14,7 @@ export default function UsagePage() {
       >
         <UsageSummary summary={summary} />
       </SettingsSection>
+      <UsageBarChart metrics={summary.metrics} />
     </div>
   );
 }
