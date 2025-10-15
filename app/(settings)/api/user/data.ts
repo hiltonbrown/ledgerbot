@@ -5,6 +5,13 @@ export type UserSettings = {
   language: string;
   timezone: string;
   about: string;
+  personalisation: {
+    isLocked: boolean;
+    firstName: string;
+    lastName: string;
+    country: string;
+    state: string;
+  };
   notifications: {
     productUpdates: boolean;
     securityAlerts: boolean;
@@ -25,6 +32,13 @@ const USER_SETTINGS: UserSettings = {
   timezone: "America/Los_Angeles",
   about:
     "Alex oversees customer accounts and ensures the team has the right visibility into project performance.",
+  personalisation: {
+    isLocked: false,
+    firstName: "Alex",
+    lastName: "Rivers",
+    country: "us",
+    state: "ca",
+  },
   notifications: {
     productUpdates: true,
     securityAlerts: true,
