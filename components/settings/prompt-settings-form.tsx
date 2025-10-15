@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { chatModels } from "@/lib/ai/models";
 import { toast } from "../toast";
@@ -167,6 +168,13 @@ export function PromptSettingsForm({ data }: { data: UserSettings }) {
       }));
     };
 
+  const handleReasoningChange = (checked: boolean) => {
+    setPersonalState((state) => ({
+      ...state,
+      defaultReasoning: checked,
+    }));
+  };
+
   const handleLockChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const isLocked = event.target.checked;
     setPersonalState((state) => ({
@@ -201,6 +209,7 @@ export function PromptSettingsForm({ data }: { data: UserSettings }) {
           state: personalState.state,
           isLocked: personalState.isLocked,
           defaultModel: personalState.defaultModel,
+          defaultReasoning: personalState.defaultReasoning,
           systemPrompt: promptState.systemPrompt,
           codePrompt: promptState.codePrompt,
           sheetPrompt: promptState.sheetPrompt,
@@ -311,31 +320,51 @@ export function PromptSettingsForm({ data }: { data: UserSettings }) {
           </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="defaultModel">Default Chat Model</Label>
-          <Select
-            disabled={personalState.isLocked}
-            onValueChange={handlePersonalSelectChange("defaultModel")}
-            value={personalState.defaultModel}
-          >
-            <SelectTrigger id="defaultModel">
-              <SelectValue placeholder="Select default model" />
-            </SelectTrigger>
-            <SelectContent>
-              {chatModels.map((model) => (
-                <SelectItem key={model.id} value={model.id}>
-                  <div className="flex flex-col">
-                    <span className="font-medium">{model.name}</span>
-                    <span className="text-muted-foreground text-xs">
-                      {model.description}
-                    </span>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-muted-foreground text-xs">
-            This model will be used by default when starting new chats.
-          </p>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1 space-y-2">
+              <Label htmlFor="defaultModel">Default Chat Model</Label>
+              <Select
+                disabled={personalState.isLocked}
+                onValueChange={handlePersonalSelectChange("defaultModel")}
+                value={personalState.defaultModel}
+              >
+                <SelectTrigger id="defaultModel">
+                  <SelectValue placeholder="Select default model" />
+                </SelectTrigger>
+                <SelectContent>
+                  {chatModels.map((model) => (
+                    <SelectItem key={model.id} value={model.id}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{model.name}</span>
+                        <span className="text-muted-foreground text-xs">
+                          {model.description}
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-muted-foreground text-xs">
+                This model will be used by default when starting new chats.
+              </p>
+            </div>
+            <div className="flex flex-col items-end gap-2 pt-6">
+              <div className="flex items-center gap-2">
+                <Label className="text-sm" htmlFor="defaultReasoning">
+                  Reasoning
+                </Label>
+                <Switch
+                  checked={personalState.defaultReasoning}
+                  disabled={personalState.isLocked}
+                  id="defaultReasoning"
+                  onCheckedChange={handleReasoningChange}
+                />
+              </div>
+              <p className="text-right text-muted-foreground text-xs">
+                Enable extended thinking
+              </p>
+            </div>
+          </div>
         </div>
       </div>
       <div className="space-y-2">

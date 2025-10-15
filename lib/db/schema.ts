@@ -212,17 +212,19 @@ export const userSettings = pgTable("UserSettings", {
   state: varchar("state", { length: 10 }),
   isLocked: boolean("isLocked").default(false),
   defaultModel: varchar("defaultModel", { length: 100 }),
+  defaultReasoning: boolean("defaultReasoning").default(false),
   systemPrompt: text("systemPrompt"),
   codePrompt: text("codePrompt"),
   sheetPrompt: text("sheetPrompt"),
-  suggestions: jsonb("suggestions").$type<
-    Array<{
-      id: string;
-      text: string;
-      enabled: boolean;
-      order: number;
-    }>
-  >(),
+  suggestions:
+    jsonb("suggestions").$type<
+      Array<{
+        id: string;
+        text: string;
+        enabled: boolean;
+        order: number;
+      }>
+    >(),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });

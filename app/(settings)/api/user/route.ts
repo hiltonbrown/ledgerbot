@@ -1,8 +1,8 @@
+import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth/clerk-helpers";
 import { db } from "@/lib/db/queries";
 import { userSettings } from "@/lib/db/schema";
-import { requireAuth } from "@/lib/auth/clerk-helpers";
-import { eq } from "drizzle-orm";
 
 import { getUserSettings } from "./data";
 
@@ -23,6 +23,7 @@ export async function POST(request: Request) {
       state,
       isLocked,
       defaultModel,
+      defaultReasoning,
       systemPrompt,
       codePrompt,
       sheetPrompt,
@@ -46,6 +47,7 @@ export async function POST(request: Request) {
           state,
           isLocked,
           defaultModel,
+          defaultReasoning,
           systemPrompt,
           codePrompt,
           sheetPrompt,
@@ -63,6 +65,7 @@ export async function POST(request: Request) {
         state,
         isLocked,
         defaultModel,
+        defaultReasoning,
         systemPrompt,
         codePrompt,
         sheetPrompt,

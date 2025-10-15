@@ -113,7 +113,10 @@ export function ContextFileList({ files }: { files: ContextFile[] }) {
                   Error: {file.errorMessage}
                 </p>
               ) : null}
-              <p className="text-muted-foreground text-xs" suppressHydrationWarning>
+              <p
+                className="text-muted-foreground text-xs"
+                suppressHydrationWarning
+              >
                 Uploaded {new Date(file.createdAt).toLocaleString()}
               </p>
             </div>

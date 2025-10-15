@@ -8,6 +8,8 @@ import { UsagePeriodSelector } from "@/components/settings/usage-period-selector
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import { getTokenUsageSummary } from "../../api/usage/data";
 
+export const dynamic = "force-dynamic";
+
 type PageProps = {
   searchParams: Promise<{ period?: string }>;
 };

@@ -1,6 +1,6 @@
 {
-  "id": "c781d2cd-c6ef-474b-8e59-c1a56124c6fe",
-  "prevId": "d7f4062e-bbfc-4bd2-a431-8d0f915a2666",
+  "id": "ffc5f7bb-16d1-48ce-b476-1891faeaa34d",
+  "prevId": "36b5abc8-915a-4db5-a838-be6aac419adb",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -591,6 +591,19 @@
         },
         "isLocked": {
           "name": "isLocked",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "defaultModel": {
+          "name": "defaultModel",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "defaultReasoning": {
+          "name": "defaultReasoning",
           "type": "boolean",
           "primaryKey": false,
           "notNull": false,

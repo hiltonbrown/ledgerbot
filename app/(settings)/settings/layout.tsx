@@ -4,6 +4,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import { SettingsHeader } from "../_components/settings-header";
 
+export const dynamic = "force-dynamic";
 export const experimental_ppr = true;
 
 export default async function SettingsLayout({

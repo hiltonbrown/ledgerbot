@@ -134,7 +134,7 @@ export const ReasoningTrigger = memo(
     return (
       <CollapsibleTrigger
         className={cn(
-          "group flex items-center gap-2 rounded-lg border border-purple-200 bg-purple-50/50 px-3 py-2 text-purple-900 text-sm font-medium transition-all hover:border-purple-300 hover:bg-purple-100/50 dark:border-purple-800/50 dark:bg-purple-950/30 dark:text-purple-100 dark:hover:border-purple-700 dark:hover:bg-purple-900/40",
+          "group flex items-center gap-2 rounded-lg border border-purple-200 bg-purple-50/50 px-3 py-2 font-medium text-purple-900 text-sm transition-all hover:border-purple-300 hover:bg-purple-100/50 dark:border-purple-800/50 dark:bg-purple-950/30 dark:text-purple-100 dark:hover:border-purple-700 dark:hover:bg-purple-900/40",
           className
         )}
         {...props}
@@ -147,9 +147,15 @@ export const ReasoningTrigger = memo(
                 <span className="flex items-center gap-1.5">
                   Thinking
                   <span className="flex gap-0.5">
-                    <span className="animate-bounce [animation-delay:0ms]">.</span>
-                    <span className="animate-bounce [animation-delay:150ms]">.</span>
-                    <span className="animate-bounce [animation-delay:300ms]">.</span>
+                    <span className="animate-bounce [animation-delay:0ms]">
+                      .
+                    </span>
+                    <span className="animate-bounce [animation-delay:150ms]">
+                      .
+                    </span>
+                    <span className="animate-bounce [animation-delay:300ms]">
+                      .
+                    </span>
                   </span>
                 </span>
               ) : (
@@ -186,7 +192,7 @@ export const ReasoningContent = memo(
       {...props}
     >
       <div className="relative">
-        <div className="absolute -left-2 top-0 h-full w-1 rounded-full bg-gradient-to-b from-purple-400 to-blue-400 dark:from-purple-600 dark:to-blue-600" />
+        <div className="-left-2 absolute top-0 h-full w-1 rounded-full bg-gradient-to-b from-purple-400 to-blue-400 dark:from-purple-600 dark:to-blue-600" />
         <Response className="ml-2 grid gap-2 text-purple-900/90 text-sm leading-relaxed dark:text-purple-100/90">
           {children}
         </Response>

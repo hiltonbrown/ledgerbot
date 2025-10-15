@@ -22,6 +22,13 @@
       "when": 1760562446241,
       "tag": "0002_empty_microchip",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1760563354655,
+      "tag": "0003_amazing_miracleman",
+      "breakpoints": true
     }
   ]
 }

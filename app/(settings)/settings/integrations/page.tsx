@@ -4,6 +4,8 @@ import {
 } from "@/components/settings/integration-card";
 import { SettingsSection } from "@/components/settings/settings-section";
 
+export const dynamic = "force-dynamic";
+
 const accountingIntegrations: Integration[] = [
   {
     id: "xero",

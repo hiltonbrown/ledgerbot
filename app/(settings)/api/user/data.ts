@@ -1,7 +1,7 @@
+import { eq } from "drizzle-orm";
+import { requireAuth } from "@/lib/auth/clerk-helpers";
 import { db } from "@/lib/db/queries";
 import { userSettings } from "@/lib/db/schema";
-import { requireAuth } from "@/lib/auth/clerk-helpers";
-import { eq } from "drizzle-orm";
 
 export type UserSettings = {
   name: string;
@@ -17,6 +17,7 @@ export type UserSettings = {
     country: string;
     state: string;
     defaultModel: string;
+    defaultReasoning: boolean;
   };
   notifications: {
     productUpdates: boolean;
@@ -51,6 +52,7 @@ const USER_SETTINGS: UserSettings = {
     country: "us",
     state: "ca",
     defaultModel: "anthropic-claude-sonnet-4-5",
+    defaultReasoning: false,
   },
   notifications: {
     productUpdates: true,
@@ -111,15 +113,21 @@ export async function getUserSettings(): Promise<UserSettings> {
     about: USER_SETTINGS.about,
     personalisation: {
       isLocked: dbSettings?.isLocked ?? USER_SETTINGS.personalisation.isLocked,
-      firstName: dbSettings?.firstName || USER_SETTINGS.personalisation.firstName,
+      firstName:
+        dbSettings?.firstName || USER_SETTINGS.personalisation.firstName,
       lastName: dbSettings?.lastName || USER_SETTINGS.personalisation.lastName,
       country: dbSettings?.country || USER_SETTINGS.personalisation.country,
       state: dbSettings?.state || USER_SETTINGS.personalisation.state,
-      defaultModel: dbSettings?.defaultModel || USER_SETTINGS.personalisation.defaultModel,
+      defaultModel:
+        dbSettings?.defaultModel || USER_SETTINGS.personalisation.defaultModel,
+      defaultReasoning:
+        dbSettings?.defaultReasoning ??
+        USER_SETTINGS.personalisation.defaultReasoning,
     },
     notifications: USER_SETTINGS.notifications,
     prompts: {
-      systemPrompt: dbSettings?.systemPrompt || USER_SETTINGS.prompts.systemPrompt,
+      systemPrompt:
+        dbSettings?.systemPrompt || USER_SETTINGS.prompts.systemPrompt,
       codePrompt: dbSettings?.codePrompt || USER_SETTINGS.prompts.codePrompt,
       sheetPrompt: dbSettings?.sheetPrompt || USER_SETTINGS.prompts.sheetPrompt,
     },

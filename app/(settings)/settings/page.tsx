@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { getFileSummary } from "../api/files/data";
 import { getUsageSummary } from "../api/usage/data";
 
+export const dynamic = "force-dynamic";
+
 const integrations: Integration[] = [
   {
     id: "xero",

@@ -5,6 +5,8 @@ import { entitlementsByUserType } from "@/lib/ai/entitlements";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import { getContextFilesByUserId, getUserStorageUsage } from "@/lib/db/queries";
 
+export const dynamic = "force-dynamic";
+
 export default async function FilesPage() {
   const user = await getAuthUser();
 
