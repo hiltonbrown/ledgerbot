@@ -199,3 +199,31 @@ export const contextFile = pgTable("ContextFile", {
 });
 
 export type ContextFile = InferSelectModel<typeof contextFile>;
+
+export const userSettings = pgTable("UserSettings", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  userId: uuid("userId")
+    .notNull()
+    .unique()
+    .references(() => user.id, { onDelete: "cascade" }),
+  firstName: varchar("firstName", { length: 255 }),
+  lastName: varchar("lastName", { length: 255 }),
+  country: varchar("country", { length: 10 }),
+  state: varchar("state", { length: 10 }),
+  isLocked: boolean("isLocked").default(false),
+  systemPrompt: text("systemPrompt"),
+  codePrompt: text("codePrompt"),
+  sheetPrompt: text("sheetPrompt"),
+  suggestions: jsonb("suggestions").$type<
+    Array<{
+      id: string;
+      text: string;
+      enabled: boolean;
+      order: number;
+    }>
+  >(),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+});
+
+export type UserSettings = InferSelectModel<typeof userSettings>;

@@ -11,15 +11,33 @@ type SuggestedActionsProps = {
   chatId: string;
   sendMessage: UseChatHelpers<ChatMessage>["sendMessage"];
   selectedVisibilityType: VisibilityType;
+  suggestions?: Array<{
+    id: string;
+    text: string;
+    enabled: boolean;
+    order: number;
+  }>;
 };
 
-function PureSuggestedActions({ chatId, sendMessage }: SuggestedActionsProps) {
-  const suggestedActions = [
+function PureSuggestedActions({
+  chatId,
+  sendMessage,
+  suggestions,
+}: SuggestedActionsProps) {
+  const defaultSuggestions = [
     "How do I resolve duplicate credit card transactions in Xero?",
     "How do I properly record GST on imported supplier invoices?",
     "Help me plan a healthy meal preparation for the week.",
     "Draft a professional email to clients about overdue invoices.",
   ];
+
+  // Use user suggestions if provided, otherwise use defaults
+  const suggestedActions = suggestions
+    ? suggestions
+        .filter((s) => s.enabled)
+        .sort((a, b) => a.order - b.order)
+        .map((s) => s.text)
+    : defaultSuggestions;
 
   return (
     <div

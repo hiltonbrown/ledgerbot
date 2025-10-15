@@ -29,8 +29,8 @@ export function MessageReasoning({
 
   return (
     <Reasoning
-      data-testid="message-reasoning"
       autoCloseOnFinish={false}
+      data-testid="message-reasoning"
       defaultOpen={hasBeenStreaming}
       isStreaming={isLoading}
     >

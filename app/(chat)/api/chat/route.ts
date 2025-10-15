@@ -209,8 +209,7 @@ export async function POST(request: Request) {
     let finalMergedUsage: AppUsage | undefined;
 
     const shouldSendReasoning =
-      isReasoningModelId(selectedChatModel) &&
-      (isReasoningEnabled ?? true);
+      isReasoningModelId(selectedChatModel) && (isReasoningEnabled ?? true);
 
     const stream = createUIMessageStream({
       execute: ({ writer: dataStream }) => {

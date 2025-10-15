@@ -5,6 +5,9 @@ import { DataStreamHandler } from "@/components/data-stream-handler";
 import { chatModelIds, DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import { generateUUID } from "@/lib/utils";
+import { getUserSettings } from "../(settings)/api/user/data";
+
+export const dynamic = "force-dynamic";
 
 export default async function Page() {
   const user = await getAuthUser();
@@ -14,6 +17,8 @@ export default async function Page() {
   }
 
   const id = generateUUID();
+  const userSettings = await getUserSettings();
+  const suggestions = userSettings.suggestions;
 
   const cookieStore = await cookies();
   const modelIdFromCookie = cookieStore.get("chat-model");
@@ -32,6 +37,7 @@ export default async function Page() {
           initialVisibilityType="private"
           isReadonly={false}
           key={id}
+          suggestions={suggestions}
         />
         <DataStreamHandler />
       </>
@@ -48,6 +54,7 @@ export default async function Page() {
         initialVisibilityType="private"
         isReadonly={false}
         key={id}
+        suggestions={suggestions}
       />
       <DataStreamHandler />
     </>

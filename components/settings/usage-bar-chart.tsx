@@ -10,15 +10,15 @@ import {
   YAxis,
 } from "recharts";
 import type { UsageMetric } from "@/app/(settings)/api/usage/data";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  type ChartConfig,
   ChartContainer,
   ChartLegend,
   ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
-  type ChartConfig,
 } from "@/components/ui/chart";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function UsageBarChart({ metrics }: { metrics: UsageMetric[] }) {
   const chartData = useMemo(
@@ -29,7 +29,7 @@ export function UsageBarChart({ metrics }: { metrics: UsageMetric[] }) {
         limit: metric.limit,
         unit: metric.unit,
       })),
-    [metrics],
+    [metrics]
   );
 
   const chartConfig = useMemo<ChartConfig>(
@@ -43,13 +43,15 @@ export function UsageBarChart({ metrics }: { metrics: UsageMetric[] }) {
         color: "hsl(var(--chart-2))",
       },
     }),
-    [],
+    []
   );
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base font-semibold">Usage by metric</CardTitle>
+        <CardTitle className="font-semibold text-base">
+          Usage by metric
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <ChartContainer className="h-[320px]" config={chartConfig}>
@@ -59,18 +61,30 @@ export function UsageBarChart({ metrics }: { metrics: UsageMetric[] }) {
               <XAxis
                 axisLine={false}
                 dataKey="metric"
-                tickLine={false}
                 tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+                tickLine={false}
               />
               <YAxis
                 axisLine={false}
-                tickLine={false}
                 tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+                tickLine={false}
               />
               <ChartTooltip cursor={{ fill: "hsl(var(--muted) / 0.25)" }} />
-              <ChartLegend verticalAlign="top" align="right" wrapperStyle={{ paddingBottom: 12 }} />
-              <Bar dataKey="used" fill="var(--color-used)" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="limit" fill="var(--color-limit)" radius={[6, 6, 0, 0]} />
+              <ChartLegend
+                align="right"
+                verticalAlign="top"
+                wrapperStyle={{ paddingBottom: 12 }}
+              />
+              <Bar
+                dataKey="used"
+                fill="var(--color-used)"
+                radius={[6, 6, 0, 0]}
+              />
+              <Bar
+                dataKey="limit"
+                fill="var(--color-limit)"
+                radius={[6, 6, 0, 0]}
+              />
             </BarChart>
           </ResponsiveContainer>
         </ChartContainer>

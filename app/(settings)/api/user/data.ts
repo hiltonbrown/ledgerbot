@@ -1,3 +1,8 @@
+import { db } from "@/lib/db/queries";
+import { userSettings } from "@/lib/db/schema";
+import { requireAuth } from "@/lib/auth/clerk-helpers";
+import { eq } from "drizzle-orm";
+
 export type UserSettings = {
   name: string;
   email: string;
@@ -22,6 +27,12 @@ export type UserSettings = {
     codePrompt: string;
     sheetPrompt: string;
   };
+  suggestions: {
+    id: string;
+    text: string;
+    enabled: boolean;
+    order: number;
+  }[];
 };
 
 const USER_SETTINGS: UserSettings = {
@@ -52,8 +63,63 @@ const USER_SETTINGS: UserSettings = {
     sheetPrompt:
       "You are a spreadsheet creation assistant. Create a spreadsheet in csv format based on the given prompt. The spreadsheet should contain meaningful column headers and data.",
   },
+  suggestions: [
+    {
+      id: "1",
+      text: "How do I resolve duplicate credit card transactions in Xero?",
+      enabled: true,
+      order: 0,
+    },
+    {
+      id: "2",
+      text: "How do I properly record GST on imported supplier invoices?",
+      enabled: true,
+      order: 1,
+    },
+    {
+      id: "3",
+      text: "Help me plan a healthy meal preparation for the week.",
+      enabled: true,
+      order: 2,
+    },
+    {
+      id: "4",
+      text: "Draft a professional email to clients about overdue invoices.",
+      enabled: true,
+      order: 3,
+    },
+  ],
 };
 
-export function getUserSettings(): UserSettings {
-  return USER_SETTINGS;
+export async function getUserSettings(): Promise<UserSettings> {
+  const user = await requireAuth();
+
+  const [dbSettings] = await db
+    .select()
+    .from(userSettings)
+    .where(eq(userSettings.userId, user.id));
+
+  // Merge database settings with defaults
+  return {
+    name: `${dbSettings?.firstName || USER_SETTINGS.personalisation.firstName} ${dbSettings?.lastName || USER_SETTINGS.personalisation.lastName}`,
+    email: user.email,
+    jobTitle: USER_SETTINGS.jobTitle,
+    language: USER_SETTINGS.language,
+    timezone: USER_SETTINGS.timezone,
+    about: USER_SETTINGS.about,
+    personalisation: {
+      isLocked: dbSettings?.isLocked ?? USER_SETTINGS.personalisation.isLocked,
+      firstName: dbSettings?.firstName || USER_SETTINGS.personalisation.firstName,
+      lastName: dbSettings?.lastName || USER_SETTINGS.personalisation.lastName,
+      country: dbSettings?.country || USER_SETTINGS.personalisation.country,
+      state: dbSettings?.state || USER_SETTINGS.personalisation.state,
+    },
+    notifications: USER_SETTINGS.notifications,
+    prompts: {
+      systemPrompt: dbSettings?.systemPrompt || USER_SETTINGS.prompts.systemPrompt,
+      codePrompt: dbSettings?.codePrompt || USER_SETTINGS.prompts.codePrompt,
+      sheetPrompt: dbSettings?.sheetPrompt || USER_SETTINGS.prompts.sheetPrompt,
+    },
+    suggestions: dbSettings?.suggestions || USER_SETTINGS.suggestions,
+  };
 }

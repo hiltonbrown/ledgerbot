@@ -1,8 +1,10 @@
 import { PromptSettingsForm } from "@/components/settings/prompt-settings-form";
 import { getUserSettings } from "../../api/user/data";
 
-export default function PersonalisationSettingsPage() {
-  const data = getUserSettings();
+export const dynamic = "force-dynamic";
+
+export default async function PersonalisationSettingsPage() {
+  const data = await getUserSettings();
 
   return (
     <div className="space-y-6">

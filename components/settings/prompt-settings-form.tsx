@@ -137,6 +137,7 @@ const STATE_PROVINCE_OPTIONS: Record<
 export function PromptSettingsForm({ data }: { data: UserSettings }) {
   const [personalState, setPersonalState] = useState(data.personalisation);
   const [promptState, setPromptState] = useState(data.prompts);
+  const [suggestionsState, setSuggestionsState] = useState(data.suggestions);
   const [isSaving, setIsSaving] = useState(false);
 
   const handlePromptChange =
@@ -173,18 +174,54 @@ export function PromptSettingsForm({ data }: { data: UserSettings }) {
     }));
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSuggestionChange =
+    (index: number) => (event: React.ChangeEvent<HTMLInputElement>) => {
+      setSuggestionsState((state) =>
+        state.map((suggestion, i) =>
+          i === index ? { ...suggestion, text: event.target.value } : suggestion
+        )
+      );
+    };
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsSaving(true);
 
-    // TODO: Replace with real async save operation, e.g. API call
+    try {
+      const response = await fetch("/api/user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          firstName: personalState.firstName,
+          lastName: personalState.lastName,
+          country: personalState.country,
+          state: personalState.state,
+          isLocked: personalState.isLocked,
+          systemPrompt: promptState.systemPrompt,
+          codePrompt: promptState.codePrompt,
+          sheetPrompt: promptState.sheetPrompt,
+          suggestions: suggestionsState,
+        }),
+      });
 
-    toast({
-      type: "success",
-      description: "Your prompt settings have been saved.",
-    });
+      if (!response.ok) {
+        throw new Error("Failed to save settings");
+      }
 
-    setIsSaving(false);
+      toast({
+        type: "success",
+        description: "Your prompt settings have been saved.",
+      });
+    } catch (error) {
+      toast({
+        type: "error",
+        description: "Failed to save settings. Please try again.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -315,6 +352,30 @@ export function PromptSettingsForm({ data }: { data: UserSettings }) {
         <p className="text-muted-foreground text-xs">
           This prompt is used when creating spreadsheets and data analysis.
         </p>
+      </div>
+      <div className="space-y-4">
+        <div>
+          <h3 className="font-medium text-base">Suggested Prompts</h3>
+          <p className="text-muted-foreground text-sm">
+            Customize the 4 suggested prompts shown on the main chat page.
+          </p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          {suggestionsState.map((suggestion, index) => (
+            <div className="space-y-2" key={suggestion.id}>
+              <Label htmlFor={`suggestion-${index}`}>
+                Suggestion {index + 1}
+              </Label>
+              <Input
+                disabled={personalState.isLocked}
+                id={`suggestion-${index}`}
+                onChange={handleSuggestionChange(index)}
+                placeholder={`Enter suggestion ${index + 1}...`}
+                value={suggestion.text}
+              />
+            </div>
+          ))}
+        </div>
       </div>
       <div className="flex items-center justify-end gap-3">
         <Button type="button" variant="ghost">

@@ -14,18 +14,21 @@ export const chatModels: ChatModel[] = [
     name: "Anthropic Claude Sonnet 4.5",
     description: "Balanced general-purpose model for high-quality responses",
     vercelId: "anthropic/claude-sonnet-4.5",
+    isReasoning: true,
   },
   {
     id: "openai-gpt-5",
     name: "OpenAI GPT-5",
     description: "Flagship OpenAI model for complex and creative tasks",
     vercelId: "openai/gpt-5",
+    isReasoning: true,
   },
   {
     id: "openai-gpt-5-mini",
     name: "OpenAI GPT-5 Mini",
     description: "Fast, cost-efficient GPT-5 variant for everyday use",
     vercelId: "openai/gpt-5-mini",
+    isReasoning: true,
   },
   {
     id: "google-gemini-2-5-flash",

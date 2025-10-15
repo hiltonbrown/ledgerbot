@@ -79,6 +79,7 @@ function PureMultimodalInput({
   usage,
   isReasoningEnabled,
   onReasoningChange,
+  suggestions,
 }: {
   chatId: string;
   input: string;
@@ -100,6 +101,12 @@ function PureMultimodalInput({
   usage?: AppUsage;
   isReasoningEnabled: boolean;
   onReasoningChange?: (enabled: boolean) => void;
+  suggestions?: Array<{
+    id: string;
+    text: string;
+    enabled: boolean;
+    order: number;
+  }>;
 }) {
   const isAwaitingResponse = status === "submitted" || status === "streaming";
 
@@ -283,6 +290,7 @@ function PureMultimodalInput({
             chatId={chatId}
             selectedVisibilityType={selectedVisibilityType}
             sendMessage={sendMessage}
+            suggestions={suggestions}
           />
         )}
 
@@ -602,7 +610,7 @@ function PureReasoningToggle({
   return (
     <div
       className={cn(
-        "flex h-8 items-center gap-2 rounded-lg bg-background px-2 text-xs font-medium transition-colors",
+        "flex h-8 items-center gap-2 rounded-lg bg-background px-2 font-medium text-xs transition-colors",
         disabled
           ? "cursor-not-allowed text-muted-foreground opacity-60"
           : "text-foreground hover:bg-accent"
@@ -611,7 +619,7 @@ function PureReasoningToggle({
     >
       <Label
         className={cn(
-          "hidden text-xs font-medium sm:inline",
+          "hidden font-medium text-xs sm:inline",
           disabled ? "cursor-not-allowed" : "cursor-pointer"
         )}
         htmlFor={switchId}

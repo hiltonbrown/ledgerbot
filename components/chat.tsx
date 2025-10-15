@@ -43,6 +43,7 @@ export function Chat({
   isReadonly,
   autoResume,
   initialLastContext,
+  suggestions,
 }: {
   id: string;
   initialMessages: ChatMessage[];
@@ -51,6 +52,12 @@ export function Chat({
   isReadonly: boolean;
   autoResume: boolean;
   initialLastContext?: AppUsage;
+  suggestions?: Array<{
+    id: string;
+    text: string;
+    enabled: boolean;
+    order: number;
+  }>;
 }) {
   const { visibilityType } = useChatVisibility({
     chatId: id,
@@ -69,9 +76,7 @@ export function Chat({
   const [reasoningPreferences, setReasoningPreferences] = useState<
     Record<string, boolean>
   >(() =>
-    isReasoningModelId(initialChatModel)
-      ? { [initialChatModel]: true }
-      : {}
+    isReasoningModelId(initialChatModel) ? { [initialChatModel]: true } : {}
   );
   const currentModelIdRef = useRef(currentModelId);
   const selectedToolsRef = useRef(selectedTools);
@@ -260,11 +265,11 @@ export function Chat({
               chatId={id}
               clearError={clearError}
               input={input}
-              messages={messages}
               isReasoningEnabled={currentReasoningEnabled}
+              messages={messages}
               onModelChange={handleModelChange}
-              onToolsChange={setSelectedTools}
               onReasoningChange={handleReasoningPreferenceChange}
+              onToolsChange={setSelectedTools}
               selectedModelId={currentModelId}
               selectedTools={selectedTools}
               selectedVisibilityType={visibilityType}
@@ -274,6 +279,7 @@ export function Chat({
               setMessages={setMessages}
               status={status}
               stop={stop}
+              suggestions={suggestions}
               usage={usage}
             />
           )}
@@ -285,8 +291,8 @@ export function Chat({
         chatId={id}
         clearError={clearError}
         input={input}
-        isReasoningEnabled={currentReasoningEnabled}
         isReadonly={isReadonly}
+        isReasoningEnabled={currentReasoningEnabled}
         messages={messages}
         onReasoningChange={handleReasoningPreferenceChange}
         regenerate={regenerate}

@@ -343,8 +343,9 @@ function PureArtifact({
                     className="bg-background dark:bg-muted"
                     clearError={clearError}
                     input={input}
-                    messages={messages}
                     isReasoningEnabled={isReasoningEnabled}
+                    messages={messages}
+                    onReasoningChange={onReasoningChange}
                     selectedModelId={selectedModelId}
                     selectedVisibilityType={selectedVisibilityType}
                     sendMessage={sendMessage}
@@ -353,7 +354,6 @@ function PureArtifact({
                     setMessages={setMessages}
                     status={status}
                     stop={stop}
-                    onReasoningChange={onReasoningChange}
                   />
                 </div>
               </div>
