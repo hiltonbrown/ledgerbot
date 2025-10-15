@@ -87,7 +87,7 @@ export function ChartTooltipContent({
             return null;
           }
 
-          const key = item.dataKey?.toString?.() ?? item.name?.toString?.() ?? "";
+          const key = item.dataKey ?? item.name ?? "";
           const color = item.color ?? (key && config?.[key]?.color) ?? "hsl(var(--primary))";
           const displayLabel = (key && config?.[key]?.label) || item.name || key;
 
