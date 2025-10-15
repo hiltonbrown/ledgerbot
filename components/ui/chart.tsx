@@ -1,12 +1,15 @@
 "use client";
 
 import * as React from "react";
-import type {
-  LegendProps,
-  LegendPayload,
-  TooltipProps,
-} from "recharts";
+import type { LegendProps, TooltipProps } from "recharts";
 import { Legend, Tooltip } from "recharts";
+
+type LegendPayload = {
+  dataKey?: string | number;
+  value?: string | number;
+  color?: string;
+};
+
 import { cn } from "@/lib/utils";
 
 export type ChartConfig = Record<
@@ -35,15 +38,18 @@ export function ChartContainer({
   ...props
 }: ChartContainerProps) {
   const colorStyles = React.useMemo(() => {
-    return Object.entries(config).reduce<React.CSSProperties>((acc, [key, value]) => {
-      if (!value?.color) {
-        return acc;
-      }
+    return Object.entries(config).reduce<React.CSSProperties>(
+      (acc, [key, value]) => {
+        if (!value?.color) {
+          return acc;
+        }
 
-      const next = { ...acc } as Record<string, string>;
-      next[`--color-${key}`] = value.color;
-      return next as React.CSSProperties;
-    }, {});
+        const next = { ...acc } as Record<string, string>;
+        next[`--color-${key}`] = value.color;
+        return next as React.CSSProperties;
+      },
+      {}
+    );
   }, [config]);
 
   return (
@@ -64,7 +70,7 @@ export type ChartTooltipProps = TooltipProps<number, string> & {
 };
 
 export function ChartTooltip({ content, ...props }: ChartTooltipProps) {
-  return <Tooltip {...props} content={content ?? <ChartTooltipContent />} />;
+  return <Tooltip {...props} content={content ?? ChartTooltipContent} />;
 }
 
 export function ChartTooltipContent({
@@ -88,8 +94,12 @@ export function ChartTooltipContent({
           }
 
           const key = item.dataKey ?? item.name ?? "";
-          const color = item.color ?? (key && config?.[key]?.color) ?? "hsl(var(--primary))";
-          const displayLabel = (key && config?.[key]?.label) || item.name || key;
+          const color =
+            item.color ??
+            (key && config?.[key]?.color) ??
+            "hsl(var(--primary))";
+          const displayLabel =
+            (key && config?.[key]?.label) || item.name || key;
 
           return (
             <div className="flex items-center gap-2 text-sm" key={key}>
@@ -99,7 +109,7 @@ export function ChartTooltipContent({
                 style={{ backgroundColor: color }}
               />
               <span className="text-muted-foreground">{displayLabel}</span>
-              <span className="font-medium text-foreground ml-auto">
+              <span className="ml-auto font-medium text-foreground">
                 {typeof item.value === "number"
                   ? item.value.toLocaleString()
                   : item.value}
@@ -117,7 +127,15 @@ export type ChartLegendProps = LegendProps & {
 };
 
 export function ChartLegend({ content, ...props }: ChartLegendProps) {
-  return <Legend {...props} content={content ?? <ChartLegendContent />} />;
+  return (
+    <Legend
+      {...props}
+      content={
+        content ??
+        ((legendProps: any) => <ChartLegendContent {...legendProps} />)
+      }
+    />
+  );
 }
 
 export function ChartLegendContent({ payload }: LegendProps) {
@@ -132,7 +150,8 @@ export function ChartLegendContent({ payload }: LegendProps) {
       {payload.map((item) => {
         const data = item as LegendPayload;
         const key = data.dataKey?.toString() ?? data.value?.toString() ?? "";
-        const color = data.color ?? (key && config?.[key]?.color) ?? "hsl(var(--primary))";
+        const color =
+          data.color ?? (key && config?.[key]?.color) ?? "hsl(var(--primary))";
         const displayLabel = (key && config?.[key]?.label) || data.value || key;
 
         return (
