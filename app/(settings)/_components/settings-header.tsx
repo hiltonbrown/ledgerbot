@@ -10,6 +10,7 @@ const links = [
   { href: "/settings/usage", label: "Usage" },
   { href: "/settings/files", label: "Files" },
   { href: "/settings/integrations", label: "Integrations" },
+  { href: "/settings/agents", label: "Agents" },
 ];
 
 const labelsByPath: Record<string, string> = {
@@ -18,6 +19,7 @@ const labelsByPath: Record<string, string> = {
   "/settings/usage": "Usage Tracking",
   "/settings/files": "File Management",
   "/settings/integrations": "Integration Settings",
+  "/settings/agents": "Agent Configuration",
 };
 
 export function SettingsHeader() {
