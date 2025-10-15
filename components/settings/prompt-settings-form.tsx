@@ -15,6 +15,125 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "../toast";
 
+const STATE_PROVINCE_OPTIONS: Record<
+  string,
+  { value: string; label: string }[]
+> = {
+  us: [
+    { value: "al", label: "Alabama" },
+    { value: "ak", label: "Alaska" },
+    { value: "az", label: "Arizona" },
+    { value: "ar", label: "Arkansas" },
+    { value: "ca", label: "California" },
+    { value: "co", label: "Colorado" },
+    { value: "ct", label: "Connecticut" },
+    { value: "de", label: "Delaware" },
+    { value: "fl", label: "Florida" },
+    { value: "fs", label: "Free State" },
+    { value: "ga", label: "Georgia" },
+    { value: "hi", label: "Hawaii" },
+    { value: "ia", label: "Iowa" },
+    { value: "id", label: "Idaho" },
+    { value: "il", label: "Illinois" },
+    { value: "in", label: "Indiana" },
+    { value: "ks", label: "Kansas" },
+    { value: "ky", label: "Kentucky" },
+    { value: "la", label: "Louisiana" },
+    { value: "ma", label: "Massachusetts" },
+    { value: "md", label: "Maryland" },
+    { value: "me", label: "Maine" },
+    { value: "mi", label: "Michigan" },
+    { value: "mn", label: "Minnesota" },
+    { value: "mo", label: "Missouri" },
+    { value: "ms", label: "Mississippi" },
+    { value: "mt", label: "Montana" },
+    { value: "nc", label: "North Carolina" },
+    { value: "nd", label: "North Dakota" },
+    { value: "ne", label: "Nebraska" },
+    { value: "nh", label: "New Hampshire" },
+    { value: "nj", label: "New Jersey" },
+    { value: "nm", label: "New Mexico" },
+    { value: "nv", label: "Nevada" },
+    { value: "ny", label: "New York" },
+    { value: "oh", label: "Ohio" },
+    { value: "ok", label: "Oklahoma" },
+    { value: "or", label: "Oregon" },
+    { value: "pa", label: "Pennsylvania" },
+    { value: "ri", label: "Rhode Island" },
+    { value: "sc", label: "South Carolina" },
+    { value: "sd", label: "South Dakota" },
+    { value: "tn", label: "Tennessee" },
+    { value: "tx", label: "Texas" },
+    { value: "ut", label: "Utah" },
+    { value: "va", label: "Virginia" },
+    { value: "vt", label: "Vermont" },
+    { value: "wa", label: "Washington" },
+    { value: "wi", label: "Wisconsin" },
+    { value: "wv", label: "West Virginia" },
+    { value: "wy", label: "Wyoming" },
+  ].sort((a, b) => a.label.localeCompare(b.label)),
+  ca: [
+    { value: "ab", label: "Alberta" },
+    { value: "bc", label: "British Columbia" },
+    { value: "mb", label: "Manitoba" },
+    { value: "nb", label: "New Brunswick" },
+    { value: "nl", label: "Newfoundland and Labrador" },
+    { value: "ns", label: "Nova Scotia" },
+    { value: "nt", label: "Northwest Territories" },
+    { value: "nu", label: "Nunavut" },
+    { value: "on", label: "Ontario" },
+    { value: "pe", label: "Prince Edward Island" },
+    { value: "qc", label: "Quebec" },
+    { value: "sk", label: "Saskatchewan" },
+    { value: "yt", label: "Yukon" },
+  ].sort((a, b) => a.label.localeCompare(b.label)),
+  gb: [
+    { value: "eng", label: "England" },
+    { value: "nir", label: "Northern Ireland" },
+    { value: "sct", label: "Scotland" },
+    { value: "wls", label: "Wales" },
+  ].sort((a, b) => a.label.localeCompare(b.label)),
+  au: [
+    { value: "act", label: "Australian Capital Territory" },
+    { value: "nsw", label: "New South Wales" },
+    { value: "nt", label: "Northern Territory" },
+    { value: "qld", label: "Queensland" },
+    { value: "sa", label: "South Australia" },
+    { value: "tas", label: "Tasmania" },
+    { value: "vic", label: "Victoria" },
+    { value: "wa", label: "Western Australia" },
+  ].sort((a, b) => a.label.localeCompare(b.label)),
+  za: [
+    { value: "ec", label: "Eastern Cape" },
+    { value: "fs", label: "Free State" },
+    { value: "gp", label: "Gauteng" },
+    { value: "kzn", label: "KwaZulu-Natal" },
+    { value: "lp", label: "Limpopo" },
+    { value: "mp", label: "Mpumalanga" },
+    { value: "nc", label: "Northern Cape" },
+    { value: "nw", label: "North West" },
+    { value: "wc", label: "Western Cape" },
+  ].sort((a, b) => a.label.localeCompare(b.label)),
+  nz: [
+    { value: "auk", label: "Auckland" },
+    { value: "bop", label: "Bay of Plenty" },
+    { value: "can", label: "Canterbury" },
+    { value: "gis", label: "Gisborne" },
+    { value: "hkb", label: "Hawke's Bay" },
+    { value: "mbh", label: "Marlborough" },
+    { value: "mwt", label: "Manawatu-Whanganui" },
+    { value: "nsn", label: "Nelson" },
+    { value: "ntl", label: "Northland" },
+    { value: "ota", label: "Otago" },
+    { value: "stl", label: "Southland" },
+    { value: "tki", label: "Taranaki" },
+    { value: "tkm", label: "Tasman" },
+    { value: "wko", label: "Waikato" },
+    { value: "wgn", label: "Wellington" },
+    { value: "wtc", label: "West Coast" },
+  ].sort((a, b) => a.label.localeCompare(b.label)),
+};
+
 export function PromptSettingsForm({ data }: { data: UserSettings }) {
   const [personalState, setPersonalState] = useState(data.personalisation);
   const [promptState, setPromptState] = useState(data.prompts);
@@ -39,17 +158,14 @@ export function PromptSettingsForm({ data }: { data: UserSettings }) {
     };
 
   const handlePersonalSelectChange =
-    (field: "country" | "state") =>
-    (value: string) => {
+    (field: "country" | "state") => (value: string) => {
       setPersonalState((state) => ({
         ...state,
         [field]: value,
       }));
     };
 
-  const handleLockChange = (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  const handleLockChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const isLocked = event.target.checked;
     setPersonalState((state) => ({
       ...state,
@@ -82,7 +198,7 @@ export function PromptSettingsForm({ data }: { data: UserSettings }) {
               prompt templates.
             </p>
           </div>
-          <label className="flex items-center gap-2 text-sm font-medium">
+          <label className="flex items-center gap-2 font-medium text-sm">
             <input
               checked={personalState.isLocked}
               className="h-4 w-4 rounded border border-input"
@@ -124,9 +240,12 @@ export function PromptSettingsForm({ data }: { data: UserSettings }) {
                 <SelectValue placeholder="Select country" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="us">United States</SelectItem>
+                <SelectItem value="au">Australia</SelectItem>
                 <SelectItem value="ca">Canada</SelectItem>
                 <SelectItem value="gb">United Kingdom</SelectItem>
+                <SelectItem value="nz">New Zealand</SelectItem>
+                <SelectItem value="za">South Africa</SelectItem>
+                <SelectItem value="us">United States</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -141,11 +260,13 @@ export function PromptSettingsForm({ data }: { data: UserSettings }) {
                 <SelectValue placeholder="Select state or province" />
               </SelectTrigger>
               <SelectContent>
-                {(STATE_PROVINCE_OPTIONS[personalState.country] || []).map(option => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
+                {(STATE_PROVINCE_OPTIONS[personalState.country] || []).map(
+                  (option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  )
+                )}
               </SelectContent>
             </Select>
           </div>
