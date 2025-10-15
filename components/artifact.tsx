@@ -69,6 +69,8 @@ function PureArtifact({
   isReadonly,
   selectedVisibilityType,
   selectedModelId,
+  isReasoningEnabled,
+  onReasoningChange,
 }: {
   chatId: string;
   input: string;
@@ -86,6 +88,8 @@ function PureArtifact({
   isReadonly: boolean;
   selectedVisibilityType: VisibilityType;
   selectedModelId: string;
+  isReasoningEnabled: boolean;
+  onReasoningChange?: (enabled: boolean) => void;
 }) {
   const { artifact, setArtifact, metadata, setMetadata } = useArtifact();
 
@@ -340,6 +344,7 @@ function PureArtifact({
                     clearError={clearError}
                     input={input}
                     messages={messages}
+                    isReasoningEnabled={isReasoningEnabled}
                     selectedModelId={selectedModelId}
                     selectedVisibilityType={selectedVisibilityType}
                     sendMessage={sendMessage}
@@ -348,6 +353,7 @@ function PureArtifact({
                     setMessages={setMessages}
                     status={status}
                     stop={stop}
+                    onReasoningChange={onReasoningChange}
                   />
                 </div>
               </div>
@@ -525,6 +531,9 @@ export const Artifact = memo(PureArtifact, (prevProps, nextProps) => {
     return false;
   }
   if (prevProps.selectedVisibilityType !== nextProps.selectedVisibilityType) {
+    return false;
+  }
+  if (prevProps.isReasoningEnabled !== nextProps.isReasoningEnabled) {
     return false;
   }
 

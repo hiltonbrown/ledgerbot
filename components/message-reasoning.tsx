@@ -16,7 +16,10 @@ export function MessageReasoning({
   isLoading,
   reasoning,
 }: MessageReasoningProps) {
-  const [hasBeenStreaming, setHasBeenStreaming] = useState(isLoading);
+  const hasReasoningText = reasoning.trim().length > 0;
+  const [hasBeenStreaming, setHasBeenStreaming] = useState(
+    isLoading || hasReasoningText
+  );
 
   useEffect(() => {
     if (isLoading) {
@@ -27,6 +30,7 @@ export function MessageReasoning({
   return (
     <Reasoning
       data-testid="message-reasoning"
+      autoCloseOnFinish={false}
       defaultOpen={hasBeenStreaming}
       isStreaming={isLoading}
     >

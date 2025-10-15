@@ -12,6 +12,7 @@ import {
   startTransition,
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -53,6 +54,8 @@ import {
 import { PreviewAttachment } from "./preview-attachment";
 import { SuggestedActions } from "./suggested-actions";
 import { Button } from "./ui/button";
+import { Label } from "./ui/label";
+import { Switch } from "./ui/switch";
 import type { VisibilityType } from "./visibility-selector";
 
 function PureMultimodalInput({
@@ -74,6 +77,8 @@ function PureMultimodalInput({
   selectedTools = [],
   onToolsChange,
   usage,
+  isReasoningEnabled,
+  onReasoningChange,
 }: {
   chatId: string;
   input: string;
@@ -93,6 +98,8 @@ function PureMultimodalInput({
   selectedTools?: ToolId[];
   onToolsChange?: (tools: ToolId[]) => void;
   usage?: AppUsage;
+  isReasoningEnabled: boolean;
+  onReasoningChange?: (enabled: boolean) => void;
 }) {
   const isAwaitingResponse = status === "submitted" || status === "streaming";
 
@@ -358,6 +365,7 @@ function PureMultimodalInput({
           <PromptInputTools className="gap-0 sm:gap-0.5">
             <AttachmentsButton
               fileInputRef={fileInputRef}
+              isReasoningEnabled={isReasoningEnabled}
               selectedModelId={selectedModelId}
               status={status}
             />
@@ -368,6 +376,11 @@ function PureMultimodalInput({
             <ToolSelectorCompact
               onToolsChange={onToolsChange}
               selectedTools={selectedTools}
+            />
+            <ReasoningToggle
+              disabled={!isReasoningModelId(selectedModelId)}
+              isEnabled={isReasoningEnabled}
+              onToggle={onReasoningChange}
             />
           </PromptInputTools>
 
@@ -409,6 +422,9 @@ export const MultimodalInput = memo(
     if (!equal(prevProps.selectedTools, nextProps.selectedTools)) {
       return false;
     }
+    if (prevProps.isReasoningEnabled !== nextProps.isReasoningEnabled) {
+      return false;
+    }
 
     return true;
   }
@@ -418,12 +434,15 @@ function PureAttachmentsButton({
   fileInputRef,
   status,
   selectedModelId,
+  isReasoningEnabled,
 }: {
   fileInputRef: React.MutableRefObject<HTMLInputElement | null>;
   status: UseChatHelpers<ChatMessage>["status"];
   selectedModelId: string;
+  isReasoningEnabled: boolean;
 }) {
-  const isReasoningModel = isReasoningModelId(selectedModelId);
+  const isReasoningModel =
+    isReasoningModelId(selectedModelId) && isReasoningEnabled;
   const isAwaitingResponse = status === "submitted" || status === "streaming";
 
   return (
@@ -568,6 +587,50 @@ function PureToolSelectorCompact({
 }
 
 const ToolSelectorCompact = memo(PureToolSelectorCompact);
+
+function PureReasoningToggle({
+  isEnabled,
+  onToggle,
+  disabled,
+}: {
+  isEnabled: boolean;
+  onToggle?: (enabled: boolean) => void;
+  disabled: boolean;
+}) {
+  const switchId = useId();
+
+  return (
+    <div
+      className={cn(
+        "flex h-8 items-center gap-2 rounded-lg bg-background px-2 text-xs font-medium transition-colors",
+        disabled
+          ? "cursor-not-allowed text-muted-foreground opacity-60"
+          : "text-foreground hover:bg-accent"
+      )}
+      data-disabled={disabled ? "" : undefined}
+    >
+      <Label
+        className={cn(
+          "hidden text-xs font-medium sm:inline",
+          disabled ? "cursor-not-allowed" : "cursor-pointer"
+        )}
+        htmlFor={switchId}
+      >
+        Reasoning
+      </Label>
+      <Switch
+        aria-label="Toggle reasoning"
+        checked={isEnabled}
+        data-testid="reasoning-toggle"
+        disabled={disabled}
+        id={switchId}
+        onCheckedChange={(checked) => onToggle?.(checked)}
+      />
+    </div>
+  );
+}
+
+const ReasoningToggle = memo(PureReasoningToggle);
 
 function PureStopButton({
   stop,

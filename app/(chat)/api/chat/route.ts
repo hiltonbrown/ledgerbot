@@ -129,12 +129,14 @@ export async function POST(request: Request) {
       selectedChatModel,
       selectedVisibilityType,
       selectedTools,
+      isReasoningEnabled,
     }: {
       id: string;
       message: ChatMessage;
       selectedChatModel: ChatModel["id"];
       selectedVisibilityType: VisibilityType;
       selectedTools?: string[];
+      isReasoningEnabled?: boolean;
     } = requestBody;
 
     const user = await getAuthUser();
@@ -206,9 +208,13 @@ export async function POST(request: Request) {
 
     let finalMergedUsage: AppUsage | undefined;
 
+    const shouldSendReasoning =
+      isReasoningModelId(selectedChatModel) &&
+      (isReasoningEnabled ?? true);
+
     const stream = createUIMessageStream({
       execute: ({ writer: dataStream }) => {
-        const activeTools: ToolId[] = isReasoningModelId(selectedChatModel)
+        const activeTools: ToolId[] = shouldSendReasoning
           ? []
           : selectedTools && selectedTools.length > 0
             ? (selectedTools as ToolId[])
@@ -278,7 +284,7 @@ export async function POST(request: Request) {
 
         dataStream.merge(
           result.toUIMessageStream({
-            sendReasoning: true,
+            sendReasoning: shouldSendReasoning,
           })
         );
       },
