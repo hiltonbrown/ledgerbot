@@ -726,3 +726,128 @@ export async function getStreamIdsByChatId({ chatId }: { chatId: string }) {
     );
   }
 }
+
+export type TokenUsageRow = {
+  modelId: string | null;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  cost: number;
+  chatCount: number;
+};
+
+export async function getTokenUsageByUserId({
+  userId,
+  startDate,
+  endDate,
+}: {
+  userId: string;
+  startDate?: Date;
+  endDate?: Date;
+}): Promise<TokenUsageRow[]> {
+  try {
+    const conditions: SQL[] = [eq(chat.userId, userId)];
+
+    if (startDate) {
+      conditions.push(gte(chat.createdAt, startDate));
+    }
+    if (endDate) {
+      conditions.push(lt(chat.createdAt, endDate));
+    }
+
+    const whereCondition =
+      conditions.length === 1 ? conditions[0] : and(...conditions);
+
+    const results = await db
+      .select({
+        modelId: sql<string | null>`(${chat.lastContext}->>'modelId')`,
+        promptTokens: sql<number>`COALESCE(SUM(CAST(${chat.lastContext}->>'promptTokens' AS INTEGER)), 0)`,
+        completionTokens: sql<number>`COALESCE(SUM(CAST(${chat.lastContext}->>'completionTokens' AS INTEGER)), 0)`,
+        totalTokens: sql<number>`COALESCE(SUM(CAST(${chat.lastContext}->>'totalTokens' AS INTEGER)), 0)`,
+        cost: sql<number>`COALESCE(SUM(CAST(${chat.lastContext}->>'cost' AS NUMERIC)), 0)`,
+        chatCount: count(chat.id),
+      })
+      .from(chat)
+      .where(and(whereCondition, sql`${chat.lastContext} IS NOT NULL`))
+      .groupBy(sql`${chat.lastContext}->>'modelId'`)
+      .execute();
+
+    return results.map((row) => ({
+      modelId: row.modelId,
+      promptTokens: Number(row.promptTokens),
+      completionTokens: Number(row.completionTokens),
+      totalTokens: Number(row.totalTokens),
+      cost: Number(row.cost),
+      chatCount:
+        typeof row.chatCount === "bigint"
+          ? Number(row.chatCount)
+          : Number(row.chatCount),
+    }));
+  } catch (error) {
+    console.error("Failed to get token usage by user id:", error);
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get token usage by user id"
+    );
+  }
+}
+
+export type TokenUsageTimeseriesRow = {
+  date: string;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  cost: number;
+};
+
+export async function getTokenUsageTimeseries({
+  userId,
+  startDate,
+  endDate,
+}: {
+  userId: string;
+  startDate?: Date;
+  endDate?: Date;
+}): Promise<TokenUsageTimeseriesRow[]> {
+  try {
+    const conditions: SQL[] = [eq(chat.userId, userId)];
+
+    if (startDate) {
+      conditions.push(gte(chat.createdAt, startDate));
+    }
+    if (endDate) {
+      conditions.push(lt(chat.createdAt, endDate));
+    }
+
+    const whereCondition =
+      conditions.length === 1 ? conditions[0] : and(...conditions);
+
+    const results = await db
+      .select({
+        date: sql<string>`DATE(${chat.createdAt})`,
+        promptTokens: sql<number>`COALESCE(SUM(CAST(${chat.lastContext}->>'promptTokens' AS INTEGER)), 0)`,
+        completionTokens: sql<number>`COALESCE(SUM(CAST(${chat.lastContext}->>'completionTokens' AS INTEGER)), 0)`,
+        totalTokens: sql<number>`COALESCE(SUM(CAST(${chat.lastContext}->>'totalTokens' AS INTEGER)), 0)`,
+        cost: sql<number>`COALESCE(SUM(CAST(${chat.lastContext}->>'cost' AS NUMERIC)), 0)`,
+      })
+      .from(chat)
+      .where(and(whereCondition, sql`${chat.lastContext} IS NOT NULL`))
+      .groupBy(sql`DATE(${chat.createdAt})`)
+      .orderBy(asc(sql`DATE(${chat.createdAt})`))
+      .execute();
+
+    return results.map((row) => ({
+      date: row.date,
+      promptTokens: Number(row.promptTokens),
+      completionTokens: Number(row.completionTokens),
+      totalTokens: Number(row.totalTokens),
+      cost: Number(row.cost),
+    }));
+  } catch (error) {
+    console.error("Failed to get token usage timeseries:", error);
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get token usage timeseries"
+    );
+  }
+}
