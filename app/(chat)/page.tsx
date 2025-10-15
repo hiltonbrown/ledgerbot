@@ -19,6 +19,7 @@ export default async function Page() {
   const id = generateUUID();
   const userSettings = await getUserSettings();
   const suggestions = userSettings.suggestions;
+  const defaultModel = userSettings.personalisation.defaultModel;
 
   const cookieStore = await cookies();
   const modelIdFromCookie = cookieStore.get("chat-model");
@@ -26,30 +27,17 @@ export default async function Page() {
   const isValidModelId =
     initialModelId && chatModelIds.includes(initialModelId);
 
-  if (!isValidModelId) {
-    return (
-      <>
-        <Chat
-          autoResume={false}
-          id={id}
-          initialChatModel={DEFAULT_CHAT_MODEL}
-          initialMessages={[]}
-          initialVisibilityType="private"
-          isReadonly={false}
-          key={id}
-          suggestions={suggestions}
-        />
-        <DataStreamHandler />
-      </>
-    );
-  }
+  // Use cookie model if valid, otherwise fall back to user's default model, then system default
+  const selectedModel = isValidModelId
+    ? initialModelId
+    : defaultModel || DEFAULT_CHAT_MODEL;
 
   return (
     <>
       <Chat
         autoResume={false}
         id={id}
-        initialChatModel={initialModelId}
+        initialChatModel={selectedModel}
         initialMessages={[]}
         initialVisibilityType="private"
         isReadonly={false}

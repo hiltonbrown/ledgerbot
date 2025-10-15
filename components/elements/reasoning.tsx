@@ -134,22 +134,31 @@ export const ReasoningTrigger = memo(
     return (
       <CollapsibleTrigger
         className={cn(
-          "flex items-center gap-1.5 text-muted-foreground text-xs transition-colors hover:text-foreground",
+          "group flex items-center gap-2 rounded-lg border border-purple-200 bg-purple-50/50 px-3 py-2 text-purple-900 text-sm font-medium transition-all hover:border-purple-300 hover:bg-purple-100/50 dark:border-purple-800/50 dark:bg-purple-950/30 dark:text-purple-100 dark:hover:border-purple-700 dark:hover:bg-purple-900/40",
           className
         )}
         {...props}
       >
         {children ?? (
           <>
-            <BrainIcon className="size-4" />
-            {isStreaming || duration === 0 ? (
-              <p>Thinking...</p>
-            ) : (
-              <p>Thought for {duration}s</p>
-            )}
+            <BrainIcon className="size-4 shrink-0 text-purple-600 dark:text-purple-400" />
+            <div className="flex flex-1 items-center gap-2">
+              {isStreaming || duration === 0 ? (
+                <span className="flex items-center gap-1.5">
+                  Thinking
+                  <span className="flex gap-0.5">
+                    <span className="animate-bounce [animation-delay:0ms]">.</span>
+                    <span className="animate-bounce [animation-delay:150ms]">.</span>
+                    <span className="animate-bounce [animation-delay:300ms]">.</span>
+                  </span>
+                </span>
+              ) : (
+                <span>Thought for {duration}s</span>
+              )}
+            </div>
             <ChevronDownIcon
               className={cn(
-                "size-3 text-muted-foreground transition-transform",
+                "size-4 shrink-0 text-purple-600 transition-transform dark:text-purple-400",
                 isOpen ? "rotate-180" : "rotate-0"
               )}
             />
@@ -170,13 +179,18 @@ export const ReasoningContent = memo(
   ({ className, children, ...props }: ReasoningContentProps) => (
     <CollapsibleContent
       className={cn(
-        "mt-2 text-muted-foreground text-xs",
+        "mt-3 rounded-lg border border-purple-200/50 bg-gradient-to-br from-purple-50/50 to-blue-50/30 p-4 shadow-sm dark:border-purple-800/30 dark:from-purple-950/20 dark:to-blue-950/10",
         "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 outline-hidden data-[state=closed]:animate-out data-[state=open]:animate-in",
         className
       )}
       {...props}
     >
-      <Response className="grid gap-2">{children}</Response>
+      <div className="relative">
+        <div className="absolute -left-2 top-0 h-full w-1 rounded-full bg-gradient-to-b from-purple-400 to-blue-400 dark:from-purple-600 dark:to-blue-600" />
+        <Response className="ml-2 grid gap-2 text-purple-900/90 text-sm leading-relaxed dark:text-purple-100/90">
+          {children}
+        </Response>
+      </div>
     </CollapsibleContent>
   )
 );

@@ -16,6 +16,7 @@ export type UserSettings = {
     lastName: string;
     country: string;
     state: string;
+    defaultModel: string;
   };
   notifications: {
     productUpdates: boolean;
@@ -49,6 +50,7 @@ const USER_SETTINGS: UserSettings = {
     lastName: "Rivers",
     country: "us",
     state: "ca",
+    defaultModel: "anthropic-claude-sonnet-4-5",
   },
   notifications: {
     productUpdates: true,
@@ -113,6 +115,7 @@ export async function getUserSettings(): Promise<UserSettings> {
       lastName: dbSettings?.lastName || USER_SETTINGS.personalisation.lastName,
       country: dbSettings?.country || USER_SETTINGS.personalisation.country,
       state: dbSettings?.state || USER_SETTINGS.personalisation.state,
+      defaultModel: dbSettings?.defaultModel || USER_SETTINGS.personalisation.defaultModel,
     },
     notifications: USER_SETTINGS.notifications,
     prompts: {

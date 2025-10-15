@@ -1,0 +1,1 @@
+ALTER TABLE "UserSettings" ADD COLUMN "defaultModel" varchar(100);

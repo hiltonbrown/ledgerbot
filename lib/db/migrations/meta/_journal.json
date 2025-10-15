@@ -15,6 +15,13 @@
       "when": 1760560266071,
       "tag": "0001_stiff_leo",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1760562446241,
+      "tag": "0002_empty_microchip",
+      "breakpoints": true
     }
   ]
 }

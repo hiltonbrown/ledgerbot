@@ -27,11 +27,12 @@ export function MessageReasoning({
     }
   }, [isLoading]);
 
+  // Keep reasoning open by default, allow user to collapse if desired
   return (
     <Reasoning
       autoCloseOnFinish={false}
       data-testid="message-reasoning"
-      defaultOpen={hasBeenStreaming}
+      defaultOpen={true}
       isStreaming={isLoading}
     >
       <ReasoningTrigger />

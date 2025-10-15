@@ -211,6 +211,7 @@ export const userSettings = pgTable("UserSettings", {
   country: varchar("country", { length: 10 }),
   state: varchar("state", { length: 10 }),
   isLocked: boolean("isLocked").default(false),
+  defaultModel: varchar("defaultModel", { length: 100 }),
   systemPrompt: text("systemPrompt"),
   codePrompt: text("codePrompt"),
   sheetPrompt: text("sheetPrompt"),

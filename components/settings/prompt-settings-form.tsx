@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { chatModels } from "@/lib/ai/models";
 import { toast } from "../toast";
 
 const STATE_PROVINCE_OPTIONS: Record<
@@ -159,7 +160,7 @@ export function PromptSettingsForm({ data }: { data: UserSettings }) {
     };
 
   const handlePersonalSelectChange =
-    (field: "country" | "state") => (value: string) => {
+    (field: "country" | "state" | "defaultModel") => (value: string) => {
       setPersonalState((state) => ({
         ...state,
         [field]: value,
@@ -199,6 +200,7 @@ export function PromptSettingsForm({ data }: { data: UserSettings }) {
           country: personalState.country,
           state: personalState.state,
           isLocked: personalState.isLocked,
+          defaultModel: personalState.defaultModel,
           systemPrompt: promptState.systemPrompt,
           codePrompt: promptState.codePrompt,
           sheetPrompt: promptState.sheetPrompt,
@@ -307,6 +309,33 @@ export function PromptSettingsForm({ data }: { data: UserSettings }) {
               </SelectContent>
             </Select>
           </div>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="defaultModel">Default Chat Model</Label>
+          <Select
+            disabled={personalState.isLocked}
+            onValueChange={handlePersonalSelectChange("defaultModel")}
+            value={personalState.defaultModel}
+          >
+            <SelectTrigger id="defaultModel">
+              <SelectValue placeholder="Select default model" />
+            </SelectTrigger>
+            <SelectContent>
+              {chatModels.map((model) => (
+                <SelectItem key={model.id} value={model.id}>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{model.name}</span>
+                    <span className="text-muted-foreground text-xs">
+                      {model.description}
+                    </span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-muted-foreground text-xs">
+            This model will be used by default when starting new chats.
+          </p>
         </div>
       </div>
       <div className="space-y-2">
