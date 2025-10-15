@@ -141,9 +141,11 @@ export function PromptSettingsForm({ data }: { data: UserSettings }) {
                 <SelectValue placeholder="Select state or province" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ca">California</SelectItem>
-                <SelectItem value="ny">New York</SelectItem>
-                <SelectItem value="on">Ontario</SelectItem>
+                {(STATE_PROVINCE_OPTIONS[personalState.country] || []).map(option => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
