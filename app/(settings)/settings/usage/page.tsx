@@ -6,7 +6,7 @@ import { TokenUsageChart } from "@/components/settings/token-usage-chart";
 import { TokenUsageSummaryCards } from "@/components/settings/token-usage-summary-cards";
 import { UsagePeriodSelector } from "@/components/settings/usage-period-selector";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
-import { getTokenUsageSummary } from "../api/usage/data";
+import { getTokenUsageSummary } from "../../api/usage/data";
 
 type PageProps = {
 	searchParams: Promise<{ period?: string }>;
