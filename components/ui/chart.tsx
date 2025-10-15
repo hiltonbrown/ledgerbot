@@ -131,7 +131,7 @@ export function ChartLegendContent({ payload }: LegendProps) {
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
       {payload.map((item) => {
         const data = item as LegendPayload;
-        const key = data.dataKey?.toString?.() ?? data.value?.toString?.() ?? "";
+        const key = data.dataKey?.toString() ?? data.value?.toString() ?? "";
         const color = data.color ?? (key && config?.[key]?.color) ?? "hsl(var(--primary))";
         const displayLabel = (key && config?.[key]?.label) || data.value || key;
 
