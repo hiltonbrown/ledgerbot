@@ -3,7 +3,7 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import { unstable_serialize } from "swr/infinite";
 import { ChatHeader } from "@/components/chat-header";
@@ -20,6 +20,7 @@ import {
 import { useArtifactSelector } from "@/hooks/use-artifact";
 import { useAutoResume } from "@/hooks/use-auto-resume";
 import { useChatVisibility } from "@/hooks/use-chat-visibility";
+import { isReasoningModelId } from "@/lib/ai/models";
 import { defaultSelectedTools, type ToolId } from "@/lib/ai/tools";
 import type { Vote } from "@/lib/db/schema";
 import { ChatSDKError } from "@/lib/errors";
@@ -65,6 +66,13 @@ export function Chat({
   const [currentModelId, setCurrentModelId] = useState(initialChatModel);
   const [selectedTools, setSelectedTools] =
     useState<ToolId[]>(defaultSelectedTools);
+  const [reasoningPreferences, setReasoningPreferences] = useState<
+    Record<string, boolean>
+  >(() =>
+    isReasoningModelId(initialChatModel)
+      ? { [initialChatModel]: true }
+      : {}
+  );
   const currentModelIdRef = useRef(currentModelId);
   const selectedToolsRef = useRef(selectedTools);
 
@@ -72,9 +80,66 @@ export function Chat({
     currentModelIdRef.current = currentModelId;
   }, [currentModelId]);
 
+  const reasoningPreferencesRef = useRef(reasoningPreferences);
+
   useEffect(() => {
     selectedToolsRef.current = selectedTools;
   }, [selectedTools]);
+
+  useEffect(() => {
+    reasoningPreferencesRef.current = reasoningPreferences;
+  }, [reasoningPreferences]);
+
+  const currentReasoningEnabled = useMemo(() => {
+    if (!isReasoningModelId(currentModelId)) {
+      return false;
+    }
+
+    const storedPreference = reasoningPreferences[currentModelId];
+
+    return storedPreference ?? true;
+  }, [currentModelId, reasoningPreferences]);
+
+  const getReasoningPreferenceForModel = (modelId: string) => {
+    if (!isReasoningModelId(modelId)) {
+      return false;
+    }
+
+    const storedPreference = reasoningPreferencesRef.current[modelId];
+
+    return storedPreference ?? true;
+  };
+
+  const handleModelChange = (modelId: string) => {
+    setCurrentModelId(modelId);
+    setReasoningPreferences((previousPreferences) => {
+      if (!isReasoningModelId(modelId)) {
+        return previousPreferences;
+      }
+
+      if (previousPreferences[modelId] !== undefined) {
+        return previousPreferences;
+      }
+
+      return {
+        ...previousPreferences,
+        [modelId]: true,
+      };
+    });
+  };
+
+  const handleReasoningPreferenceChange = (enabled: boolean) => {
+    const modelId = currentModelIdRef.current;
+
+    if (!isReasoningModelId(modelId)) {
+      return;
+    }
+
+    setReasoningPreferences((previousPreferences) => ({
+      ...previousPreferences,
+      [modelId]: enabled,
+    }));
+  };
 
   const {
     messages,
@@ -101,6 +166,9 @@ export function Chat({
             selectedChatModel: currentModelIdRef.current,
             selectedVisibilityType: visibilityType,
             selectedTools: selectedToolsRef.current,
+            isReasoningEnabled: getReasoningPreferenceForModel(
+              currentModelIdRef.current
+            ),
             ...request.body,
           },
         };
@@ -193,8 +261,10 @@ export function Chat({
               clearError={clearError}
               input={input}
               messages={messages}
-              onModelChange={setCurrentModelId}
+              isReasoningEnabled={currentReasoningEnabled}
+              onModelChange={handleModelChange}
               onToolsChange={setSelectedTools}
+              onReasoningChange={handleReasoningPreferenceChange}
               selectedModelId={currentModelId}
               selectedTools={selectedTools}
               selectedVisibilityType={visibilityType}
@@ -215,8 +285,10 @@ export function Chat({
         chatId={id}
         clearError={clearError}
         input={input}
+        isReasoningEnabled={currentReasoningEnabled}
         isReadonly={isReadonly}
         messages={messages}
+        onReasoningChange={handleReasoningPreferenceChange}
         regenerate={regenerate}
         selectedModelId={currentModelId}
         selectedVisibilityType={visibilityType}

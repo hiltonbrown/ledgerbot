@@ -32,6 +32,7 @@ export const chatModels: ChatModel[] = [
     name: "Google Gemini 2.5 Flash",
     description: "Speed-optimized Gemini model with strong reasoning",
     vercelId: "google/gemini-2.5-flash",
+    isReasoning: true,
   },
 ];
 
