@@ -68,7 +68,7 @@ export function UsageBarChart({ metrics }: { metrics: UsageMetric[] }) {
                 tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
               />
               <ChartTooltip cursor={{ fill: "hsl(var(--muted) / 0.25)" }} />
-              <ChartLegend verticalAlign="top" align="right" wrapperStyle={{ paddingBottom: 12 }} content={<ChartLegendContent />} />
+              <ChartLegend verticalAlign="top" align="right" wrapperStyle={{ paddingBottom: 12 }} />
               <Bar dataKey="used" fill="var(--color-used)" radius={[6, 6, 0, 0]} />
               <Bar dataKey="limit" fill="var(--color-limit)" radius={[6, 6, 0, 0]} />
             </BarChart>
