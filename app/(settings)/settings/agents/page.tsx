@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   BarChart3,
   Calculator,
@@ -123,6 +124,22 @@ export default function AgentSettingsPage() {
         title="Agent configuration"
       >
         <div className="space-y-6">
+          <div className="flex flex-col gap-3 rounded-lg border bg-muted/30 p-4 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-1">
+              <h3 className="font-semibold text-sm uppercase tracking-wide">Agent workspaces</h3>
+              <p className="text-muted-foreground text-sm">
+                Explore dedicated operational consoles for documents, reconciliation, compliance, analytics and more.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button asChild size="sm" variant="secondary">
+                <Link href="/agents">Open agent workspaces</Link>
+              </Button>
+              <Button asChild size="sm" variant="outline">
+                <Link href="/agents/docmanagement">View document intake</Link>
+              </Button>
+            </div>
+          </div>
           <div className="flex items-center justify-between rounded-lg border bg-muted/30 p-4">
             <div className="space-y-0.5">
               <Label

@@ -1,0 +1,35 @@
+import { cookies } from "next/headers";
+import { AppSidebar } from "@/components/app-sidebar";
+import { AgentsHeader } from "@/components/agents/agents-header";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { getAuthUser } from "@/lib/auth/clerk-helpers";
+
+export const dynamic = "force-dynamic";
+export const experimental_ppr = true;
+
+export default async function AgentsLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [user, cookieStore] = await Promise.all([getAuthUser(), cookies()]);
+  const isCollapsed = cookieStore.get("sidebar_state")?.value !== "true";
+
+  return (
+    <SidebarProvider defaultOpen={!isCollapsed}>
+      <AppSidebar user={user} />
+      <SidebarInset>
+        <div className="flex min-h-svh flex-col">
+          <header className="border-b bg-background">
+            <div className="flex flex-col gap-4 px-6 py-6">
+              <AgentsHeader />
+            </div>
+          </header>
+          <main className="flex-1 px-6 py-8">
+            <div className="mx-auto w-full max-w-6xl space-y-8">{children}</div>
+          </main>
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
+  );
+}
