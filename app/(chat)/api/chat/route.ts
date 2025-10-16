@@ -226,7 +226,8 @@ export async function POST(request: Request) {
             : defaultSelectedTools;
 
         // Add Xero tool names to active tools if connection exists
-        const finalActiveTools = xeroConnection
+        // Cast to string[] since Xero tools are dynamically added
+        const finalActiveTools: string[] = xeroConnection
           ? [...activeTools, ...xeroToolNames]
           : activeTools;
 
@@ -235,7 +236,7 @@ export async function POST(request: Request) {
           system: systemPrompt({ selectedChatModel, requestHints }),
           messages: convertToModelMessages(includeAttachmentText(uiMessages)),
           stopWhen: stepCountIs(5),
-          experimental_activeTools: finalActiveTools,
+          experimental_activeTools: finalActiveTools as any,
           experimental_transform: smoothStream({ chunking: "word" }),
           tools: {
             getWeather,

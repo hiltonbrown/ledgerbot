@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
-import { AppSidebar } from "@/components/app-sidebar";
 import { AgentsHeader } from "@/components/agents/agents-header";
+import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
 

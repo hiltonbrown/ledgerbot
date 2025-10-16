@@ -21,8 +21,16 @@ const agentSnapshots = [
     href: "/agents/docmanagement",
     icon: <FileText className="h-5 w-5" />,
     metrics: [
-      { label: "Docs processed (7d)", value: "128", helper: "92% auto-approved" },
-      { label: "Human escalations", value: "6", helper: "All queued for review" },
+      {
+        label: "Docs processed (7d)",
+        value: "128",
+        helper: "92% auto-approved",
+      },
+      {
+        label: "Human escalations",
+        value: "6",
+        helper: "All queued for review",
+      },
     ],
   },
   {
@@ -43,7 +51,11 @@ const agentSnapshots = [
     href: "/agents/compliance",
     icon: <ShieldCheck className="h-5 w-5" />,
     metrics: [
-      { label: "Upcoming lodgements", value: "3 due", helper: "Next: BAS (21 Nov)" },
+      {
+        label: "Upcoming lodgements",
+        value: "3 due",
+        helper: "Next: BAS (21 Nov)",
+      },
       { label: "Knowledge base hits", value: "42", helper: "Last 14 days" },
     ],
   },
@@ -65,7 +77,11 @@ const agentSnapshots = [
     href: "/agents/forecasting",
     icon: <Gauge className="h-5 w-5" />,
     metrics: [
-      { label: "Forecast horizon", value: "9 months", helper: "Updated 2 days ago" },
+      {
+        label: "Forecast horizon",
+        value: "9 months",
+        helper: "Updated 2 days ago",
+      },
       { label: "Confidence bands", value: "±8%", helper: "Median variance" },
     ],
   },
@@ -76,8 +92,16 @@ const agentSnapshots = [
     href: "/agents/qanda",
     icon: <Activity className="h-5 w-5" />,
     metrics: [
-      { label: "Avg. confidence", value: "88%", helper: "Streaming responses enabled" },
-      { label: "Escalations", value: "2", helper: "Awaiting reviewer sign-off" },
+      {
+        label: "Avg. confidence",
+        value: "88%",
+        helper: "Streaming responses enabled",
+      },
+      {
+        label: "Escalations",
+        value: "2",
+        helper: "Awaiting reviewer sign-off",
+      },
     ],
   },
   {
@@ -99,9 +123,12 @@ export default function AgentsOverviewPage() {
       <Card>
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
-            <CardTitle className="text-lg font-semibold">Automation summary</CardTitle>
+            <CardTitle className="font-semibold text-lg">
+              Automation summary
+            </CardTitle>
             <p className="text-muted-foreground text-sm">
-              Review aggregate health signals across every AI assistant before diving into a dedicated workspace.
+              Review aggregate health signals across every AI assistant before
+              diving into a dedicated workspace.
             </p>
           </div>
           <Button asChild size="sm">
@@ -113,14 +140,16 @@ export default function AgentsOverviewPage() {
             <p className="text-muted-foreground text-sm">Automation coverage</p>
             <h3 className="font-semibold text-3xl">76%</h3>
             <p className="text-muted-foreground text-sm">
-              Percentage of bookkeeping workflows now delegated to specialist AI agents across the organisation.
+              Percentage of bookkeeping workflows now delegated to specialist AI
+              agents across the organisation.
             </p>
           </div>
           <div className="space-y-2">
             <p className="text-muted-foreground text-sm">Human review queue</p>
             <h3 className="font-semibold text-3xl">28 items</h3>
             <p className="text-muted-foreground text-sm">
-              Escalations span document validation (14), reconciliation mismatches (9) and compliance clarifications (5).
+              Escalations span document validation (14), reconciliation
+              mismatches (9) and compliance clarifications (5).
             </p>
           </div>
         </CardContent>
@@ -130,7 +159,8 @@ export default function AgentsOverviewPage() {
         <div className="space-y-1">
           <h2 className="font-semibold text-xl">Agent workspaces</h2>
           <p className="text-muted-foreground text-sm">
-            Jump directly into the operational view for each specialised assistant and monitor its live workload.
+            Jump directly into the operational view for each specialised
+            assistant and monitor its live workload.
           </p>
         </div>
         <div className="grid gap-6 lg:grid-cols-2">
@@ -142,43 +172,78 @@ export default function AgentsOverviewPage() {
 
       <Card>
         <CardHeader className="space-y-1">
-          <CardTitle className="text-lg font-semibold">Change management</CardTitle>
+          <CardTitle className="font-semibold text-lg">
+            Change management
+          </CardTitle>
           <p className="text-muted-foreground text-sm">
-            Track upcoming releases, dependency upgrades and policy shifts that may affect agent decision-making.
+            Track upcoming releases, dependency upgrades and policy shifts that
+            may affect agent decision-making.
           </p>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid gap-6 md:grid-cols-3">
             <div>
-              <p className="text-muted-foreground text-xs uppercase">Next release train</p>
+              <p className="text-muted-foreground text-xs uppercase">
+                Next release train
+              </p>
               <p className="font-semibold text-base">v2.4 agents stack</p>
-              <p className="text-muted-foreground text-sm">Scheduled for 4 December including LangGraph upgrades.</p>
+              <p className="text-muted-foreground text-sm">
+                Scheduled for 4 December including LangGraph upgrades.
+              </p>
             </div>
-            <Separator orientation="vertical" className="hidden md:block" />
+            <Separator className="hidden md:block" orientation="vertical" />
             <div>
-              <p className="text-muted-foreground text-xs uppercase">Risk register</p>
+              <p className="text-muted-foreground text-xs uppercase">
+                Risk register
+              </p>
               <ul className="space-y-2 text-sm">
                 <li className="flex items-start gap-2">
-                  <span className="mt-1 h-2 w-2 rounded-full bg-amber-500" aria-hidden />
-                  <span>ATO API sandbox rate limits flagged for compliance queries.</span>
+                  <span
+                    aria-hidden
+                    className="mt-1 h-2 w-2 rounded-full bg-amber-500"
+                  />
+                  <span>
+                    ATO API sandbox rate limits flagged for compliance queries.
+                  </span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="mt-1 h-2 w-2 rounded-full bg-emerald-500" aria-hidden />
-                  <span>Document OCR accuracy trending upward after model refresh.</span>
+                  <span
+                    aria-hidden
+                    className="mt-1 h-2 w-2 rounded-full bg-emerald-500"
+                  />
+                  <span>
+                    Document OCR accuracy trending upward after model refresh.
+                  </span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="mt-1 h-2 w-2 rounded-full bg-red-500" aria-hidden />
-                  <span>Workflow supervisor retry budget nearing threshold for nightly runs.</span>
+                  <span
+                    aria-hidden
+                    className="mt-1 h-2 w-2 rounded-full bg-red-500"
+                  />
+                  <span>
+                    Workflow supervisor retry budget nearing threshold for
+                    nightly runs.
+                  </span>
                 </li>
               </ul>
             </div>
-            <Separator orientation="vertical" className="hidden md:block" />
+            <Separator className="hidden md:block" orientation="vertical" />
             <div>
-              <p className="text-muted-foreground text-xs uppercase">Recommended actions</p>
+              <p className="text-muted-foreground text-xs uppercase">
+                Recommended actions
+              </p>
               <ul className="space-y-2 text-sm">
-                <li>Audit escalation routing for compliance agent before BAS deadline.</li>
-                <li>Align forecasting agent assumptions with updated hiring plan.</li>
-                <li>Roll out new reconciliation auto-approve threshold to pilot entities.</li>
+                <li>
+                  Audit escalation routing for compliance agent before BAS
+                  deadline.
+                </li>
+                <li>
+                  Align forecasting agent assumptions with updated hiring plan.
+                </li>
+                <li>
+                  Roll out new reconciliation auto-approve threshold to pilot
+                  entities.
+                </li>
               </ul>
             </div>
           </div>

@@ -1,29 +1,42 @@
 "use client";
 
-import { useMemo } from "react";
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { ArrowUpRight, Download, FileBarChart2 } from "lucide-react";
-import { ChartContainer, ChartLegend, ChartTooltip } from "@/components/ui/chart";
+import { useMemo } from "react";
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  ChartContainer,
+  ChartLegend,
+  ChartTooltip,
+} from "@/components/ui/chart";
 import { Separator } from "@/components/ui/separator";
 
 const revenueData = [
-  { month: "Apr", revenue: 182000, expenses: 142000 },
-  { month: "May", revenue: 190000, expenses: 150000 },
-  { month: "Jun", revenue: 205000, expenses: 158000 },
-  { month: "Jul", revenue: 212000, expenses: 161000 },
-  { month: "Aug", revenue: 223000, expenses: 168000 },
-  { month: "Sep", revenue: 231000, expenses: 174000 },
-  { month: "Oct", revenue: 246000, expenses: 181000 },
+  { month: "Apr", revenue: 182_000, expenses: 142_000 },
+  { month: "May", revenue: 190_000, expenses: 150_000 },
+  { month: "Jun", revenue: 205_000, expenses: 158_000 },
+  { month: "Jul", revenue: 212_000, expenses: 161_000 },
+  { month: "Aug", revenue: 223_000, expenses: 168_000 },
+  { month: "Sep", revenue: 231_000, expenses: 174_000 },
+  { month: "Oct", revenue: 246_000, expenses: 181_000 },
 ];
 
 const expenseBreakdown = [
-  { category: "Payroll", current: 94000, previous: 88000 },
-  { category: "Cloud", current: 28000, previous: 25500 },
-  { category: "Marketing", current: 36000, previous: 41000 },
-  { category: "Logistics", current: 18000, previous: 17200 },
-  { category: "Professional services", current: 12200, previous: 11000 },
+  { category: "Payroll", current: 94_000, previous: 88_000 },
+  { category: "Cloud", current: 28_000, previous: 25_500 },
+  { category: "Marketing", current: 36_000, previous: 41_000 },
+  { category: "Logistics", current: 18_000, previous: 17_200 },
+  { category: "Professional services", current: 12_200, previous: 11_000 },
 ];
 
 const kpiHighlights = [
@@ -61,11 +74,11 @@ const chartConfig = {
 export default function AnalyticsAgentPage() {
   const totalRevenue = useMemo(
     () => revenueData.reduce((acc, entry) => acc + entry.revenue, 0),
-    [],
+    []
   );
   const totalExpenses = useMemo(
     () => revenueData.reduce((acc, entry) => acc + entry.expenses, 0),
-    [],
+    []
   );
 
   return (
@@ -78,23 +91,38 @@ export default function AnalyticsAgentPage() {
               Reporting control room
             </CardTitle>
             <p className="text-muted-foreground text-sm">
-              Generate narrative-rich reporting packs, analyse anomalies and export ready-to-share dashboards.
+              Generate narrative-rich reporting packs, analyse anomalies and
+              export ready-to-share dashboards.
             </p>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="rounded-lg border bg-card p-4 shadow-sm">
-                <p className="text-muted-foreground text-xs uppercase">Total revenue</p>
-                <p className="font-semibold text-2xl">${totalRevenue.toLocaleString()}</p>
-                <p className="text-muted-foreground text-xs">Apr – Oct period</p>
+                <p className="text-muted-foreground text-xs uppercase">
+                  Total revenue
+                </p>
+                <p className="font-semibold text-2xl">
+                  ${totalRevenue.toLocaleString()}
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  Apr – Oct period
+                </p>
               </div>
               <div className="rounded-lg border bg-card p-4 shadow-sm">
-                <p className="text-muted-foreground text-xs uppercase">Total expenses</p>
-                <p className="font-semibold text-2xl">${totalExpenses.toLocaleString()}</p>
-                <p className="text-muted-foreground text-xs">Apr – Oct period</p>
+                <p className="text-muted-foreground text-xs uppercase">
+                  Total expenses
+                </p>
+                <p className="font-semibold text-2xl">
+                  ${totalExpenses.toLocaleString()}
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  Apr – Oct period
+                </p>
               </div>
               <div className="rounded-lg border bg-card p-4 shadow-sm">
-                <p className="text-muted-foreground text-xs uppercase">Reports shipped</p>
+                <p className="text-muted-foreground text-xs uppercase">
+                  Reports shipped
+                </p>
                 <p className="font-semibold text-2xl">18</p>
                 <p className="text-muted-foreground text-xs">Last 30 days</p>
               </div>
@@ -104,22 +132,73 @@ export default function AnalyticsAgentPage() {
               <ResponsiveContainer>
                 <AreaChart data={revenueData}>
                   <defs>
-                    <linearGradient id="colorRevenue" x1="0" x2="0" y1="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                    <linearGradient
+                      id="colorRevenue"
+                      x1="0"
+                      x2="0"
+                      y1="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="5%"
+                        stopColor="hsl(var(--primary))"
+                        stopOpacity={0.4}
+                      />
+                      <stop
+                        offset="95%"
+                        stopColor="hsl(var(--primary))"
+                        stopOpacity={0}
+                      />
                     </linearGradient>
-                    <linearGradient id="colorExpenses" x1="0" x2="0" y1="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0} />
+                    <linearGradient
+                      id="colorExpenses"
+                      x1="0"
+                      x2="0"
+                      y1="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="5%"
+                        stopColor="hsl(var(--chart-2))"
+                        stopOpacity={0.4}
+                      />
+                      <stop
+                        offset="95%"
+                        stopColor="hsl(var(--chart-2))"
+                        stopOpacity={0}
+                      />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="4 4" stroke="hsl(var(--muted-foreground)/0.3)" />
-                  <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(value) => `$${value / 1000}k`} />
+                  <CartesianGrid
+                    stroke="hsl(var(--muted-foreground)/0.3)"
+                    strokeDasharray="4 4"
+                  />
+                  <XAxis
+                    dataKey="month"
+                    fontSize={12}
+                    stroke="hsl(var(--muted-foreground))"
+                  />
+                  <YAxis
+                    fontSize={12}
+                    stroke="hsl(var(--muted-foreground))"
+                    tickFormatter={(value) => `$${value / 1000}k`}
+                  />
                   <ChartTooltip />
                   <ChartLegend />
-                  <Area dataKey="revenue" fill="url(#colorRevenue)" stroke="hsl(var(--primary))" strokeWidth={2} type="monotone" />
-                  <Area dataKey="expenses" fill="url(#colorExpenses)" stroke="hsl(var(--chart-2))" strokeWidth={2} type="monotone" />
+                  <Area
+                    dataKey="revenue"
+                    fill="url(#colorRevenue)"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={2}
+                    type="monotone"
+                  />
+                  <Area
+                    dataKey="expenses"
+                    fill="url(#colorExpenses)"
+                    stroke="hsl(var(--chart-2))"
+                    strokeWidth={2}
+                    type="monotone"
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             </ChartContainer>
@@ -133,14 +212,20 @@ export default function AnalyticsAgentPage() {
             </p>
           </CardHeader>
           <CardContent className="space-y-3">
-            {["Explain the variance between forecast and actual cash", "Summarise top anomalies for the board pack", "Draft a KPI commentary for investors"].map(
-              (prompt) => (
-                <Button className="w-full justify-between" key={prompt} variant="outline">
-                  {prompt}
-                  <ArrowUpRight className="h-4 w-4" />
-                </Button>
-              ),
-            )}
+            {[
+              "Explain the variance between forecast and actual cash",
+              "Summarise top anomalies for the board pack",
+              "Draft a KPI commentary for investors",
+            ].map((prompt) => (
+              <Button
+                className="w-full justify-between"
+                key={prompt}
+                variant="outline"
+              >
+                {prompt}
+                <ArrowUpRight className="h-4 w-4" />
+              </Button>
+            ))}
             <Separator />
             <Button className="w-full" variant="secondary">
               Export latest pack
@@ -155,7 +240,8 @@ export default function AnalyticsAgentPage() {
           <CardHeader className="space-y-1">
             <CardTitle className="text-lg">Expense spotlight</CardTitle>
             <p className="text-muted-foreground text-sm">
-              Track how the agent surfaces savings opportunities and benchmark shifts.
+              Track how the agent surfaces savings opportunities and benchmark
+              shifts.
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -168,20 +254,44 @@ export default function AnalyticsAgentPage() {
             >
               <ResponsiveContainer>
                 <BarChart data={expenseBreakdown}>
-                  <CartesianGrid strokeDasharray="4 4" stroke="hsl(var(--muted-foreground)/0.3)" />
-                  <XAxis dataKey="category" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(value) => `$${value / 1000}k`} />
+                  <CartesianGrid
+                    stroke="hsl(var(--muted-foreground)/0.3)"
+                    strokeDasharray="4 4"
+                  />
+                  <XAxis
+                    dataKey="category"
+                    fontSize={12}
+                    stroke="hsl(var(--muted-foreground))"
+                  />
+                  <YAxis
+                    fontSize={12}
+                    stroke="hsl(var(--muted-foreground))"
+                    tickFormatter={(value) => `$${value / 1000}k`}
+                  />
                   <ChartTooltip />
                   <ChartLegend />
-                  <Bar dataKey="current" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="previous" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
+                  <Bar
+                    dataKey="current"
+                    fill="hsl(var(--primary))"
+                    radius={[4, 4, 0, 0]}
+                  />
+                  <Bar
+                    dataKey="previous"
+                    fill="hsl(var(--chart-2))"
+                    radius={[4, 4, 0, 0]}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </ChartContainer>
             <div className="grid gap-3 sm:grid-cols-3">
               {kpiHighlights.map((kpi) => (
-                <div className="rounded-lg border bg-card p-4 shadow-sm" key={kpi.label}>
-                  <p className="text-muted-foreground text-xs uppercase">{kpi.label}</p>
+                <div
+                  className="rounded-lg border bg-card p-4 shadow-sm"
+                  key={kpi.label}
+                >
+                  <p className="text-muted-foreground text-xs uppercase">
+                    {kpi.label}
+                  </p>
                   <p className="font-semibold text-xl">{kpi.value}</p>
                   <p className="text-emerald-500 text-xs">{kpi.change}</p>
                   <p className="text-muted-foreground text-xs">{kpi.helper}</p>
@@ -199,30 +309,42 @@ export default function AnalyticsAgentPage() {
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
             <div className="space-y-3">
-              {["Board pack sent to directors", "Finance summary shared with CFO", "Investor update delivered to VCs"].map(
-                (entry, index) => (
-                  <div className="rounded-md border bg-muted/40 p-3" key={entry}>
-                    <p className="font-medium">{entry}</p>
-                    <p className="text-muted-foreground text-xs">Delivered {index + 1} days ago</p>
-                  </div>
-                ),
-              )}
+              {[
+                "Board pack sent to directors",
+                "Finance summary shared with CFO",
+                "Investor update delivered to VCs",
+              ].map((entry, index) => (
+                <div className="rounded-md border bg-muted/40 p-3" key={entry}>
+                  <p className="font-medium">{entry}</p>
+                  <p className="text-muted-foreground text-xs">
+                    Delivered {index + 1} days ago
+                  </p>
+                </div>
+              ))}
             </div>
             <Separator />
             <div className="space-y-2">
-              <p className="text-muted-foreground text-xs uppercase">Upcoming schedules</p>
+              <p className="text-muted-foreground text-xs uppercase">
+                Upcoming schedules
+              </p>
               <ul className="space-y-2">
                 <li className="flex items-center justify-between">
                   <span>Monthly board pack</span>
-                  <span className="text-muted-foreground text-xs">Due 28 Nov</span>
+                  <span className="text-muted-foreground text-xs">
+                    Due 28 Nov
+                  </span>
                 </li>
                 <li className="flex items-center justify-between">
                   <span>Weekly finance digest</span>
-                  <span className="text-muted-foreground text-xs">Due Friday 9am</span>
+                  <span className="text-muted-foreground text-xs">
+                    Due Friday 9am
+                  </span>
                 </li>
                 <li className="flex items-center justify-between">
                   <span>Investor call summary</span>
-                  <span className="text-muted-foreground text-xs">Due 4 Dec</span>
+                  <span className="text-muted-foreground text-xs">
+                    Due 4 Dec
+                  </span>
                 </li>
               </ul>
             </div>

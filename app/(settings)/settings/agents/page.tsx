@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import {
   BarChart3,
   Calculator,
@@ -10,6 +9,7 @@ import {
   Scale,
   TrendingUp,
 } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import {
   AgentConfigCard,
@@ -126,9 +126,12 @@ export default function AgentSettingsPage() {
         <div className="space-y-6">
           <div className="flex flex-col gap-3 rounded-lg border bg-muted/30 p-4 md:flex-row md:items-center md:justify-between">
             <div className="space-y-1">
-              <h3 className="font-semibold text-sm uppercase tracking-wide">Agent workspaces</h3>
+              <h3 className="font-semibold text-sm uppercase tracking-wide">
+                Agent workspaces
+              </h3>
               <p className="text-muted-foreground text-sm">
-                Explore dedicated operational consoles for documents, reconciliation, compliance, analytics and more.
+                Explore dedicated operational consoles for documents,
+                reconciliation, compliance, analytics and more.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">

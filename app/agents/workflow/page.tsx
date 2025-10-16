@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { ArrowRight, Bot, PlayCircle, ShieldAlert } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -48,17 +48,20 @@ const workflowRuns = [
 const orchestrationLibrary = [
   {
     name: "Month-end close",
-    description: "Full cycle of document ingestion, reconciliation, compliance and analytics hand-off.",
+    description:
+      "Full cycle of document ingestion, reconciliation, compliance and analytics hand-off.",
     agents: ["Documents", "Reconciliations", "Compliance", "Analytics"],
   },
   {
     name: "Investor update",
-    description: "Generate KPI commentary, variance packs and attach forecast scenario diffs.",
+    description:
+      "Generate KPI commentary, variance packs and attach forecast scenario diffs.",
     agents: ["Analytics", "Forecasting", "Q&A"],
   },
   {
     name: "ATO audit pack",
-    description: "Bundle supporting docs, ledger extracts and compliance explanations for auditors.",
+    description:
+      "Bundle supporting docs, ledger extracts and compliance explanations for auditors.",
     agents: ["Documents", "Compliance", "Workflow"],
   },
 ];
@@ -77,25 +80,38 @@ export default function WorkflowSupervisorPage() {
               Workflow supervisor
             </CardTitle>
             <p className="text-muted-foreground text-sm">
-              Design orchestrations across multiple agents, inspect execution logs and handle escalations.
+              Design orchestrations across multiple agents, inspect execution
+              logs and handle escalations.
             </p>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="rounded-lg border bg-card p-4 shadow-sm">
-                <p className="text-muted-foreground text-xs uppercase">Active workflows</p>
+                <p className="text-muted-foreground text-xs uppercase">
+                  Active workflows
+                </p>
                 <p className="font-semibold text-2xl">5</p>
-                <p className="text-muted-foreground text-xs">3 scheduled nightly</p>
+                <p className="text-muted-foreground text-xs">
+                  3 scheduled nightly
+                </p>
               </div>
               <div className="rounded-lg border bg-card p-4 shadow-sm">
-                <p className="text-muted-foreground text-xs uppercase">Average latency</p>
+                <p className="text-muted-foreground text-xs uppercase">
+                  Average latency
+                </p>
                 <p className="font-semibold text-2xl">6.2m</p>
-                <p className="text-muted-foreground text-xs">Across last 24 runs</p>
+                <p className="text-muted-foreground text-xs">
+                  Across last 24 runs
+                </p>
               </div>
               <div className="rounded-lg border bg-card p-4 shadow-sm">
-                <p className="text-muted-foreground text-xs uppercase">Human escalations</p>
+                <p className="text-muted-foreground text-xs uppercase">
+                  Human escalations
+                </p>
                 <p className="font-semibold text-2xl">4</p>
-                <p className="text-muted-foreground text-xs">Pending approval</p>
+                <p className="text-muted-foreground text-xs">
+                  Pending approval
+                </p>
               </div>
             </div>
 
@@ -107,10 +123,13 @@ export default function WorkflowSupervisorPage() {
               </div>
               <div className="divide-y">
                 {workflowRuns.map((run) => (
-                  <div className="grid gap-4 p-4 md:grid-cols-[2fr_1fr_1fr]" key={run.id}>
+                  <div
+                    className="grid gap-4 p-4 md:grid-cols-[2fr_1fr_1fr]"
+                    key={run.id}
+                  >
                     <div>
                       <p className="font-medium text-sm">{run.id}</p>
-                      <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                      <ul className="mt-2 space-y-1 text-muted-foreground text-xs">
                         {run.steps.map((step) => (
                           <li className="flex items-start gap-2" key={step}>
                             <ArrowRight className="mt-0.5 h-3 w-3 text-primary" />
@@ -122,7 +141,9 @@ export default function WorkflowSupervisorPage() {
                     <p className="text-sm">{run.status}</p>
                     <div className="text-sm">
                       <p>{run.lastRun}</p>
-                      <p className="text-muted-foreground text-xs">Duration {run.duration}</p>
+                      <p className="text-muted-foreground text-xs">
+                        Duration {run.duration}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -141,21 +162,29 @@ export default function WorkflowSupervisorPage() {
             <div className="flex items-center justify-between rounded-md border bg-muted/40 p-4">
               <div>
                 <p className="font-medium text-sm">Auto-retry failed steps</p>
-                <p className="text-muted-foreground text-xs">Retry up to 3 times before escalating to a human reviewer.</p>
+                <p className="text-muted-foreground text-xs">
+                  Retry up to 3 times before escalating to a human reviewer.
+                </p>
               </div>
               <Switch checked={autoRetry} onCheckedChange={setAutoRetry} />
             </div>
             <div className="flex items-center justify-between rounded-md border bg-muted/40 p-4">
               <div>
                 <p className="font-medium text-sm">Observer mode</p>
-                <p className="text-muted-foreground text-xs">Preview actions before they execute in production systems.</p>
+                <p className="text-muted-foreground text-xs">
+                  Preview actions before they execute in production systems.
+                </p>
               </div>
-              <Switch checked={observerMode} onCheckedChange={setObserverMode} />
+              <Switch
+                checked={observerMode}
+                onCheckedChange={setObserverMode}
+              />
             </div>
-            <div className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-3 text-xs">
+            <div className="rounded-md border border-primary/40 border-dashed bg-primary/5 p-3 text-xs">
               <p className="font-semibold">Tip</p>
               <p className="text-muted-foreground">
-                Connect to the analytics agent to auto-generate post-run summaries and share via Slack.
+                Connect to the analytics agent to auto-generate post-run
+                summaries and share via Slack.
               </p>
             </div>
           </CardContent>
@@ -167,20 +196,27 @@ export default function WorkflowSupervisorPage() {
           <CardHeader className="space-y-1">
             <CardTitle className="text-lg">Design new workflow</CardTitle>
             <p className="text-muted-foreground text-sm">
-              Start a new LangGraph orchestration by defining trigger, agents and fallbacks.
+              Start a new LangGraph orchestration by defining trigger, agents
+              and fallbacks.
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-xs uppercase text-muted-foreground">Workflow name</Label>
+              <Label className="text-muted-foreground text-xs uppercase">
+                Workflow name
+              </Label>
               <Input placeholder="e.g. Month end with compliance review" />
             </div>
             <div className="space-y-2">
-              <Label className="text-xs uppercase text-muted-foreground">Trigger</Label>
+              <Label className="text-muted-foreground text-xs uppercase">
+                Trigger
+              </Label>
               <Input placeholder="e.g. Every weekday 9pm AEST" />
             </div>
             <div className="space-y-2">
-              <Label className="text-xs uppercase text-muted-foreground">Agents involved</Label>
+              <Label className="text-muted-foreground text-xs uppercase">
+                Agents involved
+              </Label>
               <Input placeholder="Documents, Reconciliations, Compliance" />
             </div>
             <Button className="w-full" variant="secondary">
@@ -200,23 +236,29 @@ export default function WorkflowSupervisorPage() {
             <ScrollArea className="h-64">
               <div className="space-y-3">
                 {orchestrationLibrary.map((workflow) => (
-                  <div className="rounded-md border bg-muted/40 p-3" key={workflow.name}>
+                  <div
+                    className="rounded-md border bg-muted/40 p-3"
+                    key={workflow.name}
+                  >
                     <p className="font-medium text-sm">{workflow.name}</p>
-                    <p className="text-muted-foreground text-xs">{workflow.description}</p>
-                    <p className="text-muted-foreground text-xs mt-1">
+                    <p className="text-muted-foreground text-xs">
+                      {workflow.description}
+                    </p>
+                    <p className="mt-1 text-muted-foreground text-xs">
                       Agents: {workflow.agents.join(", ")}
                     </p>
                   </div>
                 ))}
               </div>
             </ScrollArea>
-            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
-              <p className="font-semibold flex items-center gap-2">
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-destructive text-xs">
+              <p className="flex items-center gap-2 font-semibold">
                 <ShieldAlert className="h-4 w-4" />
                 Human approvals required
               </p>
               <p>
-                Ensure compliance and reconciliation agents sign off on adjustments before pushing to production systems.
+                Ensure compliance and reconciliation agents sign off on
+                adjustments before pushing to production systems.
               </p>
             </div>
           </CardContent>

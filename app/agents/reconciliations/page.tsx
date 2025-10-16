@@ -1,7 +1,13 @@
 "use client";
 
+import {
+  ArrowRight,
+  CheckCircle2,
+  Link2,
+  ListChecks,
+  TriangleAlert,
+} from "lucide-react";
 import { useMemo, useState } from "react";
-import { ArrowRight, CheckCircle2, Link2, ListChecks, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -75,11 +81,13 @@ export default function ReconciliationsAgentPage() {
         acc.autoApproved += batch.autoApproved;
         return acc;
       },
-      { processed: 0, matched: 0, autoApproved: 0 },
+      { processed: 0, matched: 0, autoApproved: 0 }
     );
     return {
       matchRate: Number(((totals.matched / totals.processed) * 100).toFixed(1)),
-      autoApproveRate: Number(((totals.autoApproved / totals.matched) * 100).toFixed(1)),
+      autoApproveRate: Number(
+        ((totals.autoApproved / totals.matched) * 100).toFixed(1)
+      ),
     };
   }, []);
 
@@ -93,24 +101,39 @@ export default function ReconciliationsAgentPage() {
               Bank feed synchronisation
             </CardTitle>
             <p className="text-muted-foreground text-sm">
-              Monitor nightly batch performance, approval thresholds and residual items needing human eyes.
+              Monitor nightly batch performance, approval thresholds and
+              residual items needing human eyes.
             </p>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid gap-4 md:grid-cols-3">
               <div className="rounded-lg border bg-card p-4 shadow-sm">
-                <p className="text-muted-foreground text-xs uppercase">Match rate</p>
-                <p className="font-semibold text-2xl">{aggregateStats.matchRate}%</p>
+                <p className="text-muted-foreground text-xs uppercase">
+                  Match rate
+                </p>
+                <p className="font-semibold text-2xl">
+                  {aggregateStats.matchRate}%
+                </p>
                 <p className="text-muted-foreground text-xs">Goal &gt; 95%</p>
               </div>
               <div className="rounded-lg border bg-card p-4 shadow-sm">
-                <p className="text-muted-foreground text-xs uppercase">Auto-approved</p>
-                <p className="font-semibold text-2xl">{aggregateStats.autoApproveRate}%</p>
-                <p className="text-muted-foreground text-xs">Of matched transactions</p>
+                <p className="text-muted-foreground text-xs uppercase">
+                  Auto-approved
+                </p>
+                <p className="font-semibold text-2xl">
+                  {aggregateStats.autoApproveRate}%
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  Of matched transactions
+                </p>
               </div>
               <div className="rounded-lg border bg-card p-4 shadow-sm">
-                <p className="text-muted-foreground text-xs uppercase">Exceptions</p>
-                <p className="font-semibold text-2xl">{exceptionQueue.length}</p>
+                <p className="text-muted-foreground text-xs uppercase">
+                  Exceptions
+                </p>
+                <p className="font-semibold text-2xl">
+                  {exceptionQueue.length}
+                </p>
                 <p className="text-muted-foreground text-xs">Awaiting review</p>
               </div>
             </div>
@@ -126,11 +149,19 @@ export default function ReconciliationsAgentPage() {
                   <div className="grid gap-4 p-4 md:grid-cols-4" key={batch.id}>
                     <div>
                       <p className="font-medium text-sm">{batch.id}</p>
-                      <p className="text-muted-foreground text-xs">Last run {batch.lastRun}</p>
+                      <p className="text-muted-foreground text-xs">
+                        Last run {batch.lastRun}
+                      </p>
                     </div>
-                    <p className="font-medium text-sm">{batch.processed.toLocaleString()}</p>
-                    <p className="font-medium text-sm">{batch.matched.toLocaleString()}</p>
-                    <p className="font-medium text-sm">{batch.autoApproved.toLocaleString()}</p>
+                    <p className="font-medium text-sm">
+                      {batch.processed.toLocaleString()}
+                    </p>
+                    <p className="font-medium text-sm">
+                      {batch.matched.toLocaleString()}
+                    </p>
+                    <p className="font-medium text-sm">
+                      {batch.autoApproved.toLocaleString()}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -141,32 +172,43 @@ export default function ReconciliationsAgentPage() {
           <CardHeader className="space-y-1">
             <CardTitle className="text-lg">Automation levers</CardTitle>
             <p className="text-muted-foreground text-sm">
-              Adjust tolerances before the agent syncs changes back to the ledger.
+              Adjust tolerances before the agent syncs changes back to the
+              ledger.
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between rounded-md border bg-muted/40 p-4">
               <div>
-                <p className="font-medium text-sm">Auto-approve perfect matches</p>
+                <p className="font-medium text-sm">
+                  Auto-approve perfect matches
+                </p>
                 <p className="text-muted-foreground text-xs">
-                  Instantly approve when bank description and ledger memo are identical.
+                  Instantly approve when bank description and ledger memo are
+                  identical.
                 </p>
               </div>
               <Switch checked={autoApprove} onCheckedChange={setAutoApprove} />
             </div>
             <div className="flex items-center justify-between rounded-md border bg-muted/40 p-4">
               <div>
-                <p className="font-medium text-sm">Create proposed adjustments</p>
+                <p className="font-medium text-sm">
+                  Create proposed adjustments
+                </p>
                 <p className="text-muted-foreground text-xs">
-                  Draft journals for FX fees, rounding differences and delayed payouts.
+                  Draft journals for FX fees, rounding differences and delayed
+                  payouts.
                 </p>
               </div>
-              <Switch checked={createAdjustments} onCheckedChange={setCreateAdjustments} />
+              <Switch
+                checked={createAdjustments}
+                onCheckedChange={setCreateAdjustments}
+              />
             </div>
-            <div className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-4 text-sm">
+            <div className="rounded-md border border-primary/40 border-dashed bg-primary/5 p-4 text-sm">
               <p className="font-semibold">Tip: connect compliance agent</p>
               <p className="text-muted-foreground text-xs">
-                Route payroll and super transactions directly into the compliance queue for second layer review.
+                Route payroll and super transactions directly into the
+                compliance queue for second layer review.
               </p>
             </div>
           </CardContent>
@@ -177,7 +219,8 @@ export default function ReconciliationsAgentPage() {
         <CardHeader className="flex flex-col gap-1">
           <CardTitle className="text-lg">Exception queue</CardTitle>
           <p className="text-muted-foreground text-sm">
-            Prioritise unresolved matches, apply suggested actions and escalate high-risk discrepancies.
+            Prioritise unresolved matches, apply suggested actions and escalate
+            high-risk discrepancies.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -189,10 +232,15 @@ export default function ReconciliationsAgentPage() {
           <ScrollArea className="max-h-80">
             <div className="divide-y">
               {exceptionQueue.map((item) => (
-                <div className="grid gap-4 py-4 md:grid-cols-[2fr_1fr_1fr]" key={item.id}>
+                <div
+                  className="grid gap-4 py-4 md:grid-cols-[2fr_1fr_1fr]"
+                  key={item.id}
+                >
                   <div>
                     <p className="font-medium text-sm">{item.id}</p>
-                    <p className="text-muted-foreground text-xs">{item.description}</p>
+                    <p className="text-muted-foreground text-xs">
+                      {item.description}
+                    </p>
                   </div>
                   <p className="text-sm">{item.amount}</p>
                   <div className="flex flex-col gap-2 text-sm">
@@ -204,7 +252,9 @@ export default function ReconciliationsAgentPage() {
                       ) : (
                         <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                       )}
-                      <span className="capitalize">{item.severity} priority</span>
+                      <span className="capitalize">
+                        {item.severity} priority
+                      </span>
                     </div>
                     <Button size="sm" variant="secondary">
                       {item.suggestedAction}
@@ -223,22 +273,30 @@ export default function ReconciliationsAgentPage() {
           <CardHeader className="space-y-1">
             <CardTitle className="text-lg">Timeline insights</CardTitle>
             <p className="text-muted-foreground text-sm">
-              Understand why the agent applied (or rejected) a given match suggestion.
+              Understand why the agent applied (or rejected) a given match
+              suggestion.
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-3">
-              {["Merchant similarity score 0.97", "Narrative context matched", "Amount delta under $5 tolerance"].map(
-                (explanation) => (
-                  <div className="flex items-start gap-3 rounded-md border bg-muted/40 p-3" key={explanation}>
-                    <ListChecks className="mt-0.5 h-4 w-4 text-primary" />
-                    <div>
-                      <p className="font-medium text-sm">{explanation}</p>
-                      <p className="text-muted-foreground text-xs">Applied in 214 transactions last week.</p>
-                    </div>
+              {[
+                "Merchant similarity score 0.97",
+                "Narrative context matched",
+                "Amount delta under $5 tolerance",
+              ].map((explanation) => (
+                <div
+                  className="flex items-start gap-3 rounded-md border bg-muted/40 p-3"
+                  key={explanation}
+                >
+                  <ListChecks className="mt-0.5 h-4 w-4 text-primary" />
+                  <div>
+                    <p className="font-medium text-sm">{explanation}</p>
+                    <p className="text-muted-foreground text-xs">
+                      Applied in 214 transactions last week.
+                    </p>
                   </div>
-                ),
-              )}
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -246,24 +304,37 @@ export default function ReconciliationsAgentPage() {
           <CardHeader className="space-y-1">
             <CardTitle className="text-lg">SLA tracking</CardTitle>
             <p className="text-muted-foreground text-sm">
-              Keep the operations squad on top of review commitments when volumes spike.
+              Keep the operations squad on top of review commitments when
+              volumes spike.
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="rounded-lg border bg-card p-4 shadow-sm">
-              <p className="text-muted-foreground text-xs uppercase">Open queue ageing</p>
+              <p className="text-muted-foreground text-xs uppercase">
+                Open queue ageing
+              </p>
               <Progress className="h-2" value={64} />
-              <p className="text-muted-foreground text-xs mt-1">64% cleared within 24 hours</p>
+              <p className="mt-1 text-muted-foreground text-xs">
+                64% cleared within 24 hours
+              </p>
             </div>
             <div className="rounded-lg border bg-card p-4 shadow-sm">
-              <p className="text-muted-foreground text-xs uppercase">Oldest item</p>
+              <p className="text-muted-foreground text-xs uppercase">
+                Oldest item
+              </p>
               <p className="font-semibold text-xl">36 hours</p>
-              <p className="text-muted-foreground text-xs">Payroll duplicate awaiting approval</p>
+              <p className="text-muted-foreground text-xs">
+                Payroll duplicate awaiting approval
+              </p>
             </div>
             <div className="rounded-lg border bg-card p-4 shadow-sm">
-              <p className="text-muted-foreground text-xs uppercase">Team load</p>
+              <p className="text-muted-foreground text-xs uppercase">
+                Team load
+              </p>
               <p className="font-semibold text-xl">3 reviewers</p>
-              <p className="text-muted-foreground text-xs">Average capacity 8 items/hour</p>
+              <p className="text-muted-foreground text-xs">
+                Average capacity 8 items/hour
+              </p>
             </div>
           </CardContent>
         </Card>

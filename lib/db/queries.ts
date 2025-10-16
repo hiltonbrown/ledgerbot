@@ -34,8 +34,8 @@ import {
   type User,
   user,
   vote,
-  xeroConnection,
   type XeroConnection,
+  xeroConnection,
 } from "./schema";
 import { generateHashedPassword } from "./utils";
 
@@ -863,7 +863,12 @@ export async function getActiveXeroConnection(
     const [connection] = await db
       .select()
       .from(xeroConnection)
-      .where(and(eq(xeroConnection.userId, userId), eq(xeroConnection.isActive, true)))
+      .where(
+        and(
+          eq(xeroConnection.userId, userId),
+          eq(xeroConnection.isActive, true)
+        )
+      )
       .orderBy(desc(xeroConnection.updatedAt))
       .limit(1);
 

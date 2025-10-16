@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import {
   Activity,
   BarChart3,
@@ -12,6 +10,8 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const agentLinks = [
@@ -130,7 +130,9 @@ export function AgentsHeader() {
             <Link
               className={cn(
                 "transition-colors",
-                pathname === "/agents" ? "text-foreground" : "hover:text-foreground",
+                pathname === "/agents"
+                  ? "text-foreground"
+                  : "hover:text-foreground"
               )}
               href="/agents"
             >
@@ -140,7 +142,9 @@ export function AgentsHeader() {
           {activeLink.href !== "/agents" ? (
             <>
               <li className="text-muted-foreground">/</li>
-              <li className="font-medium text-foreground">{activeLink.label}</li>
+              <li className="font-medium text-foreground">
+                {activeLink.label}
+              </li>
             </>
           ) : null}
         </ol>
@@ -156,7 +160,7 @@ export function AgentsHeader() {
                 "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors",
                 isActive
                   ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
               href={link.href}
               key={link.href}

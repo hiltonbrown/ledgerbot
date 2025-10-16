@@ -1,7 +1,14 @@
 "use client";
 
+import {
+  ArrowUpRight,
+  BookmarkPlus,
+  MessageSquareText,
+  Send,
+  ThumbsDown,
+  ThumbsUp,
+} from "lucide-react";
 import { useState } from "react";
-import { ArrowUpRight, BookmarkPlus, MessageSquareText, Send, ThumbsDown, ThumbsUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -56,16 +63,26 @@ export default function QandAAgentPage() {
               Advisory workspace
             </CardTitle>
             <p className="text-muted-foreground text-sm">
-              Converse with the ledger-aware assistant, escalate to humans and surface citations from the knowledge base.
+              Converse with the ledger-aware assistant, escalate to humans and
+              surface citations from the knowledge base.
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="rounded-md border bg-muted/40 p-4">
-              <Label className="text-xs uppercase text-muted-foreground">Ask the agent</Label>
-              <Textarea className="mt-2" placeholder="Ask about cash flow, variances or compliance tasks" rows={3} />
+              <Label className="text-muted-foreground text-xs uppercase">
+                Ask the agent
+              </Label>
+              <Textarea
+                className="mt-2"
+                placeholder="Ask about cash flow, variances or compliance tasks"
+                rows={3}
+              />
               <div className="mt-3 flex items-center justify-between">
                 <div className="flex items-center gap-2 text-muted-foreground text-xs">
-                  <Switch checked={streamResponses} onCheckedChange={setStreamResponses} />
+                  <Switch
+                    checked={streamResponses}
+                    onCheckedChange={setStreamResponses}
+                  />
                   <span>Stream response tokens</span>
                 </div>
                 <Button size="sm">
@@ -83,14 +100,21 @@ export default function QandAAgentPage() {
                     data-role={message.role}
                     key={`${message.timestamp}-${index}`}
                   >
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span className="font-medium text-foreground capitalize">{message.role}</span>
+                    <div className="flex items-center justify-between text-muted-foreground text-xs">
+                      <span className="font-medium text-foreground capitalize">
+                        {message.role}
+                      </span>
                       <span>{message.timestamp}</span>
                     </div>
-                    <p className="mt-2 text-sm leading-relaxed">{message.content}</p>
+                    <p className="mt-2 text-sm leading-relaxed">
+                      {message.content}
+                    </p>
                     {message.role === "assistant" ? (
-                      <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-                        <span>Confidence {Math.round((message.confidence ?? 0) * 100)}%</span>
+                      <div className="mt-3 flex items-center justify-between text-muted-foreground text-xs">
+                        <span>
+                          Confidence{" "}
+                          {Math.round((message.confidence ?? 0) * 100)}%
+                        </span>
                         <div className="flex items-center gap-2">
                           <Button size="icon" variant="ghost">
                             <ThumbsUp className="h-4 w-4" />
@@ -119,7 +143,11 @@ export default function QandAAgentPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             {suggestedQuestions.map((question) => (
-              <Button className="w-full justify-between" key={question} variant="outline">
+              <Button
+                className="w-full justify-between"
+                key={question}
+                variant="outline"
+              >
                 {question}
                 <ArrowUpRight className="h-4 w-4" />
               </Button>
@@ -127,14 +155,18 @@ export default function QandAAgentPage() {
             <div className="rounded-md border bg-muted/40 p-3 text-xs">
               <p className="font-semibold">Knowledge base coverage</p>
               <p className="text-muted-foreground">
-                Powered by 1,242 documents across policies, accounting standards and operating procedures.
+                Powered by 1,242 documents across policies, accounting standards
+                and operating procedures.
               </p>
             </div>
             <div className="rounded-md border bg-muted/40 p-3 text-xs">
               <p className="font-semibold">Feedback capture</p>
               <div className="mt-2 flex items-center justify-between">
                 <span>Ask follow-up when users downvote</span>
-                <Switch checked={captureFeedback} onCheckedChange={setCaptureFeedback} />
+                <Switch
+                  checked={captureFeedback}
+                  onCheckedChange={setCaptureFeedback}
+                />
               </div>
             </div>
           </CardContent>
