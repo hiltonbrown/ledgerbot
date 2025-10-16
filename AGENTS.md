@@ -1,199 +1,69 @@
-# Repository Guidelines
+# Agents Workspace
 
-## Project Structure & Module Organization
-- `app/` holds Next.js route groups; `(auth)` manages Clerk flows and `(chat)` renders the workspace UI.
-- `components/`, `hooks/`, and `lib/` provide shared UI, custom React hooks, and domain logic (including `lib/db` migrations and AI helpers under `lib/ai`).
-- `public/` serves static assets, while `artifacts/` stores generated chat exports and other persisted outputs.
-- Playwright fixtures, helper utilities, and e2e specs live under `tests/`; keep new suites alongside existing folders for discoverability.
+LedgerBot exposes a family of specialised bookkeeping agents under `/agents`. Each agent page is a client component that currently renders mock telemetry and control toggles to illustrate the target UX. This guide describes the routing, shared UI primitives, and the behaviour of each workspace so future integrations can wire in live data.
 
-## Authentication & User Sessions
-- Clerk is the sole auth provider. `app/layout.tsx` wraps the app in `ClerkProvider`, and the middleware in `middleware.ts` uses `clerkMiddleware` with `auth.protect()` to guard every non-public route.
-- Server components and API routes call `getAuthUser()` from `lib/auth/clerk-helpers.ts` to retrieve the current user. The helper syncs the Clerk record into the `User` table (creating it when necessary) and returns the shared `AuthUser` shape from `lib/types/auth.ts`.
-- Guest accounts are removed. `AuthUser.type` is now always `"regular"`, and all entitlement logic keys off that single type.
-- Client experiences pull profile data directly from Clerk. For example, `components/sidebar-user-nav.tsx` relies on `useUser()` / `useClerk()` while `components/app-sidebar.tsx` receives the server-fetched `AuthUser` for history lookups.
-- Database rows must include Clerk metadata. The `User` schema tracks `clerkId`, `clerkSynced`, and keeps the legacy `password` column only for temporary coexistence during migration.
-- Local development requires Clerk environment variables (`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, etc.); copy them into `.env.local` before running migrations or starting the app.
+## Routing & Layout
+- `app/agents/layout.tsx` is a server component that wraps the consoles with `SidebarProvider`, loads the authenticated user via `getAuthUser()`, and respects the persisted sidebar state stored in the `sidebar_state` cookie.
+- Pages opt into `dynamic = "force-dynamic"` and `experimental_ppr` to keep the console responsive to upstream changes.
+- `components/agents/agents-header.tsx` drives the breadcrumb, contextual titles, and pill navigation for every agent view. Update the `agentLinks` array to add or remove workspaces.
 
-## Build, Test, and Development Commands
-- `pnpm dev` starts the local Next.js server with Turbo mode at `http://localhost:3000`.
-- `pnpm build` runs database migrations via `tsx lib/db/migrate` and then compiles the production bundle.
-- `pnpm start` launches the compiled app; use after `pnpm build` for smoke checks.
-- `pnpm lint` and `pnpm format` invoke Ultracite/Biome for static analysis and auto-fixes; run both before opening a PR.
-- Database helpers (`pnpm db:generate`, `pnpm db:migrate`, `pnpm db:studio`) wrap Drizzle Kit; keep schema changes deterministic and checked in.
-- `pnpm test` sets `PLAYWRIGHT=True` and executes the Playwright suite in `tests/e2e`.
+## Shared UI Building Blocks
+- `AgentSummaryCard` (`components/agents/agent-summary-card.tsx`) renders the snapshot tiles on the overview page. Cards accept optional status, badge, metrics, and footer content and always link to the agent workspace.
+- `components/ui/chart.tsx` supplies a thin adapter around Recharts to standardise legends and tooltips across analytics and forecasting views.
+- The consoles reuse design-system primitives from `/components/ui` (cards, buttons, switches, scroll areas, etc.), keeping the styling consistent with the chat workspace.
 
-## Development Guidelines
-⚠️ Do not modify node_modules or installed dependencies directly.
-All changes should be made via configuration, wrappers, or extension logic. Direct edits to third-party packages will be overwritten during updates and complicate maintenance. This ensures smoother upgrades, better reproducibility, and avoids breaking changes during dependency updates.
+## Agent Consoles
 
-## Coding Style & Naming Conventions
-- TypeScript + React 19 throughout; prefer async/await and server components where feasible.
-- Follow the Ultracite style profile (see `biome.jsonc`): two-space indentation, single quotes avoided, no enforced console bans, and allowances for Tailwind directives.
-- Name React components in `PascalCase`, hooks in `useCamelCase`, and utility modules in `kebab-case.ts` or `snake_case` only when mirroring external APIs.
-- Re-export shared items via `index.ts` barrels judiciously; honor the existing `@/` path aliases defined in `tsconfig.json`.
+### Overview (`app/agents/page.tsx`)
+- Surfaces automation coverage metrics, human-review queues, and a grid of `AgentSummaryCard`s that deep-link into each agent.
+- Includes a change-management card that highlights release trains, risk register entries, and recommended actions seeded from static copy.
 
-## Testing Guidelines
-- Co-locate selectors in `tests/pages` and route helpers in `tests/routes` to keep specs declarative.
-- Name new specs `*.test.ts`; group related expectations inside `test.describe` blocks for parallel-friendly isolation.
-- Prefer Playwright fixtures in `tests/fixtures.ts` over ad-hoc setup, and document any required seed data in the spec header.
-- Aim for deterministic tests that survive CI retries; if test data depends on migrations, update `lib/db/migrate.ts` accordingly.
+### Document Processing (`app/agents/docmanagement/page.tsx`)
+- Provides an upload dropzone, rolling intake metrics, and average confidence calculations computed from the in-file `validationQueue`.
+- Offers guardrail toggles for auto-validation, duplicate detection, and Slack digests, plus a scrollable validation queue with confidence progress bars.
+- Displays extraction KPIs, recent document issues, and human-review telemetry; all datasets are currently hard-coded arrays.
 
-## Commit & Pull Request Guidelines
-- Mirror the existing history (`Revise README for Intellisync Chatbot`) with short, imperative subject lines under 72 characters; elaborate in the body when needed.
-- Keep changes scoped per commit, reference issue IDs in the body, and avoid merging unrelated formatting churn.
-- For PRs, include a concise summary, links to related issues, screenshots or recordings for UI tweaks, and a checklist of `pnpm lint`, `pnpm build`, and `pnpm test` results.
-- Highlight any schema or environment changes up front so reviewers can apply migrations and rotate secrets without surprises.
+### Reconciliations (`app/agents/reconciliations/page.tsx`)
+- Aggregates batch statistics (`reconciliationBatches`) to compute match and auto-approval rates with `useMemo`.
+- Lets operators toggle auto-approval and auto-adjustments, and shows an exception queue with severity indicators and suggested actions.
+- Encourages cross-agent hand-offs (for example, compliance escalations) via contextual tips.
 
-## Environment & Configuration Tips
-- Duplicate `.env.example` into `.env.local` for local work; populate Clerk, Postgres, and Vercel tokens before running migrations.
-- Use `pnpm db:pull` or `pnpm db:push` when syncing with shared databases, and never commit production secrets or raw exports inside `artifacts/`.
+### Compliance (`app/agents/compliance/page.tsx`)
+- Tracks ATO-aligned deadlines, audit checklists, and knowledge-base freshness indicators.
+- Guardrails cover disclaimers, escalation rules, and jurisdiction overrides; state lives in local `useState` hooks.
+- Uses scrollable lists for deadlines and checklist completion alongside static legal copy surfaced in cards.
 
-# Using Gemini CLI for LedgerBot Codebase Analysis
+### Analytics (`app/agents/analytics/page.tsx`)
+- Leverages `ChartContainer`, `ChartLegend`, and `ChartTooltip` around Recharts `AreaChart` and `BarChart` components to render revenue trends and expense breakdowns.
+- Highlights KPIs, generates narrative prompt buttons, and logs distribution activity via static arrays (`revenueData`, `expenseBreakdown`, `kpiHighlights`).
+- Export and prompt buttons are placeholders awaiting API wiring.
 
-When analyzing your LedgerBot codebase or multiple files that might exceed context limits, use the Gemini CLI with its massive context window. Use `gemini -p` to leverage Google Gemini's large context capacity for your Next.js TypeScript AI application.
+### Forecasting (`app/agents/forecasting/page.tsx`)
+- Visualises base, upside, and downside scenarios with configurable confidence bands powered by Recharts.
+- Stores scenario toggles, assumption inputs, and run summaries in component state; helper copy references LangGraph orchestration even though the data is mocked (`forecastSeries`).
+- Risk alerts and assumption editors are rendered as cards with `Switch` and `Input` controls.
 
-## File and Directory Inclusion Syntax for LedgerBot
+### Advisory Q&A (`app/agents/qanda/page.tsx`)
+- Mimics a chat transcript using `conversationHistory`, including confidence scores, feedback buttons, and stream toggles.
+- Suggested prompts and knowledge-base coverage live in static arrays, ready to be replaced by the real suggestion service.
+- Feedback capture toggles are wired via `useState` but do not yet persist.
 
-Use the `@` syntax to include files and directories in your Gemini prompts. The paths should be relative to your LedgerBot project root:
+### Workflow Supervisor (`app/agents/workflow/page.tsx`)
+- Centralises multi-agent orchestration with a live run table (`workflowRuns`), execution metrics, and retry or observer toggles.
+- Provides a form scaffold for creating new workflows and a scrollable template library (`orchestrationLibrary`).
+- Elevates human-approval requirements via an alert block designed to surface escalations from dependent agents.
 
-### LedgerBot-Specific Examples:
+## Settings Integration
+- `/app/(settings)/settings/agents/page.tsx` reuses the same agent taxonomy to manage configuration. `AgentConfigCard` components wrap collapsible panels with enable switches, reset buttons, and detailed form controls for each agent.
+- Settings state is currently local to the page; persistence hooks should be added when API endpoints are available.
+- The settings overview links back into `/agents` so product teams can jump between configuration and operations quickly.
 
-**Single file analysis:**
-```bash
-gemini -p "@package.json Explain the dependencies and project configuration for this AI chatbot"
+## Data & Integration Notes
+- Every console seeds mock data with in-file arrays; no API calls or database reads occur yet. Replace these structures with SWR or server actions when integrating with backend services.
+- Copy throughout the agents references LangGraph orchestration and cross-agent workflows but there is no LangGraph implementation in the repo today; plan for adapters in `lib/ai/` when real workflows land.
+- When adding live context, reuse the existing `lib/ai` provider or model abstractions and `lib/db` query helpers for context file ingestion to keep agent responses aligned with the chat experience.
 
-gemini -p "@next.config.ts Analyze the Next.js configuration and any AI-specific settings"
-
-gemini -p "@middleware.ts Review the middleware implementation for authentication and routing"
-```
-
-**Multiple configuration files:**
-```bash
-gemini -p "@package.json @tsconfig.json @next.config.ts Analyze the complete TypeScript and Next.js setup"
-
-gemini -p "@drizzle.config.ts @lib/ Review the database configuration and schema implementation"
-```
-
-**Core application directories:**
-```bash
-gemini -p "@app/ Summarize the Next.js app router structure and API routes"
-
-gemini -p "@components/ Analyze the React component architecture and UI patterns"
-
-gemini -p "@lib/ Review the utility functions, database connections, and AI integrations"
-
-gemini -p "@hooks/ Examine the custom React hooks and state management"
-```
-
-**Full project analysis:**
-```bash
-gemini -p "@./ Give me a complete overview of this AI chatbot project structure"
-
-# Or use --all_files flag:
-gemini --all_files -p "Analyze the entire LedgerBot project architecture and AI integrations"
-```
-
-## LedgerBot Feature Verification Examples
-
-**Check AI/Chat implementation:**
-```bash
-gemini -p "@app/ @components/ @lib/ Is the AI chat functionality fully implemented? Show me the chat components and API routes"
-
-gemini -p "@app/api/ @lib/ Are the AI SDK integrations properly configured? List all AI provider connections"
-```
-
-**Verify authentication system:**
-```bash
-gemini -p "@middleware.ts @app/ @lib/ Is Clerk authentication implemented? Show all auth-related middleware and API routes"
-
-gemini -p "@app/ @components/ Are Clerk-protected routes and user sessions properly handled throughout the application?"
-```
-
-**Database and ORM verification:**
-```bash
-gemini -p "@lib/db/ @drizzle.config.ts Is the Drizzle ORM setup complete? Show the database schema and migration files"
-
-gemini -p "@lib/ @app/api/ Are database queries properly implemented with error handling?"
-```
-
-**UI/UX component analysis:**
-```bash
-gemini -p "@components/ @app/ Are Radix UI components properly integrated? Show the component library usage"
-
-gemini -p "@components/ @lib/ Is dark mode and theming implemented consistently across the application?"
-```
-
-**Development workflow verification:**
-```bash
-gemini -p "@tests/ @playwright.config.ts Is end-to-end testing properly set up with Playwright?"
-
-gemini -p "@biome.jsonc @package.json Are linting and formatting tools (Biome) configured correctly?"
-```
-
-**Security and middleware checks:**
-```bash
-gemini -p "@middleware.ts @app/api/ Are proper security headers and CORS policies implemented?"
-
-gemini -p "@lib/ @app/ Is input validation and sanitization implemented for user inputs and file uploads?"
-```
-
-**Performance and optimization:**
-```bash
-gemini -p "@app/ @components/ @lib/ Are Next.js performance optimizations (caching, streaming) properly implemented?"
-
-gemini -p "@package.json @next.config.ts Are bundle size optimizations and tree-shaking configured?"
-```
-
-## LedgerBot-Specific Use Cases
-
-Use gemini -p when:
-- Analyzing the complete AI chatbot architecture across app/, components/, and lib/
-- Reviewing Next.js 15 app router implementation and API routes
-- Understanding the Drizzle ORM database integration and schema
-- Checking Vercel AI SDK and provider configurations
-- Verifying TypeScript types and configurations across the project
-- Analyzing the React component hierarchy and state management
-- Reviewing authentication flows and middleware implementation
-- Checking test coverage and Playwright e2e test setup
-
-## Important Notes for LedgerBot
-
-- Paths in @ syntax are relative to your LedgerBot project root directory
-- The CLI will include file contents directly in the context for analysis
-- Perfect for analyzing the complex Next.js/TypeScript/AI SDK integration
-- Gemini's context window can handle your entire codebase including large files like pnpm-lock.yaml
-- Ideal for understanding the interaction between AI providers, database, and UI components
-- When checking implementations, reference the specific LedgerBot features like chat functionality, file uploads, or usage accounting
-
-# Using MCP Servers for Updated Documentation
-
-When working with external libraries or needing up-to-date documentation, leverage Model Context Protocol (MCP) servers to access current information beyond static docs.
-
-## Context7 MCP Server
-
-Use the Context7 server to retrieve up-to-date documentation and code examples for libraries:
-
-- **resolve-library-id**: Find the correct Context7-compatible library ID for a given package name.
-- **get-library-docs**: Fetch documentation, including code snippets and examples, for a resolved library ID.
-
-Example workflow:
-1. When implementing a feature requiring a new library, use `resolve-library-id` to get the library ID.
-2. Then use `get-library-docs` to obtain the latest documentation with practical examples.
-
-This ensures you have current, accurate information rather than relying on potentially outdated cached docs.
-
-## GitHub MCP Server
-
-For accessing GitHub repositories, issues, pull requests, and code:
-
-- Use GitHub MCP server tools to search repositories, view issues, browse code, or check recent commits.
-- Particularly useful for:
-  - Staying updated on dependency repositories
-  - Researching implementation patterns from open-source projects
-  - Checking for recent bug fixes or feature additions
-
-Note: Ensure MCP servers are properly configured and connected in your development environment. If GitHub MCP server is not available, consider setting it up for enhanced documentation access.
-
-# Engineering Practices
-⚠️ Preserve integrity of external dependencies.
-Do not alter files inside node_modules or any installed packages. Instead, use wrappers, patching tools, or configuration hooks. This practice supports clean upgrades, auditability, and prevents regressions when dependencies are updated.
+## Next Steps
+- Wire document, reconciliation, and compliance metrics to real queries once the respective API routes are available.
+- Align analytics and forecasting charts with actual data sources (for example, Postgres views or external APIs) and handle loading states and error surfaces.
+- Persist agent settings and surface telemetry (success and failure counts, escalations) via shared types so the overview dashboard reflects production health in real time.

@@ -230,3 +230,21 @@ export const userSettings = pgTable("UserSettings", {
 });
 
 export type UserSettings = InferSelectModel<typeof userSettings>;
+
+export const xeroConnection = pgTable("XeroConnection", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  userId: uuid("userId")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenantId", { length: 255 }).notNull(),
+  tenantName: varchar("tenantName", { length: 255 }),
+  accessToken: text("accessToken").notNull(), // Encrypted
+  refreshToken: text("refreshToken").notNull(), // Encrypted
+  expiresAt: timestamp("expiresAt").notNull(),
+  scopes: jsonb("scopes").$type<string[]>().notNull(),
+  isActive: boolean("isActive").notNull().default(true),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+});
+
+export type XeroConnection = InferSelectModel<typeof xeroConnection>;

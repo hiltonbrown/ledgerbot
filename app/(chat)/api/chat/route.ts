@@ -27,11 +27,13 @@ import { createDocument } from "@/lib/ai/tools/create-document";
 import { getWeather } from "@/lib/ai/tools/get-weather";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
 import { updateDocument } from "@/lib/ai/tools/update-document";
+import { createXeroTools, xeroToolNames } from "@/lib/ai/tools/xero-tools";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import { isProductionEnvironment } from "@/lib/constants";
 import {
   createStreamId,
   deleteChatById,
+  getActiveXeroConnection,
   getChatById,
   getMessageCountByUserId,
   getMessagesByChatId,
@@ -211,6 +213,10 @@ export async function POST(request: Request) {
     const shouldSendReasoning =
       isReasoningModelId(selectedChatModel) && (isReasoningEnabled ?? true);
 
+    // Check if user has Xero connection
+    const xeroConnection = await getActiveXeroConnection(user.id);
+    const xeroTools = xeroConnection ? createXeroTools(user.id) : {};
+
     const stream = createUIMessageStream({
       execute: ({ writer: dataStream }) => {
         const activeTools: ToolId[] = shouldSendReasoning
@@ -219,12 +225,17 @@ export async function POST(request: Request) {
             ? (selectedTools as ToolId[])
             : defaultSelectedTools;
 
+        // Add Xero tool names to active tools if connection exists
+        const finalActiveTools = xeroConnection
+          ? [...activeTools, ...xeroToolNames]
+          : activeTools;
+
         const result = streamText({
           model: myProvider.languageModel(selectedChatModel),
           system: systemPrompt({ selectedChatModel, requestHints }),
           messages: convertToModelMessages(includeAttachmentText(uiMessages)),
           stopWhen: stepCountIs(5),
-          experimental_activeTools: activeTools,
+          experimental_activeTools: finalActiveTools,
           experimental_transform: smoothStream({ chunking: "word" }),
           tools: {
             getWeather,
@@ -240,6 +251,7 @@ export async function POST(request: Request) {
               user,
               dataStream,
             }),
+            ...xeroTools,
           },
           experimental_telemetry: {
             isEnabled: isProductionEnvironment,

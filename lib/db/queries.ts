@@ -34,6 +34,8 @@ import {
   type User,
   user,
   vote,
+  xeroConnection,
+  type XeroConnection,
 } from "./schema";
 import { generateHashedPassword } from "./utils";
 
@@ -848,6 +850,149 @@ export async function getTokenUsageTimeseries({
     throw new ChatSDKError(
       "bad_request:database",
       "Failed to get token usage timeseries"
+    );
+  }
+}
+
+// Xero Connection Queries
+
+export async function getActiveXeroConnection(
+  userId: string
+): Promise<XeroConnection | null> {
+  try {
+    const [connection] = await db
+      .select()
+      .from(xeroConnection)
+      .where(and(eq(xeroConnection.userId, userId), eq(xeroConnection.isActive, true)))
+      .orderBy(desc(xeroConnection.updatedAt))
+      .limit(1);
+
+    return connection ?? null;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get active Xero connection"
+    );
+  }
+}
+
+export async function getXeroConnectionsByUserId(
+  userId: string
+): Promise<XeroConnection[]> {
+  try {
+    return await db
+      .select()
+      .from(xeroConnection)
+      .where(eq(xeroConnection.userId, userId))
+      .orderBy(desc(xeroConnection.isActive), desc(xeroConnection.updatedAt));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get Xero connections"
+    );
+  }
+}
+
+export async function createXeroConnection({
+  userId,
+  tenantId,
+  tenantName,
+  accessToken,
+  refreshToken,
+  expiresAt,
+  scopes,
+}: {
+  userId: string;
+  tenantId: string;
+  tenantName?: string;
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: Date;
+  scopes: string[];
+}): Promise<XeroConnection> {
+  try {
+    // Deactivate any existing connections
+    await db
+      .update(xeroConnection)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(xeroConnection.userId, userId));
+
+    const [connection] = await db
+      .insert(xeroConnection)
+      .values({
+        userId,
+        tenantId,
+        tenantName,
+        accessToken,
+        refreshToken,
+        expiresAt,
+        scopes,
+        isActive: true,
+      })
+      .returning();
+
+    return connection;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to create Xero connection"
+    );
+  }
+}
+
+export async function updateXeroTokens({
+  id,
+  accessToken,
+  refreshToken,
+  expiresAt,
+}: {
+  id: string;
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: Date;
+}): Promise<XeroConnection> {
+  try {
+    const [connection] = await db
+      .update(xeroConnection)
+      .set({
+        accessToken,
+        refreshToken,
+        expiresAt,
+        updatedAt: new Date(),
+      })
+      .where(eq(xeroConnection.id, id))
+      .returning();
+
+    return connection;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to update Xero tokens"
+    );
+  }
+}
+
+export async function deleteXeroConnection(id: string): Promise<void> {
+  try {
+    await db.delete(xeroConnection).where(eq(xeroConnection.id, id));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to delete Xero connection"
+    );
+  }
+}
+
+export async function deactivateXeroConnection(id: string): Promise<void> {
+  try {
+    await db
+      .update(xeroConnection)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(xeroConnection.id, id));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to deactivate Xero connection"
     );
   }
 }

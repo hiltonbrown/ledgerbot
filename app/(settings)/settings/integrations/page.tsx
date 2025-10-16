@@ -3,24 +3,28 @@ import {
   IntegrationCard,
 } from "@/components/settings/integration-card";
 import { SettingsSection } from "@/components/settings/settings-section";
+import { XeroIntegrationCard } from "@/components/settings/xero-integration-card";
+import { getAuthUser } from "@/lib/auth/clerk-helpers";
+import { getActiveXeroConnection } from "@/lib/db/queries";
 
 export const dynamic = "force-dynamic";
 
+const xeroIntegration: Integration = {
+  id: "xero",
+  name: "Xero",
+  description:
+    "Sync invoices, expenses, and bank transactions. Automate reconciliation and generate financial reports.",
+  status: "available",
+  docsUrl: "https://developer.xero.com/documentation/",
+};
+
 const accountingIntegrations: Integration[] = [
-  {
-    id: "xero",
-    name: "Xero",
-    description:
-      "Sync invoices, expenses, and bank transactions. Automate reconciliation and generate financial reports.",
-    status: "connected",
-    docsUrl: "https://developer.xero.com/documentation/",
-  },
   {
     id: "myob",
     name: "MYOB Business",
     description:
       "Connect accounts payable and receivable. Import transactions and export journals seamlessly.",
-    status: "available",
+    status: "coming-soon",
     docsUrl: "https://developer.myob.com/api/accountright/",
   },
   {
@@ -92,7 +96,10 @@ const payrollIntegrations: Integration[] = [
   },
 ];
 
-export default function IntegrationsPage() {
+export default async function IntegrationsPage() {
+  const user = await getAuthUser();
+  const xeroConnection = user ? await getActiveXeroConnection(user.id) : null;
+
   return (
     <div className="space-y-8">
       <SettingsSection
@@ -100,6 +107,17 @@ export default function IntegrationsPage() {
         title="Accounting"
       >
         <div className="grid gap-4 md:grid-cols-2">
+          <XeroIntegrationCard
+            initialConnection={
+              xeroConnection
+                ? {
+                    tenantName: xeroConnection.tenantName ?? "Unknown",
+                    expiresAt: xeroConnection.expiresAt,
+                  }
+                : null
+            }
+            integration={xeroIntegration}
+          />
           {accountingIntegrations.map((integration) => (
             <IntegrationCard integration={integration} key={integration.id} />
           ))}
