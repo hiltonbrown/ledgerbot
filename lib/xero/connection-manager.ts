@@ -1,9 +1,17 @@
 import "server-only";
 
 import { XeroClient } from "xero-node";
-import { getActiveXeroConnection, updateXeroTokens } from "@/lib/db/queries";
+import {
+  getActiveXeroConnection,
+  getXeroConnectionById,
+  updateXeroTokens,
+} from "@/lib/db/queries";
 import { decryptToken, encryptToken } from "./encryption";
-import type { DecryptedXeroConnection, XeroTenant } from "./types";
+import type {
+  DecryptedXeroConnection,
+  XeroConnection,
+  XeroTenant,
+} from "./types";
 
 const XERO_SCOPES = [
   "offline_access",
@@ -78,8 +86,8 @@ export async function getDecryptedConnection(
 
 async function refreshXeroToken(
   connectionId: string
-): Promise<typeof connection | null> {
-  const connection = await getActiveXeroConnection("");
+): Promise<XeroConnection | null> {
+  const connection = await getXeroConnectionById(connectionId);
 
   if (!connection) {
     return null;
@@ -91,13 +99,18 @@ async function refreshXeroToken(
     const decryptedAccessToken = decryptToken(connection.accessToken);
     const decryptedRefreshToken = decryptToken(connection.refreshToken);
 
+    await xeroClient.initialize();
+
     // Set the current token set before refreshing
     await xeroClient.setTokenSet({
       access_token: decryptedAccessToken,
       refresh_token: decryptedRefreshToken,
       token_type: "Bearer",
-      expires_in: Math.floor(
-        (new Date(connection.expiresAt).getTime() - Date.now()) / 1000
+      expires_in: Math.max(
+        Math.floor(
+          (new Date(connection.expiresAt).getTime() - Date.now()) / 1000
+        ),
+        0
       ),
     });
 

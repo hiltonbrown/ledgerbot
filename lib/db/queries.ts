@@ -881,6 +881,25 @@ export async function getActiveXeroConnection(
   }
 }
 
+export async function getXeroConnectionById(
+  id: string
+): Promise<XeroConnection | null> {
+  try {
+    const [connection] = await db
+      .select()
+      .from(xeroConnection)
+      .where(eq(xeroConnection.id, id))
+      .limit(1);
+
+    return connection ?? null;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get Xero connection"
+    );
+  }
+}
+
 export async function getXeroConnectionsByUserId(
   userId: string
 ): Promise<XeroConnection[]> {
