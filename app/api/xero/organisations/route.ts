@@ -36,10 +36,7 @@ export async function GET(request: Request) {
       context = await getChatXeroContextForUser(user.id, chatId);
     }
 
-    const activeTenantIds =
-      (context?.activeTenantIds?.length ?? 0) > 0
-        ? context?.activeTenantIds ?? []
-        : [];
+    const activeTenantIds = context?.activeTenantIds ?? [];
 
     const selectedTenantId =
       activeTenantIds[0] ??
