@@ -164,7 +164,7 @@ chatXeroContext {
 
 | Table | Purpose | Key Indexes |
 |-------|---------|-------------|
-| `XeroInvoiceCache` | Cached invoices with metadata (`status`, `contactId`, `date`, `amountDue`, etc.) | `tenantId`, `(tenantId, invoiceId)` unique, `status`, `contactId`, `date`, `isStale`, `expiresAt` |
+| `XeroInvoiceCache` | Cached invoices with metadata (`invoiceId`, `status`, `contactId`, `date`, `amountDue`, `isStale`, `expiresAt`) | `tenantId`, `(tenantId, invoiceId)` unique, `status`, `contactId`, `date`, `isStale`, `expiresAt` |
 | `XeroContactCache` | Cached contacts with name/email search fields | `tenantId`, `(tenantId, contactId)` unique, `name`, `emailAddress`, `isStale` |
 | `XeroAccountCache` | Cached chart-of-accounts entries | `tenantId`, `(tenantId, accountId)` unique, `type` |
 | `XeroBankTransactionCache` | Cached bank transactions | `tenantId`, `(tenantId, bankTransactionId)` unique, `bankAccountId`, `date` |
