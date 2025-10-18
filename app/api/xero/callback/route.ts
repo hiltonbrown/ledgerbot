@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
-import { createXeroConnection } from "@/lib/db/queries";
+import { createXeroConnection, getActiveXeroConnections } from "@/lib/db/queries";
 import {
   createXeroClient,
   getXeroScopes,
@@ -76,22 +76,27 @@ export async function GET(request: Request) {
       );
     }
 
-    // Use the first tenant (or could allow user to select)
-    const tenant = tenants[0];
-
     // Calculate expiry time
     const expiresAt = new Date(Date.now() + tokenSet.expires_in * 1000);
 
-    // Encrypt and store tokens
-    await createXeroConnection({
-      userId: user.id,
-      tenantId: tenant.tenantId,
-      tenantName: tenant.tenantName,
-      accessToken: encryptToken(tokenSet.access_token),
-      refreshToken: encryptToken(tokenSet.refresh_token),
-      expiresAt,
-      scopes: getXeroScopes(),
-    });
+    const existingConnections = await getActiveXeroConnections(user.id);
+    const isFirstConnection = existingConnections.length === 0;
+
+    for (let i = 0; i < tenants.length; i++) {
+      const tenant = tenants[i];
+      await createXeroConnection({
+        userId: user.id,
+        tenantId: tenant.tenantId,
+        tenantName: tenant.tenantName,
+        tenantType: tenant.tenantType,
+        accessToken: encryptToken(tokenSet.access_token),
+        refreshToken: encryptToken(tokenSet.refresh_token),
+        expiresAt,
+        scopes: getXeroScopes(),
+        isPrimary: isFirstConnection && i === 0,
+        displayOrder: i,
+      });
+    }
 
     // Redirect to settings page with success
     return NextResponse.redirect(
