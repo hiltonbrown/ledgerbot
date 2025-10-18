@@ -154,8 +154,9 @@ async function processEvent(event: typeof xeroWebhookEvent.$inferSelect) {
           break;
         }
         case "ACCOUNT": {
-          const response = await client.accountingApi.getAccounts(
-            event.tenantId
+          const response = await client.accountingApi.getAccount(
+            event.tenantId,
+            event.resourceId
           );
           if (response.body.accounts) {
             await cacheAccounts(event.tenantId, response.body.accounts);
