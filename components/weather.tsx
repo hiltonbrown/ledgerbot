@@ -5,28 +5,78 @@ import { format, isWithinInterval } from "date-fns";
 import { useEffect, useState } from "react";
 
 const SunIcon = ({ size = 40 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <circle cx="12" cy="12" r="5" fill="currentColor" />
-    <line x1="12" y1="1" x2="12" y2="3" stroke="currentColor" strokeWidth="2" />
-    <line x1="12" y1="21" x2="12" y2="23" stroke="currentColor" strokeWidth="2" />
-    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" stroke="currentColor" strokeWidth="2" />
-    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" stroke="currentColor" strokeWidth="2" />
-    <line x1="1" y1="12" x2="3" y2="12" stroke="currentColor" strokeWidth="2" />
-    <line x1="21" y1="12" x2="23" y2="12" stroke="currentColor" strokeWidth="2" />
-    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" stroke="currentColor" strokeWidth="2" />
-    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" stroke="currentColor" strokeWidth="2" />
+  <svg fill="none" height={size} viewBox="0 0 24 24" width={size}>
+    <circle cx="12" cy="12" fill="currentColor" r="5" />
+    <line stroke="currentColor" strokeWidth="2" x1="12" x2="12" y1="1" y2="3" />
+    <line
+      stroke="currentColor"
+      strokeWidth="2"
+      x1="12"
+      x2="12"
+      y1="21"
+      y2="23"
+    />
+    <line
+      stroke="currentColor"
+      strokeWidth="2"
+      x1="4.22"
+      x2="5.64"
+      y1="4.22"
+      y2="5.64"
+    />
+    <line
+      stroke="currentColor"
+      strokeWidth="2"
+      x1="18.36"
+      x2="19.78"
+      y1="18.36"
+      y2="19.78"
+    />
+    <line stroke="currentColor" strokeWidth="2" x1="1" x2="3" y1="12" y2="12" />
+    <line
+      stroke="currentColor"
+      strokeWidth="2"
+      x1="21"
+      x2="23"
+      y1="12"
+      y2="12"
+    />
+    <line
+      stroke="currentColor"
+      strokeWidth="2"
+      x1="4.22"
+      x2="5.64"
+      y1="19.78"
+      y2="18.36"
+    />
+    <line
+      stroke="currentColor"
+      strokeWidth="2"
+      x1="18.36"
+      x2="19.78"
+      y1="5.64"
+      y2="4.22"
+    />
   </svg>
 );
 
 const MoonIcon = ({ size = 40 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <path d="M21 12.79A9 9 0 1 1 11.21 3A7 7 0 0 0 21 12.79z" fill="currentColor" />
+  <svg fill="none" height={size} viewBox="0 0 24 24" width={size}>
+    <path
+      d="M21 12.79A9 9 0 1 1 11.21 3A7 7 0 0 0 21 12.79z"
+      fill="currentColor"
+    />
   </svg>
 );
 
 const CloudIcon = ({ size = 24 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" stroke="currentColor" strokeWidth="2" fill="none" />
+  <svg fill="none" height={size} viewBox="0 0 24 24" width={size}>
+    <path
+      d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    />
   </svg>
 );
 
@@ -39,30 +89,31 @@ type WeatherAtLocation = {
   timezone_abbreviation: string;
   elevation: number;
   cityName?: string;
-  current_units: {
+  error?: string;
+  current_units?: {
     time: string;
     interval: string;
     temperature_2m: string;
   };
-  current: {
+  current?: {
     time: string;
     interval: number;
     temperature_2m: number;
   };
-  hourly_units: {
+  hourly_units?: {
     time: string;
     temperature_2m: string;
   };
-  hourly: {
+  hourly?: {
     time: string[];
     temperature_2m: number[];
   };
-  daily_units: {
+  daily_units?: {
     time: string;
     sunrise: string;
     sunset: string;
   };
-  daily: {
+  daily?: {
     time: string[];
     sunrise: string[];
     sunset: string[];
@@ -233,18 +284,6 @@ export function Weather({
 }: {
   weatherAtLocation?: WeatherAtLocation;
 }) {
-  const currentHigh = Math.max(
-    ...weatherAtLocation.hourly.temperature_2m.slice(0, 24)
-  );
-  const currentLow = Math.min(
-    ...weatherAtLocation.hourly.temperature_2m.slice(0, 24)
-  );
-
-  const isDay = isWithinInterval(new Date(weatherAtLocation.current.time), {
-    start: new Date(weatherAtLocation.daily.sunrise[0]),
-    end: new Date(weatherAtLocation.daily.sunset[0]),
-  });
-
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -258,101 +297,145 @@ export function Weather({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  if (weatherAtLocation.error) {
+    return (
+      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-500">
+        Error: {weatherAtLocation.error}
+      </div>
+    );
+  }
+
+  if (
+    !weatherAtLocation.current ||
+    !weatherAtLocation.hourly ||
+    !weatherAtLocation.daily ||
+    !weatherAtLocation.current_units
+  ) {
+    return (
+      <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-yellow-600">
+        Weather data is incomplete. Please try again.
+      </div>
+    );
+  }
+
+  // Type assertion since we've checked above
+  const current = weatherAtLocation.current;
+  const hourly = weatherAtLocation.hourly;
+  const daily = weatherAtLocation.daily;
+  const currentUnits = weatherAtLocation.current_units;
+
+  const currentHigh = Math.max(...hourly.temperature_2m.slice(0, 24));
+  const currentLow = Math.min(...hourly.temperature_2m.slice(0, 24));
+
+  const isDay = isWithinInterval(new Date(current.time), {
+    start: new Date(daily.sunrise[0]),
+    end: new Date(daily.sunset[0]),
+  });
+
   const hoursToShow = isMobile ? 5 : 6;
 
   // Find the index of the current time or the next closest time
   const currentTimeIndex = weatherAtLocation.hourly.time.findIndex(
-    (time) => new Date(time) >= new Date(weatherAtLocation.current.time)
+    (time) => new Date(time) >= new Date(current.time)
   );
 
   // Slice the arrays to get the desired number of items
-  const displayTimes = weatherAtLocation.hourly.time.slice(
+  const displayTimes = hourly.time.slice(
     currentTimeIndex,
     currentTimeIndex + hoursToShow
   );
-  const displayTemperatures = weatherAtLocation.hourly.temperature_2m.slice(
+  const displayTemperatures = hourly.temperature_2m.slice(
     currentTimeIndex,
     currentTimeIndex + hoursToShow
   );
 
-  const location = weatherAtLocation.cityName || 
+  const location =
+    weatherAtLocation.cityName ||
     `${weatherAtLocation.latitude?.toFixed(1)}°, ${weatherAtLocation.longitude?.toFixed(1)}°`;
 
   return (
     <div
       className={cx(
-        "relative flex w-full flex-col gap-6 rounded-3xl p-6 shadow-lg overflow-hidden backdrop-blur-sm",
+        "relative flex w-full flex-col gap-6 overflow-hidden rounded-3xl p-6 shadow-lg backdrop-blur-sm",
         {
           "bg-gradient-to-br from-sky-400 via-blue-500 to-blue-600": isDay,
         },
         {
-          "bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-900": !isDay,
+          "bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-900":
+            !isDay,
         }
       )}
     >
       <div className="absolute inset-0 bg-white/10 backdrop-blur-sm" />
-      
+
       <div className="relative z-10">
-        <div className="flex items-center justify-between mb-4">
-          <div className="text-white/80 text-sm font-medium">
-            {location}
-          </div>
+        <div className="mb-4 flex items-center justify-between">
+          <div className="font-medium text-sm text-white/80">{location}</div>
           <div className="text-white/60 text-xs">
-            {format(new Date(weatherAtLocation.current.time), "MMM d, h:mm a")}
+            {format(new Date(current.time), "MMM d, h:mm a")}
           </div>
         </div>
 
-        <div className="flex items-center justify-between mb-6">
+        <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className={cx("text-white/90", { "text-yellow-200": isDay, "text-blue-200": !isDay })}>
+            <div
+              className={cx("text-white/90", {
+                "text-yellow-200": isDay,
+                "text-blue-200": !isDay,
+              })}
+            >
               {isDay ? <SunIcon size={48} /> : <MoonIcon size={48} />}
             </div>
-            <div className="text-white text-5xl font-light">
-              {n(weatherAtLocation.current.temperature_2m)}
+            <div className="font-light text-5xl text-white">
+              {n(current.temperature_2m)}
               <span className="text-2xl text-white/80">
-                {weatherAtLocation.current_units.temperature_2m}
+                {currentUnits.temperature_2m}
               </span>
             </div>
           </div>
 
           <div className="text-right">
-            <div className="text-white/90 text-sm font-medium">
+            <div className="font-medium text-sm text-white/90">
               H: {n(currentHigh)}°
             </div>
-            <div className="text-white/70 text-sm">
-              L: {n(currentLow)}°
-            </div>
+            <div className="text-sm text-white/70">L: {n(currentLow)}°</div>
           </div>
         </div>
 
-        <div className="bg-white/10 rounded-2xl p-4 backdrop-blur-sm">
-          <div className="text-white/80 text-sm mb-3 font-medium">
+        <div className="rounded-2xl bg-white/10 p-4 backdrop-blur-sm">
+          <div className="mb-3 font-medium text-sm text-white/80">
             Hourly Forecast
           </div>
           <div className="flex justify-between gap-2">
             {displayTimes.map((time, index) => {
               const hourTime = new Date(time);
-              const isCurrentHour = hourTime.getHours() === new Date().getHours();
-              
+              const isCurrentHour =
+                hourTime.getHours() === new Date().getHours();
+
               return (
-                <div 
+                <div
                   className={cx(
-                    "flex flex-col items-center gap-2 py-2 px-1 rounded-lg min-w-0 flex-1",
+                    "flex min-w-0 flex-1 flex-col items-center gap-2 rounded-lg px-1 py-2",
                     {
                       "bg-white/20": isCurrentHour,
                     }
-                  )} 
+                  )}
                   key={time}
                 >
-                  <div className="text-white/70 text-xs font-medium">
+                  <div className="font-medium text-white/70 text-xs">
                     {index === 0 ? "Now" : format(hourTime, "ha")}
                   </div>
-                  
-                  <div className={cx("text-white/60", { "text-yellow-200": isDay, "text-blue-200": !isDay })}>
+
+                  <div
+                    className={cx("text-white/60", {
+                      "text-yellow-200": isDay,
+                      "text-blue-200": !isDay,
+                    })}
+                  >
                     <CloudIcon size={20} />
                   </div>
-                  
-                  <div className="text-white text-sm font-medium">
+
+                  <div className="font-medium text-sm text-white">
                     {n(displayTemperatures[index])}°
                   </div>
                 </div>
@@ -361,9 +444,9 @@ export function Weather({
           </div>
         </div>
 
-        <div className="flex justify-between text-white/60 text-xs mt-4">
-          <div>Sunrise: {format(new Date(weatherAtLocation.daily.sunrise[0]), "h:mm a")}</div>
-          <div>Sunset: {format(new Date(weatherAtLocation.daily.sunset[0]), "h:mm a")}</div>
+        <div className="mt-4 flex justify-between text-white/60 text-xs">
+          <div>Sunrise: {format(new Date(daily.sunrise[0]), "h:mm a")}</div>
+          <div>Sunset: {format(new Date(daily.sunset[0]), "h:mm a")}</div>
         </div>
       </div>
     </div>
