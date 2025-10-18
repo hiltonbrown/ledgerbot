@@ -1338,33 +1338,15 @@ export async function updateXeroConnectionMetadata({
       updatedAt: Date;
     } = {
       updatedAt: new Date(),
+      ...(tenantName !== undefined && { tenantName: tenantName ?? null }),
+      ...(tenantType !== undefined && { tenantType: tenantType ?? null }),
+      ...(connectionId !== undefined && { connectionId: connectionId ?? null }),
+      ...(authEventId !== undefined && { authEventId: authEventId ?? null }),
+      ...(createdDateUtc !== undefined && { createdDateUtc: createdDateUtc ?? null }),
+      ...(updatedDateUtc !== undefined && { updatedDateUtc: updatedDateUtc ?? null }),
+      ...(displayOrder !== undefined && { displayOrder }),
+      ...(isActive !== undefined && { isActive }),
     };
-
-    if (tenantName !== undefined) {
-      updateData.tenantName = tenantName ?? null;
-    }
-    if (tenantType !== undefined) {
-      updateData.tenantType = tenantType ?? null;
-    }
-    if (connectionId !== undefined) {
-      updateData.connectionId = connectionId ?? null;
-    }
-    if (authEventId !== undefined) {
-      updateData.authEventId = authEventId ?? null;
-    }
-    if (createdDateUtc !== undefined) {
-      updateData.createdDateUtc = createdDateUtc ?? null;
-    }
-    if (updatedDateUtc !== undefined) {
-      updateData.updatedDateUtc = updatedDateUtc ?? null;
-    }
-    if (displayOrder !== undefined) {
-      updateData.displayOrder = displayOrder;
-    }
-    if (isActive !== undefined) {
-      updateData.isActive = isActive;
-    }
-
     const [connection] = await db
       .update(xeroConnection)
       .set(updateData)
