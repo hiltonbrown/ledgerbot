@@ -45,8 +45,11 @@ export async function POST(request: Request) {
     const data = JSON.parse(payload) as { events: any[] };
 
     for (const event of data.events ?? []) {
+      // Generate a unique eventId using a SHA-256 hash of the key fields
+      const eventIdSource = `${event.tenantId}|${event.resourceId}|${event.eventDateUtc}`;
+      const eventId = crypto.createHash("sha256").update(eventIdSource).digest("hex");
       await db.insert(xeroWebhookEvent).values({
-        eventId: `${event.tenantId}-${event.resourceId}-${event.eventDateUtc}`,
+        eventId,
         tenantId: event.tenantId,
         tenantType: event.tenantType,
         eventCategory: event.eventCategory,
