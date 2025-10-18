@@ -18,7 +18,7 @@ const XERO_SCOPES = [
   "payroll.timesheets",
 ];
 
-export function createXeroClient(): XeroClient {
+export function createXeroClient(state?: string): XeroClient {
   const clientId = process.env.XERO_CLIENT_ID;
   const clientSecret = process.env.XERO_CLIENT_SECRET;
   const redirectUri = process.env.XERO_REDIRECT_URI;
@@ -34,6 +34,7 @@ export function createXeroClient(): XeroClient {
     clientSecret,
     redirectUris: [redirectUri],
     scopes: XERO_SCOPES,
+    state,
   });
 }
 
@@ -78,12 +79,13 @@ export async function getDecryptedConnection(
 async function refreshXeroToken(
   connectionId: string
 ): Promise<typeof connection | null> {
-  const xeroClient = createXeroClient();
   const connection = await getActiveXeroConnection("");
 
   if (!connection) {
     return null;
   }
+
+  const xeroClient = createXeroClient();
 
   try {
     const decryptedAccessToken = decryptToken(connection.accessToken);
@@ -149,10 +151,9 @@ export async function getXeroTenants(
 }
 
 export async function getXeroAuthUrl(state: string): Promise<string> {
-  const xeroClient = createXeroClient();
+  const xeroClient = createXeroClient(state);
   const url = await xeroClient.buildConsentUrl();
-  // Append state parameter manually
-  return `${url}&state=${encodeURIComponent(state)}`;
+  return url;
 }
 
 export function getXeroScopes(): string[] {

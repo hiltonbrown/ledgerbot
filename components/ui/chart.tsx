@@ -122,7 +122,7 @@ export function ChartTooltipContent({
   );
 }
 
-export type ChartLegendProps = LegendProps & {
+export type ChartLegendProps = Omit<LegendProps, "ref"> & {
   content?: LegendProps["content"];
 };
 
@@ -130,9 +130,7 @@ export function ChartLegend({ content, ...props }: ChartLegendProps) {
   const defaultContent = (legendProps: any) => (
     <ChartLegendContent {...legendProps} />
   );
-  // Extract ref to avoid type conflicts with recharts Legend component
-  const { ref: _ref, ...restProps } = props as any;
-  return <Legend {...restProps} content={content ?? defaultContent} />;
+  return <Legend {...props} content={content ?? defaultContent} />;
 }
 
 export function ChartLegendContent({ payload }: LegendProps) {

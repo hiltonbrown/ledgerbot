@@ -56,7 +56,7 @@ export async function GET(request: Request) {
     }
 
     // Exchange code for tokens
-    const xeroClient = createXeroClient();
+    const xeroClient = createXeroClient(state);
     const tokenSet = await xeroClient.apiCallback(request.url);
 
     if (
