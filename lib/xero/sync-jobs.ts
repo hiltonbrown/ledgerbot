@@ -21,32 +21,7 @@ import {
 import { getConnectionSafe } from "@/lib/xero/connection-pool";
 import { withXeroContext } from "@/lib/xero/request-context";
 
-function createClient(connection: {
-  accessToken: string;
-  refreshToken: string;
-  expiresAt: Date;
-  scopes: string[];
-}) {
-  const client = new XeroClient({
-    clientId: process.env.XERO_CLIENT_ID || "",
-    clientSecret: process.env.XERO_CLIENT_SECRET || "",
-    redirectUris: [process.env.XERO_REDIRECT_URI || ""],
-    scopes: connection.scopes,
-  });
-
-  client.setTokenSet({
-    access_token: connection.accessToken,
-    refresh_token: connection.refreshToken,
-    token_type: "Bearer",
-    expires_in: Math.max(
-      Math.floor((new Date(connection.expiresAt).getTime() - Date.now()) / 1000),
-      0
-    ),
-  });
-
-  return client;
-}
-
+import { createClient } from "@/lib/xero/client-utils";
 export async function fullSyncJob(): Promise<void> {
   const connections = await db
     .select({ tenantId: xeroConnection.tenantId })
