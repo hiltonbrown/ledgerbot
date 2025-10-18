@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
+import { getActiveXeroConnection } from "@/lib/db/queries";
 import { SettingsHeader } from "../_components/settings-header";
 
 export const dynamic = "force-dynamic";
@@ -13,11 +14,20 @@ export default async function SettingsLayout({
   children: React.ReactNode;
 }) {
   const [user, cookieStore] = await Promise.all([getAuthUser(), cookies()]);
+  const xeroConnection = user
+    ? await getActiveXeroConnection(user.id)
+    : null;
+  const sidebarXeroConnection = xeroConnection
+    ? {
+        tenantId: xeroConnection.tenantId,
+        tenantName: xeroConnection.tenantName ?? null,
+      }
+    : null;
   const isCollapsed = cookieStore.get("sidebar_state")?.value !== "true";
 
   return (
     <SidebarProvider defaultOpen={!isCollapsed}>
-      <AppSidebar user={user} />
+      <AppSidebar user={user} xeroConnection={sidebarXeroConnection} />
       <SidebarInset>
         <div className="flex min-h-svh flex-col">
           <header className="border-b bg-background">

@@ -9,6 +9,13 @@ import { PlusIcon } from "@/components/icons";
 import { SidebarHistory } from "@/components/sidebar-history";
 import { Button } from "@/components/ui/button";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
@@ -20,10 +27,23 @@ import {
 import type { AuthUser } from "@/lib/types/auth";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
-export function AppSidebar({ user }: { user: AuthUser | null }) {
+type SidebarXeroConnection = {
+  tenantId: string;
+  tenantName: string | null;
+} | null;
+
+export function AppSidebar({
+  user,
+  xeroConnection,
+}: {
+  user: AuthUser | null;
+  xeroConnection?: SidebarXeroConnection;
+}) {
   const router = useRouter();
   const { setOpenMobile } = useSidebar();
   const { setTheme, resolvedTheme } = useTheme();
+  const xeroTenantName =
+    xeroConnection?.tenantName?.trim() || "Xero organisation";
 
   return (
     <Sidebar className="group-data-[side=left]:border-r-0">
@@ -61,6 +81,25 @@ export function AppSidebar({ user }: { user: AuthUser | null }) {
               </TooltipContent>
             </Tooltip>
           </div>
+          {xeroConnection ? (
+            <Select defaultValue={xeroConnection.tenantId}>
+              <SelectTrigger
+                aria-label="Active Xero organisation"
+                className="mt-3 h-9 w-full border border-border/40 bg-muted/40 px-2 text-left text-sm font-medium shadow-none focus:ring-0 data-[disabled]:cursor-default data-[disabled]:opacity-100"
+              >
+                <SelectValue placeholder="Xero organisation" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={xeroConnection.tenantId}>
+                  {xeroTenantName}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          ) : (
+            <div className="mt-3 rounded-md bg-muted/30 px-2 py-2 text-xs text-muted-foreground">
+              Connect Xero to display your organisation.
+            </div>
+          )}
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
