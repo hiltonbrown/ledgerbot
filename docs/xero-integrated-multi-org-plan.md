@@ -263,7 +263,7 @@ chatXeroContext {
 ### 4. Chat Header Integration (`components/chat-header.tsx`)
 
 - Fetches organisations via `/api/xero/organisations`.
-- Stores selection to `/api/xero/set-active` (to be implemented) for conversation context.
+- Stores selection to `/api/xero/set-active` (**not yet implemented – planned for future release**) for conversation context.
 - Signals multi-org context to AI prompts.
 
 ---
