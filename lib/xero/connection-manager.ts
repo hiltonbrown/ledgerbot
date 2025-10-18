@@ -2,9 +2,15 @@ import "server-only";
 
 import { XeroClient } from "xero-node";
 import {
-  getActiveXeroConnection,
+  getActiveXeroConnections,
+  getXeroConnectionsByUserId,
+  getPrimaryXeroConnection,
   getXeroConnectionById,
+  getXeroConnectionByTenantId,
+  getXeroConnectionByTenant,
+  updateXeroConnectionMetadata,
   updateXeroTokens,
+  deactivateXeroConnection,
 } from "@/lib/db/queries";
 import { decryptToken, encryptToken } from "./encryption";
 import type {
@@ -47,21 +53,26 @@ export function createXeroClient(state?: string): XeroClient {
 }
 
 export async function getDecryptedConnection(
-  userId: string
+  userId: string,
+  tenantId?: string
 ): Promise<DecryptedXeroConnection | null> {
-  const connection = await getActiveXeroConnection(userId);
+  let connection: XeroConnection | null;
+
+  if (tenantId) {
+    connection = await getXeroConnectionByTenantId(userId, tenantId);
+  } else {
+    connection = await getPrimaryXeroConnection(userId);
+  }
 
   if (!connection) {
     return null;
   }
 
-  // Check if token is expired or expiring soon (within 5 minutes)
   const expiresAt = new Date(connection.expiresAt);
   const now = new Date();
   const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
 
   if (expiresAt <= fiveMinutesFromNow) {
-    // Token needs refresh
     try {
       const refreshedConnection = await refreshXeroToken(connection.id);
       if (refreshedConnection) {
@@ -84,7 +95,59 @@ export async function getDecryptedConnection(
   };
 }
 
-async function refreshXeroToken(
+export async function getAllDecryptedConnections(
+  userId: string
+): Promise<DecryptedXeroConnection[]> {
+  const connections = await getActiveXeroConnections(userId);
+  const decrypted: DecryptedXeroConnection[] = [];
+
+  for (const connection of connections) {
+    const refreshed = await getDecryptedConnection(userId, connection.tenantId);
+    if (refreshed) {
+      decrypted.push(refreshed);
+    }
+  }
+
+  return decrypted;
+}
+
+export async function getDecryptedConnectionForTenant(
+  tenantId: string
+): Promise<DecryptedXeroConnection | null> {
+  const connection = await getXeroConnectionByTenant(tenantId);
+
+  if (!connection) {
+    return null;
+  }
+
+  const expiresAt = new Date(connection.expiresAt);
+  const now = new Date();
+  const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
+
+  if (expiresAt <= fiveMinutesFromNow) {
+    try {
+      const refreshed = await refreshXeroToken(connection.id);
+      if (refreshed) {
+        return {
+          ...refreshed,
+          accessToken: decryptToken(refreshed.accessToken),
+          refreshToken: decryptToken(refreshed.refreshToken),
+        };
+      }
+    } catch (error) {
+      console.error("Failed to refresh Xero token:", error);
+      return null;
+    }
+  }
+
+  return {
+    ...connection,
+    accessToken: decryptToken(connection.accessToken),
+    refreshToken: decryptToken(connection.refreshToken),
+  };
+}
+
+export async function refreshXeroToken(
   connectionId: string
 ): Promise<XeroConnection | null> {
   const connection = await getXeroConnectionById(connectionId);
@@ -101,7 +164,6 @@ async function refreshXeroToken(
 
     await xeroClient.initialize();
 
-    // Set the current token set before refreshing
     await xeroClient.setTokenSet({
       access_token: decryptedAccessToken,
       refresh_token: decryptedRefreshToken,
@@ -114,7 +176,6 @@ async function refreshXeroToken(
       ),
     });
 
-    // Refresh the token (no arguments needed)
     const tokenSet = await xeroClient.refreshToken();
 
     if (!tokenSet.access_token || !tokenSet.refresh_token) {
@@ -171,4 +232,49 @@ export async function getXeroAuthUrl(state: string): Promise<string> {
 
 export function getXeroScopes(): string[] {
   return XERO_SCOPES;
+}
+
+export async function syncXeroConnections(
+  userId: string,
+  accessToken: string
+): Promise<void> {
+  const xeroClient = createXeroClient();
+  await xeroClient.setTokenSet({
+    access_token: accessToken,
+    refresh_token: "",
+    token_type: "Bearer",
+  });
+
+  const remoteConnections = await xeroClient.connections.getConnections();
+  const remoteByTenant = new Map(
+    remoteConnections.map((connection) => [connection.tenantId, connection])
+  );
+
+  const allConnections = await getXeroConnectionsByUserId(userId);
+
+  for (const connection of allConnections) {
+    const remote = remoteByTenant.get(connection.tenantId);
+
+    if (!remote) {
+      if (connection.isActive) {
+        await deactivateXeroConnection(connection.id);
+      }
+      continue;
+    }
+
+    await updateXeroConnectionMetadata({
+      id: connection.id,
+      tenantName: remote.tenantName,
+      tenantType: remote.tenantType,
+      connectionId: remote.connectionId,
+      authEventId: remote.authEventId,
+      createdDateUtc: remote.createdDateUtc
+        ? new Date(remote.createdDateUtc)
+        : null,
+      updatedDateUtc: remote.updatedDateUtc
+        ? new Date(remote.updatedDateUtc)
+        : null,
+      isActive: true,
+    });
+  }
 }

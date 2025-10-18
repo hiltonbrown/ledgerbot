@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import {
   boolean,
@@ -5,10 +6,12 @@ import {
   integer,
   json,
   jsonb,
+  numeric,
   pgTable,
   primaryKey,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
@@ -225,26 +228,218 @@ export const userSettings = pgTable("UserSettings", {
         order: number;
       }>
     >(),
+  xeroMultiOrgMode: boolean("xeroMultiOrgMode").default(false),
+  xeroDefaultTenantId: varchar("xeroDefaultTenantId", { length: 255 }),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });
 
 export type UserSettings = InferSelectModel<typeof userSettings>;
 
-export const xeroConnection = pgTable("XeroConnection", {
+export const xeroConnection = pgTable(
+  "XeroConnection",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: uuid("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    tenantId: varchar("tenantId", { length: 255 }).notNull(),
+    tenantName: varchar("tenantName", { length: 255 }),
+    tenantType: varchar("tenantType", { length: 50 }),
+    accessToken: text("accessToken").notNull(), // Encrypted
+    refreshToken: text("refreshToken").notNull(), // Encrypted
+    expiresAt: timestamp("expiresAt").notNull(),
+    scopes: jsonb("scopes").$type<string[]>().notNull(),
+    isActive: boolean("isActive").notNull().default(true),
+    isPrimary: boolean("isPrimary").notNull().default(false),
+    displayOrder: integer("displayOrder").default(0),
+    connectionId: varchar("connectionId", { length: 255 }),
+    authEventId: varchar("authEventId", { length: 255 }),
+    createdDateUtc: timestamp("createdDateUtc"),
+    updatedDateUtc: timestamp("updatedDateUtc"),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  },
+  (table) => ({
+    userTenantUnique: uniqueIndex("xero_connection_user_tenant_idx").on(
+      table.userId,
+      table.tenantId
+    ),
+    connectionIdUnique: uniqueIndex("xero_connection_id_idx")
+      .on(table.connectionId)
+      .where(sql`"connectionId" IS NOT NULL`),
+  })
+);
+
+export type XeroConnection = InferSelectModel<typeof xeroConnection>;
+
+export const chatXeroContext = pgTable(
+  "ChatXeroContext",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    chatId: uuid("chatId")
+      .notNull()
+      .references(() => chat.id, { onDelete: "cascade" }),
+    activeTenantIds: jsonb("activeTenantIds"),
+    multiOrgEnabled: boolean("multiOrgEnabled").default(false),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  },
+  (table) => ({
+    chatUnique: uniqueIndex("chat_xero_context_chat_unique").on(table.chatId),
+  })
+);
+
+export type ChatXeroContext = InferSelectModel<typeof chatXeroContext>;
+
+export const xeroInvoiceCache = pgTable(
+  "XeroInvoiceCache",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    tenantId: varchar("tenantId", { length: 255 }).notNull(),
+    invoiceId: varchar("invoiceId", { length: 255 }).notNull(),
+    invoiceNumber: varchar("invoiceNumber", { length: 255 }),
+    data: jsonb("data").notNull(),
+    cachedAt: timestamp("cachedAt").notNull().defaultNow(),
+    lastModifiedAt: timestamp("lastModifiedAt").notNull(),
+    expiresAt: timestamp("expiresAt").notNull(),
+    isStale: boolean("isStale").notNull().default(false),
+    status: varchar("status", { length: 50 }),
+    contactId: varchar("contactId", { length: 255 }),
+    date: timestamp("date"),
+    dueDate: timestamp("dueDate"),
+    total: numeric("total", { precision: 19, scale: 4 }),
+    amountDue: numeric("amountDue", { precision: 19, scale: 4 }),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  },
+  (table) => ({
+    invoiceUnique: uniqueIndex("xero_invoice_cache_unique").on(
+      table.tenantId,
+      table.invoiceId
+    ),
+  })
+);
+
+export type XeroInvoiceCache = InferSelectModel<typeof xeroInvoiceCache>;
+
+export const xeroContactCache = pgTable(
+  "XeroContactCache",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    tenantId: varchar("tenantId", { length: 255 }).notNull(),
+    contactId: varchar("contactId", { length: 255 }).notNull(),
+    data: jsonb("data").notNull(),
+    cachedAt: timestamp("cachedAt").notNull().defaultNow(),
+    lastModifiedAt: timestamp("lastModifiedAt").notNull(),
+    expiresAt: timestamp("expiresAt").notNull(),
+    isStale: boolean("isStale").notNull().default(false),
+    name: varchar("name", { length: 500 }),
+    emailAddress: varchar("emailAddress", { length: 500 }),
+    contactStatus: varchar("contactStatus", { length: 50 }),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  },
+  (table) => ({
+    contactUnique: uniqueIndex("xero_contact_cache_unique").on(
+      table.tenantId,
+      table.contactId
+    ),
+  })
+);
+
+export type XeroContactCache = InferSelectModel<typeof xeroContactCache>;
+
+export const xeroAccountCache = pgTable(
+  "XeroAccountCache",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    tenantId: varchar("tenantId", { length: 255 }).notNull(),
+    accountId: varchar("accountId", { length: 255 }).notNull(),
+    data: jsonb("data").notNull(),
+    cachedAt: timestamp("cachedAt").notNull().defaultNow(),
+    lastModifiedAt: timestamp("lastModifiedAt").notNull(),
+    expiresAt: timestamp("expiresAt").notNull(),
+    isStale: boolean("isStale").notNull().default(false),
+    code: varchar("code", { length: 50 }),
+    name: varchar("name", { length: 500 }),
+    type: varchar("type", { length: 50 }),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  },
+  (table) => ({
+    accountUnique: uniqueIndex("xero_account_cache_unique").on(
+      table.tenantId,
+      table.accountId
+    ),
+  })
+);
+
+export type XeroAccountCache = InferSelectModel<typeof xeroAccountCache>;
+
+export const xeroBankTransactionCache = pgTable(
+  "XeroBankTransactionCache",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    tenantId: varchar("tenantId", { length: 255 }).notNull(),
+    bankTransactionId: varchar("bankTransactionId", { length: 255 }).notNull(),
+    data: jsonb("data").notNull(),
+    cachedAt: timestamp("cachedAt").notNull().defaultNow(),
+    lastModifiedAt: timestamp("lastModifiedAt").notNull(),
+    expiresAt: timestamp("expiresAt").notNull(),
+    isStale: boolean("isStale").notNull().default(false),
+    bankAccountId: varchar("bankAccountId", { length: 255 }),
+    date: timestamp("date"),
+    status: varchar("status", { length: 50 }),
+    total: numeric("total", { precision: 19, scale: 4 }),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  },
+  (table) => ({
+    bankTransactionUnique: uniqueIndex(
+      "xero_bank_transaction_cache_unique"
+    ).on(table.tenantId, table.bankTransactionId),
+  })
+);
+
+export type XeroBankTransactionCache = InferSelectModel<
+  typeof xeroBankTransactionCache
+>;
+
+export const xeroCacheSyncStatus = pgTable("XeroCacheSyncStatus", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),
-  userId: uuid("userId")
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
   tenantId: varchar("tenantId", { length: 255 }).notNull(),
-  tenantName: varchar("tenantName", { length: 255 }),
-  accessToken: text("accessToken").notNull(), // Encrypted
-  refreshToken: text("refreshToken").notNull(), // Encrypted
-  expiresAt: timestamp("expiresAt").notNull(),
-  scopes: jsonb("scopes").$type<string[]>().notNull(),
-  isActive: boolean("isActive").notNull().default(true),
+  entityType: varchar("entityType", { length: 50 }).notNull(),
+  lastSyncAt: timestamp("lastSyncAt"),
+  lastSuccessAt: timestamp("lastSuccessAt"),
+  lastFailureAt: timestamp("lastFailureAt"),
+  syncStatus: varchar("syncStatus", { length: 50 }).notNull().default("pending"),
+  errorMessage: text("errorMessage"),
+  recordCount: integer("recordCount").default(0),
+  apiCallsUsed: integer("apiCallsUsed").default(0),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });
 
-export type XeroConnection = InferSelectModel<typeof xeroConnection>;
+export type XeroCacheSyncStatus = InferSelectModel<typeof xeroCacheSyncStatus>;
+
+export const xeroWebhookEvent = pgTable("XeroWebhookEvent", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  eventId: varchar("eventId", { length: 255 }).notNull(),
+  tenantId: varchar("tenantId", { length: 255 }).notNull(),
+  tenantType: varchar("tenantType", { length: 50 }).notNull(),
+  eventCategory: varchar("eventCategory", { length: 50 }).notNull(),
+  eventType: varchar("eventType", { length: 50 }).notNull(),
+  eventDateUtc: timestamp("eventDateUtc").notNull(),
+  resourceId: varchar("resourceId", { length: 255 }).notNull(),
+  resourceUrl: text("resourceUrl").notNull(),
+  processed: boolean("processed").notNull().default(false),
+  processedAt: timestamp("processedAt"),
+  processingError: text("processingError"),
+  retryCount: integer("retryCount").notNull().default(0),
+  nextAttemptAt: timestamp("nextAttemptAt"),
+  payload: jsonb("payload").notNull(),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+});
+
+export type XeroWebhookEvent = InferSelectModel<typeof xeroWebhookEvent>;

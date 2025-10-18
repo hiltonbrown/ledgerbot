@@ -1,7 +1,20 @@
 import "server-only";
 
+import { randomUUID } from "crypto";
 import { XeroClient } from "xero-node";
-import { getDecryptedConnection } from "@/lib/xero/connection-manager";
+import { getActiveXeroConnections } from "@/lib/db/queries";
+import {
+  cacheAccounts,
+  cacheBankTransactions,
+  cacheContacts,
+  cacheInvoices,
+  getCachedAccounts,
+  getCachedBankTransactions,
+  getCachedContacts,
+  getCachedInvoices,
+} from "@/lib/xero/cache-manager";
+import { getConnectionSafe } from "@/lib/xero/connection-pool";
+import { withXeroContext } from "@/lib/xero/request-context";
 import type { DecryptedXeroConnection } from "@/lib/xero/types";
 
 /**
@@ -31,13 +44,16 @@ export interface XeroMCPToolResult {
  * Get an authenticated Xero client for a user
  */
 async function getXeroClient(
-  userId: string
+  userId: string,
+  tenantId?: string
 ): Promise<{ client: XeroClient; connection: DecryptedXeroConnection }> {
-  const connection = await getDecryptedConnection(userId);
+  const connection = await getConnectionSafe(userId, tenantId);
 
   if (!connection) {
     throw new Error(
-      "No active Xero connection found. Please connect to Xero first."
+      tenantId
+        ? `No active Xero connection found for tenant ${tenantId}`
+        : "No active Xero connection found. Please connect to Xero first."
     );
   }
 
@@ -52,8 +68,9 @@ async function getXeroClient(
     access_token: connection.accessToken,
     refresh_token: connection.refreshToken,
     token_type: "Bearer",
-    expires_in: Math.floor(
-      (new Date(connection.expiresAt).getTime() - Date.now()) / 1000
+    expires_in: Math.max(
+      Math.floor((new Date(connection.expiresAt).getTime() - Date.now()) / 1000),
+      0
     ),
   });
 
@@ -221,13 +238,31 @@ export async function executeXeroMCPTool(
   args: Record<string, unknown>
 ): Promise<XeroMCPToolResult> {
   try {
-    const { client, connection } = await getXeroClient(userId);
+    const tenantId = args.tenantId as string | undefined;
+    const { tenantId: _, ...apiArgs } = args;
+    const { client, connection } = await getXeroClient(userId, tenantId);
 
-    switch (toolName) {
+    const executor = async (): Promise<XeroMCPToolResult> => {
+      switch (toolName) {
       case "xero_list_invoices": {
-        const { status, dateFrom, dateTo, contactId, limit = 100 } = args;
+        const { status, dateFrom, dateTo, contactId, limit = 100 } = apiArgs;
 
-        // Build where clause
+        const cached = await getCachedInvoices(connection.tenantId, {
+          status: status as string | undefined,
+          contactId: contactId as string | undefined,
+          dateFrom: dateFrom ? new Date(dateFrom as string) : undefined,
+          dateTo: dateTo ? new Date(dateTo as string) : undefined,
+          limit: limit as number | undefined,
+        });
+
+        if (cached.fromCache && !cached.isStale) {
+          return {
+            content: [
+              { type: "text", text: JSON.stringify(cached.data, null, 2) },
+            ],
+          };
+        }
+
         const whereClauses: string[] = [];
         if (status) whereClauses.push(`Status=="${status}"`);
         if (contactId)
@@ -240,19 +275,13 @@ export async function executeXeroMCPTool(
 
         const response = await client.accountingApi.getInvoices(
           connection.tenantId,
-          undefined, // ifModifiedSince
-          where,
-          undefined, // order
-          undefined, // IDs
-          undefined, // invoiceNumbers
-          undefined, // contactIDs
-          undefined, // statuses
-          undefined, // page
-          undefined, // includeArchived
-          undefined, // createdByMyApp
-          undefined, // unitdp
-          undefined // summaryOnly
+          undefined,
+          where
         );
+
+        if (response.body.invoices) {
+          await cacheInvoices(connection.tenantId, response.body.invoices);
+        }
 
         return {
           content: [
@@ -265,7 +294,7 @@ export async function executeXeroMCPTool(
       }
 
       case "xero_get_invoice": {
-        const { invoiceId } = args;
+        const { invoiceId } = apiArgs;
         if (!invoiceId) throw new Error("invoiceId is required");
 
         const response = await client.accountingApi.getInvoice(
@@ -284,7 +313,20 @@ export async function executeXeroMCPTool(
       }
 
       case "xero_list_contacts": {
-        const { searchTerm, limit = 100 } = args;
+        const { searchTerm, limit = 100 } = apiArgs;
+
+        const cached = await getCachedContacts(connection.tenantId, {
+          searchTerm: searchTerm as string | undefined,
+          limit: limit as number | undefined,
+        });
+
+        if (cached.fromCache && !cached.isStale) {
+          return {
+            content: [
+              { type: "text", text: JSON.stringify(cached.data, null, 2) },
+            ],
+          };
+        }
 
         const where = searchTerm
           ? `Name.Contains("${searchTerm}") OR EmailAddress.Contains("${searchTerm}")`
@@ -292,15 +334,13 @@ export async function executeXeroMCPTool(
 
         const response = await client.accountingApi.getContacts(
           connection.tenantId,
-          undefined, // ifModifiedSince
-          where,
-          undefined, // order
-          undefined, // IDs
-          undefined, // page
-          undefined, // includeArchived
-          undefined, // summaryOnly
-          undefined // searchTerm (separate parameter)
+          undefined,
+          where
         );
+
+        if (response.body.contacts) {
+          await cacheContacts(connection.tenantId, response.body.contacts);
+        }
 
         return {
           content: [
@@ -313,7 +353,7 @@ export async function executeXeroMCPTool(
       }
 
       case "xero_get_contact": {
-        const { contactId } = args;
+        const { contactId } = apiArgs;
         if (!contactId) throw new Error("contactId is required");
 
         const response = await client.accountingApi.getContact(
@@ -332,7 +372,19 @@ export async function executeXeroMCPTool(
       }
 
       case "xero_list_accounts": {
-        const { type } = args;
+        const { type } = apiArgs;
+
+        const cached = await getCachedAccounts(connection.tenantId, {
+          type: type as string | undefined,
+        });
+
+        if (cached.fromCache && !cached.isStale) {
+          return {
+            content: [
+              { type: "text", text: JSON.stringify(cached.data, null, 2) },
+            ],
+          };
+        }
 
         const where = type ? `Type=="${type}"` : undefined;
 
@@ -341,6 +393,10 @@ export async function executeXeroMCPTool(
           undefined,
           where
         );
+
+        if (response.body.accounts) {
+          await cacheAccounts(connection.tenantId, response.body.accounts);
+        }
 
         return {
           content: [
@@ -353,7 +409,7 @@ export async function executeXeroMCPTool(
       }
 
       case "xero_list_journal_entries": {
-        const { dateFrom, dateTo, limit = 100 } = args;
+        const { dateFrom, dateTo, limit = 100 } = apiArgs;
 
         const response = await client.accountingApi.getManualJournals(
           connection.tenantId,
@@ -390,7 +446,22 @@ export async function executeXeroMCPTool(
       }
 
       case "xero_get_bank_transactions": {
-        const { bankAccountId, dateFrom, dateTo, limit = 100 } = args;
+        const { bankAccountId, dateFrom, dateTo, limit = 100 } = apiArgs;
+
+        const cached = await getCachedBankTransactions(connection.tenantId, {
+          bankAccountId: bankAccountId as string | undefined,
+          dateFrom: dateFrom ? new Date(dateFrom as string) : undefined,
+          dateTo: dateTo ? new Date(dateTo as string) : undefined,
+          limit: limit as number | undefined,
+        });
+
+        if (cached.fromCache && !cached.isStale) {
+          return {
+            content: [
+              { type: "text", text: JSON.stringify(cached.data, null, 2) },
+            ],
+          };
+        }
 
         const whereClauses: string[] = [];
         if (bankAccountId)
@@ -403,13 +474,16 @@ export async function executeXeroMCPTool(
 
         const response = await client.accountingApi.getBankTransactions(
           connection.tenantId,
-          undefined, // ifModifiedSince
-          where,
-          undefined, // order
-          undefined, // page
-          undefined, // unitdp
-          undefined // pageSize
+          undefined,
+          where
         );
+
+        if (response.body.bankTransactions) {
+          await cacheBankTransactions(
+            connection.tenantId,
+            response.body.bankTransactions
+          );
+        }
 
         return {
           content: [
@@ -438,7 +512,17 @@ export async function executeXeroMCPTool(
 
       default:
         throw new Error(`Unknown Xero tool: ${toolName}`);
-    }
+      }
+    };
+
+    return await withXeroContext(
+      {
+        userId,
+        tenantId: connection.tenantId,
+        requestId: randomUUID(),
+      },
+      executor
+    );
   } catch (error) {
     console.error(`Xero MCP tool error (${toolName}):`, error);
     return {
@@ -451,6 +535,53 @@ export async function executeXeroMCPTool(
       isError: true,
     };
   }
+}
+
+export async function executeXeroMCPToolMultiTenant(
+  userId: string,
+  toolName: string,
+  args: Record<string, unknown>,
+  tenantIds?: string[]
+): Promise<Record<string, XeroMCPToolResult>> {
+  const results: Record<string, XeroMCPToolResult> = {};
+  const ids =
+    tenantIds && tenantIds.length > 0
+      ? Array.from(new Set(tenantIds))
+      : Array.from(
+          new Set(
+            (await getActiveXeroConnections(userId)).map(
+              (connection) => connection.tenantId
+            )
+          )
+        );
+
+  if (ids.length === 0) {
+    return results;
+  }
+
+  await Promise.all(
+    ids.map(async (tenantId) => {
+      try {
+        const result = await executeXeroMCPTool(userId, toolName, {
+          ...args,
+          tenantId,
+        });
+        results[tenantId] = result;
+      } catch (error) {
+        results[tenantId] = {
+          content: [
+            {
+              type: "text",
+              text: `Error executing tool for tenant ${tenantId}: ${error instanceof Error ? error.message : "Unknown error"}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    })
+  );
+
+  return results;
 }
 
 /**

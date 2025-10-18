@@ -10,7 +10,10 @@ import {
   gt,
   gte,
   inArray,
+  isNull,
   lt,
+  lte,
+  or,
   type SQL,
   sql,
 } from "drizzle-orm";
@@ -24,6 +27,7 @@ import {
   type Chat,
   type ContextFile,
   chat,
+  chatXeroContext,
   contextFile,
   type DBMessage,
   document,
@@ -33,6 +37,7 @@ import {
   suggestion,
   type User,
   user,
+  userSettings,
   vote,
   type XeroConnection,
   xeroConnection,
@@ -856,11 +861,53 @@ export async function getTokenUsageTimeseries({
 
 // Xero Connection Queries
 
-export async function getActiveXeroConnection(
+export async function getActiveXeroConnections(
+  userId: string
+): Promise<XeroConnection[]> {
+  try {
+    return await db
+      .select()
+      .from(xeroConnection)
+      .where(
+        and(
+          eq(xeroConnection.userId, userId),
+          eq(xeroConnection.isActive, true)
+        )
+      )
+      .orderBy(
+        desc(xeroConnection.isPrimary),
+        asc(xeroConnection.displayOrder),
+        desc(xeroConnection.updatedAt)
+      );
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get active Xero connections"
+    );
+  }
+}
+
+export async function getPrimaryXeroConnection(
   userId: string
 ): Promise<XeroConnection | null> {
   try {
     const [connection] = await db
+      .select()
+      .from(xeroConnection)
+      .where(
+        and(
+          eq(xeroConnection.userId, userId),
+          eq(xeroConnection.isActive, true),
+          eq(xeroConnection.isPrimary, true)
+        )
+      )
+      .limit(1);
+
+    if (connection) {
+      return connection;
+    }
+
+    const [fallback] = await db
       .select()
       .from(xeroConnection)
       .where(
@@ -872,13 +919,19 @@ export async function getActiveXeroConnection(
       .orderBy(desc(xeroConnection.updatedAt))
       .limit(1);
 
-    return connection ?? null;
+    return fallback ?? null;
   } catch (_error) {
     throw new ChatSDKError(
       "bad_request:database",
-      "Failed to get active Xero connection"
+      "Failed to get primary Xero connection"
     );
   }
+}
+
+export async function getActiveXeroConnection(
+  userId: string
+): Promise<XeroConnection | null> {
+  return getPrimaryXeroConnection(userId);
 }
 
 export async function getXeroConnectionById(
@@ -900,6 +953,235 @@ export async function getXeroConnectionById(
   }
 }
 
+export async function getXeroConnectionByTenantId(
+  userId: string,
+  tenantId: string
+): Promise<XeroConnection | null> {
+  try {
+    const [connection] = await db
+      .select()
+      .from(xeroConnection)
+      .where(
+        and(
+          eq(xeroConnection.userId, userId),
+          eq(xeroConnection.tenantId, tenantId),
+          eq(xeroConnection.isActive, true)
+        )
+      )
+      .limit(1);
+
+    return connection ?? null;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get Xero connection by tenant"
+    );
+  }
+}
+
+export async function getXeroConnectionByTenant(
+  tenantId: string
+): Promise<XeroConnection | null> {
+  try {
+    const [connection] = await db
+      .select()
+      .from(xeroConnection)
+      .where(
+        and(
+          eq(xeroConnection.tenantId, tenantId),
+          eq(xeroConnection.isActive, true)
+        )
+      )
+      .limit(1);
+
+    return connection ?? null;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get Xero connection by tenant"
+    );
+  }
+}
+
+export interface XeroIntegrationSettings {
+  multiOrgMode: boolean;
+  defaultTenantId: string | null;
+}
+
+export async function getXeroIntegrationSettings(
+  userId: string
+): Promise<XeroIntegrationSettings> {
+  try {
+    const [record] = await db
+      .select({
+        multiOrgMode: userSettings.xeroMultiOrgMode,
+        defaultTenantId: userSettings.xeroDefaultTenantId,
+      })
+      .from(userSettings)
+      .where(eq(userSettings.userId, userId))
+      .limit(1);
+
+    return {
+      multiOrgMode: record?.multiOrgMode ?? false,
+      defaultTenantId: record?.defaultTenantId ?? null,
+    };
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to load Xero integration settings"
+    );
+  }
+}
+
+export async function updateXeroIntegrationSettings(
+  userId: string,
+  updates: {
+    multiOrgMode?: boolean;
+    defaultTenantId?: string | null;
+  }
+): Promise<void> {
+  if (
+    updates.multiOrgMode === undefined &&
+    updates.defaultTenantId === undefined
+  ) {
+    return;
+  }
+
+  try {
+    const now = new Date();
+    const updateSet: Record<string, unknown> = { updatedAt: now };
+
+    if (updates.multiOrgMode !== undefined) {
+      updateSet.xeroMultiOrgMode = updates.multiOrgMode;
+    }
+
+    if (updates.defaultTenantId !== undefined) {
+      updateSet.xeroDefaultTenantId = updates.defaultTenantId;
+    }
+
+    await db
+      .insert(userSettings)
+      .values({
+        userId,
+        xeroMultiOrgMode: updates.multiOrgMode ?? false,
+        xeroDefaultTenantId: updates.defaultTenantId ?? null,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: userSettings.userId,
+        set: updateSet,
+      });
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to update Xero integration settings"
+    );
+  }
+}
+
+export interface ChatXeroTenantContext {
+  activeTenantIds: string[];
+  multiOrgEnabled: boolean;
+}
+
+export async function getChatXeroContextForUser(
+  userId: string,
+  chatId: string
+): Promise<ChatXeroTenantContext | null> {
+  try {
+    const [record] = await db
+      .select({
+        activeTenantIds: chatXeroContext.activeTenantIds,
+        multiOrgEnabled: chatXeroContext.multiOrgEnabled,
+      })
+      .from(chatXeroContext)
+      .innerJoin(chat, eq(chatXeroContext.chatId, chat.id))
+      .where(
+        and(eq(chatXeroContext.chatId, chatId), eq(chat.userId, userId))
+      )
+      .limit(1);
+
+    if (!record) {
+      return null;
+    }
+
+    const activeTenantIds = Array.isArray(record.activeTenantIds)
+      ? (record.activeTenantIds as string[])
+      : [];
+
+    return {
+      activeTenantIds,
+      multiOrgEnabled: record.multiOrgEnabled ?? false,
+    };
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to load chat Xero context"
+    );
+  }
+}
+
+export async function upsertChatXeroContextForUser({
+  userId,
+  chatId,
+  tenantIds,
+  multiOrgEnabled,
+}: {
+  userId: string;
+  chatId: string;
+  tenantIds: string[];
+  multiOrgEnabled?: boolean;
+}): Promise<void> {
+  try {
+    const uniqueTenantIds = Array.from(new Set(tenantIds));
+
+    const [owner] = await db
+      .select({ userId: chat.userId })
+      .from(chat)
+      .where(eq(chat.id, chatId))
+      .limit(1);
+
+    if (!owner || owner.userId !== userId) {
+      throw new ChatSDKError(
+        "bad_request:unauthorized",
+        "Chat not found or access denied"
+      );
+    }
+
+    const now = new Date();
+    const updateSet: Record<string, unknown> = {
+      activeTenantIds: uniqueTenantIds,
+      updatedAt: now,
+    };
+
+    if (multiOrgEnabled !== undefined) {
+      updateSet.multiOrgEnabled = multiOrgEnabled;
+    }
+
+    await db
+      .insert(chatXeroContext)
+      .values({
+        chatId,
+        activeTenantIds: uniqueTenantIds,
+        multiOrgEnabled: multiOrgEnabled ?? false,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: chatXeroContext.chatId,
+        set: updateSet,
+      });
+  } catch (error) {
+    if (error instanceof ChatSDKError) {
+      throw error;
+    }
+
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to update chat Xero context"
+    );
+  }
+}
+
 export async function getXeroConnectionsByUserId(
   userId: string
 ): Promise<XeroConnection[]> {
@@ -908,7 +1190,7 @@ export async function getXeroConnectionsByUserId(
       .select()
       .from(xeroConnection)
       .where(eq(xeroConnection.userId, userId))
-      .orderBy(desc(xeroConnection.isActive), desc(xeroConnection.updatedAt));
+      .orderBy(desc(xeroConnection.updatedAt));
   } catch (_error) {
     throw new ChatSDKError(
       "bad_request:database",
@@ -921,37 +1203,71 @@ export async function createXeroConnection({
   userId,
   tenantId,
   tenantName,
+  tenantType,
   accessToken,
   refreshToken,
   expiresAt,
   scopes,
+  isPrimary = false,
+  displayOrder = 0,
+  connectionId,
+  authEventId,
+  createdDateUtc,
+  updatedDateUtc,
 }: {
   userId: string;
   tenantId: string;
   tenantName?: string;
+  tenantType?: string;
   accessToken: string;
   refreshToken: string;
   expiresAt: Date;
   scopes: string[];
+  isPrimary?: boolean;
+  displayOrder?: number;
+  connectionId?: string | null;
+  authEventId?: string | null;
+  createdDateUtc?: Date | null;
+  updatedDateUtc?: Date | null;
 }): Promise<XeroConnection> {
   try {
-    // Deactivate any existing connections
-    await db
-      .update(xeroConnection)
-      .set({ isActive: false, updatedAt: new Date() })
-      .where(eq(xeroConnection.userId, userId));
-
     const [connection] = await db
       .insert(xeroConnection)
       .values({
         userId,
         tenantId,
         tenantName,
+        tenantType,
         accessToken,
         refreshToken,
         expiresAt,
         scopes,
         isActive: true,
+        isPrimary,
+        displayOrder,
+        connectionId: connectionId ?? null,
+        authEventId: authEventId ?? null,
+        createdDateUtc: createdDateUtc ?? null,
+        updatedDateUtc: updatedDateUtc ?? null,
+      })
+      .onConflictDoUpdate({
+        target: [xeroConnection.userId, xeroConnection.tenantId],
+        set: {
+          tenantName,
+          tenantType,
+          accessToken,
+          refreshToken,
+          expiresAt,
+          scopes,
+          isActive: true,
+          isPrimary,
+          displayOrder,
+          connectionId: connectionId ?? null,
+          authEventId: authEventId ?? null,
+          createdDateUtc: createdDateUtc ?? null,
+          updatedDateUtc: updatedDateUtc ?? null,
+          updatedAt: new Date(),
+        },
       })
       .returning();
 
@@ -992,6 +1308,105 @@ export async function updateXeroTokens({
     throw new ChatSDKError(
       "bad_request:database",
       "Failed to update Xero tokens"
+    );
+  }
+}
+
+export async function updateXeroConnectionMetadata({
+  id,
+  tenantName,
+  tenantType,
+  connectionId,
+  authEventId,
+  createdDateUtc,
+  updatedDateUtc,
+  displayOrder,
+  isActive,
+}: {
+  id: string;
+  tenantName?: string | null;
+  tenantType?: string | null;
+  connectionId?: string | null;
+  authEventId?: string | null;
+  createdDateUtc?: Date | null;
+  updatedDateUtc?: Date | null;
+  displayOrder?: number;
+  isActive?: boolean;
+}): Promise<XeroConnection> {
+  try {
+    const updateData: Partial<XeroConnection> & {
+      updatedAt: Date;
+    } = {
+      updatedAt: new Date(),
+    };
+
+    if (tenantName !== undefined) {
+      updateData.tenantName = tenantName ?? null;
+    }
+    if (tenantType !== undefined) {
+      updateData.tenantType = tenantType ?? null;
+    }
+    if (connectionId !== undefined) {
+      updateData.connectionId = connectionId ?? null;
+    }
+    if (authEventId !== undefined) {
+      updateData.authEventId = authEventId ?? null;
+    }
+    if (createdDateUtc !== undefined) {
+      updateData.createdDateUtc = createdDateUtc ?? null;
+    }
+    if (updatedDateUtc !== undefined) {
+      updateData.updatedDateUtc = updatedDateUtc ?? null;
+    }
+    if (displayOrder !== undefined) {
+      updateData.displayOrder = displayOrder;
+    }
+    if (isActive !== undefined) {
+      updateData.isActive = isActive;
+    }
+
+    const [connection] = await db
+      .update(xeroConnection)
+      .set(updateData)
+      .where(eq(xeroConnection.id, id))
+      .returning();
+
+    return connection;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to update Xero connection metadata"
+    );
+  }
+}
+
+export async function setPrimaryXeroConnection(
+  userId: string,
+  tenantId: string
+): Promise<void> {
+  try {
+    await db
+      .update(xeroConnection)
+      .set({ isPrimary: false, updatedAt: new Date() })
+      .where(eq(xeroConnection.userId, userId));
+
+    await db
+      .update(xeroConnection)
+      .set({ isPrimary: true, updatedAt: new Date() })
+      .where(
+        and(
+          eq(xeroConnection.userId, userId),
+          eq(xeroConnection.tenantId, tenantId)
+        )
+      );
+
+    await updateXeroIntegrationSettings(userId, {
+      defaultTenantId: tenantId,
+    });
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to set primary Xero connection"
     );
   }
 }

@@ -36,6 +36,20 @@
       "when": 1760609647505,
       "tag": "0004_skinny_nitro",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1760787414532,
+      "tag": "0005_multi_org_and_cache",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1760788020348,
+      "tag": "0006_first_nicolaos",
+      "breakpoints": true
     }
   ]
 }
