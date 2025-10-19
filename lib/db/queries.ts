@@ -11,6 +11,7 @@ import {
   gte,
   inArray,
   lt,
+  ne,
   type SQL,
   sql,
 } from "drizzle-orm";
@@ -917,6 +918,46 @@ export async function getXeroConnectionsByUserId(
   }
 }
 
+export async function removeDuplicateXeroConnectionsForUser(
+  userId: string
+): Promise<void> {
+  try {
+    const connections = await db
+      .select({
+        id: xeroConnection.id,
+        tenantId: xeroConnection.tenantId,
+        updatedAt: xeroConnection.updatedAt,
+      })
+      .from(xeroConnection)
+      .where(eq(xeroConnection.userId, userId))
+      .orderBy(desc(xeroConnection.updatedAt));
+
+    const seenTenantIds = new Set<string>();
+    const duplicateIds: string[] = [];
+
+    for (const connection of connections) {
+      if (seenTenantIds.has(connection.tenantId)) {
+        duplicateIds.push(connection.id);
+      } else {
+        seenTenantIds.add(connection.tenantId);
+      }
+    }
+
+    if (duplicateIds.length === 0) {
+      return;
+    }
+
+    await db
+      .delete(xeroConnection)
+      .where(inArray(xeroConnection.id, duplicateIds));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to remove duplicate Xero connections"
+    );
+  }
+}
+
 export async function createXeroConnection({
   userId,
   tenantId,
@@ -935,25 +976,77 @@ export async function createXeroConnection({
   scopes: string[];
 }): Promise<XeroConnection> {
   try {
-    // Deactivate any existing connections
-    await db
-      .update(xeroConnection)
-      .set({ isActive: false, updatedAt: new Date() })
-      .where(eq(xeroConnection.userId, userId));
+    const now = new Date();
+    const tenantNameValue = tenantName ?? null;
 
-    const [connection] = await db
-      .insert(xeroConnection)
-      .values({
-        userId,
-        tenantId,
-        tenantName,
-        accessToken,
-        refreshToken,
-        expiresAt,
-        scopes,
-        isActive: true,
-      })
-      .returning();
+    const [existingConnection] = await db
+      .select({ id: xeroConnection.id })
+      .from(xeroConnection)
+      .where(
+        and(
+          eq(xeroConnection.userId, userId),
+          eq(xeroConnection.tenantId, tenantId)
+        )
+      )
+      .orderBy(desc(xeroConnection.updatedAt))
+      .limit(1);
+
+    let connection: XeroConnection;
+
+    if (existingConnection) {
+      const [updatedConnection] = await db
+        .update(xeroConnection)
+        .set({
+          tenantName: tenantNameValue,
+          accessToken,
+          refreshToken,
+          expiresAt,
+          scopes,
+          isActive: true,
+          updatedAt: now,
+        })
+        .where(eq(xeroConnection.id, existingConnection.id))
+        .returning();
+
+      connection = updatedConnection;
+
+      await db
+        .update(xeroConnection)
+        .set({ isActive: false, updatedAt: now })
+        .where(
+          and(
+            eq(xeroConnection.userId, userId),
+            ne(xeroConnection.id, existingConnection.id)
+          )
+        );
+    } else {
+      await db
+        .update(xeroConnection)
+        .set({ isActive: false, updatedAt: now })
+        .where(eq(xeroConnection.userId, userId));
+
+      const [createdConnection] = await db
+        .insert(xeroConnection)
+        .values({
+          userId,
+          tenantId,
+          tenantName: tenantNameValue,
+          accessToken,
+          refreshToken,
+          expiresAt,
+          scopes,
+          isActive: true,
+        })
+        .returning();
+
+      connection = createdConnection;
+    }
+
+    try {
+      await removeDuplicateXeroConnectionsForUser(userId);
+    } catch (error) {
+      console.error("Failed to clean up duplicate Xero connections:", error);
+    }
 
     return connection;
   } catch (_error) {
