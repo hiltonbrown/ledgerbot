@@ -11,6 +11,7 @@ import {
   gte,
   inArray,
   lt,
+  ne,
   type SQL,
   sql,
 } from "drizzle-orm";
@@ -917,6 +918,51 @@ export async function getXeroConnectionsByUserId(
   }
 }
 
+export async function removeDuplicateXeroConnectionsForUser(
+  userId: string
+): Promise<void> {
+  try {
+    const connections = await db
+      .select({
+        id: xeroConnection.id,
+        tenantId: xeroConnection.tenantId,
+        isActive: xeroConnection.isActive,
+        updatedAt: xeroConnection.updatedAt,
+      })
+      .from(xeroConnection)
+      .where(eq(xeroConnection.userId, userId))
+      .orderBy(
+        desc(xeroConnection.isActive),
+        desc(xeroConnection.updatedAt),
+        desc(xeroConnection.createdAt)
+      );
+
+    const seenTenantIds = new Set<string>();
+    const duplicateIds: string[] = [];
+
+    for (const connection of connections) {
+      if (seenTenantIds.has(connection.tenantId)) {
+        duplicateIds.push(connection.id);
+      } else {
+        seenTenantIds.add(connection.tenantId);
+      }
+    }
+
+    if (duplicateIds.length === 0) {
+      return;
+    }
+
+    await db
+      .delete(xeroConnection)
+      .where(inArray(xeroConnection.id, duplicateIds));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      `Failed to remove duplicate Xero connections: ${_error instanceof Error ? _error.message : String(_error)}`
+    );
+  }
+}
+
 export async function createXeroConnection({
   userId,
   tenantId,
@@ -935,28 +981,101 @@ export async function createXeroConnection({
   scopes: string[];
 }): Promise<XeroConnection> {
   try {
-    // Deactivate any existing connections
-    await db
-      .update(xeroConnection)
-      .set({ isActive: false, updatedAt: new Date() })
-      .where(eq(xeroConnection.userId, userId));
+    const now = new Date();
+    const tenantNameValue = tenantName?.trim() ?? null;
 
-    const [connection] = await db
-      .insert(xeroConnection)
-      .values({
-        userId,
-        tenantId,
-        tenantName,
-        accessToken,
-        refreshToken,
-        expiresAt,
-        scopes,
-        isActive: true,
-      })
-      .returning();
+    return await db.transaction(async (tx) => {
+      const [existingConnection] = await tx
+        .select()
+        .from(xeroConnection)
+        .where(
+          and(
+            eq(xeroConnection.userId, userId),
+            eq(xeroConnection.tenantId, tenantId)
+          )
+        )
+        .orderBy(desc(xeroConnection.updatedAt))
+        .limit(1);
 
-    return connection;
-  } catch (_error) {
+      let connection: XeroConnection | null = null;
+
+      if (existingConnection) {
+        const [updatedConnection] = await tx
+          .update(xeroConnection)
+          .set({
+            tenantName:
+              tenantNameValue !== null
+                ? tenantNameValue
+                : existingConnection.tenantName,
+            accessToken,
+            refreshToken,
+            expiresAt,
+            scopes,
+            isActive: true,
+            updatedAt: now,
+          })
+          .where(eq(xeroConnection.id, existingConnection.id))
+          .returning();
+
+        if (!updatedConnection) {
+          throw new Error("Failed to update Xero connection record");
+        }
+        connection = updatedConnection;
+
+        await tx
+          .update(xeroConnection)
+          .set({ isActive: false, updatedAt: new Date() })
+          .where(
+            and(
+              eq(xeroConnection.userId, userId),
+              ne(xeroConnection.id, existingConnection.id)
+            )
+          );
+      } else {
+        await tx
+          .update(xeroConnection)
+          .set({ isActive: false, updatedAt: new Date() })
+          .where(eq(xeroConnection.userId, userId));
+
+        const [createdConnection] = await tx
+          .insert(xeroConnection)
+          .values({
+            userId,
+            tenantId,
+            tenantName: tenantNameValue,
+            accessToken,
+            refreshToken,
+            expiresAt,
+            scopes,
+            isActive: true,
+            updatedAt: now,
+          })
+          .returning();
+
+        if (!createdConnection) {
+          throw new Error("Insert operation did not return a Xero connection record");
+        }
+        connection = createdConnection;
+      }
+
+      if (!connection) {
+        throw new Error("Failed to persist Xero connection record");
+      }
+
+      await tx
+        .delete(xeroConnection)
+        .where(
+          and(
+            eq(xeroConnection.userId, userId),
+            eq(xeroConnection.tenantId, tenantId),
+            ne(xeroConnection.id, connection.id)
+          )
+        );
+
+      return connection;
+    });
+  } catch (error) {
+    console.error("Failed to create Xero connection:", error);
     throw new ChatSDKError(
       "bad_request:database",
       "Failed to create Xero connection"

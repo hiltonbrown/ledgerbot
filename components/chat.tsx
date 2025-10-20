@@ -44,6 +44,7 @@ export function Chat({
   autoResume,
   initialLastContext,
   suggestions,
+  initialDefaultReasoning,
 }: {
   id: string;
   initialMessages: ChatMessage[];
@@ -58,6 +59,7 @@ export function Chat({
     enabled: boolean;
     order: number;
   }>;
+  initialDefaultReasoning?: boolean;
 }) {
   const { visibilityType } = useChatVisibility({
     chatId: id,
@@ -76,7 +78,9 @@ export function Chat({
   const [reasoningPreferences, setReasoningPreferences] = useState<
     Record<string, boolean>
   >(() =>
-    isReasoningModelId(initialChatModel) ? { [initialChatModel]: true } : {}
+    isReasoningModelId(initialChatModel)
+      ? { [initialChatModel]: initialDefaultReasoning ?? true }
+      : {}
   );
   const currentModelIdRef = useRef(currentModelId);
   const selectedToolsRef = useRef(selectedTools);
@@ -102,8 +106,8 @@ export function Chat({
 
     const storedPreference = reasoningPreferences[currentModelId];
 
-    return storedPreference ?? true;
-  }, [currentModelId, reasoningPreferences]);
+    return storedPreference ?? initialDefaultReasoning ?? true;
+  }, [currentModelId, reasoningPreferences, initialDefaultReasoning]);
 
   const getReasoningPreferenceForModel = (modelId: string) => {
     if (!isReasoningModelId(modelId)) {
@@ -112,7 +116,7 @@ export function Chat({
 
     const storedPreference = reasoningPreferencesRef.current[modelId];
 
-    return storedPreference ?? true;
+    return storedPreference ?? initialDefaultReasoning ?? true;
   };
 
   const handleModelChange = (modelId: string) => {
@@ -128,7 +132,7 @@ export function Chat({
 
       return {
         ...previousPreferences,
-        [modelId]: true,
+        [modelId]: initialDefaultReasoning ?? true,
       };
     });
   };

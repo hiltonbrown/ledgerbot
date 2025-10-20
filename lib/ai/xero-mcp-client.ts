@@ -2,6 +2,8 @@ import "server-only";
 
 import { XeroClient } from "xero-node";
 import { getDecryptedConnection } from "@/lib/xero/connection-manager";
+import { updateXeroTokens } from "@/lib/db/queries";
+import { encryptToken } from "@/lib/xero/encryption";
 import type { DecryptedXeroConnection } from "@/lib/xero/types";
 
 /**
@@ -58,6 +60,52 @@ async function getXeroClient(
   });
 
   return { client, connection };
+}
+
+async function persistTokenSet(
+  client: XeroClient,
+  connection: DecryptedXeroConnection
+): Promise<void> {
+  try {
+    const tokenSet = client.readTokenSet();
+
+    if (!tokenSet?.access_token || !tokenSet?.refresh_token) {
+      return;
+    }
+
+    const expiresAt = tokenSet.expires_at
+      ? new Date(tokenSet.expires_at * 1000)
+      : tokenSet.expires_in
+        ? new Date(Date.now() + tokenSet.expires_in * 1000)
+        : null;
+
+    if (!expiresAt) {
+      return;
+    }
+
+    const hasChanged =
+      tokenSet.access_token !== connection.accessToken ||
+      tokenSet.refresh_token !== connection.refreshToken ||
+      Math.abs(expiresAt.getTime() - new Date(connection.expiresAt).getTime()) >
+        1000;
+
+    if (!hasChanged) {
+      return;
+    }
+
+    await updateXeroTokens({
+      id: connection.id,
+      accessToken: encryptToken(tokenSet.access_token),
+      refreshToken: encryptToken(tokenSet.refresh_token),
+      expiresAt,
+    });
+
+    connection.accessToken = tokenSet.access_token;
+    connection.refreshToken = tokenSet.refresh_token;
+    connection.expiresAt = expiresAt;
+  } catch (error) {
+    console.error("Failed to persist Xero token set:", error);
+  }
 }
 
 /**
@@ -222,8 +270,8 @@ export async function executeXeroMCPTool(
 ): Promise<XeroMCPToolResult> {
   try {
     const { client, connection } = await getXeroClient(userId);
-
-    switch (toolName) {
+    try {
+      switch (toolName) {
       case "xero_list_invoices": {
         const { status, dateFrom, dateTo, contactId, limit = 100 } = args;
 
@@ -438,6 +486,9 @@ export async function executeXeroMCPTool(
 
       default:
         throw new Error(`Unknown Xero tool: ${toolName}`);
+      }
+    } finally {
+      await persistTokenSet(client, connection);
     }
   } catch (error) {
     console.error(`Xero MCP tool error (${toolName}):`, error);
