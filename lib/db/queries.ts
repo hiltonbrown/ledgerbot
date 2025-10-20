@@ -1052,7 +1052,10 @@ export async function createXeroConnection({
           })
           .returning();
 
-        connection = createdConnection ?? null;
+        if (!createdConnection) {
+          throw new Error("Insert operation did not return a Xero connection record");
+        }
+        connection = createdConnection;
       }
 
       if (!connection) {
