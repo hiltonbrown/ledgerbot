@@ -984,6 +984,18 @@ export async function createXeroConnection({
     const now = new Date();
     const tenantNameValue = tenantName?.trim() ?? null;
 
+    // Log input parameters for debugging
+    console.log("createXeroConnection called with:", {
+      userId,
+      tenantId,
+      tenantName: tenantNameValue,
+      accessTokenLength: accessToken?.length,
+      refreshTokenLength: refreshToken?.length,
+      expiresAt,
+      scopes,
+      scopesLength: scopes?.length,
+    });
+
     return await db.transaction(async (tx) => {
       const [existingConnection] = await tx
         .select()
@@ -997,9 +1009,16 @@ export async function createXeroConnection({
         .orderBy(desc(xeroConnection.updatedAt))
         .limit(1);
 
+      console.log("Existing connection check:", {
+        found: !!existingConnection,
+        existingId: existingConnection?.id,
+        existingTenantId: existingConnection?.tenantId,
+      });
+
       let connection: XeroConnection | null = null;
 
       if (existingConnection) {
+        console.log("Updating existing connection:", existingConnection.id);
         const [updatedConnection] = await tx
           .update(xeroConnection)
           .set({
@@ -1021,6 +1040,7 @@ export async function createXeroConnection({
           throw new Error("Failed to update Xero connection record");
         }
         connection = updatedConnection;
+        console.log("Updated connection:", connection.id);
 
         await tx
           .update(xeroConnection)
@@ -1032,6 +1052,7 @@ export async function createXeroConnection({
             )
           );
       } else {
+        console.log("Creating new connection");
         await tx
           .update(xeroConnection)
           .set({ isActive: false, updatedAt: new Date() })
@@ -1053,9 +1074,12 @@ export async function createXeroConnection({
           .returning();
 
         if (!createdConnection) {
-          throw new Error("Insert operation did not return a Xero connection record");
+          throw new Error(
+            "Insert operation did not return a Xero connection record"
+          );
         }
         connection = createdConnection;
+        console.log("Created connection:", connection.id);
       }
 
       if (!connection) {
@@ -1072,10 +1096,22 @@ export async function createXeroConnection({
           )
         );
 
+      console.log(
+        "Xero connection created/updated successfully:",
+        connection.id
+      );
       return connection;
     });
   } catch (error) {
-    console.error("Failed to create Xero connection:", error);
+    console.error("Failed to create Xero connection:", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      userId,
+      tenantId,
+      tenantName: tenantName?.trim() ?? null,
+      expiresAt,
+      scopesCount: scopes?.length,
+    });
     throw new ChatSDKError(
       "bad_request:database",
       "Failed to create Xero connection"

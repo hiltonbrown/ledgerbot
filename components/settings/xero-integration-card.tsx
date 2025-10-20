@@ -109,7 +109,8 @@ export function XeroIntegrationCard({
             Organisation: {connection.tenantName}
           </p>
           <p className="text-muted-foreground">
-            Token expires: {new Date(connection.expiresAt).toLocaleDateString()}
+            Token expires:{" "}
+            {new Date(connection.expiresAt).toLocaleDateString("en-AU")}
           </p>
         </div>
       )}
