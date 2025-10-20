@@ -958,7 +958,7 @@ export async function removeDuplicateXeroConnectionsForUser(
   } catch (_error) {
     throw new ChatSDKError(
       "bad_request:database",
-      "Failed to remove duplicate Xero connections"
+      `Failed to remove duplicate Xero connections: ${_error instanceof Error ? _error.message : String(_error)}`
     );
   }
 }
