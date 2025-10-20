@@ -2,11 +2,7 @@ import "server-only";
 
 import { randomUUID } from "crypto";
 import { and, asc, eq, isNull, lte, or } from "drizzle-orm";
-import { XeroClient } from "xero-node";
-import {
-  db,
-  getXeroConnectionByTenant,
-} from "@/lib/db/queries";
+import { db, getXeroConnectionByTenant } from "@/lib/db/queries";
 import { xeroWebhookEvent } from "@/lib/db/schema";
 import {
   cacheAccounts,
@@ -14,30 +10,9 @@ import {
   cacheContacts,
   cacheInvoices,
 } from "@/lib/xero/cache-manager";
+import { createClient } from "@/lib/xero/client-utils";
 import { getConnectionSafe } from "@/lib/xero/connection-pool";
 import { withXeroContext } from "@/lib/xero/request-context";
-import type { DecryptedXeroConnection } from "@/lib/xero/types";
-
-function createClient(connection: DecryptedXeroConnection) {
-  const client = new XeroClient({
-    clientId: process.env.XERO_CLIENT_ID || "",
-    clientSecret: process.env.XERO_CLIENT_SECRET || "",
-    redirectUris: [process.env.XERO_REDIRECT_URI || ""],
-    scopes: connection.scopes,
-  });
-
-  client.setTokenSet({
-    access_token: connection.accessToken,
-    refresh_token: connection.refreshToken,
-    token_type: "Bearer",
-    expires_in: Math.max(
-      Math.floor((new Date(connection.expiresAt).getTime() - Date.now()) / 1000),
-      0
-    ),
-  });
-
-  return client;
-}
 
 const MAX_RETRY_ATTEMPTS = 5;
 
@@ -75,8 +50,7 @@ export async function processWebhookEvents(): Promise<void> {
         .where(eq(xeroWebhookEvent.id, event.id));
     } catch (error) {
       const retryCount = event.retryCount + 1;
-      const message =
-        error instanceof Error ? error.message : "Unknown error";
+      const message = error instanceof Error ? error.message : "Unknown error";
 
       if (retryCount >= MAX_RETRY_ATTEMPTS) {
         await db
@@ -91,9 +65,7 @@ export async function processWebhookEvents(): Promise<void> {
           .where(eq(xeroWebhookEvent.id, event.id));
       } else {
         const delaySeconds = Math.min(2 ** retryCount, 300);
-        const nextAttemptAt = new Date(
-          Date.now() + delaySeconds * 1000
-        );
+        const nextAttemptAt = new Date(Date.now() + delaySeconds * 1000);
 
         await db
           .update(xeroWebhookEvent)

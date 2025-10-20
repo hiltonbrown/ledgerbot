@@ -1,0 +1,50 @@
+
+> intellisync-chatbot@0.1.0 build /home/hilton/Documents/ledgerbot
+> tsx lib/db/migrate && next build
+
+⏳ Running migrations...
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '42P06',
+  message: 'schema "drizzle" already exists, skipping',
+  file: 'schemacmds.c',
+  line: '132',
+  routine: 'CreateSchemaCommand'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '42P07',
+  message: 'relation "__drizzle_migrations" already exists, skipping',
+  file: 'parse_utilcmd.c',
+  line: '207',
+  routine: 'transformCreateStmt'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '42P07',
+  message: 'relation "xero_connection_user_tenant_idx" already exists, skipping',
+  file: 'index.c',
+  line: '889',
+  routine: 'index_create'
+}
+✅ Migrations completed in 1428 ms
+   ▲ Next.js 15.4.7
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+Failed to compile.
+
+./lib/xero/sync-jobs.ts
+Module not found: Can't resolve '@/lib/xero/client-utils'
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./app/api/cron/xero-sync/route.ts
+
+
+> Build failed because of webpack errors
+ ELIFECYCLE  Command failed with exit code 1.

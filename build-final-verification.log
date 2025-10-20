@@ -1,0 +1,45 @@
+
+> intellisync-chatbot@0.1.0 build /home/hilton/Documents/ledgerbot
+> tsx lib/db/migrate && next build
+
+⏳ Running migrations...
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '42P06',
+  message: 'schema "drizzle" already exists, skipping',
+  file: 'schemacmds.c',
+  line: '132',
+  routine: 'CreateSchemaCommand'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '42P07',
+  message: 'relation "__drizzle_migrations" already exists, skipping',
+  file: 'parse_utilcmd.c',
+  line: '207',
+  routine: 'transformCreateStmt'
+}
+✅ Migrations completed in 557 ms
+   ▲ Next.js 15.4.7
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 21.0s
+   Linting and checking validity of types ...
+Failed to compile.
+
+./lib/ai/xero-mcp-client.ts:519:7
+Type error: Argument of type '{ userId: string; tenantId: string; requestId: `${string}-${string}-${string}-${string}-${string}`; }' is not assignable to parameter of type 'XeroRequestContext'.
+  Property 'timestamp' is missing in type '{ userId: string; tenantId: string; requestId: `${string}-${string}-${string}-${string}-${string}`; }' but required in type 'XeroRequestContext'.
+
+[0m [90m 517 |[39m
+ [90m 518 |[39m     [36mreturn[39m [36mawait[39m withXeroContext(
+[31m[1m>[22m[39m[90m 519 |[39m       {
+ [90m     |[39m       [31m[1m^[22m[39m
+ [90m 520 |[39m         userId[33m,[39m
+ [90m 521 |[39m         tenantId[33m:[39m connection[33m.[39mtenantId[33m,[39m
+ [90m 522 |[39m         requestId[33m:[39m randomUUID()[33m,[39m[0m
+Next.js build worker exited with code: 1 and signal: null
+ ELIFECYCLE  Command failed with exit code 1.

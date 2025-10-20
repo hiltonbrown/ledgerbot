@@ -1,0 +1,45 @@
+
+> intellisync-chatbot@0.1.0 build /home/hilton/Documents/ledgerbot
+> tsx lib/db/migrate && next build
+
+⏳ Running migrations...
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '42P06',
+  message: 'schema "drizzle" already exists, skipping',
+  file: 'schemacmds.c',
+  line: '132',
+  routine: 'CreateSchemaCommand'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '42P07',
+  message: 'relation "__drizzle_migrations" already exists, skipping',
+  file: 'parse_utilcmd.c',
+  line: '207',
+  routine: 'transformCreateStmt'
+}
+❌ Migration failed
+PostgresError: could not create unique index "xero_connection_user_tenant_idx"
+    at ErrorResponse (/home/hilton/Documents/ledgerbot/node_modules/.pnpm/postgres@3.4.5/node_modules/postgres/cjs/src/connection.js:788:26)
+    at handle (/home/hilton/Documents/ledgerbot/node_modules/.pnpm/postgres@3.4.5/node_modules/postgres/cjs/src/connection.js:474:6)
+    at TLSSocket.data (/home/hilton/Documents/ledgerbot/node_modules/.pnpm/postgres@3.4.5/node_modules/postgres/cjs/src/connection.js:315:9)
+    at TLSSocket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+    at Readable.push (node:internal/streams/readable:390:5)
+    at TLSWrap.onStreamRead (node:internal/stream_base_commons:189:23) {
+  severity_local: 'ERROR',
+  severity: 'ERROR',
+  code: '23505',
+  detail: 'Key ("userId", "tenantId")=(99ca207e-6e73-42bc-aa54-dbaa31f7d175, c9008509-62c3-4eaa-ab55-a406b581f1fd) is duplicated.',
+  schema_name: 'public',
+  table_name: 'XeroConnection',
+  constraint_name: 'xero_connection_user_tenant_idx',
+  file: 'tuplesortvariants.c',
+  line: '1550',
+  routine: 'comparetup_index_btree_tiebreak'
+}
+ ELIFECYCLE  Command failed with exit code 1.

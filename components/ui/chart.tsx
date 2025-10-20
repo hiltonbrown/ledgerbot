@@ -130,7 +130,7 @@ export function ChartLegend({ content, ...props }: ChartLegendProps) {
   const defaultContent = (legendProps: any) => (
     <ChartLegendContent {...legendProps} />
   );
-  return <Legend {...props} content={content ?? defaultContent} />;
+  return <Legend {...(props as any)} content={content ?? defaultContent} />;
 }
 
 export function ChartLegendContent({ payload }: LegendProps) {
