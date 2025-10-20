@@ -152,6 +152,8 @@ export async function getXeroTenants(
   const xeroClient = createXeroClient();
 
   try {
+    await xeroClient.initialize();
+
     await xeroClient.setTokenSet({
       access_token: accessToken,
       refresh_token: "", // Not needed for this call

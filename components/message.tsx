@@ -114,6 +114,11 @@ const PurePreviewMessage = ({
             const key = `message-${message.id}-part-${index}`;
 
             if (type === "reasoning" && part.text?.trim().length > 0) {
+              console.log("Rendering reasoning part:", {
+                type,
+                text: part.text,
+                isLoading,
+              });
               return (
                 <MessageReasoning
                   isLoading={isLoading}
@@ -331,12 +336,9 @@ export const ThinkingMessage = () => {
         </div>
 
         <div className="flex w-full flex-col gap-2 md:gap-4">
-          <div className="p-0 text-muted-foreground text-sm">
-            Thinking...
-          </div>
+          <div className="p-0 text-muted-foreground text-sm">Thinking...</div>
         </div>
       </div>
     </motion.div>
   );
 };
-

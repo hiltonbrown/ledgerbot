@@ -20,6 +20,7 @@ export default async function Page() {
   const userSettings = await getUserSettings();
   const suggestions = userSettings.suggestions;
   const defaultModel = userSettings.personalisation.defaultModel;
+  const defaultReasoning = userSettings.personalisation.defaultReasoning;
 
   const cookieStore = await cookies();
   const modelIdFromCookie = cookieStore.get("chat-model");
@@ -38,6 +39,7 @@ export default async function Page() {
         autoResume={false}
         id={id}
         initialChatModel={selectedModel}
+        initialDefaultReasoning={defaultReasoning}
         initialMessages={[]}
         initialVisibilityType="private"
         isReadonly={false}

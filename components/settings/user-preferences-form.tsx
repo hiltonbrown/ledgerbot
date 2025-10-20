@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "../toast";
 
@@ -48,18 +49,60 @@ export function UserPreferencesForm({ data }: { data: UserSettings }) {
       }));
     };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handlePersonalisationChange =
+    (field: keyof UserSettings["personalisation"]) =>
+    (value: string | boolean) => {
+      setFormState((state) => ({
+        ...state,
+        personalisation: {
+          ...state.personalisation,
+          [field]: value,
+        },
+      }));
+    };
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsSaving(true);
 
-    // TODO: Replace with real async save operation, e.g. API call
+    try {
+      const response = await fetch("/api/user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          firstName: formState.personalisation.firstName,
+          lastName: formState.personalisation.lastName,
+          country: formState.personalisation.country,
+          state: formState.personalisation.state,
+          isLocked: formState.personalisation.isLocked,
+          defaultModel: formState.personalisation.defaultModel,
+          defaultReasoning: formState.personalisation.defaultReasoning,
+          systemPrompt: formState.prompts.systemPrompt,
+          codePrompt: formState.prompts.codePrompt,
+          sheetPrompt: formState.prompts.sheetPrompt,
+          suggestions: formState.suggestions,
+        }),
+      });
 
-    toast({
-      type: "success",
-      description: "Your preferences have been saved.",
-    });
+      if (!response.ok) {
+        throw new Error("Failed to save settings");
+      }
 
-    setIsSaving(false);
+      toast({
+        type: "success",
+        description: "Your preferences have been saved.",
+      });
+    } catch (error) {
+      console.error("Error saving settings:", error);
+      toast({
+        type: "error",
+        description: "Failed to save preferences. Please try again.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -130,6 +173,46 @@ export function UserPreferencesForm({ data }: { data: UserSettings }) {
               </SelectItem>
             </SelectContent>
           </Select>
+        </div>
+      </div>
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="defaultModel">Default Model</Label>
+          <Select
+            onValueChange={handlePersonalisationChange("defaultModel")}
+            value={formState.personalisation.defaultModel}
+          >
+            <SelectTrigger id="defaultModel">
+              <SelectValue placeholder="Select default model" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="anthropic-claude-sonnet-4-5">
+                Claude Sonnet 4.5
+              </SelectItem>
+              <SelectItem value="anthropic-claude-sonnet-3-5">
+                Claude Sonnet 3.5
+              </SelectItem>
+              <SelectItem value="openai-gpt-4o">GPT-4o</SelectItem>
+              <SelectItem value="openai-gpt-4o-mini">GPT-4o Mini</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <Label htmlFor="defaultReasoning">
+              Enable Reasoning by Default
+            </Label>
+            <p className="text-muted-foreground text-xs">
+              Automatically enable reasoning mode for supported models
+            </p>
+          </div>
+          <Switch
+            checked={formState.personalisation.defaultReasoning}
+            id="defaultReasoning"
+            onCheckedChange={(checked) =>
+              handlePersonalisationChange("defaultReasoning")(checked)
+            }
+          />
         </div>
       </div>
       <div className="space-y-2">

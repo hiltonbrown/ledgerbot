@@ -213,6 +213,14 @@ export async function POST(request: Request) {
     const shouldSendReasoning =
       isReasoningModelId(selectedChatModel) && (isReasoningEnabled ?? true);
 
+    // Debug logging for API reasoning state
+    console.log("API reasoning state:", {
+      selectedChatModel,
+      isReasoningModel: isReasoningModelId(selectedChatModel),
+      isReasoningEnabled,
+      shouldSendReasoning,
+    });
+
     // Check if user has Xero connection
     const xeroConnection = await getActiveXeroConnection(user.id);
     const xeroTools = xeroConnection ? createXeroTools(user.id) : {};
