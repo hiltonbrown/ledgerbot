@@ -109,15 +109,6 @@ export function Chat({
     return storedPreference ?? initialDefaultReasoning ?? true;
   }, [currentModelId, reasoningPreferences, initialDefaultReasoning]);
 
-  // Debug logging for reasoning state
-  console.log("Chat component reasoning state:", {
-    currentModelId,
-    isReasoningModel: isReasoningModelId(currentModelId),
-    currentReasoningEnabled,
-    reasoningPreferences,
-    initialDefaultReasoning,
-  });
-
   const getReasoningPreferenceForModel = (modelId: string) => {
     if (!isReasoningModelId(modelId)) {
       return false;
