@@ -114,11 +114,6 @@ const PurePreviewMessage = ({
             const key = `message-${message.id}-part-${index}`;
 
             if (type === "reasoning" && part.text?.trim().length > 0) {
-              console.log("Rendering reasoning part:", {
-                type,
-                text: part.text,
-                isLoading,
-              });
               return (
                 <MessageReasoning
                   isLoading={isLoading}
