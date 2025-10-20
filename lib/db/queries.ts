@@ -1017,7 +1017,10 @@ export async function createXeroConnection({
           .where(eq(xeroConnection.id, existingConnection.id))
           .returning();
 
-        connection = updatedConnection ?? null;
+        if (!updatedConnection) {
+          throw new Error("Failed to update Xero connection record");
+        }
+        connection = updatedConnection;
 
         await tx
           .update(xeroConnection)
