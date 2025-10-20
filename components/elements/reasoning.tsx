@@ -130,6 +130,20 @@ export type ReasoningTriggerProps = ComponentProps<typeof CollapsibleTrigger>;
 export const ReasoningTrigger = memo(
   ({ className, children, ...props }: ReasoningTriggerProps) => {
     const { isStreaming, isOpen, duration } = useReasoning();
+    const statusLabel = isStreaming ? (
+      <span className="flex items-center gap-1.5">
+        Thinking
+        <span className="flex gap-0.5">
+          <span className="animate-bounce [animation-delay:0ms]">.</span>
+          <span className="animate-bounce [animation-delay:150ms]">.</span>
+          <span className="animate-bounce [animation-delay:300ms]">.</span>
+        </span>
+      </span>
+    ) : duration > 0 ? (
+      <span>Thought for {duration}s</span>
+    ) : (
+      <span>Model thinking available</span>
+    );
 
     return (
       <CollapsibleTrigger
@@ -143,24 +157,7 @@ export const ReasoningTrigger = memo(
           <>
             <BrainIcon className="size-4 shrink-0 text-purple-600 dark:text-purple-400" />
             <div className="flex flex-1 items-center gap-2">
-              {isStreaming || duration === 0 ? (
-                <span className="flex items-center gap-1.5">
-                  Thinking
-                  <span className="flex gap-0.5">
-                    <span className="animate-bounce [animation-delay:0ms]">
-                      .
-                    </span>
-                    <span className="animate-bounce [animation-delay:150ms]">
-                      .
-                    </span>
-                    <span className="animate-bounce [animation-delay:300ms]">
-                      .
-                    </span>
-                  </span>
-                </span>
-              ) : (
-                <span>Thought for {duration}s</span>
-              )}
+              {statusLabel}
             </div>
             <ChevronDownIcon
               className={cn(
