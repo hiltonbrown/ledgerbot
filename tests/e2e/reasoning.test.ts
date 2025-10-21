@@ -21,6 +21,17 @@ test.describe("chat activity with reasoning", () => {
     );
   });
 
+  test("Curie streams reasoning even when preference is hidden", async () => {
+    await chatPage.toggleReasoningPreference();
+    await chatPage.sendUserMessage("Why is the sky blue?");
+    await chatPage.isGenerationComplete();
+
+    const reasoningText = await chatPage.getLatestReasoningText();
+    expect(reasoningText).toBe(
+      "The sky is blue because of rayleigh scattering!"
+    );
+  });
+
   test("Curie can toggle reasoning visibility", async () => {
     await chatPage.sendUserMessage("Why is the sky blue?");
     await chatPage.isGenerationComplete();

@@ -116,6 +116,9 @@ const PurePreviewMessage = ({
             if (type === "reasoning" && part.text?.trim().length > 0) {
               return (
                 <MessageReasoning
+                  defaultOpen={
+                    message.metadata?.showReasoningPreference ?? true
+                  }
                   isLoading={isLoading}
                   key={key}
                   reasoning={part.text}

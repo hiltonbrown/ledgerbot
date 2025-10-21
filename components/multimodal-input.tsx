@@ -373,7 +373,6 @@ function PureMultimodalInput({
           <PromptInputTools className="gap-0 sm:gap-0.5">
             <AttachmentsButton
               fileInputRef={fileInputRef}
-              isReasoningEnabled={isReasoningEnabled}
               selectedModelId={selectedModelId}
               status={status}
             />
@@ -442,15 +441,12 @@ function PureAttachmentsButton({
   fileInputRef,
   status,
   selectedModelId,
-  isReasoningEnabled,
 }: {
   fileInputRef: React.MutableRefObject<HTMLInputElement | null>;
   status: UseChatHelpers<ChatMessage>["status"];
   selectedModelId: string;
-  isReasoningEnabled: boolean;
 }) {
-  const isReasoningModel =
-    isReasoningModelId(selectedModelId) && isReasoningEnabled;
+  const isReasoningModel = isReasoningModelId(selectedModelId);
   const isAwaitingResponse = status === "submitted" || status === "streaming";
 
   return (

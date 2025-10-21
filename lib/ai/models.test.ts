@@ -32,7 +32,10 @@ export const reasoningModel = new MockLanguageModelV2({
     stream: simulateReadableStream({
       chunkDelayInMs: 500,
       initialDelayInMs: 1000,
-      chunks: getResponseChunksByPrompt(prompt, true),
+      chunks: getResponseChunksByPrompt(prompt, {
+        streamReasoning: true,
+        showReasoningPreference: false,
+      }),
     }),
     rawCall: { rawPrompt: null, rawSettings: {} },
   }),

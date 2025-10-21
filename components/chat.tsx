@@ -175,7 +175,10 @@ export function Chat({
             selectedChatModel: currentModelIdRef.current,
             selectedVisibilityType: visibilityType,
             selectedTools: selectedToolsRef.current,
-            isReasoningEnabled: getReasoningPreferenceForModel(
+            streamReasoning: isReasoningModelId(
+              currentModelIdRef.current
+            ),
+            showReasoningPreference: getReasoningPreferenceForModel(
               currentModelIdRef.current
             ),
             ...request.body,

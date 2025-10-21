@@ -131,14 +131,16 @@ export async function POST(request: Request) {
       selectedChatModel,
       selectedVisibilityType,
       selectedTools,
-      isReasoningEnabled,
+      streamReasoning,
+      showReasoningPreference,
     }: {
       id: string;
       message: ChatMessage;
       selectedChatModel: ChatModel["id"];
       selectedVisibilityType: VisibilityType;
       selectedTools?: string[];
-      isReasoningEnabled?: boolean;
+      streamReasoning?: boolean;
+      showReasoningPreference?: boolean;
     } = requestBody;
 
     const user = await getAuthUser();
@@ -210,16 +212,19 @@ export async function POST(request: Request) {
 
     let finalMergedUsage: AppUsage | undefined;
 
-    const shouldSendReasoning =
-      isReasoningModelId(selectedChatModel) && (isReasoningEnabled ?? true);
+    const sendReasoning = isReasoningModelId(selectedChatModel)
+      ? true
+      : streamReasoning ?? false;
+    const preferenceForDisplay = showReasoningPreference ?? true;
 
     // Debug logging for API reasoning state
     if (!isProductionEnvironment) {
       console.log("API reasoning state:", {
         selectedChatModel,
         isReasoningModel: isReasoningModelId(selectedChatModel),
-        isReasoningEnabled,
-        shouldSendReasoning,
+        streamReasoning,
+        preferenceForDisplay,
+        sendReasoning,
       });
     }
 
@@ -229,9 +234,8 @@ export async function POST(request: Request) {
 
     const stream = createUIMessageStream({
       execute: ({ writer: dataStream }) => {
-        const activeTools: ToolId[] = shouldSendReasoning
-          ? []
-          : selectedTools && selectedTools.length > 0
+        const activeTools: ToolId[] =
+          selectedTools && selectedTools.length > 0
             ? (selectedTools as ToolId[])
             : defaultSelectedTools;
 
@@ -306,7 +310,11 @@ export async function POST(request: Request) {
 
         dataStream.merge(
           result.toUIMessageStream({
-            sendReasoning: shouldSendReasoning,
+            sendReasoning,
+            messageMetadata: () => ({
+              createdAt: new Date().toISOString(),
+              showReasoningPreference: preferenceForDisplay,
+            }),
           })
         );
       },
