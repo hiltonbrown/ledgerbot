@@ -135,6 +135,24 @@ export class ChatPage {
     expect(await this.getSelectedVisibility()).toBe(chatVisibility);
   }
 
+  async toggleReasoningPreference() {
+    await this.page.getByTestId("reasoning-toggle").click();
+  }
+
+  async getLatestReasoningText() {
+    const reasoningElements = await this.page
+      .getByTestId("message-reasoning")
+      .all();
+    const latestReasoningElement = reasoningElements.at(-1);
+
+    if (!latestReasoningElement) {
+      return null;
+    }
+
+    const textContent = await latestReasoningElement.textContent();
+    return textContent?.trim() ?? null;
+  }
+
   async getRecentAssistantMessage() {
     const messageElements = await this.page
       .getByTestId("message-assistant")

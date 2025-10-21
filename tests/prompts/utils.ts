@@ -78,7 +78,10 @@ const reasoningToDeltas = (text: string): LanguageModelV2StreamPart[] => {
 
 export const getResponseChunksByPrompt = (
   prompt: ModelMessage[],
-  isReasoningEnabled = false
+  options: {
+    streamReasoning?: boolean;
+    showReasoningPreference?: boolean;
+  } = {}
 ): LanguageModelV2StreamPart[] => {
   const recentMessage = prompt.at(-1);
 
@@ -86,7 +89,9 @@ export const getResponseChunksByPrompt = (
     throw new Error("No recent message found!");
   }
 
-  if (isReasoningEnabled) {
+  if (options.streamReasoning) {
+    // The stored preference only affects client display; reasoning chunks
+    // remain part of the stream regardless of its value.
     if (compareMessages(recentMessage, TEST_PROMPTS.USER_SKY)) {
       return [
         ...reasoningToDeltas("The sky is blue because of rayleigh scattering!"),
