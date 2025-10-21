@@ -439,7 +439,7 @@ export function PromptSettingsForm({ data }: { data: UserSettings }) {
         <Button type="button" variant="ghost">
           Cancel
         </Button>
-        <Button disabled={isSaving || personalState.isLocked} type="submit">
+        <Button disabled={isSaving} type="submit">
           {isSaving ? "Saving..." : "Save changes"}
         </Button>
       </div>
