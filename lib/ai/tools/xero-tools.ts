@@ -207,6 +207,35 @@ export function createXeroTools(userId: string) {
         return result.content[0].text;
       },
     }),
+
+    xero_get_profit_and_loss: tool({
+      description:
+        "Get profit and loss report from Xero for a specified date range. Use this to analyze revenue, expenses, and profitability over time.",
+      inputSchema: z.object({
+        fromDate: z
+          .string()
+          .describe("Start date for the report (YYYY-MM-DD format)"),
+        toDate: z
+          .string()
+          .describe("End date for the report (YYYY-MM-DD format)"),
+        periods: z
+          .number()
+          .optional()
+          .describe("Number of periods to compare (e.g., 12 for monthly comparison)"),
+        timeframe: z
+          .enum(["MONTH", "QUARTER", "YEAR"])
+          .optional()
+          .describe("Reporting period frequency"),
+      }),
+      execute: async (args) => {
+        const result = await executeXeroMCPTool(
+          userId,
+          "xero_get_profit_and_loss",
+          args
+        );
+        return result.content[0].text;
+      },
+    }),
   };
 }
 

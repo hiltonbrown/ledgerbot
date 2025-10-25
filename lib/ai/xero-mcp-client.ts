@@ -258,6 +258,34 @@ export const xeroMCPTools: XeroMCPTool[] = [
       properties: {},
     },
   },
+  {
+    name: "xero_get_profit_and_loss",
+    description:
+      "Get profit and loss report from Xero for a specified date range. Shows revenue, expenses, and net profit.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        fromDate: {
+          type: "string",
+          description: "Start date for the report (YYYY-MM-DD format)",
+        },
+        toDate: {
+          type: "string",
+          description: "End date for the report (YYYY-MM-DD format)",
+        },
+        periods: {
+          type: "number",
+          description: "Number of periods to compare (optional)",
+        },
+        timeframe: {
+          type: "string",
+          description: "Reporting period: MONTH, QUARTER, or YEAR (optional)",
+          enum: ["MONTH", "QUARTER", "YEAR"],
+        },
+      },
+      required: ["fromDate", "toDate"],
+    },
+  },
 ];
 
 /**
@@ -479,6 +507,31 @@ export async function executeXeroMCPTool(
             {
               type: "text",
               text: JSON.stringify(response.body.organisations?.[0], null, 2),
+            },
+          ],
+        };
+      }
+
+      case "xero_get_profit_and_loss": {
+        const { fromDate, toDate, periods, timeframe } = args;
+
+        if (!fromDate || !toDate) {
+          throw new Error("fromDate and toDate are required");
+        }
+
+        const response = await client.accountingApi.getReportProfitAndLoss(
+          connection.tenantId,
+          fromDate as string,
+          toDate as string,
+          periods as number | undefined,
+          timeframe as "MONTH" | "QUARTER" | "YEAR" | undefined
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(response.body, null, 2),
             },
           ],
         };
