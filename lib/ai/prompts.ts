@@ -1,6 +1,5 @@
 import type { Geo } from "@vercel/functions";
 import type { ArtifactKind } from "@/components/artifact";
-import { isReasoningModelId } from "./models";
 
 export const artifactsPrompt = `
 Artifacts is a special user interface mode that helps users with writing, editing, and other content creation tasks. When artifact is open, it is on the right side of the screen, while the conversation is on the left side. When creating or updating documents, changes are reflected in real-time on the artifacts and visible to the user.
@@ -71,22 +70,30 @@ About the origin of user's request:
 `;
 
 export const systemPrompt = ({
-  selectedChatModel,
   requestHints,
+  activeTools = [],
 }: {
-  selectedChatModel: string;
   requestHints: RequestHints;
+  activeTools?: readonly string[];
 }) => {
   const requestPrompt = getRequestPromptFromHints(requestHints);
   const contextPrompt = requestHints.userContext
     ? `\n\n${requestHints.userContext}`
     : "";
 
-  if (isReasoningModelId(selectedChatModel)) {
-    return `${regularPrompt}\n\n${requestPrompt}${contextPrompt}`;
+  const promptSections = [
+    `${regularPrompt}\n\n${requestPrompt}${contextPrompt}`,
+  ];
+
+  const hasArtifactTools = activeTools.some((tool) =>
+    ["createDocument", "updateDocument"].includes(tool)
+  );
+
+  if (hasArtifactTools) {
+    promptSections.push(artifactsPrompt);
   }
 
-  return `${regularPrompt}\n\n${requestPrompt}${contextPrompt}\n\n${artifactsPrompt}`;
+  return promptSections.join("\n\n");
 };
 
 export const codePrompt = `

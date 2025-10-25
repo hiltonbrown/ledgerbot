@@ -189,6 +189,9 @@ export function UserPreferencesForm({ data }: { data: UserSettings }) {
               <SelectItem value="anthropic-claude-sonnet-4-5">
                 Claude Sonnet 4.5
               </SelectItem>
+              <SelectItem value="anthropic-claude-haiku-4-5">
+                Claude Haiku 4.5
+              </SelectItem>
               <SelectItem value="anthropic-claude-sonnet-3-5">
                 Claude Sonnet 3.5
               </SelectItem>
