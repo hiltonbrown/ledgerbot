@@ -50,5 +50,6 @@ tsconfig.tsbuildinfo
 .kilocode
 .cursor
 .idea
+.roo
 .next
 .vercel

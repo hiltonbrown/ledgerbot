@@ -1,7 +1,7 @@
 "use client";
 
 import { UserButton } from "@clerk/nextjs";
-import { Home, Moon, Settings2, Sun } from "lucide-react";
+import { Home, Moon, Settings2, Sun, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
@@ -85,7 +85,7 @@ export function AppSidebar({
             <Select defaultValue={xeroConnection.tenantId}>
               <SelectTrigger
                 aria-label="Active Xero organisation"
-                className="mt-3 h-9 w-full border border-border/40 bg-muted/40 px-2 text-left text-sm font-medium shadow-none focus:ring-0 data-[disabled]:cursor-default data-[disabled]:opacity-100"
+                className="mt-3 h-9 w-full border border-border/40 bg-muted/40 px-2 text-left font-medium text-sm shadow-none focus:ring-0 data-[disabled]:cursor-default data-[disabled]:opacity-100"
               >
                 <SelectValue placeholder="Xero organisation" />
               </SelectTrigger>
@@ -96,7 +96,7 @@ export function AppSidebar({
               </SelectContent>
             </Select>
           ) : (
-            <div className="mt-3 rounded-md bg-muted/30 px-2 py-2 text-xs text-muted-foreground">
+            <div className="mt-3 rounded-md bg-muted/30 px-2 py-2 text-muted-foreground text-xs">
               Connect Xero to display your organisation.
             </div>
           )}
@@ -115,6 +115,11 @@ export function AppSidebar({
                     href="/"
                     label="Home"
                     labelIcon={<Home className="size-4" />}
+                  />
+                  <UserButton.Link
+                    href="/agents"
+                    label="Agents"
+                    labelIcon={<Users className="size-4" />}
                   />
                   <UserButton.Action
                     label={`Toggle ${resolvedTheme === "light" ? "dark" : "light"} mode`}
