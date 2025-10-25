@@ -5,7 +5,7 @@ import {
 import { SettingsSection } from "@/components/settings/settings-section";
 import { XeroIntegrationCard } from "@/components/settings/xero-integration-card";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
-import { getActiveXeroConnection } from "@/lib/db/queries";
+import { getXeroConnectionsByUserId } from "@/lib/db/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -98,7 +98,7 @@ const payrollIntegrations: Integration[] = [
 
 export default async function IntegrationsPage() {
   const user = await getAuthUser();
-  const xeroConnection = user ? await getActiveXeroConnection(user.id) : null;
+  const xeroConnections = user ? await getXeroConnectionsByUserId(user.id) : [];
 
   return (
     <div className="space-y-8">
@@ -108,14 +108,7 @@ export default async function IntegrationsPage() {
       >
         <div className="grid gap-4 md:grid-cols-2">
           <XeroIntegrationCard
-            initialConnection={
-              xeroConnection
-                ? {
-                    tenantName: xeroConnection.tenantName ?? "Unknown",
-                    expiresAt: xeroConnection.expiresAt,
-                  }
-                : null
-            }
+            initialConnections={xeroConnections}
             integration={xeroIntegration}
           />
           {accountingIntegrations.map((integration) => (

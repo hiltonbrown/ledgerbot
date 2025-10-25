@@ -1175,3 +1175,48 @@ export async function deactivateXeroConnection(id: string): Promise<void> {
     );
   }
 }
+
+export async function activateXeroConnection(
+  id: string,
+  userId: string
+): Promise<void> {
+  try {
+    await db.transaction(async (tx) => {
+      // Get the connection to activate and validate ownership
+      const [connection] = await tx
+        .select()
+        .from(xeroConnection)
+        .where(
+          and(eq(xeroConnection.id, id), eq(xeroConnection.userId, userId))
+        )
+        .limit(1);
+
+      if (!connection) {
+        throw new ChatSDKError(
+          "not_found:database",
+          "Xero connection not found or does not belong to user"
+        );
+      }
+
+      // First, deactivate all connections for the user
+      await tx
+        .update(xeroConnection)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(eq(xeroConnection.userId, connection.userId));
+
+      // Then, activate the specific connection
+      await tx
+        .update(xeroConnection)
+        .set({ isActive: true, updatedAt: new Date() })
+        .where(eq(xeroConnection.id, id));
+    });
+  } catch (error) {
+    if (error instanceof ChatSDKError) {
+      throw error;
+    }
+    throw new ChatSDKError(
+      "bad_request:database",
+      `Failed to activate Xero connection: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}

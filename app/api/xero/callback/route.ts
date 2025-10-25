@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
+import db from "@/lib/db";
 import { createXeroConnection } from "@/lib/db/queries";
 import {
   createXeroClient,
@@ -67,7 +68,7 @@ export async function GET(request: Request) {
       throw new Error("Invalid token set received from Xero");
     }
 
-    // Get tenants
+    // Get tenants (organizations)
     const tenants = await getXeroTenants(tokenSet.access_token);
 
     if (tenants.length === 0) {
@@ -76,24 +77,29 @@ export async function GET(request: Request) {
       );
     }
 
-    // Use the first tenant (or could allow user to select)
-    const tenant = tenants[0];
-
     // Calculate expiry time
     const expiresAt = new Date(Date.now() + tokenSet.expires_in * 1000);
 
-    // Encrypt and store tokens
-    await createXeroConnection({
-      userId: user.id,
-      tenantId: tenant.tenantId,
-      tenantName: tenant.tenantName,
-      accessToken: encryptToken(tokenSet.access_token),
-      refreshToken: encryptToken(tokenSet.refresh_token),
-      expiresAt,
-      scopes: getXeroScopes(),
-    });
+    // Encrypt tokens once (same for all organizations)
+    const encryptedAccessToken = encryptToken(tokenSet.access_token);
+    const encryptedRefreshToken = encryptToken(tokenSet.refresh_token);
+
+    await Promise.all(
+      tenants.map((tenant) =>
+        createXeroConnection({
+          userId: user.id,
+          tenantId: tenant.tenantId,
+          tenantName: tenant.tenantName,
+          accessToken: encryptedAccessToken,
+          refreshToken: encryptedRefreshToken,
+          expiresAt,
+          scopes: getXeroScopes(),
+        })
+      )
+    );
 
     // Redirect to settings page with success
+    // Note: createXeroConnection already sets the connection as active
     return NextResponse.redirect(
       new URL("/settings/integrations?xero=connected", request.url)
     );
