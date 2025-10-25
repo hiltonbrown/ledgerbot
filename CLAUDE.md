@@ -94,6 +94,9 @@ Copy `.env.example` to `.env.local` and configure:
 - `app/api/context-files/`: Context file management for RAG and document processing
   - Supports images (JPEG, PNG, GIF, WebP), PDFs, DOCX, and XLSX
   - 10MB max file size with storage quota enforcement
+- `app/api/regulatory/`: Regulatory knowledge base management
+  - `stats/route.ts`: Returns regulatory document counts and last updated timestamp
+  - Future: Scraping job management, document CRUD operations
 - `app/account/`: Clerk account management integration
 - `app/privacy/` and `app/terms/`: Legal pages
 
@@ -234,7 +237,7 @@ LedgerBot features specialized AI agent workspaces for accounting automation (`a
 3. **Compliance** (`/agents/compliance`): ATO-aware co-pilot for BAS, payroll, and super obligations with automatic reminders
 4. **Analytics** (`/agents/analytics`): Narrative-rich reporting with KPI annotations, drill-down tables, and presentation-ready exports
 5. **Forecasting** (`/agents/forecasting`): Scenario modeling and runway projections with LangGraph workflows
-6. **Advisory Q&A** (`/agents/qanda`): Conversational assistant for policies, ledger context, and structured follow-up tasks
+6. **Advisory Q&A** (`/agents/qanda`): Regulatory-aware conversational assistant for Australian tax law, Fair Work awards, and compliance queries with citations and confidence scoring
 7. **Workflow Supervisor** (`/agents/workflow`): Graph orchestrations across document, reconciliation, and compliance agents with traceability
 
 **Agent Overview Dashboard** (`/agents`):
@@ -246,6 +249,49 @@ LedgerBot features specialized AI agent workspaces for accounting automation (`a
 
 **Agent Components** (`components/agents/`):
 - `agent-summary-card.tsx`: Displays agent status and metrics on overview page
+
+### Q&A Agent - Regulatory RAG System
+
+The Q&A agent provides regulatory-aware assistance for Australian tax law, employment law, and compliance obligations.
+
+**Implementation Status**: UI complete, backend RAG system planned for future implementation
+
+**Key Features** (`/agents/qanda/page.tsx`):
+- **Interactive Chat Interface**: Full conversation history with real-time messaging
+- **Regulatory Knowledge Base Stats**: Displays counts for Modern Awards, Tax Rulings, and State Payroll Tax documents
+- **Citation System**: Shows regulatory sources with clickable links to Fair Work and ATO documents
+- **Confidence Scoring**: Visual badges indicating response confidence (color-coded: green ≥80%, yellow 60-79%, red <60%)
+- **Human Review Escalation**: Flagging and escalation for low-confidence responses
+- **Suggested Questions**: Common Australian regulatory queries (minimum wage, super, payroll tax, BAS)
+- **Stream Controls**: Toggles for streaming responses and showing/hiding citations
+
+**Settings Integration** (`/settings/agents`):
+- Response confidence threshold (0-100%)
+- Hallucination prevention level (conservative/balanced/aggressive)
+- Knowledge base source selection:
+  - All regulatory sources (default)
+  - ATO tax rulings only
+  - Fair Work awards only
+  - State payroll tax only
+  - Custom documents
+- Regulatory source category toggles (Fair Work, ATO, State payroll tax)
+- Citation display toggle
+- Human escalation toggle for low-confidence queries
+
+**API Routes**:
+- `/api/regulatory/stats`: Returns regulatory knowledge base statistics (placeholder implementation)
+- Future: `/api/agents/qanda`: Main Q&A agent endpoint with RAG integration
+
+**Planned Backend Integration**:
+The regulatory RAG system will include:
+- Database schema for `regulatoryDocument` and `regulatoryScrapeJob` tables
+- Automated web scraping via Firecrawl MCP for Fair Work awards, ATO rulings, and state payroll tax guidance
+- Markdown-based configuration system (`/config/regulatory-sources.md`) for maintainable source management
+- PostgreSQL full-text search for regulatory document retrieval
+- Vercel Cron jobs for scheduled content updates
+- Citation extraction and confidence scoring in responses
+
+See `/docs/qanda-agent-ui-update.md` for detailed UI implementation notes.
 
 ### Database Schema
 

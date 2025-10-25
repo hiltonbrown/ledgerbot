@@ -809,7 +809,7 @@ export default function AgentSettingsPage() {
               id: "advisory-qa",
               name: "Advisory and Q&A Agent",
               description:
-                "General-purpose conversational assistant for open-ended queries and accounting advice.",
+                "Regulatory-aware conversational assistant for Australian tax law, Fair Work awards, and compliance queries with citations and confidence scoring.",
               enabled: advisoryEnabled,
               icon: <MessageSquare className="h-5 w-5" />,
             }}
@@ -823,7 +823,7 @@ export default function AgentSettingsPage() {
           >
             <SettingRow
               description="Minimum confidence for responses (0-100%)"
-              label="Response confidence"
+              label="Response confidence threshold"
             >
               <Input
                 max="100"
@@ -858,7 +858,7 @@ export default function AgentSettingsPage() {
             </SettingRow>
 
             <SettingRow
-              description="RAG knowledge base selection"
+              description="Regulatory knowledge base sources"
               label="Knowledge base"
             >
               <Select onValueChange={setKnowledgeBase} value={knowledgeBase}>
@@ -867,24 +867,78 @@ export default function AgentSettingsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="default">
-                    Default knowledge base
+                    All regulatory sources
                   </SelectItem>
                   <SelectItem value="australian-tax">
-                    Australian tax law
+                    ATO tax rulings only
                   </SelectItem>
                   <SelectItem value="australian-employment">
-                    Australian Employment Law
+                    Fair Work awards only
                   </SelectItem>
-                  <SelectItem value="accounting-standards">
-                    Accounting standards
+                  <SelectItem value="state-payroll">
+                    State payroll tax only
                   </SelectItem>
                   <SelectItem value="custom">Custom documents</SelectItem>
                 </SelectContent>
               </Select>
             </SettingRow>
 
+            <SettingRow label="Regulatory source categories">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label
+                    className="font-normal text-sm"
+                    htmlFor="kb-fair-work"
+                  >
+                    Fair Work awards
+                  </Label>
+                  <Switch
+                    checked
+                    disabled
+                    id="kb-fair-work"
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label
+                    className="font-normal text-sm"
+                    htmlFor="kb-ato"
+                  >
+                    ATO tax rulings
+                  </Label>
+                  <Switch
+                    checked
+                    disabled
+                    id="kb-ato"
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label
+                    className="font-normal text-sm"
+                    htmlFor="kb-payroll"
+                  >
+                    State payroll tax
+                  </Label>
+                  <Switch
+                    checked
+                    disabled
+                    id="kb-payroll"
+                  />
+                </div>
+              </div>
+            </SettingRow>
+
             <SettingRow
-              description="Escalate uncertain queries to human experts"
+              description="Show regulatory citations with responses"
+              label="Display citations"
+            >
+              <Switch
+                checked
+                disabled
+              />
+            </SettingRow>
+
+            <SettingRow
+              description="Escalate low-confidence queries to human experts"
               label="Human escalation"
             >
               <Switch
