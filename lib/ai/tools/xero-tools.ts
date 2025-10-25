@@ -236,6 +236,35 @@ export function createXeroTools(userId: string) {
         return result.content[0].text;
       },
     }),
+
+    xero_get_balance_sheet: tool({
+      description:
+        "Get balance sheet report showing assets, liabilities, and equity. Use this to review financial position over a specified period.",
+      inputSchema: z.object({
+        fromDate: z
+          .string()
+          .describe("Start date for the report (YYYY-MM-DD format)"),
+        toDate: z
+          .string()
+          .describe("End date for the report (YYYY-MM-DD format)"),
+        periods: z
+          .number()
+          .optional()
+          .describe("Number of periods to compare (e.g., 12 for monthly comparison)"),
+        timeframe: z
+          .enum(["MONTH", "QUARTER", "YEAR"])
+          .optional()
+          .describe("Reporting period frequency"),
+      }),
+      execute: async (args) => {
+        const result = await executeXeroMCPTool(
+          userId,
+          "xero_get_balance_sheet",
+          args
+        );
+        return result.content[0].text;
+      },
+    }),
   };
 }
 
