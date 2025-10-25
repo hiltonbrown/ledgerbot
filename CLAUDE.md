@@ -9,14 +9,15 @@ LedgerBot (officially "intellisync-chatbot" in package.json) is an AI-powered ac
 ## Key Technologies
 
 - **Framework**: Next.js 15 with experimental PPR (Partial Prerendering)
-- **AI SDK**: Vercel AI SDK with multiple providers (Anthropic Claude, OpenAI GPT-5, Google Gemini) via AI Gateway
+- **AI SDK**: Vercel AI SDK with multiple providers (Anthropic Claude, OpenAI GPT-5, Google Gemini, xAI Grok) via AI Gateway
 - **Database**: PostgreSQL with Drizzle ORM
 - **Authentication**: Clerk (clerk.com) - Modern authentication and user management
 - **Storage**: Vercel Blob for file uploads
-- **Caching**: Redis for resumable streams (optional)
+- **Caching**: Redis for resumable streams (optional, currently disabled)
 - **Linting/Formatting**: Ultracite (Biome-based)
 - **Testing**: Playwright
-- **Monitoring**: TokenLens for token usage tracking
+- **Monitoring**: TokenLens for token usage tracking with cached model catalog
+- **Integration**: Model Context Protocol (MCP) SDK for third-party service integrations
 
 ## Setup & Maintenance Notes
 ⚠️ Avoid editing node_modules or dependency source files.
@@ -82,6 +83,7 @@ Copy `.env.example` to `.env.local` and configure:
   - `page.tsx`: Agent overview dashboard with automation metrics and health signals
 - `app/(settings)/`: User settings and management
   - `settings/personalisation/`: User preferences including default model and reasoning settings
+  - `personalisation/`: Alternative personalisation route (duplicate path exists)
   - `settings/usage/`: Usage tracking and analytics
   - `settings/integrations/`: Third-party integrations
   - `settings/files/`: File management interface
@@ -108,8 +110,12 @@ Copy `.env.example` to `.env.local` and configure:
   - `google-gemini-2-5-flash`: Gemini 2.5 Flash (speed-optimized with reasoning)
 - Reasoning models use `extractReasoningMiddleware` with `<think>` tags
 - Additional specialized models:
-  - `title-model`: For chat title generation
-  - `artifact-model`: For document generation
+  - `title-model`: xAI Grok 2 (`xai/grok-2-1212`) for chat title generation
+  - `artifact-model`: xAI Grok 2 (`xai/grok-2-1212`) for document generation
+- **TokenLens Integration**: Uses cached model catalog (`unstable_cache`) with 24h revalidation
+  - `getTokenlensCatalog()` fetches model pricing and capabilities from TokenLens API
+  - Falls back to default catalog if fetch fails
+  - Enriches token usage data with cost calculations in `onFinish` callback
 
 **System Prompts** (`lib/ai/prompts.ts`):
 - Reasoning models use regular prompt only
@@ -136,8 +142,17 @@ Copy `.env.example` to `.env.local` and configure:
 
 LedgerBot includes built-in Xero accounting integration using Model Context Protocol (MCP) for real-time access to financial data.
 
+**OAuth2 Flow**: Uses **Authorization Code Flow** (standard flow with client secret)
+- Recommended by Xero for web server applications that can securely store client secrets
+- LedgerBot is a Next.js server-side application with secure environment variable storage
+- Client secret provides stronger authentication than PKCE (designed for native apps)
+- See `/docs/xero-oauth-flow-comparison.md` for detailed comparison with PKCE flow
+- See `/docs/xero-authentication-guide.md` for complete OAuth implementation details
+
 **Architecture** (`lib/xero/`, `lib/ai/xero-*`):
-- OAuth2 authentication with encrypted token storage (AES-256-GCM)
+- **OAuth2 Authorization Code Flow** with client secret (not PKCE)
+- State parameter CSRF protection (Base64-encoded userId + timestamp)
+- AES-256-GCM encrypted token storage in database
 - Automatic token refresh when expiring within 5 minutes
 - MCP-compatible tool interfaces for Xero API operations
 - AI SDK tool wrappers for seamless chat integration
@@ -374,7 +389,10 @@ Chat API (`app/(chat)/api/chat/route.ts`):
 4. Streams AI response with tools enabled (except for reasoning models)
 5. Saves messages to database on completion
 6. Tracks token usage via TokenLens integration with cached model catalog
-7. Optional resumable streams via Redis (available when REDIS_URL is configured)
+7. Resumable streams via Redis: **Currently disabled** (code commented out in lines 353-361)
+   - Feature can be enabled by uncommenting code when `REDIS_URL` is configured
+   - Requires `resumable-stream` package and Redis connection
+   - When disabled, uses direct SSE streaming without resumability
 
 **Stream Configuration**:
 - Max duration: 60 seconds
@@ -395,6 +413,19 @@ This project uses Ultracite, which enforces strict Biome-based rules. Key princi
 - **Modern JS**: Use optional chaining, `for-of` over forEach, arrow functions, `??` operator
 
 Run `pnpm lint` before committing. Most issues auto-fix with `pnpm format`.
+
+**Biome Configuration** (`biome.jsonc`):
+- Extends Ultracite base configuration
+- **File Exclusions**: `components/ui`, `lib/utils.ts`, `hooks/use-mobile.ts` are excluded from linting
+- **Rule Overrides** (disabled for project needs):
+  - `suspicious.noExplicitAny`: Disabled (needs more work to fix)
+  - `suspicious.noConsole`: Disabled (allowing console for debugging)
+  - `suspicious.noBitwiseOperators`: Disabled (needed for generateUUID)
+  - `style.noMagicNumbers`: Disabled (allowing magic numbers)
+  - `style.noNestedTernary`: Disabled (needs more work to fix)
+  - `nursery.noUnnecessaryConditions`: Disabled (too many false positives)
+  - `complexity.noExcessiveCognitiveComplexity`: Disabled (needs more work)
+  - `a11y.noSvgWithoutTitle`: Disabled (needs more work)
 
 ## Testing
 
