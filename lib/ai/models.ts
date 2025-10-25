@@ -17,6 +17,12 @@ export const chatModels: ChatModel[] = [
     isReasoning: true,
   },
   {
+    id: "anthropic-claude-haiku-4-5",
+    name: "Anthropic Claude Haiku 4.5",
+    description: "Lightweight Claude model optimized for fast, cost-efficient replies",
+    vercelId: "anthropic/claude-haiku-4.5",
+  },
+  {
     id: "openai-gpt-5",
     name: "OpenAI GPT-5",
     description: "Flagship OpenAI model for complex and creative tasks",
