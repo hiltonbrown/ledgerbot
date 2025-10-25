@@ -247,7 +247,10 @@ export async function POST(request: Request) {
 
         const result = streamText({
           model: myProvider.languageModel(selectedChatModel),
-          system: systemPrompt({ selectedChatModel, requestHints }),
+          system: systemPrompt({
+            requestHints,
+            activeTools: finalActiveTools,
+          }),
           messages: convertToModelMessages(includeAttachmentText(uiMessages)),
           stopWhen: stepCountIs(5),
           experimental_activeTools: finalActiveTools as any,
