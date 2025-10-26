@@ -384,7 +384,7 @@ I paid $1,250 for business insurance on 20/03/2024. How should I record this?
 I'll help you record this insurance payment. First, I need to clarify:
 
 1. Is the $1,250 amount GST-inclusive or GST-exclusive?
-2. What type of insurance is this? (e.g., public liability, professional indemnary, building, contents)
+2. What type of insurance is this? (e.g., public liability, professional indemnity, building, contents)
 3. What period does this insurance cover? (This helps determine if it should be expensed immediately or treated as a prepayment)
 4. Do you have a reference number or policy number?
 5. How was this paid? (e.g., bank transfer, credit card, direct debit)
