@@ -313,6 +313,20 @@ export const xeroMCPTools: XeroMCPTool[] = [
       required: ["fromDate", "toDate"],
     },
   },
+  {
+    name: "xero_get_trial_balance",
+    description: "Get trial balance report showing all account balances",
+    inputSchema: {
+      type: "object",
+      properties: {
+        date: {
+          type: "string",
+          description: "Date for the report (YYYY-MM-DD format)",
+        },
+      },
+      required: ["date"],
+    },
+  },
 ];
 
 /**
@@ -577,6 +591,28 @@ export async function executeXeroMCPTool(
           toDate as string,
           periods as number | undefined,
           timeframe as "MONTH" | "QUARTER" | "YEAR" | undefined
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(response.body, null, 2),
+            },
+          ],
+        };
+      }
+
+      case "xero_get_trial_balance": {
+        const { date } = args;
+
+        if (!date) {
+          throw new Error("date is required");
+        }
+
+        const response = await client.accountingApi.getReportTrialBalance(
+          connection.tenantId,
+          date as string
         );
 
         return {

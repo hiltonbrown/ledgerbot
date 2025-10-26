@@ -265,6 +265,24 @@ export function createXeroTools(userId: string) {
         return result.content[0].text;
       },
     }),
+
+    xero_get_trial_balance: tool({
+      description:
+        "Get trial balance report showing all account balances. Use this to verify debits and credits remain in balance at a specific date.",
+      inputSchema: z.object({
+        date: z
+          .string()
+          .describe("Date for the report (YYYY-MM-DD format)"),
+      }),
+      execute: async (args) => {
+        const result = await executeXeroMCPTool(
+          userId,
+          "xero_get_trial_balance",
+          args
+        );
+        return result.content[0].text;
+      },
+    }),
   };
 }
 
