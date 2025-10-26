@@ -280,6 +280,14 @@ export const xeroMCPTools: XeroMCPTool[] = [
     },
   },
   {
+    name: "xero_list_tax_rates",
+    description: "Get a list of tax rates configured in Xero",
+    inputSchema: {
+      type: "object",
+      properties: {},
+    },
+  },
+  {
     name: "xero_get_profit_and_loss",
     description:
       "Get profit and loss report from Xero for a specified date range. Shows revenue, expenses, and net profit.",
@@ -583,6 +591,21 @@ export async function executeXeroMCPTool(
             {
               type: "text",
               text: JSON.stringify(response.body.payments, null, 2),
+            },
+          ],
+        };
+      }
+
+      case "xero_list_tax_rates": {
+        const response = await client.accountingApi.getTaxRates(
+          connection.tenantId
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(response.body.taxRates, null, 2),
             },
           ],
         };
