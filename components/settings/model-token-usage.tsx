@@ -16,6 +16,7 @@ function formatNumber(num: number): string {
 }
 
 function formatCost(cost: number): string {
+  // Handle invalid values (NaN, Infinity, null, undefined)
   if (!Number.isFinite(cost)) return "$0.0000";
   return `$${cost.toFixed(4)}`;
 }
@@ -23,6 +24,13 @@ function formatCost(cost: number): string {
 function formatPercentage(value: number, total: number): number {
   if (total === 0) return 0;
   return Math.round((value / total) * 100);
+}
+
+function calculateAverageCostPerRequest(
+  totalCost: number,
+  requestCount: number
+): number {
+  return requestCount > 0 ? totalCost / requestCount : 0;
 }
 
 export function ModelTokenUsage({ models }: { models: TokenUsageByModel[] }) {
@@ -128,9 +136,10 @@ export function ModelTokenUsage({ models }: { models: TokenUsageByModel[] }) {
                     </p>
                     <p className="font-semibold text-foreground text-sm">
                       {formatCost(
-                        model.requestCount > 0
-                          ? model.totalCost / model.requestCount
-                          : 0
+                        calculateAverageCostPerRequest(
+                          model.totalCost,
+                          model.requestCount
+                        )
                       )}
                     </p>
                   </div>
