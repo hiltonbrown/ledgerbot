@@ -74,6 +74,50 @@ To update the default spreadsheet prompt:
 If the file cannot be read for any reason, a simple fallback prompt is used:
 > "You are a spreadsheet creation assistant. Create a spreadsheet in csv format based on the given prompt. The spreadsheet should contain meaningful column headers and data."
 
+### default-code-prompt.md
+
+The default code generation prompt for LedgerBot's code artifact creation.
+
+**Purpose:**
+- Defines comprehensive standards for generating production-ready code for Australian businesses
+- Establishes code quality principles: clarity, robustness, security, data integrity, maintainability, performance
+- Provides Australian compliance patterns for financial data handling
+- Includes security best practices and error handling standards
+- Defines common code patterns for business applications
+
+**Key Requirements:**
+- **Code Quality**: Self-documenting code with clear naming, type hints, comprehensive docstrings
+- **Financial Accuracy**: Use Decimal for currency (never float), Australian date format (DD/MM/YYYY)
+- **Security**: No hardcoded credentials, input sanitisation, parameterised queries, environment variables
+- **Error Handling**: Comprehensive validation, meaningful errors, custom exception classes
+- **Australian Compliance**: GST calculations (10%), ABN validation, financial year handling (July-June)
+- **Testing**: Unit tests, integration tests, data validation functions
+
+**Code Patterns Included:**
+- Data import and validation (CSV/Excel with Australian formats)
+- Financial report generation (P&L, Balance Sheet)
+- API integration (Xero/MYOB examples)
+- Data export and formatting
+- Automated BAS preparation
+- Performance optimisation (chunking, caching, bulk operations)
+
+**Usage:**
+This file is automatically loaded by `/app/(settings)/api/user/data.ts` and used as the default code generation prompt for artifact creation.
+
+**Customization:**
+Users can override this default prompt in their personalisation settings at `/settings/personalisation`.
+
+**Maintenance:**
+To update the default code prompt:
+1. Edit `default-code-prompt.md` in this directory
+2. No code changes required - the file is read at runtime
+3. Changes take effect immediately for users without custom prompts
+4. Test by creating a code artifact
+
+**Fallback:**
+If the file cannot be read for any reason, a simple fallback prompt is used:
+> "You are a Python code generator that creates self-contained, executable code snippets..."
+
 ## Adding New Prompts
 
 To add new prompt templates:
