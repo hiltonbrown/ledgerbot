@@ -292,7 +292,9 @@ export function createXeroTools(userId: string) {
         periods: z
           .number()
           .optional()
-          .describe("Number of periods to compare (e.g., 12 for monthly comparison)"),
+          .describe(
+            "Number of periods to compare (e.g., 12 for monthly comparison)"
+          ),
         timeframe: z
           .enum(["MONTH", "QUARTER", "YEAR"])
           .optional()
@@ -321,7 +323,9 @@ export function createXeroTools(userId: string) {
         periods: z
           .number()
           .optional()
-          .describe("Number of periods to compare (e.g., 12 for monthly comparison)"),
+          .describe(
+            "Number of periods to compare (e.g., 12 for monthly comparison)"
+          ),
         timeframe: z
           .enum(["MONTH", "QUARTER", "YEAR"])
           .optional()
@@ -341,9 +345,7 @@ export function createXeroTools(userId: string) {
       description:
         "Get trial balance report showing all account balances. Use this to verify debits and credits remain in balance at a specific date.",
       inputSchema: z.object({
-        date: z
-          .string()
-          .describe("Date for the report (YYYY-MM-DD format)"),
+        date: z.string().describe("Date for the report (YYYY-MM-DD format)"),
       }),
       execute: async (args) => {
         const result = await executeXeroMCPTool(
@@ -429,13 +431,8 @@ export function createXeroTools(userId: string) {
       description:
         "Get aged receivables report showing outstanding invoices by age. Use this to understand overdue balances for a contact.",
       inputSchema: z.object({
-        contactId: z
-          .string()
-          .describe("Xero contact ID to analyze"),
-        date: z
-          .string()
-          .optional()
-          .describe("Report date (YYYY-MM-DD format)"),
+        contactId: z.string().describe("Xero contact ID to analyze"),
+        date: z.string().optional().describe("Report date (YYYY-MM-DD format)"),
         fromDate: z
           .string()
           .optional()
@@ -459,13 +456,8 @@ export function createXeroTools(userId: string) {
       description:
         "Get aged payables report showing outstanding bills by age. Use this to review supplier balances for a contact.",
       inputSchema: z.object({
-        contactId: z
-          .string()
-          .describe("Xero contact ID to analyze"),
-        date: z
-          .string()
-          .optional()
-          .describe("Report date (YYYY-MM-DD format)"),
+        contactId: z.string().describe("Xero contact ID to analyze"),
+        date: z.string().optional().describe("Report date (YYYY-MM-DD format)"),
         fromDate: z
           .string()
           .optional()
@@ -479,6 +471,48 @@ export function createXeroTools(userId: string) {
         const result = await executeXeroMCPTool(
           userId,
           "xero_get_aged_payables",
+          args
+        );
+        return result.content[0].text;
+      },
+    }),
+
+    xero_create_invoice: tool({
+      description:
+        "Create a new invoice in Xero. Use this to bill customers for products or services. Creates a draft invoice by default.",
+      inputSchema: z.object({
+        contactId: z.string().describe("The Xero contact ID for the customer"),
+        date: z.string().describe("Invoice date (YYYY-MM-DD format)"),
+        dueDate: z.string().describe("Payment due date (YYYY-MM-DD format)"),
+        lineItems: z
+          .array(
+            z.object({
+              description: z.string().describe("Line item description"),
+              quantity: z.number().describe("Quantity"),
+              unitAmount: z.number().describe("Unit price"),
+              accountCode: z
+                .string()
+                .describe("Account code from chart of accounts"),
+              taxType: z
+                .string()
+                .optional()
+                .describe("Tax type code (optional)"),
+            })
+          )
+          .describe("Array of invoice line items"),
+        reference: z
+          .string()
+          .optional()
+          .describe("Invoice reference number (optional)"),
+        status: z
+          .enum(["DRAFT", "AUTHORISED"])
+          .optional()
+          .describe("Invoice status (default: DRAFT)"),
+      }),
+      execute: async (args) => {
+        const result = await executeXeroMCPTool(
+          userId,
+          "xero_create_invoice",
           args
         );
         return result.content[0].text;
