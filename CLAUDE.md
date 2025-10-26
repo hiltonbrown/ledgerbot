@@ -120,11 +120,18 @@ Copy `.env.example` to `.env.local` and configure:
   - Falls back to default catalog if fetch fails
   - Enriches token usage data with cost calculations in `onFinish` callback
 
-**System Prompts** (`lib/ai/prompts.ts`):
+**System Prompts** (`lib/ai/prompts.ts`, `prompts/`):
 - Reasoning models use regular prompt only
 - Non-reasoning models include artifacts system prompt for document creation
 - All prompts include geolocation hints from Vercel Functions (latitude, longitude, city, country)
 - Additional prompts: `codePrompt` (Python code generation), `sheetPrompt` (spreadsheet creation), `updateDocumentPrompt` (document improvement)
+- **Default System Prompt**: Stored as markdown file in `prompts/default-system-prompt.md`
+  - Loaded at runtime by `app/(settings)/api/user/data.ts`
+  - Defines LedgerBot's role as Australian business accounting assistant
+  - Includes comprehensive accounting capabilities, GST/BAS compliance, Australian terminology
+  - Template placeholders for industry-specific customization: `{{INDUSTRY_CONTEXT}}`, `{{CHART_OF_ACCOUNTS}}`
+  - Users can override in personalisation settings (`/settings/personalisation`)
+  - See `prompts/README.md` for maintenance documentation
 
 **AI Tools** (`lib/ai/tools/`):
 - `createDocument`: Creates text, code, image, or sheet artifacts
