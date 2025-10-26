@@ -764,10 +764,10 @@ export async function getTokenUsageByUserId({
     const results = await db
       .select({
         modelId: sql<string | null>`(${chat.lastContext}->>'modelId')`,
-        promptTokens: sql<number>`COALESCE(SUM(CAST(${chat.lastContext}->>'promptTokens' AS INTEGER)), 0)`,
-        completionTokens: sql<number>`COALESCE(SUM(CAST(${chat.lastContext}->>'completionTokens' AS INTEGER)), 0)`,
+        promptTokens: sql<number>`COALESCE(SUM(CAST(${chat.lastContext}->>'inputTokens' AS INTEGER)), 0)`,
+        completionTokens: sql<number>`COALESCE(SUM(CAST(${chat.lastContext}->>'outputTokens' AS INTEGER)), 0)`,
         totalTokens: sql<number>`COALESCE(SUM(CAST(${chat.lastContext}->>'totalTokens' AS INTEGER)), 0)`,
-        cost: sql<number>`COALESCE(SUM(CAST(${chat.lastContext}->>'cost' AS NUMERIC)), 0)`,
+        cost: sql<number>`COALESCE(SUM(CAST(${chat.lastContext}->'costUSD'->>'totalUSD' AS NUMERIC)), 0)`,
         chatCount: count(chat.id),
       })
       .from(chat)
@@ -828,10 +828,10 @@ export async function getTokenUsageTimeseries({
     const results = await db
       .select({
         date: sql<string>`DATE(${chat.createdAt})`,
-        promptTokens: sql<number>`COALESCE(SUM(CAST(${chat.lastContext}->>'promptTokens' AS INTEGER)), 0)`,
-        completionTokens: sql<number>`COALESCE(SUM(CAST(${chat.lastContext}->>'completionTokens' AS INTEGER)), 0)`,
+        promptTokens: sql<number>`COALESCE(SUM(CAST(${chat.lastContext}->>'inputTokens' AS INTEGER)), 0)`,
+        completionTokens: sql<number>`COALESCE(SUM(CAST(${chat.lastContext}->>'outputTokens' AS INTEGER)), 0)`,
         totalTokens: sql<number>`COALESCE(SUM(CAST(${chat.lastContext}->>'totalTokens' AS INTEGER)), 0)`,
-        cost: sql<number>`COALESCE(SUM(CAST(${chat.lastContext}->>'cost' AS NUMERIC)), 0)`,
+        cost: sql<number>`COALESCE(SUM(CAST(${chat.lastContext}->'costUSD'->>'totalUSD' AS NUMERIC)), 0)`,
       })
       .from(chat)
       .where(and(whereCondition, sql`${chat.lastContext} IS NOT NULL`))
