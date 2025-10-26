@@ -17,6 +17,18 @@ const loadDefaultSystemPrompt = () => {
   }
 };
 
+// Load default spreadsheet prompt from markdown file
+const loadDefaultSpreadsheetPrompt = () => {
+  try {
+    const promptPath = join(process.cwd(), "prompts", "default-spreadsheet-prompt.md");
+    return readFileSync(promptPath, "utf-8");
+  } catch (error) {
+    console.error("Failed to load default spreadsheet prompt:", error);
+    // Fallback to basic prompt if file can't be read
+    return "You are a spreadsheet creation assistant. Create a spreadsheet in csv format based on the given prompt. The spreadsheet should contain meaningful column headers and data.";
+  }
+};
+
 export type UserSettings = {
   name: string;
   email: string;
@@ -77,8 +89,7 @@ const USER_SETTINGS: UserSettings = {
     systemPrompt: loadDefaultSystemPrompt(),
     codePrompt:
       "You are a Python code generator that creates self-contained, executable code snippets. When writing code:\n\n1. Each snippet should be complete and runnable on its own\n2. Prefer using print() statements to display outputs\n3. Include helpful comments explaining the code\n4. Keep snippets concise (generally under 15 lines)\n5. Avoid external dependencies - use Python standard library\n6. Handle potential errors gracefully\n7. Return meaningful output that demonstrates the code's functionality\n8. Don't use input() or other interactive functions\n9. Don't access files or network resources\n10. Don't use infinite loops\n\nExamples of good snippets:\n\n# Calculate factorial iteratively\ndef factorial(n):\n    result = 1\n    for i in range(1, n + 1):\n        result *= i\n    return result\n\nprint(f\"Factorial of 5 is: {factorial(5)}\")",
-    sheetPrompt:
-      "You are a spreadsheet creation assistant. Create a spreadsheet in csv format based on the given prompt. The spreadsheet should contain meaningful column headers and data.",
+    sheetPrompt: loadDefaultSpreadsheetPrompt(),
   },
   suggestions: [
     {
