@@ -280,6 +280,34 @@ export const xeroMCPTools: XeroMCPTool[] = [
     },
   },
   {
+    name: "xero_list_credit_notes",
+    description: "Get a list of credit notes from Xero",
+    inputSchema: {
+      type: "object",
+      properties: {
+        status: {
+          type: "string",
+          description:
+            "Credit note status filter (DRAFT, SUBMITTED, AUTHORISED, PAID, VOIDED)",
+          enum: ["DRAFT", "SUBMITTED", "AUTHORISED", "PAID", "VOIDED"],
+        },
+        dateFrom: {
+          type: "string",
+          description: "Filter credit notes from this date (YYYY-MM-DD format)",
+        },
+        dateTo: {
+          type: "string",
+          description: "Filter credit notes to this date (YYYY-MM-DD format)",
+        },
+        limit: {
+          type: "number",
+          description:
+            "Maximum number of credit notes to return (default: 100)",
+        },
+      },
+    },
+  },
+  {
     name: "xero_list_tax_rates",
     description: "Get a list of tax rates configured in Xero",
     inputSchema: {
@@ -562,6 +590,37 @@ export async function executeXeroMCPTool(
             {
               type: "text",
               text: JSON.stringify(response.body.bankTransactions, null, 2),
+            },
+          ],
+        };
+      }
+
+      case "xero_list_credit_notes": {
+        const { status, dateFrom, dateTo, limit = 100 } = args;
+
+        const whereClauses: string[] = [];
+        if (status) whereClauses.push(`Status=="${status}"`);
+        if (dateFrom) whereClauses.push(`Date>=DateTime(${dateFrom})`);
+        if (dateTo) whereClauses.push(`Date<=DateTime(${dateTo})`);
+
+        const where =
+          whereClauses.length > 0 ? whereClauses.join(" AND ") : undefined;
+
+        const response = await client.accountingApi.getCreditNotes(
+          connection.tenantId,
+          undefined, // ifModifiedSince
+          where,
+          undefined, // order
+          undefined, // page
+          undefined, // unitdp
+          limit as number | undefined // pageSize
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(response.body.creditNotes, null, 2),
             },
           ],
         };

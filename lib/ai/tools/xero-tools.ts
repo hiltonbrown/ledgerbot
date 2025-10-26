@@ -208,6 +208,37 @@ export function createXeroTools(userId: string) {
       },
     }),
 
+    xero_list_credit_notes: tool({
+      description: "Get a list of credit notes from Xero.",
+      inputSchema: z.object({
+        status: z
+          .enum(["DRAFT", "SUBMITTED", "AUTHORISED", "PAID", "VOIDED"])
+          .optional()
+          .describe("Credit note status filter"),
+        dateFrom: z
+          .string()
+          .optional()
+          .describe("Filter credit notes from this date (YYYY-MM-DD format)"),
+        dateTo: z
+          .string()
+          .optional()
+          .describe("Filter credit notes to this date (YYYY-MM-DD format)"),
+        limit: z
+          .number()
+          .optional()
+          .default(100)
+          .describe("Maximum number of credit notes to return"),
+      }),
+      execute: async (args) => {
+        const result = await executeXeroMCPTool(
+          userId,
+          "xero_list_credit_notes",
+          args
+        );
+        return result.content[0].text;
+      },
+    }),
+
     xero_list_payments: tool({
       description: "Get a list of payments from Xero.",
       inputSchema: z.object({
