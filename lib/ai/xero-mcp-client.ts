@@ -258,6 +258,239 @@ export const xeroMCPTools: XeroMCPTool[] = [
       properties: {},
     },
   },
+  {
+    name: "xero_list_payments",
+    description: "Get a list of payments from Xero",
+    inputSchema: {
+      type: "object",
+      properties: {
+        dateFrom: {
+          type: "string",
+          description: "Filter payments from this date (YYYY-MM-DD format)",
+        },
+        dateTo: {
+          type: "string",
+          description: "Filter payments to this date (YYYY-MM-DD format)",
+        },
+        limit: {
+          type: "number",
+          description: "Maximum number of payments to return (default: 100)",
+        },
+      },
+    },
+  },
+  {
+    name: "xero_list_credit_notes",
+    description: "Get a list of credit notes from Xero",
+    inputSchema: {
+      type: "object",
+      properties: {
+        status: {
+          type: "string",
+          description:
+            "Credit note status filter (DRAFT, SUBMITTED, AUTHORISED, PAID, VOIDED)",
+          enum: ["DRAFT", "SUBMITTED", "AUTHORISED", "PAID", "VOIDED"],
+        },
+        dateFrom: {
+          type: "string",
+          description: "Filter credit notes from this date (YYYY-MM-DD format)",
+        },
+        dateTo: {
+          type: "string",
+          description: "Filter credit notes to this date (YYYY-MM-DD format)",
+        },
+        limit: {
+          type: "number",
+          description:
+            "Maximum number of credit notes to return (default: 100)",
+        },
+      },
+    },
+  },
+  {
+    name: "xero_list_tax_rates",
+    description: "Get a list of tax rates configured in Xero",
+    inputSchema: {
+      type: "object",
+      properties: {},
+    },
+  },
+  {
+    name: "xero_get_profit_and_loss",
+    description:
+      "Get profit and loss report from Xero for a specified date range. Shows revenue, expenses, and net profit.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        fromDate: {
+          type: "string",
+          description: "Start date for the report (YYYY-MM-DD format)",
+        },
+        toDate: {
+          type: "string",
+          description: "End date for the report (YYYY-MM-DD format)",
+        },
+        periods: {
+          type: "number",
+          description: "Number of periods to compare (optional)",
+        },
+        timeframe: {
+          type: "string",
+          description: "Reporting period: MONTH, QUARTER, or YEAR (optional)",
+          enum: ["MONTH", "QUARTER", "YEAR"],
+        },
+      },
+      required: ["fromDate", "toDate"],
+    },
+  },
+  {
+    name: "xero_get_balance_sheet",
+    description: "Get balance sheet report showing assets, liabilities, and equity",
+    inputSchema: {
+      type: "object",
+      properties: {
+        fromDate: {
+          type: "string",
+          description: "Start date for the report (YYYY-MM-DD format)",
+        },
+        toDate: {
+          type: "string",
+          description: "End date for the report (YYYY-MM-DD format)",
+        },
+        periods: {
+          type: "number",
+          description: "Number of periods to compare (optional)",
+        },
+        timeframe: {
+          type: "string",
+          description: "Reporting period: MONTH, QUARTER, or YEAR (optional)",
+          enum: ["MONTH", "QUARTER", "YEAR"],
+        },
+      },
+      required: ["fromDate", "toDate"],
+    },
+  },
+  {
+    name: "xero_get_trial_balance",
+    description: "Get trial balance report showing all account balances",
+    inputSchema: {
+      type: "object",
+      properties: {
+        date: {
+          type: "string",
+          description: "Date for the report (YYYY-MM-DD format)",
+        },
+      },
+      required: ["date"],
+    },
+  },
+  {
+    name: "xero_list_items",
+    description: "Get a list of inventory items and services from Xero",
+    inputSchema: {
+      type: "object",
+      properties: {
+        code: {
+          type: "string",
+          description: "Filter by item code",
+        },
+        limit: {
+          type: "number",
+          description: "Maximum number of items to return (default: 100)",
+        },
+      },
+    },
+  },
+  {
+    name: "xero_list_quotes",
+    description: "Get a list of sales quotes from Xero",
+    inputSchema: {
+      type: "object",
+      properties: {
+        status: {
+          type: "string",
+          description:
+            "Quote status filter (DRAFT, SENT, ACCEPTED, DECLINED)",
+          enum: ["DRAFT", "SENT", "ACCEPTED", "DECLINED"],
+        },
+        dateFrom: {
+          type: "string",
+          description: "Filter quotes from this date (YYYY-MM-DD format)",
+        },
+        dateTo: {
+          type: "string",
+          description: "Filter quotes to this date (YYYY-MM-DD format)",
+        },
+        limit: {
+          type: "number",
+          description:
+            "Maximum number of quotes to return (default: 100)",
+        },
+      },
+    },
+  },
+  {
+    name: "xero_list_contact_groups",
+    description: "Get a list of contact groups from Xero",
+    inputSchema: {
+      type: "object",
+      properties: {},
+    },
+  },
+  {
+    name: "xero_get_aged_receivables",
+    description: "Get aged receivables report showing outstanding invoices by age",
+    inputSchema: {
+      type: "object",
+      properties: {
+        contactId: {
+          type: "string",
+          description: "Xero contact ID to retrieve receivables for",
+        },
+        date: {
+          type: "string",
+          description:
+            "Report date (YYYY-MM-DD format). Defaults to today's date if omitted",
+        },
+        fromDate: {
+          type: "string",
+          description: "Start date for the ageing period (YYYY-MM-DD format)",
+        },
+        toDate: {
+          type: "string",
+          description: "End date for the ageing period (YYYY-MM-DD format)",
+        },
+      },
+      required: ["contactId"],
+    },
+  },
+  {
+    name: "xero_get_aged_payables",
+    description: "Get aged payables report showing outstanding bills by age",
+    inputSchema: {
+      type: "object",
+      properties: {
+        contactId: {
+          type: "string",
+          description: "Xero contact ID to retrieve payables for",
+        },
+        date: {
+          type: "string",
+          description:
+            "Report date (YYYY-MM-DD format). Defaults to today's date if omitted",
+        },
+        fromDate: {
+          type: "string",
+          description: "Start date for the ageing period (YYYY-MM-DD format)",
+        },
+        toDate: {
+          type: "string",
+          description: "End date for the ageing period (YYYY-MM-DD format)",
+        },
+      },
+      required: ["contactId"],
+    },
+  },
 ];
 
 /**
@@ -469,6 +702,81 @@ export async function executeXeroMCPTool(
         };
       }
 
+      case "xero_list_credit_notes": {
+        const { status, dateFrom, dateTo, limit = 100 } = args;
+
+        const whereClauses: string[] = [];
+        if (status) whereClauses.push(`Status=="${status}"`);
+        if (dateFrom) whereClauses.push(`Date>=DateTime(${dateFrom})`);
+        if (dateTo) whereClauses.push(`Date<=DateTime(${dateTo})`);
+
+        const where =
+          whereClauses.length > 0 ? whereClauses.join(" AND ") : undefined;
+
+        const response = await client.accountingApi.getCreditNotes(
+          connection.tenantId,
+          undefined, // ifModifiedSince
+          where,
+          undefined, // order
+          undefined, // page
+          undefined, // unitdp
+          limit as number | undefined // pageSize
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(response.body.creditNotes, null, 2),
+            },
+          ],
+        };
+      }
+
+      case "xero_list_payments": {
+        const { dateFrom, dateTo, limit = 100 } = args;
+
+        const whereClauses: string[] = [];
+        if (dateFrom) whereClauses.push(`Date>=DateTime(${dateFrom})`);
+        if (dateTo) whereClauses.push(`Date<=DateTime(${dateTo})`);
+
+        const where =
+          whereClauses.length > 0 ? whereClauses.join(" AND ") : undefined;
+
+        const response = await client.accountingApi.getPayments(
+          connection.tenantId,
+          undefined, // ifModifiedSince
+          where,
+          undefined, // order
+          undefined, // page
+          limit as number | undefined // pageSize
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(response.body.payments, null, 2),
+            },
+          ],
+        };
+      }
+
+      case "xero_list_tax_rates": {
+        const response = await client.accountingApi.getTaxRates(
+          connection.tenantId
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(response.body.taxRates, null, 2),
+            },
+          ],
+        };
+      }
+
       case "xero_get_organisation": {
         const response = await client.accountingApi.getOrganisations(
           connection.tenantId
@@ -479,6 +787,201 @@ export async function executeXeroMCPTool(
             {
               type: "text",
               text: JSON.stringify(response.body.organisations?.[0], null, 2),
+            },
+          ],
+        };
+      }
+
+      case "xero_get_profit_and_loss": {
+        const { fromDate, toDate, periods, timeframe } = args;
+
+        if (!fromDate || !toDate) {
+          throw new Error("fromDate and toDate are required");
+        }
+
+        const response = await client.accountingApi.getReportProfitAndLoss(
+          connection.tenantId,
+          fromDate as string,
+          toDate as string,
+          periods as number | undefined,
+          timeframe as "MONTH" | "QUARTER" | "YEAR" | undefined
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(response.body, null, 2),
+            },
+          ],
+        };
+      }
+
+      case "xero_get_balance_sheet": {
+        const { fromDate, toDate, periods, timeframe } = args;
+
+        if (!fromDate || !toDate) {
+          throw new Error("fromDate and toDate are required");
+        }
+
+        const response = await client.accountingApi.getReportBalanceSheet(
+          connection.tenantId,
+          fromDate as string,
+          toDate as string,
+          periods as number | undefined,
+          timeframe as "MONTH" | "QUARTER" | "YEAR" | undefined
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(response.body, null, 2),
+            },
+          ],
+        };
+      }
+
+      case "xero_get_trial_balance": {
+        const { date } = args;
+
+        if (!date) {
+          throw new Error("date is required");
+        }
+
+        const response = await client.accountingApi.getReportTrialBalance(
+          connection.tenantId,
+          date as string
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(response.body, null, 2),
+            },
+          ],
+        };
+      }
+
+      case "xero_list_items": {
+        const { code, limit = 100 } = args;
+
+        const where = code ? `Code=="${code as string}"` : undefined;
+
+        const response = await client.accountingApi.getItems(
+          connection.tenantId,
+          undefined, // ifModifiedSince
+          where,
+          undefined, // order
+          undefined // unitdp
+        );
+
+        const items = response.body.items ?? [];
+        const limitValue = typeof limit === "number" ? limit : 100;
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(items.slice(0, limitValue), null, 2),
+            },
+          ],
+        };
+      }
+
+      case "xero_list_quotes": {
+        const { status, dateFrom, dateTo, limit = 100 } = args;
+
+        const response = await client.accountingApi.getQuotes(
+          connection.tenantId,
+          undefined, // ifModifiedSince
+          dateFrom as string | undefined,
+          dateTo as string | undefined,
+          undefined, // expiryDateFrom
+          undefined, // expiryDateTo
+          undefined, // contactID
+          status as string | undefined,
+          undefined, // page
+          undefined, // order
+          undefined // quoteNumber
+        );
+
+        const quotes = response.body.quotes ?? [];
+        const limitValue = typeof limit === "number" ? limit : 100;
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(quotes.slice(0, limitValue), null, 2),
+            },
+          ],
+        };
+      }
+
+      case "xero_list_contact_groups": {
+        const response = await client.accountingApi.getContactGroups(
+          connection.tenantId
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(response.body.contactGroups, null, 2),
+            },
+          ],
+        };
+      }
+
+      case "xero_get_aged_receivables": {
+        const { contactId, date, fromDate, toDate } = args;
+
+        if (!contactId) {
+          throw new Error("contactId is required");
+        }
+
+        const response =
+          await client.accountingApi.getReportAgedReceivablesByContact(
+            connection.tenantId,
+            contactId as string,
+            date as string | undefined,
+            fromDate as string | undefined,
+            toDate as string | undefined
+          );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(response.body, null, 2),
+            },
+          ],
+        };
+      }
+
+      case "xero_get_aged_payables": {
+        const { contactId, date, fromDate, toDate } = args;
+
+        if (!contactId) {
+          throw new Error("contactId is required");
+        }
+
+        const response =
+          await client.accountingApi.getReportAgedPayablesByContact(
+            connection.tenantId,
+            contactId as string,
+            date as string | undefined,
+            fromDate as string | undefined,
+            toDate as string | undefined
+          );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(response.body, null, 2),
             },
           ],
         };

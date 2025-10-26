@@ -207,6 +207,283 @@ export function createXeroTools(userId: string) {
         return result.content[0].text;
       },
     }),
+
+    xero_list_credit_notes: tool({
+      description: "Get a list of credit notes from Xero.",
+      inputSchema: z.object({
+        status: z
+          .enum(["DRAFT", "SUBMITTED", "AUTHORISED", "PAID", "VOIDED"])
+          .optional()
+          .describe("Credit note status filter"),
+        dateFrom: z
+          .string()
+          .optional()
+          .describe("Filter credit notes from this date (YYYY-MM-DD format)"),
+        dateTo: z
+          .string()
+          .optional()
+          .describe("Filter credit notes to this date (YYYY-MM-DD format)"),
+        limit: z
+          .number()
+          .optional()
+          .default(100)
+          .describe("Maximum number of credit notes to return"),
+      }),
+      execute: async (args) => {
+        const result = await executeXeroMCPTool(
+          userId,
+          "xero_list_credit_notes",
+          args
+        );
+        return result.content[0].text;
+      },
+    }),
+
+    xero_list_payments: tool({
+      description: "Get a list of payments from Xero.",
+      inputSchema: z.object({
+        dateFrom: z
+          .string()
+          .optional()
+          .describe("Filter payments from this date (YYYY-MM-DD format)"),
+        dateTo: z
+          .string()
+          .optional()
+          .describe("Filter payments to this date (YYYY-MM-DD format)"),
+        limit: z
+          .number()
+          .optional()
+          .default(100)
+          .describe("Maximum number of payments to return"),
+      }),
+      execute: async (args) => {
+        const result = await executeXeroMCPTool(
+          userId,
+          "xero_list_payments",
+          args
+        );
+        return result.content[0].text;
+      },
+    }),
+
+    xero_list_tax_rates: tool({
+      description: "Get a list of tax rates configured in Xero.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        const result = await executeXeroMCPTool(
+          userId,
+          "xero_list_tax_rates",
+          {}
+        );
+        return result.content[0].text;
+      },
+    }),
+
+    xero_get_profit_and_loss: tool({
+      description:
+        "Get profit and loss report from Xero for a specified date range. Use this to analyze revenue, expenses, and profitability over time.",
+      inputSchema: z.object({
+        fromDate: z
+          .string()
+          .describe("Start date for the report (YYYY-MM-DD format)"),
+        toDate: z
+          .string()
+          .describe("End date for the report (YYYY-MM-DD format)"),
+        periods: z
+          .number()
+          .optional()
+          .describe("Number of periods to compare (e.g., 12 for monthly comparison)"),
+        timeframe: z
+          .enum(["MONTH", "QUARTER", "YEAR"])
+          .optional()
+          .describe("Reporting period frequency"),
+      }),
+      execute: async (args) => {
+        const result = await executeXeroMCPTool(
+          userId,
+          "xero_get_profit_and_loss",
+          args
+        );
+        return result.content[0].text;
+      },
+    }),
+
+    xero_get_balance_sheet: tool({
+      description:
+        "Get balance sheet report showing assets, liabilities, and equity. Use this to review financial position over a specified period.",
+      inputSchema: z.object({
+        fromDate: z
+          .string()
+          .describe("Start date for the report (YYYY-MM-DD format)"),
+        toDate: z
+          .string()
+          .describe("End date for the report (YYYY-MM-DD format)"),
+        periods: z
+          .number()
+          .optional()
+          .describe("Number of periods to compare (e.g., 12 for monthly comparison)"),
+        timeframe: z
+          .enum(["MONTH", "QUARTER", "YEAR"])
+          .optional()
+          .describe("Reporting period frequency"),
+      }),
+      execute: async (args) => {
+        const result = await executeXeroMCPTool(
+          userId,
+          "xero_get_balance_sheet",
+          args
+        );
+        return result.content[0].text;
+      },
+    }),
+
+    xero_get_trial_balance: tool({
+      description:
+        "Get trial balance report showing all account balances. Use this to verify debits and credits remain in balance at a specific date.",
+      inputSchema: z.object({
+        date: z
+          .string()
+          .describe("Date for the report (YYYY-MM-DD format)"),
+      }),
+      execute: async (args) => {
+        const result = await executeXeroMCPTool(
+          userId,
+          "xero_get_trial_balance",
+          args
+        );
+        return result.content[0].text;
+      },
+    }),
+
+    xero_list_items: tool({
+      description:
+        "Get a list of inventory items and services from Xero. Use this to inspect product codes, pricing, and availability.",
+      inputSchema: z.object({
+        code: z
+          .string()
+          .optional()
+          .describe("Filter by item code (exact match)"),
+        limit: z
+          .number()
+          .optional()
+          .default(100)
+          .describe("Maximum number of items to return"),
+      }),
+      execute: async (args) => {
+        const result = await executeXeroMCPTool(
+          userId,
+          "xero_list_items",
+          args
+        );
+        return result.content[0].text;
+      },
+    }),
+
+    xero_list_quotes: tool({
+      description:
+        "Get a list of sales quotes from Xero. Use this to monitor proposal status and pipeline activity.",
+      inputSchema: z.object({
+        status: z
+          .enum(["DRAFT", "SENT", "ACCEPTED", "DECLINED"])
+          .optional()
+          .describe("Quote status filter"),
+        dateFrom: z
+          .string()
+          .optional()
+          .describe("Filter quotes from this date (YYYY-MM-DD format)"),
+        dateTo: z
+          .string()
+          .optional()
+          .describe("Filter quotes to this date (YYYY-MM-DD format)"),
+        limit: z
+          .number()
+          .optional()
+          .default(100)
+          .describe("Maximum number of quotes to return"),
+      }),
+      execute: async (args) => {
+        const result = await executeXeroMCPTool(
+          userId,
+          "xero_list_quotes",
+          args
+        );
+        return result.content[0].text;
+      },
+    }),
+
+    xero_list_contact_groups: tool({
+      description:
+        "Get a list of contact groups from Xero. Use this to review segmentation and targeted communication lists.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        const result = await executeXeroMCPTool(
+          userId,
+          "xero_list_contact_groups",
+          {}
+        );
+        return result.content[0].text;
+      },
+    }),
+
+    xero_get_aged_receivables: tool({
+      description:
+        "Get aged receivables report showing outstanding invoices by age. Use this to understand overdue balances for a contact.",
+      inputSchema: z.object({
+        contactId: z
+          .string()
+          .describe("Xero contact ID to analyze"),
+        date: z
+          .string()
+          .optional()
+          .describe("Report date (YYYY-MM-DD format)"),
+        fromDate: z
+          .string()
+          .optional()
+          .describe("Start date for the ageing period (YYYY-MM-DD format)"),
+        toDate: z
+          .string()
+          .optional()
+          .describe("End date for the ageing period (YYYY-MM-DD format)"),
+      }),
+      execute: async (args) => {
+        const result = await executeXeroMCPTool(
+          userId,
+          "xero_get_aged_receivables",
+          args
+        );
+        return result.content[0].text;
+      },
+    }),
+
+    xero_get_aged_payables: tool({
+      description:
+        "Get aged payables report showing outstanding bills by age. Use this to review supplier balances for a contact.",
+      inputSchema: z.object({
+        contactId: z
+          .string()
+          .describe("Xero contact ID to analyze"),
+        date: z
+          .string()
+          .optional()
+          .describe("Report date (YYYY-MM-DD format)"),
+        fromDate: z
+          .string()
+          .optional()
+          .describe("Start date for the ageing period (YYYY-MM-DD format)"),
+        toDate: z
+          .string()
+          .optional()
+          .describe("End date for the ageing period (YYYY-MM-DD format)"),
+      }),
+      execute: async (args) => {
+        const result = await executeXeroMCPTool(
+          userId,
+          "xero_get_aged_payables",
+          args
+        );
+        return result.content[0].text;
+      },
+    }),
   };
 }
 
