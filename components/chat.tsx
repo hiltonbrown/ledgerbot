@@ -175,9 +175,7 @@ export function Chat({
             selectedChatModel: currentModelIdRef.current,
             selectedVisibilityType: visibilityType,
             selectedTools: selectedToolsRef.current,
-            streamReasoning: isReasoningModelId(
-              currentModelIdRef.current
-            ),
+            streamReasoning: isReasoningModelId(currentModelIdRef.current),
             showReasoningPreference: getReasoningPreferenceForModel(
               currentModelIdRef.current
             ),
@@ -187,9 +185,13 @@ export function Chat({
       },
     }),
     onData: (dataPart) => {
-      setDataStream((ds) => (ds ? [...ds, dataPart] : []));
+      setDataStream((ds) => {
+        const newArray = ds ? [...ds] : [];
+        newArray.push(dataPart as any);
+        return newArray;
+      });
       if (dataPart.type === "data-usage") {
-        setUsage(dataPart.data);
+        setUsage(dataPart.data as AppUsage);
       }
     },
     onFinish: () => {
