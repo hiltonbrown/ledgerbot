@@ -16,6 +16,7 @@ function formatNumber(num: number): string {
 }
 
 function formatCost(cost: number): string {
+  if (!Number.isFinite(cost)) return "$0.0000";
   return `$${cost.toFixed(4)}`;
 }
 
@@ -126,7 +127,11 @@ export function ModelTokenUsage({ models }: { models: TokenUsageByModel[] }) {
                       Average Cost per Request
                     </p>
                     <p className="font-semibold text-foreground text-sm">
-                      {formatCost(model.totalCost / model.requestCount)}
+                      {formatCost(
+                        model.requestCount > 0
+                          ? model.totalCost / model.requestCount
+                          : 0
+                      )}
                     </p>
                   </div>
                   <div className="space-y-1">
