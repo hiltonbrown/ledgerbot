@@ -1,6 +1,12 @@
 import "server-only";
 
-import { Invoice, XeroClient } from "xero-node";
+import {
+  CreditNote,
+  Invoice,
+  Phone,
+  QuoteStatusCodes,
+  XeroClient,
+} from "xero-node";
 import { updateXeroTokens } from "@/lib/db/queries";
 import { getDecryptedConnection } from "@/lib/xero/connection-manager";
 import { encryptToken } from "@/lib/xero/encryption";
@@ -350,13 +356,9 @@ export const xeroMCPTools: XeroMCPTool[] = [
     inputSchema: {
       type: "object",
       properties: {
-        fromDate: {
+        date: {
           type: "string",
-          description: "Start date for the report (YYYY-MM-DD format)",
-        },
-        toDate: {
-          type: "string",
-          description: "End date for the report (YYYY-MM-DD format)",
+          description: "Date for the report (YYYY-MM-DD format)",
         },
         periods: {
           type: "number",
@@ -368,7 +370,7 @@ export const xeroMCPTools: XeroMCPTool[] = [
           enum: ["MONTH", "QUARTER", "YEAR"],
         },
       },
-      required: ["fromDate", "toDate"],
+      required: [],
     },
   },
   {
@@ -1287,16 +1289,11 @@ export async function executeXeroMCPTool(
         }
 
         case "xero_get_balance_sheet": {
-          const { fromDate, toDate, periods, timeframe } = args;
-
-          if (!fromDate || !toDate) {
-            throw new Error("fromDate and toDate are required");
-          }
+          const { date, periods, timeframe } = args;
 
           const response = await client.accountingApi.getReportBalanceSheet(
             connection.tenantId,
-            fromDate as string,
-            toDate as string,
+            date as string | undefined,
             periods as number | undefined,
             timeframe as "MONTH" | "QUARTER" | "YEAR" | undefined
           );
@@ -1675,7 +1672,7 @@ export async function executeXeroMCPTool(
             phones: phone
               ? [
                   {
-                    phoneType: "DEFAULT",
+                    phoneType: Phone.PhoneTypeEnum.DEFAULT,
                     phoneNumber: phone as string,
                   },
                 ]
@@ -1699,7 +1696,7 @@ export async function executeXeroMCPTool(
           );
 
           // Check for validation errors from Xero API
-          if (response.body.contacts?.[0]?.hasErrors) {
+          if (response.body.contacts?.[0]?.hasValidationErrors) {
             const errors = response.body.contacts[0].validationErrors;
             throw new Error(
               `Contact validation failed: ${JSON.stringify(errors)}`
@@ -1783,7 +1780,7 @@ export async function executeXeroMCPTool(
           );
 
           // Check for validation errors from Xero API
-          if (response.body.contacts?.[0]?.hasErrors) {
+          if (response.body.contacts?.[0]?.hasValidationErrors) {
             const errors = response.body.contacts[0].validationErrors;
             throw new Error(
               `Contact update validation failed: ${JSON.stringify(errors)}`
@@ -1833,7 +1830,7 @@ export async function executeXeroMCPTool(
           );
 
           // Check for validation errors from Xero API
-          if (response.body.payments?.[0]?.hasErrors) {
+          if (response.body.payments?.[0]?.hasValidationErrors) {
             const errors = response.body.payments[0].validationErrors;
             throw new Error(
               `Payment validation failed: ${JSON.stringify(errors)}`
@@ -1915,7 +1912,7 @@ export async function executeXeroMCPTool(
               taxType: item.taxType || "NONE",
             })),
             reference: reference as string | undefined,
-            status: status as string | undefined,
+            status: status as QuoteStatusCodes | undefined,
           };
 
           const response = await client.accountingApi.createQuotes(
@@ -1924,7 +1921,7 @@ export async function executeXeroMCPTool(
           );
 
           // Check for validation errors from Xero API
-          if (response.body.quotes?.[0]?.hasErrors) {
+          if (response.body.quotes?.[0]?.validationErrors?.length) {
             const errors = response.body.quotes[0].validationErrors;
             throw new Error(
               `Quote validation failed: ${JSON.stringify(errors)}`
@@ -1990,7 +1987,7 @@ export async function executeXeroMCPTool(
 
           // Construct credit note object
           const creditNote = {
-            type: "ACCRECCREDIT", // Accounts Receivable Credit Note
+            type: CreditNote.TypeEnum.ACCRECCREDIT, // Accounts Receivable Credit Note
             contact: {
               contactID: contactId as string,
             },
@@ -2003,7 +2000,7 @@ export async function executeXeroMCPTool(
               taxType: item.taxType || "NONE",
             })),
             reference: reference as string | undefined,
-            status: status as string | undefined,
+            status: status as CreditNote.StatusEnum | undefined,
           };
 
           const response = await client.accountingApi.createCreditNotes(
@@ -2092,7 +2089,7 @@ export async function executeXeroMCPTool(
             creditNote.contact = { contactID: contactId as string };
           if (date) creditNote.date = date as string;
           if (reference) creditNote.reference = reference as string;
-          if (status) creditNote.status = status as string;
+          if (status) creditNote.status = status as CreditNote.StatusEnum;
           if (lineItems) {
             creditNote.lineItems = (lineItems as any[]).map((item) => ({
               description: item.description,

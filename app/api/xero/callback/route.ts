@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
-import db from "@/lib/db";
 import { createXeroConnection } from "@/lib/db/queries";
 import {
   createXeroClient,
