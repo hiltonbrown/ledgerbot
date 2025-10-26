@@ -10,19 +10,19 @@ importers:
     dependencies:
       '@ai-sdk/gateway':
         specifier: ^1.0.15
-        version: 1.0.15(zod@3.25.76)
+        version: 1.0.15(zod@4.1.12)
       '@ai-sdk/openai':
         specifier: ^2.0.53
-        version: 2.0.53(zod@3.25.76)
+        version: 2.0.53(zod@4.1.12)
       '@ai-sdk/provider':
         specifier: 2.0.0
         version: 2.0.0
       '@ai-sdk/react':
         specifier: 2.0.80
-        version: 2.0.80(react@19.2.0)(zod@3.25.76)
+        version: 2.0.80(react@19.2.0)(zod@4.1.12)
       '@ai-sdk/xai':
         specifier: 2.0.13
-        version: 2.0.13(zod@3.25.76)
+        version: 2.0.13(zod@4.1.12)
       '@clerk/nextjs':
         specifier: ^6.34.0
         version: 6.34.0(next@16.0.0(@opentelemetry/api@1.9.0)(@playwright/test@1.56.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -88,7 +88,7 @@ importers:
         version: 1.2.0(next@16.0.0(@opentelemetry/api@1.9.0)(@playwright/test@1.56.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react@19.2.0)
       ai:
         specifier: 5.0.79
-        version: 5.0.79(zod@3.25.76)
+        version: 5.0.79(zod@4.1.12)
       bcrypt-ts:
         specifier: ^5.0.2
         version: 5.0.3
@@ -234,8 +234,8 @@ importers:
         specifier: ^13.1.0
         version: 13.1.0
       zod:
-        specifier: ^3.25.76
-        version: 3.25.76
+        specifier: ^4.1.12
+        version: 4.1.12
     devDependencies:
       '@biomejs/biome':
         specifier: 2.2.2
@@ -4786,73 +4786,73 @@ packages:
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
-  zod@4.1.11:
-    resolution: {integrity: sha512-WPsqwxITS2tzx1bzhIKsEs19ABD5vmCVa4xBo2tq/SrV4RNZtfws1EnCWQXM6yh8bD08a1idvkB5MZSBiZsjwg==}
+  zod@4.1.12:
+    resolution: {integrity: sha512-JInaHOamG8pt5+Ey8kGmdcAcg3OL9reK8ltczgHTAwNhMys/6ThXHityHxVV2p3fkw/c+MAvBHFVYHFZDmjMCQ==}
 
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
 
 snapshots:
 
-  '@ai-sdk/gateway@1.0.15(zod@3.25.76)':
+  '@ai-sdk/gateway@1.0.15(zod@4.1.12)':
     dependencies:
       '@ai-sdk/provider': 2.0.0
-      '@ai-sdk/provider-utils': 3.0.7(zod@3.25.76)
-      zod: 3.25.76
+      '@ai-sdk/provider-utils': 3.0.7(zod@4.1.12)
+      zod: 4.1.12
 
-  '@ai-sdk/gateway@2.0.1(zod@3.25.76)':
+  '@ai-sdk/gateway@2.0.1(zod@4.1.12)':
     dependencies:
       '@ai-sdk/provider': 2.0.0
-      '@ai-sdk/provider-utils': 3.0.12(zod@3.25.76)
+      '@ai-sdk/provider-utils': 3.0.12(zod@4.1.12)
       '@vercel/oidc': 3.0.3
-      zod: 3.25.76
+      zod: 4.1.12
 
-  '@ai-sdk/openai-compatible@1.0.13(zod@3.25.76)':
+  '@ai-sdk/openai-compatible@1.0.13(zod@4.1.12)':
     dependencies:
       '@ai-sdk/provider': 2.0.0
-      '@ai-sdk/provider-utils': 3.0.7(zod@3.25.76)
-      zod: 3.25.76
+      '@ai-sdk/provider-utils': 3.0.7(zod@4.1.12)
+      zod: 4.1.12
 
-  '@ai-sdk/openai@2.0.53(zod@3.25.76)':
+  '@ai-sdk/openai@2.0.53(zod@4.1.12)':
     dependencies:
       '@ai-sdk/provider': 2.0.0
-      '@ai-sdk/provider-utils': 3.0.12(zod@3.25.76)
-      zod: 3.25.76
+      '@ai-sdk/provider-utils': 3.0.12(zod@4.1.12)
+      zod: 4.1.12
 
-  '@ai-sdk/provider-utils@3.0.12(zod@3.25.76)':
-    dependencies:
-      '@ai-sdk/provider': 2.0.0
-      '@standard-schema/spec': 1.0.0
-      eventsource-parser: 3.0.5
-      zod: 3.25.76
-
-  '@ai-sdk/provider-utils@3.0.7(zod@3.25.76)':
+  '@ai-sdk/provider-utils@3.0.12(zod@4.1.12)':
     dependencies:
       '@ai-sdk/provider': 2.0.0
       '@standard-schema/spec': 1.0.0
       eventsource-parser: 3.0.5
-      zod: 3.25.76
+      zod: 4.1.12
+
+  '@ai-sdk/provider-utils@3.0.7(zod@4.1.12)':
+    dependencies:
+      '@ai-sdk/provider': 2.0.0
+      '@standard-schema/spec': 1.0.0
+      eventsource-parser: 3.0.5
+      zod: 4.1.12
 
   '@ai-sdk/provider@2.0.0':
     dependencies:
       json-schema: 0.4.0
 
-  '@ai-sdk/react@2.0.80(react@19.2.0)(zod@3.25.76)':
+  '@ai-sdk/react@2.0.80(react@19.2.0)(zod@4.1.12)':
     dependencies:
-      '@ai-sdk/provider-utils': 3.0.12(zod@3.25.76)
-      ai: 5.0.80(zod@3.25.76)
+      '@ai-sdk/provider-utils': 3.0.12(zod@4.1.12)
+      ai: 5.0.80(zod@4.1.12)
       react: 19.2.0
       swr: 2.3.4(react@19.2.0)
       throttleit: 2.1.0
     optionalDependencies:
-      zod: 3.25.76
+      zod: 4.1.12
 
-  '@ai-sdk/xai@2.0.13(zod@3.25.76)':
+  '@ai-sdk/xai@2.0.13(zod@4.1.12)':
     dependencies:
-      '@ai-sdk/openai-compatible': 1.0.13(zod@3.25.76)
+      '@ai-sdk/openai-compatible': 1.0.13(zod@4.1.12)
       '@ai-sdk/provider': 2.0.0
-      '@ai-sdk/provider-utils': 3.0.7(zod@3.25.76)
-      zod: 3.25.76
+      '@ai-sdk/provider-utils': 3.0.7(zod@4.1.12)
+      zod: 4.1.12
 
   '@alloc/quick-lru@5.2.0': {}
 
@@ -6802,21 +6802,21 @@ snapshots:
 
   acorn@8.15.0: {}
 
-  ai@5.0.79(zod@3.25.76):
+  ai@5.0.79(zod@4.1.12):
     dependencies:
-      '@ai-sdk/gateway': 2.0.1(zod@3.25.76)
+      '@ai-sdk/gateway': 2.0.1(zod@4.1.12)
       '@ai-sdk/provider': 2.0.0
-      '@ai-sdk/provider-utils': 3.0.12(zod@3.25.76)
+      '@ai-sdk/provider-utils': 3.0.12(zod@4.1.12)
       '@opentelemetry/api': 1.9.0
-      zod: 3.25.76
+      zod: 4.1.12
 
-  ai@5.0.80(zod@3.25.76):
+  ai@5.0.80(zod@4.1.12):
     dependencies:
-      '@ai-sdk/gateway': 2.0.1(zod@3.25.76)
+      '@ai-sdk/gateway': 2.0.1(zod@4.1.12)
       '@ai-sdk/provider': 2.0.0
-      '@ai-sdk/provider-utils': 3.0.12(zod@3.25.76)
+      '@ai-sdk/provider-utils': 3.0.12(zod@4.1.12)
       '@opentelemetry/api': 1.9.0
-      zod: 3.25.76
+      zod: 4.1.12
 
   ajv@6.12.6:
     dependencies:
@@ -9302,7 +9302,7 @@ snapshots:
       nypm: 0.6.2
       trpc-cli: 0.10.2(typescript@5.8.2)
       vitest: 3.2.4(@types/debug@4.1.12)(@types/node@22.13.10)(jiti@2.5.1)(lightningcss@1.30.1)(tsx@4.19.3)
-      zod: 4.1.11
+      zod: 4.1.12
     transitivePeerDependencies:
       - '@edge-runtime/vm'
       - '@inquirer/prompts'
@@ -9581,6 +9581,6 @@ snapshots:
 
   zod@3.25.76: {}
 
-  zod@4.1.11: {}
+  zod@4.1.12: {}
 
   zwitch@2.0.4: {}
