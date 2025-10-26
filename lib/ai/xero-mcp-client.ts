@@ -259,6 +259,27 @@ export const xeroMCPTools: XeroMCPTool[] = [
     },
   },
   {
+    name: "xero_list_payments",
+    description: "Get a list of payments from Xero",
+    inputSchema: {
+      type: "object",
+      properties: {
+        dateFrom: {
+          type: "string",
+          description: "Filter payments from this date (YYYY-MM-DD format)",
+        },
+        dateTo: {
+          type: "string",
+          description: "Filter payments to this date (YYYY-MM-DD format)",
+        },
+        limit: {
+          type: "number",
+          description: "Maximum number of payments to return (default: 100)",
+        },
+      },
+    },
+  },
+  {
     name: "xero_get_profit_and_loss",
     description:
       "Get profit and loss report from Xero for a specified date range. Shows revenue, expenses, and net profit.",
@@ -533,6 +554,35 @@ export async function executeXeroMCPTool(
             {
               type: "text",
               text: JSON.stringify(response.body.bankTransactions, null, 2),
+            },
+          ],
+        };
+      }
+
+      case "xero_list_payments": {
+        const { dateFrom, dateTo, limit = 100 } = args;
+
+        const whereClauses: string[] = [];
+        if (dateFrom) whereClauses.push(`Date>=DateTime(${dateFrom})`);
+        if (dateTo) whereClauses.push(`Date<=DateTime(${dateTo})`);
+
+        const where =
+          whereClauses.length > 0 ? whereClauses.join(" AND ") : undefined;
+
+        const response = await client.accountingApi.getPayments(
+          connection.tenantId,
+          undefined, // ifModifiedSince
+          where,
+          undefined, // order
+          undefined, // page
+          limit as number | undefined // pageSize
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(response.body.payments, null, 2),
             },
           ],
         };

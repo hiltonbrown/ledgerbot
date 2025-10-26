@@ -208,6 +208,33 @@ export function createXeroTools(userId: string) {
       },
     }),
 
+    xero_list_payments: tool({
+      description: "Get a list of payments from Xero.",
+      inputSchema: z.object({
+        dateFrom: z
+          .string()
+          .optional()
+          .describe("Filter payments from this date (YYYY-MM-DD format)"),
+        dateTo: z
+          .string()
+          .optional()
+          .describe("Filter payments to this date (YYYY-MM-DD format)"),
+        limit: z
+          .number()
+          .optional()
+          .default(100)
+          .describe("Maximum number of payments to return"),
+      }),
+      execute: async (args) => {
+        const result = await executeXeroMCPTool(
+          userId,
+          "xero_list_payments",
+          args
+        );
+        return result.content[0].text;
+      },
+    }),
+
     xero_get_profit_and_loss: tool({
       description:
         "Get profit and loss report from Xero for a specified date range. Use this to analyze revenue, expenses, and profitability over time.",
