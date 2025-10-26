@@ -518,6 +518,282 @@ export function createXeroTools(userId: string) {
         return result.content[0].text;
       },
     }),
+
+    xero_update_invoice: tool({
+      description:
+        "Update an existing invoice in Xero. Can only update DRAFT invoices.",
+      inputSchema: z.object({
+        invoiceId: z.string().describe("The Xero invoice ID to update"),
+        contactId: z
+          .string()
+          .optional()
+          .describe("The Xero contact ID for the customer"),
+        date: z
+          .string()
+          .optional()
+          .describe("Invoice date (YYYY-MM-DD format)"),
+        dueDate: z
+          .string()
+          .optional()
+          .describe("Payment due date (YYYY-MM-DD format)"),
+        lineItems: z
+          .array(
+            z.object({
+              description: z.string().describe("Line item description"),
+              quantity: z.number().describe("Quantity"),
+              unitAmount: z.number().describe("Unit price"),
+              accountCode: z
+                .string()
+                .describe("Account code from chart of accounts"),
+              taxType: z
+                .string()
+                .optional()
+                .describe("Tax type code (optional)"),
+            })
+          )
+          .optional()
+          .describe("Array of invoice line items"),
+        reference: z
+          .string()
+          .optional()
+          .describe("Invoice reference number (optional)"),
+        status: z
+          .enum(["DRAFT", "AUTHORISED"])
+          .optional()
+          .describe("Invoice status"),
+      }),
+      execute: async (args) => {
+        const result = await executeXeroMCPTool(
+          userId,
+          "xero_update_invoice",
+          args
+        );
+        return result.content[0].text;
+      },
+    }),
+
+    xero_create_contact: tool({
+      description: "Create a new contact (customer/supplier) in Xero.",
+      inputSchema: z.object({
+        name: z.string().describe("Contact name"),
+        email: z.string().optional().describe("Contact email address"),
+        phone: z.string().optional().describe("Contact phone number"),
+        addresses: z
+          .array(
+            z.object({
+              addressType: z
+                .enum(["POBOX", "STREET", "DELIVERY"])
+                .describe("Address type"),
+              addressLine1: z.string().optional().describe("Address line 1"),
+              addressLine2: z.string().optional().describe("Address line 2"),
+              city: z.string().optional().describe("City"),
+              region: z.string().optional().describe("Region/State"),
+              postalCode: z.string().optional().describe("Postal code"),
+              country: z.string().optional().describe("Country"),
+            })
+          )
+          .optional()
+          .describe("Array of contact addresses"),
+      }),
+      execute: async (args) => {
+        const result = await executeXeroMCPTool(
+          userId,
+          "xero_create_contact",
+          args
+        );
+        return result.content[0].text;
+      },
+    }),
+
+    xero_update_contact: tool({
+      description: "Update an existing contact in Xero.",
+      inputSchema: z.object({
+        contactId: z.string().describe("The Xero contact ID to update"),
+        name: z.string().optional().describe("Contact name"),
+        email: z.string().optional().describe("Contact email address"),
+        phone: z.string().optional().describe("Contact phone number"),
+        addresses: z
+          .array(
+            z.object({
+              addressType: z
+                .enum(["POBOX", "STREET", "DELIVERY"])
+                .describe("Address type"),
+              addressLine1: z.string().optional().describe("Address line 1"),
+              addressLine2: z.string().optional().describe("Address line 2"),
+              city: z.string().optional().describe("City"),
+              region: z.string().optional().describe("Region/State"),
+              postalCode: z.string().optional().describe("Postal code"),
+              country: z.string().optional().describe("Country"),
+            })
+          )
+          .optional()
+          .describe("Array of contact addresses"),
+      }),
+      execute: async (args) => {
+        const result = await executeXeroMCPTool(
+          userId,
+          "xero_update_contact",
+          args
+        );
+        return result.content[0].text;
+      },
+    }),
+
+    xero_create_payment: tool({
+      description: "Create a payment for an invoice in Xero.",
+      inputSchema: z.object({
+        invoiceId: z.string().describe("The Xero invoice ID to pay"),
+        accountId: z
+          .string()
+          .describe("The Xero bank account ID for the payment"),
+        amount: z.number().describe("Payment amount"),
+        date: z.string().describe("Payment date (YYYY-MM-DD format)"),
+        reference: z
+          .string()
+          .optional()
+          .describe("Payment reference (optional)"),
+      }),
+      execute: async (args) => {
+        const result = await executeXeroMCPTool(
+          userId,
+          "xero_create_payment",
+          args
+        );
+        return result.content[0].text;
+      },
+    }),
+
+    xero_create_quote: tool({
+      description: "Create a new quote in Xero.",
+      inputSchema: z.object({
+        contactId: z.string().describe("The Xero contact ID for the customer"),
+        date: z.string().describe("Quote date (YYYY-MM-DD format)"),
+        expiryDate: z
+          .string()
+          .describe("Quote expiry date (YYYY-MM-DD format)"),
+        lineItems: z
+          .array(
+            z.object({
+              description: z.string().describe("Line item description"),
+              quantity: z.number().describe("Quantity"),
+              unitAmount: z.number().describe("Unit price"),
+              accountCode: z
+                .string()
+                .describe("Account code from chart of accounts"),
+              taxType: z
+                .string()
+                .optional()
+                .describe("Tax type code (optional)"),
+            })
+          )
+          .describe("Array of quote line items"),
+        reference: z
+          .string()
+          .optional()
+          .describe("Quote reference number (optional)"),
+        status: z
+          .enum(["DRAFT", "SENT", "ACCEPTED", "DECLINED"])
+          .optional()
+          .describe("Quote status (default: DRAFT)"),
+      }),
+      execute: async (args) => {
+        const result = await executeXeroMCPTool(
+          userId,
+          "xero_create_quote",
+          args
+        );
+        return result.content[0].text;
+      },
+    }),
+
+    xero_create_credit_note: tool({
+      description: "Create a new credit note in Xero.",
+      inputSchema: z.object({
+        contactId: z.string().describe("The Xero contact ID for the customer"),
+        date: z.string().describe("Credit note date (YYYY-MM-DD format)"),
+        lineItems: z
+          .array(
+            z.object({
+              description: z.string().describe("Line item description"),
+              quantity: z.number().describe("Quantity"),
+              unitAmount: z.number().describe("Unit price"),
+              accountCode: z
+                .string()
+                .describe("Account code from chart of accounts"),
+              taxType: z
+                .string()
+                .optional()
+                .describe("Tax type code (optional)"),
+            })
+          )
+          .describe("Array of credit note line items"),
+        reference: z
+          .string()
+          .optional()
+          .describe("Credit note reference number (optional)"),
+        status: z
+          .enum(["DRAFT", "SUBMITTED", "AUTHORISED", "PAID", "VOIDED"])
+          .optional()
+          .describe("Credit note status (default: DRAFT)"),
+      }),
+      execute: async (args) => {
+        const result = await executeXeroMCPTool(
+          userId,
+          "xero_create_credit_note",
+          args
+        );
+        return result.content[0].text;
+      },
+    }),
+
+    xero_update_credit_note: tool({
+      description:
+        "Update an existing credit note in Xero. Can only update DRAFT credit notes.",
+      inputSchema: z.object({
+        creditNoteId: z.string().describe("The Xero credit note ID to update"),
+        contactId: z
+          .string()
+          .optional()
+          .describe("The Xero contact ID for the customer"),
+        date: z
+          .string()
+          .optional()
+          .describe("Credit note date (YYYY-MM-DD format)"),
+        lineItems: z
+          .array(
+            z.object({
+              description: z.string().describe("Line item description"),
+              quantity: z.number().describe("Quantity"),
+              unitAmount: z.number().describe("Unit price"),
+              accountCode: z
+                .string()
+                .describe("Account code from chart of accounts"),
+              taxType: z
+                .string()
+                .optional()
+                .describe("Tax type code (optional)"),
+            })
+          )
+          .optional()
+          .describe("Array of credit note line items"),
+        reference: z
+          .string()
+          .optional()
+          .describe("Credit note reference number (optional)"),
+        status: z
+          .enum(["DRAFT", "SUBMITTED", "AUTHORISED", "PAID", "VOIDED"])
+          .optional()
+          .describe("Credit note status"),
+      }),
+      execute: async (args) => {
+        const result = await executeXeroMCPTool(
+          userId,
+          "xero_update_credit_note",
+          args
+        );
+        return result.content[0].text;
+      },
+    }),
   };
 }
 

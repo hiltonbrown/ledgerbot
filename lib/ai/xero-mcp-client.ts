@@ -553,6 +553,411 @@ export const xeroMCPTools: XeroMCPTool[] = [
       required: ["contactId", "date", "dueDate", "lineItems"],
     },
   },
+  {
+    name: "xero_update_invoice",
+    description:
+      "Update an existing invoice in Xero. Can only update DRAFT invoices.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        invoiceId: {
+          type: "string",
+          description: "The Xero invoice ID to update",
+        },
+        contactId: {
+          type: "string",
+          description: "The Xero contact ID for the customer",
+        },
+        date: {
+          type: "string",
+          description: "Invoice date (YYYY-MM-DD format)",
+        },
+        dueDate: {
+          type: "string",
+          description: "Payment due date (YYYY-MM-DD format)",
+        },
+        lineItems: {
+          type: "array",
+          description: "Array of invoice line items",
+          items: {
+            type: "object",
+            properties: {
+              description: {
+                type: "string",
+                description: "Line item description",
+              },
+              quantity: {
+                type: "number",
+                description: "Quantity",
+              },
+              unitAmount: {
+                type: "number",
+                description: "Unit price",
+              },
+              accountCode: {
+                type: "string",
+                description: "Account code",
+              },
+              taxType: {
+                type: "string",
+                description: "Tax type (optional)",
+              },
+            },
+            required: ["description", "quantity", "unitAmount", "accountCode"],
+          },
+        },
+        reference: {
+          type: "string",
+          description: "Invoice reference number (optional)",
+        },
+        status: {
+          type: "string",
+          description: "Invoice status (DRAFT or AUTHORISED)",
+          enum: ["DRAFT", "AUTHORISED"],
+        },
+      },
+      required: ["invoiceId"],
+    },
+  },
+  {
+    name: "xero_create_contact",
+    description: "Create a new contact (customer/supplier) in Xero.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        name: {
+          type: "string",
+          description: "Contact name",
+        },
+        email: {
+          type: "string",
+          description: "Contact email address",
+        },
+        phone: {
+          type: "string",
+          description: "Contact phone number",
+        },
+        addresses: {
+          type: "array",
+          description: "Array of contact addresses",
+          items: {
+            type: "object",
+            properties: {
+              addressType: {
+                type: "string",
+                description: "Address type (POBOX, STREET, DELIVERY)",
+                enum: ["POBOX", "STREET", "DELIVERY"],
+              },
+              addressLine1: {
+                type: "string",
+                description: "Address line 1",
+              },
+              addressLine2: {
+                type: "string",
+                description: "Address line 2",
+              },
+              city: {
+                type: "string",
+                description: "City",
+              },
+              region: {
+                type: "string",
+                description: "Region/State",
+              },
+              postalCode: {
+                type: "string",
+                description: "Postal code",
+              },
+              country: {
+                type: "string",
+                description: "Country",
+              },
+            },
+            required: ["addressType"],
+          },
+        },
+      },
+      required: ["name"],
+    },
+  },
+  {
+    name: "xero_update_contact",
+    description: "Update an existing contact in Xero.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        contactId: {
+          type: "string",
+          description: "The Xero contact ID to update",
+        },
+        name: {
+          type: "string",
+          description: "Contact name",
+        },
+        email: {
+          type: "string",
+          description: "Contact email address",
+        },
+        phone: {
+          type: "string",
+          description: "Contact phone number",
+        },
+        addresses: {
+          type: "array",
+          description: "Array of contact addresses",
+          items: {
+            type: "object",
+            properties: {
+              addressType: {
+                type: "string",
+                description: "Address type (POBOX, STREET, DELIVERY)",
+                enum: ["POBOX", "STREET", "DELIVERY"],
+              },
+              addressLine1: {
+                type: "string",
+                description: "Address line 1",
+              },
+              addressLine2: {
+                type: "string",
+                description: "Address line 2",
+              },
+              city: {
+                type: "string",
+                description: "City",
+              },
+              region: {
+                type: "string",
+                description: "Region/State",
+              },
+              postalCode: {
+                type: "string",
+                description: "Postal code",
+              },
+              country: {
+                type: "string",
+                description: "Country",
+              },
+            },
+            required: ["addressType"],
+          },
+        },
+      },
+      required: ["contactId"],
+    },
+  },
+  {
+    name: "xero_create_payment",
+    description: "Create a payment for an invoice in Xero.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        invoiceId: {
+          type: "string",
+          description: "The Xero invoice ID to pay",
+        },
+        accountId: {
+          type: "string",
+          description: "The Xero bank account ID for the payment",
+        },
+        amount: {
+          type: "number",
+          description: "Payment amount",
+        },
+        date: {
+          type: "string",
+          description: "Payment date (YYYY-MM-DD format)",
+        },
+        reference: {
+          type: "string",
+          description: "Payment reference (optional)",
+        },
+      },
+      required: ["invoiceId", "accountId", "amount", "date"],
+    },
+  },
+  {
+    name: "xero_create_quote",
+    description: "Create a new quote in Xero.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        contactId: {
+          type: "string",
+          description: "The Xero contact ID for the customer",
+        },
+        date: {
+          type: "string",
+          description: "Quote date (YYYY-MM-DD format)",
+        },
+        expiryDate: {
+          type: "string",
+          description: "Quote expiry date (YYYY-MM-DD format)",
+        },
+        lineItems: {
+          type: "array",
+          description: "Array of quote line items",
+          items: {
+            type: "object",
+            properties: {
+              description: {
+                type: "string",
+                description: "Line item description",
+              },
+              quantity: {
+                type: "number",
+                description: "Quantity",
+              },
+              unitAmount: {
+                type: "number",
+                description: "Unit price",
+              },
+              accountCode: {
+                type: "string",
+                description: "Account code",
+              },
+              taxType: {
+                type: "string",
+                description: "Tax type (optional)",
+              },
+            },
+            required: ["description", "quantity", "unitAmount", "accountCode"],
+          },
+        },
+        reference: {
+          type: "string",
+          description: "Quote reference number (optional)",
+        },
+        status: {
+          type: "string",
+          description:
+            "Quote status (DRAFT, SENT, ACCEPTED, DECLINED, default: DRAFT)",
+          enum: ["DRAFT", "SENT", "ACCEPTED", "DECLINED"],
+        },
+      },
+      required: ["contactId", "date", "expiryDate", "lineItems"],
+    },
+  },
+  {
+    name: "xero_create_credit_note",
+    description: "Create a new credit note in Xero.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        contactId: {
+          type: "string",
+          description: "The Xero contact ID for the customer",
+        },
+        date: {
+          type: "string",
+          description: "Credit note date (YYYY-MM-DD format)",
+        },
+        lineItems: {
+          type: "array",
+          description: "Array of credit note line items",
+          items: {
+            type: "object",
+            properties: {
+              description: {
+                type: "string",
+                description: "Line item description",
+              },
+              quantity: {
+                type: "number",
+                description: "Quantity",
+              },
+              unitAmount: {
+                type: "number",
+                description: "Unit price",
+              },
+              accountCode: {
+                type: "string",
+                description: "Account code",
+              },
+              taxType: {
+                type: "string",
+                description: "Tax type (optional)",
+              },
+            },
+            required: ["description", "quantity", "unitAmount", "accountCode"],
+          },
+        },
+        reference: {
+          type: "string",
+          description: "Credit note reference number (optional)",
+        },
+        status: {
+          type: "string",
+          description:
+            "Credit note status (DRAFT, SUBMITTED, AUTHORISED, PAID, VOIDED, default: DRAFT)",
+          enum: ["DRAFT", "SUBMITTED", "AUTHORISED", "PAID", "VOIDED"],
+        },
+      },
+      required: ["contactId", "date", "lineItems"],
+    },
+  },
+  {
+    name: "xero_update_credit_note",
+    description:
+      "Update an existing credit note in Xero. Can only update DRAFT credit notes.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        creditNoteId: {
+          type: "string",
+          description: "The Xero credit note ID to update",
+        },
+        contactId: {
+          type: "string",
+          description: "The Xero contact ID for the customer",
+        },
+        date: {
+          type: "string",
+          description: "Credit note date (YYYY-MM-DD format)",
+        },
+        lineItems: {
+          type: "array",
+          description: "Array of credit note line items",
+          items: {
+            type: "object",
+            properties: {
+              description: {
+                type: "string",
+                description: "Line item description",
+              },
+              quantity: {
+                type: "number",
+                description: "Quantity",
+              },
+              unitAmount: {
+                type: "number",
+                description: "Unit price",
+              },
+              accountCode: {
+                type: "string",
+                description: "Account code",
+              },
+              taxType: {
+                type: "string",
+                description: "Tax type (optional)",
+              },
+            },
+            required: ["description", "quantity", "unitAmount", "accountCode"],
+          },
+        },
+        reference: {
+          type: "string",
+          description: "Credit note reference number (optional)",
+        },
+        status: {
+          type: "string",
+          description:
+            "Credit note status (DRAFT, SUBMITTED, AUTHORISED, PAID, VOIDED)",
+          enum: ["DRAFT", "SUBMITTED", "AUTHORISED", "PAID", "VOIDED"],
+        },
+      },
+      required: ["creditNoteId"],
+    },
+  },
 ];
 
 /**
@@ -1132,6 +1537,595 @@ export async function executeXeroMCPTool(
                     success: true,
                     invoice: response.body.invoices?.[0],
                     message: "Invoice created successfully",
+                  },
+                  null,
+                  2
+                ),
+              },
+            ],
+          };
+        }
+
+        case "xero_update_invoice": {
+          const {
+            invoiceId,
+            contactId,
+            date,
+            dueDate,
+            lineItems,
+            reference,
+            status,
+          } = args;
+
+          // Validate required fields
+          if (!invoiceId) {
+            throw new Error("invoiceId is required");
+          }
+
+          // Validate line items if provided
+          if (lineItems) {
+            if (!Array.isArray(lineItems) || lineItems.length === 0) {
+              throw new Error("lineItems must be a non-empty array");
+            }
+            for (const item of lineItems) {
+              if (
+                !item.description ||
+                typeof item.quantity !== "number" ||
+                typeof item.unitAmount !== "number" ||
+                !item.accountCode
+              ) {
+                throw new Error(
+                  "All line items must have description, quantity, unitAmount, and accountCode"
+                );
+              }
+            }
+          }
+
+          // Validate status if provided
+          if (status && !["DRAFT", "AUTHORISED"].includes(status as string)) {
+            throw new Error("Status must be either DRAFT or AUTHORISED");
+          }
+
+          // Construct invoice object with only provided fields
+          const invoice: Partial<Invoice> = {
+            invoiceID: invoiceId as string,
+          };
+
+          if (contactId) invoice.contact = { contactID: contactId as string };
+          if (date) invoice.date = date as string;
+          if (dueDate) invoice.dueDate = dueDate as string;
+          if (reference) invoice.reference = reference as string;
+          if (status) {
+            invoice.status =
+              status === "AUTHORISED"
+                ? Invoice.StatusEnum.AUTHORISED
+                : Invoice.StatusEnum.DRAFT;
+          }
+          if (lineItems) {
+            invoice.lineItems = (lineItems as any[]).map((item) => ({
+              description: item.description,
+              quantity: item.quantity,
+              unitAmount: item.unitAmount,
+              accountCode: item.accountCode,
+              taxType: item.taxType || "NONE",
+            }));
+          }
+
+          const response = await client.accountingApi.updateInvoice(
+            connection.tenantId,
+            invoiceId as string,
+            { invoices: [invoice as Invoice] }
+          );
+
+          // Check for validation errors from Xero API
+          if (response.body.invoices?.[0]?.hasErrors) {
+            const errors = response.body.invoices[0].validationErrors;
+            throw new Error(
+              `Invoice update validation failed: ${JSON.stringify(errors)}`
+            );
+          }
+
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(
+                  {
+                    success: true,
+                    invoice: response.body.invoices?.[0],
+                    message: "Invoice updated successfully",
+                  },
+                  null,
+                  2
+                ),
+              },
+            ],
+          };
+        }
+
+        case "xero_create_contact": {
+          const { name, email, phone, addresses } = args;
+
+          // Validate required fields
+          if (!name) {
+            throw new Error("name is required");
+          }
+
+          // Validate addresses if provided
+          if (addresses) {
+            if (!Array.isArray(addresses)) {
+              throw new Error("addresses must be an array");
+            }
+            for (const addr of addresses) {
+              if (
+                !addr.addressType ||
+                !["POBOX", "STREET", "DELIVERY"].includes(addr.addressType)
+              ) {
+                throw new Error(
+                  "Address type must be POBOX, STREET, or DELIVERY"
+                );
+              }
+            }
+          }
+
+          // Construct contact object
+          const contact = {
+            name: name as string,
+            emailAddress: email as string | undefined,
+            phones: phone
+              ? [
+                  {
+                    phoneType: "DEFAULT",
+                    phoneNumber: phone as string,
+                  },
+                ]
+              : undefined,
+            addresses: addresses
+              ? (addresses as any[]).map((addr) => ({
+                  addressType: addr.addressType,
+                  addressLine1: addr.addressLine1,
+                  addressLine2: addr.addressLine2,
+                  city: addr.city,
+                  region: addr.region,
+                  postalCode: addr.postalCode,
+                  country: addr.country,
+                }))
+              : undefined,
+          };
+
+          const response = await client.accountingApi.createContacts(
+            connection.tenantId,
+            { contacts: [contact] }
+          );
+
+          // Check for validation errors from Xero API
+          if (response.body.contacts?.[0]?.hasErrors) {
+            const errors = response.body.contacts[0].validationErrors;
+            throw new Error(
+              `Contact validation failed: ${JSON.stringify(errors)}`
+            );
+          }
+
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(
+                  {
+                    success: true,
+                    contact: response.body.contacts?.[0],
+                    message: "Contact created successfully",
+                  },
+                  null,
+                  2
+                ),
+              },
+            ],
+          };
+        }
+
+        case "xero_update_contact": {
+          const { contactId, name, email, phone, addresses } = args;
+
+          // Validate required fields
+          if (!contactId) {
+            throw new Error("contactId is required");
+          }
+
+          // Validate addresses if provided
+          if (addresses) {
+            if (!Array.isArray(addresses)) {
+              throw new Error("addresses must be an array");
+            }
+            for (const addr of addresses) {
+              if (
+                !addr.addressType ||
+                !["POBOX", "STREET", "DELIVERY"].includes(addr.addressType)
+              ) {
+                throw new Error(
+                  "Address type must be POBOX, STREET, or DELIVERY"
+                );
+              }
+            }
+          }
+
+          // Construct contact object with only provided fields
+          const contact: any = {
+            contactID: contactId as string,
+          };
+
+          if (name) contact.name = name as string;
+          if (email) contact.emailAddress = email as string;
+          if (phone) {
+            contact.phones = [
+              {
+                phoneType: "DEFAULT",
+                phoneNumber: phone as string,
+              },
+            ];
+          }
+          if (addresses) {
+            contact.addresses = (addresses as any[]).map((addr) => ({
+              addressType: addr.addressType,
+              addressLine1: addr.addressLine1,
+              addressLine2: addr.addressLine2,
+              city: addr.city,
+              region: addr.region,
+              postalCode: addr.postalCode,
+              country: addr.country,
+            }));
+          }
+
+          const response = await client.accountingApi.updateContact(
+            connection.tenantId,
+            contactId as string,
+            { contacts: [contact] }
+          );
+
+          // Check for validation errors from Xero API
+          if (response.body.contacts?.[0]?.hasErrors) {
+            const errors = response.body.contacts[0].validationErrors;
+            throw new Error(
+              `Contact update validation failed: ${JSON.stringify(errors)}`
+            );
+          }
+
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(
+                  {
+                    success: true,
+                    contact: response.body.contacts?.[0],
+                    message: "Contact updated successfully",
+                  },
+                  null,
+                  2
+                ),
+              },
+            ],
+          };
+        }
+
+        case "xero_create_payment": {
+          const { invoiceId, accountId, amount, date, reference } = args;
+
+          // Validate required fields
+          if (!invoiceId || !accountId || typeof amount !== "number" || !date) {
+            throw new Error(
+              "invoiceId, accountId, amount, and date are required"
+            );
+          }
+
+          // Construct payment object
+          const payment = {
+            invoice: { invoiceID: invoiceId as string },
+            account: { accountID: accountId as string },
+            amount: amount as number,
+            date: date as string,
+            reference: reference as string | undefined,
+          };
+
+          const response = await client.accountingApi.createPayments(
+            connection.tenantId,
+            { payments: [payment] }
+          );
+
+          // Check for validation errors from Xero API
+          if (response.body.payments?.[0]?.hasErrors) {
+            const errors = response.body.payments[0].validationErrors;
+            throw new Error(
+              `Payment validation failed: ${JSON.stringify(errors)}`
+            );
+          }
+
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(
+                  {
+                    success: true,
+                    payment: response.body.payments?.[0],
+                    message: "Payment created successfully",
+                  },
+                  null,
+                  2
+                ),
+              },
+            ],
+          };
+        }
+
+        case "xero_create_quote": {
+          const { contactId, date, expiryDate, lineItems, reference, status } =
+            args;
+
+          // Validate required fields
+          if (!contactId || !date || !expiryDate || !lineItems) {
+            throw new Error(
+              "contactId, date, expiryDate, and lineItems are required"
+            );
+          }
+
+          // Validate line items array
+          if (!Array.isArray(lineItems) || lineItems.length === 0) {
+            throw new Error("lineItems must be a non-empty array");
+          }
+
+          // Validate each line item
+          for (const item of lineItems) {
+            if (
+              !item.description ||
+              typeof item.quantity !== "number" ||
+              typeof item.unitAmount !== "number" ||
+              !item.accountCode
+            ) {
+              throw new Error(
+                "All line items must have description, quantity, unitAmount, and accountCode"
+              );
+            }
+          }
+
+          // Validate status if provided
+          if (
+            status &&
+            !["DRAFT", "SENT", "ACCEPTED", "DECLINED"].includes(
+              status as string
+            )
+          ) {
+            throw new Error(
+              "Status must be DRAFT, SENT, ACCEPTED, or DECLINED"
+            );
+          }
+
+          // Construct quote object
+          const quote = {
+            contact: {
+              contactID: contactId as string,
+            },
+            date: date as string,
+            expiryDate: expiryDate as string,
+            lineItems: (lineItems as any[]).map((item) => ({
+              description: item.description,
+              quantity: item.quantity,
+              unitAmount: item.unitAmount,
+              accountCode: item.accountCode,
+              taxType: item.taxType || "NONE",
+            })),
+            reference: reference as string | undefined,
+            status: status as string | undefined,
+          };
+
+          const response = await client.accountingApi.createQuotes(
+            connection.tenantId,
+            { quotes: [quote] }
+          );
+
+          // Check for validation errors from Xero API
+          if (response.body.quotes?.[0]?.hasErrors) {
+            const errors = response.body.quotes[0].validationErrors;
+            throw new Error(
+              `Quote validation failed: ${JSON.stringify(errors)}`
+            );
+          }
+
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(
+                  {
+                    success: true,
+                    quote: response.body.quotes?.[0],
+                    message: "Quote created successfully",
+                  },
+                  null,
+                  2
+                ),
+              },
+            ],
+          };
+        }
+
+        case "xero_create_credit_note": {
+          const { contactId, date, lineItems, reference, status } = args;
+
+          // Validate required fields
+          if (!contactId || !date || !lineItems) {
+            throw new Error("contactId, date, and lineItems are required");
+          }
+
+          // Validate line items array
+          if (!Array.isArray(lineItems) || lineItems.length === 0) {
+            throw new Error("lineItems must be a non-empty array");
+          }
+
+          // Validate each line item
+          for (const item of lineItems) {
+            if (
+              !item.description ||
+              typeof item.quantity !== "number" ||
+              typeof item.unitAmount !== "number" ||
+              !item.accountCode
+            ) {
+              throw new Error(
+                "All line items must have description, quantity, unitAmount, and accountCode"
+              );
+            }
+          }
+
+          // Validate status if provided
+          if (
+            status &&
+            !["DRAFT", "SUBMITTED", "AUTHORISED", "PAID", "VOIDED"].includes(
+              status as string
+            )
+          ) {
+            throw new Error(
+              "Status must be DRAFT, SUBMITTED, AUTHORISED, PAID, or VOIDED"
+            );
+          }
+
+          // Construct credit note object
+          const creditNote = {
+            type: "ACCRECCREDIT", // Accounts Receivable Credit Note
+            contact: {
+              contactID: contactId as string,
+            },
+            date: date as string,
+            lineItems: (lineItems as any[]).map((item) => ({
+              description: item.description,
+              quantity: item.quantity,
+              unitAmount: item.unitAmount,
+              accountCode: item.accountCode,
+              taxType: item.taxType || "NONE",
+            })),
+            reference: reference as string | undefined,
+            status: status as string | undefined,
+          };
+
+          const response = await client.accountingApi.createCreditNotes(
+            connection.tenantId,
+            { creditNotes: [creditNote] }
+          );
+
+          // Check for validation errors from Xero API
+          if (response.body.creditNotes?.[0]?.hasErrors) {
+            const errors = response.body.creditNotes[0].validationErrors;
+            throw new Error(
+              `Credit note validation failed: ${JSON.stringify(errors)}`
+            );
+          }
+
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(
+                  {
+                    success: true,
+                    creditNote: response.body.creditNotes?.[0],
+                    message: "Credit note created successfully",
+                  },
+                  null,
+                  2
+                ),
+              },
+            ],
+          };
+        }
+
+        case "xero_update_credit_note": {
+          const {
+            creditNoteId,
+            contactId,
+            date,
+            lineItems,
+            reference,
+            status,
+          } = args;
+
+          // Validate required fields
+          if (!creditNoteId) {
+            throw new Error("creditNoteId is required");
+          }
+
+          // Validate line items if provided
+          if (lineItems) {
+            if (!Array.isArray(lineItems) || lineItems.length === 0) {
+              throw new Error("lineItems must be a non-empty array");
+            }
+            for (const item of lineItems) {
+              if (
+                !item.description ||
+                typeof item.quantity !== "number" ||
+                typeof item.unitAmount !== "number" ||
+                !item.accountCode
+              ) {
+                throw new Error(
+                  "All line items must have description, quantity, unitAmount, and accountCode"
+                );
+              }
+            }
+          }
+
+          // Validate status if provided
+          if (
+            status &&
+            !["DRAFT", "SUBMITTED", "AUTHORISED", "PAID", "VOIDED"].includes(
+              status as string
+            )
+          ) {
+            throw new Error(
+              "Status must be DRAFT, SUBMITTED, AUTHORISED, PAID, or VOIDED"
+            );
+          }
+
+          // Construct credit note object with only provided fields
+          const creditNote: any = {
+            creditNoteID: creditNoteId as string,
+          };
+
+          if (contactId)
+            creditNote.contact = { contactID: contactId as string };
+          if (date) creditNote.date = date as string;
+          if (reference) creditNote.reference = reference as string;
+          if (status) creditNote.status = status as string;
+          if (lineItems) {
+            creditNote.lineItems = (lineItems as any[]).map((item) => ({
+              description: item.description,
+              quantity: item.quantity,
+              unitAmount: item.unitAmount,
+              accountCode: item.accountCode,
+              taxType: item.taxType || "NONE",
+            }));
+          }
+
+          const response = await client.accountingApi.updateCreditNote(
+            connection.tenantId,
+            creditNoteId as string,
+            { creditNotes: [creditNote] }
+          );
+
+          // Check for validation errors from Xero API
+          if (response.body.creditNotes?.[0]?.hasErrors) {
+            const errors = response.body.creditNotes[0].validationErrors;
+            throw new Error(
+              `Credit note update validation failed: ${JSON.stringify(errors)}`
+            );
+          }
+
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(
+                  {
+                    success: true,
+                    creditNote: response.body.creditNotes?.[0],
+                    message: "Credit note updated successfully",
                   },
                   null,
                   2
