@@ -157,12 +157,17 @@ export async function batchScrapeUrls(
  * @returns Plain text with HTML tags removed
  */
 export function extractTextFromHtml(html: string): string {
-  // Remove script and style tags and their content
-  let text = html.replace(
-    /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-    ""
-  );
-  text = text.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "");
+  // Remove script and style tags and their content (repeat until all removed)
+  let text = html;
+  let previous;
+  do {
+    previous = text;
+    text = text.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
+  } while (text !== previous);
+  do {
+    previous = text;
+    text = text.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "");
+  } while (text !== previous);
 
   // Remove HTML tags
   text = text.replace(/<[^>]+>/g, " ");
