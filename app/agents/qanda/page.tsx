@@ -2,16 +2,13 @@
 
 import { useChat } from "@ai-sdk/react";
 import {
-  AlertCircle,
   BookOpen,
-  BookmarkPlus,
-  FileText,
   MessageSquareText,
   Send,
   ThumbsDown,
   ThumbsUp,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import useSWR from "swr";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,27 +21,13 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { fetcher } from "@/lib/utils";
 
-interface RegulatoryStats {
+type RegulatoryStats = {
   awards: number;
   taxRulings: number;
   payrollTax: number;
   lastUpdated: string | null;
   totalDocuments: number;
-}
-
-interface MessageWithMetadata {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  timestamp: string;
-  confidence?: number;
-  citations?: Array<{
-    title: string;
-    url: string;
-    category: string;
-  }>;
-  requiresReview?: boolean;
-}
+};
 
 const suggestedQuestions = [
   "What's the minimum wage for a Level 3 retail worker?",
@@ -74,74 +57,39 @@ export default function QandAAgentPage() {
     }
   );
 
-  // Simple chat state for demo (will be replaced with actual API integration)
-  const [conversationHistory, setConversationHistory] = useState<
-    MessageWithMetadata[]
-  >([
-    {
-      id: "1",
-      role: "user",
-      content: "What's the superannuation guarantee rate for FY2024-25?",
-      timestamp: new Date().toISOString(),
-    },
-    {
-      id: "2",
-      role: "assistant",
-      content:
-        "The Superannuation Guarantee (SG) rate for the 2024-25 financial year is **11.5%** of an employee's ordinary time earnings.\n\nThis rate applies from 1 July 2024. The SG rate is scheduled to increase to 12% from 1 July 2025.\n\n**Key Points:**\n- Employers must pay SG contributions at least quarterly\n- The quarterly due dates are 28 days after the end of each quarter\n- Ordinary time earnings include most payments for ordinary hours of work, but exclude overtime\n- The current quarterly earnings threshold is $450 (employees earning less than this are still entitled to SG)\n\n**Note:** This information is current as of the effective date shown in the ATO ruling. For specific situations or recent changes, please consult with a registered tax agent.",
-      timestamp: new Date().toISOString(),
-      confidence: 0.95,
-      citations: [
-        {
-          title: "Superannuation Guarantee Ruling SGR 2009/2",
-          url: "https://www.ato.gov.au/law/view/document?docid=SGR/SGR20092",
-          category: "tax_ruling",
-        },
-        {
-          title: "Super guarantee percentage",
-          url: "https://www.ato.gov.au/rates/key-superannuation-rates-and-thresholds",
-          category: "tax_ruling",
-        },
-      ],
-      requiresReview: false,
-    },
-  ]);
+  // Use real chat API
+  const { messages, sendMessage, status } = useChat({
+    id: "qanda-agent",
+    transport: new (require("ai").DefaultChatTransport)({
+      api: "/api/agents/qanda",
+      fetch,
+      prepareSendMessagesRequest(request: any) {
+        return {
+          body: {
+            messages: request.messages,
+            settings: {
+              model: "anthropic-claude-sonnet-4-5",
+              confidenceThreshold: 0.6,
+            },
+          },
+        };
+      },
+    }),
+  });
 
   const handleSendMessage = () => {
-    if (!input.trim()) return;
-
-    const userMessage: MessageWithMetadata = {
-      id: Date.now().toString(),
+    if (!input.trim()) {
+      return;
+    }
+    sendMessage({
       role: "user",
-      content: input,
-      timestamp: new Date().toISOString(),
-    };
-
-    setConversationHistory((prev) => [...prev, userMessage]);
+      parts: [{ type: "text", text: input }],
+    } as any);
     setInput("");
-
-    // Simulate assistant response (will be replaced with actual API call)
-    setTimeout(() => {
-      const assistantMessage: MessageWithMetadata = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content:
-          "This is a placeholder response. The Q&A agent will provide regulatory-aware answers once the backend API is implemented.",
-        timestamp: new Date().toISOString(),
-        confidence: 0.75,
-        citations: [],
-      };
-      setConversationHistory((prev) => [...prev, assistantMessage]);
-    }, 1000);
   };
 
   const handleSuggestedQuestion = (question: string) => {
     setInput(question);
-  };
-
-  const handleRequestReview = (messageId: string) => {
-    console.log("Requesting human review for message:", messageId);
-    // TODO: Implement escalation to human expert
   };
 
   return (
@@ -193,12 +141,12 @@ export default function QandAAgentPage() {
               tax guidance.
             </p>
             {kbStats?.lastUpdated ? (
-              <p className="text-muted-foreground mt-1">
+              <p className="mt-1 text-muted-foreground">
                 Last updated:{" "}
                 {new Date(kbStats.lastUpdated).toLocaleDateString()}
               </p>
             ) : (
-              <p className="text-muted-foreground mt-1">
+              <p className="mt-1 text-muted-foreground">
                 Knowledge base not yet initialized
               </p>
             )}
@@ -224,7 +172,7 @@ export default function QandAAgentPage() {
             {/* Conversation History */}
             <ScrollArea className="h-[500px] rounded-md border bg-muted/20 p-4">
               <div className="space-y-4">
-                {conversationHistory.map((message) => (
+                {messages.map((message: any) => (
                   <div
                     className="rounded-lg border bg-card p-4 shadow-sm"
                     data-role={message.role}
@@ -235,7 +183,7 @@ export default function QandAAgentPage() {
                         {message.role}
                       </span>
                       <span>
-                        {new Date(message.timestamp).toLocaleTimeString([], {
+                        {new Date().toLocaleTimeString([], {
                           hour: "2-digit",
                           minute: "2-digit",
                         })}
@@ -246,62 +194,16 @@ export default function QandAAgentPage() {
                       {message.content}
                     </div>
 
-                    {/* Citations */}
-                    {message.role === "assistant" &&
-                      showCitations &&
-                      message.citations &&
-                      message.citations.length > 0 && (
-                        <div className="mt-3 space-y-2">
-                          <Separator />
-                          <p className="text-muted-foreground text-xs font-semibold uppercase">
-                            Citations
-                          </p>
-                          {message.citations.map((citation, index) => (
-                            <a
-                              className="flex items-start gap-2 rounded-md border bg-muted/40 p-2 text-xs transition-colors hover:bg-muted"
-                              href={citation.url}
-                              key={index}
-                              rel="noopener noreferrer"
-                              target="_blank"
-                            >
-                              <FileText className="h-3 w-3 shrink-0 text-muted-foreground mt-0.5" />
-                              <div className="flex-1">
-                                <p className="font-medium">{citation.title}</p>
-                                <p className="text-muted-foreground capitalize">
-                                  {citation.category.replace("_", " ")}
-                                </p>
-                              </div>
-                            </a>
-                          ))}
-                        </div>
-                      )}
+                    {/* Citations - will be added with data streaming in future update */}
 
-                    {/* Assistant Response Metadata */}
+                    {/* Assistant Response Metadata - placeholder for now */}
                     {message.role === "assistant" && (
                       <div className="mt-3 flex items-center justify-between text-muted-foreground text-xs">
                         <div className="flex items-center gap-4">
-                          {message.confidence !== undefined && (
-                            <span className="flex items-center gap-1">
-                              Confidence:{" "}
-                              <Badge
-                                variant={
-                                  message.confidence >= 0.8
-                                    ? "default"
-                                    : message.confidence >= 0.6
-                                      ? "secondary"
-                                      : "destructive"
-                                }
-                              >
-                                {Math.round(message.confidence * 100)}%
-                              </Badge>
-                            </span>
-                          )}
-                          {message.requiresReview && (
-                            <Badge variant="outline">
-                              <AlertCircle className="mr-1 h-3 w-3" />
-                              Review Required
-                            </Badge>
-                          )}
+                          <span className="flex items-center gap-1">
+                            Confidence:{" "}
+                            <Badge variant="secondary">Calculating...</Badge>
+                          </span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Button size="icon" variant="ghost">
@@ -310,15 +212,6 @@ export default function QandAAgentPage() {
                           <Button size="icon" variant="ghost">
                             <ThumbsDown className="h-4 w-4" />
                           </Button>
-                          {message.requiresReview && (
-                            <Button
-                              onClick={() => handleRequestReview(message.id)}
-                              size="sm"
-                              variant="outline"
-                            >
-                              Request Review
-                            </Button>
-                          )}
                         </div>
                       </div>
                     )}
@@ -362,8 +255,12 @@ export default function QandAAgentPage() {
                     <span>Show citations</span>
                   </div>
                 </div>
-                <Button onClick={handleSendMessage} size="sm">
-                  Send
+                <Button
+                  disabled={status === "streaming" || !input.trim()}
+                  onClick={handleSendMessage}
+                  size="sm"
+                >
+                  {status === "streaming" ? "Sending..." : "Send"}
                   <Send className="ml-2 h-4 w-4" />
                 </Button>
               </div>
@@ -382,10 +279,10 @@ export default function QandAAgentPage() {
               </p>
             </CardHeader>
             <CardContent className="space-y-3">
-              {suggestedQuestions.map((question, index) => (
+              {suggestedQuestions.map((question) => (
                 <Button
                   className="h-auto w-full justify-start whitespace-normal text-left"
-                  key={index}
+                  key={question}
                   onClick={() => handleSuggestedQuestion(question)}
                   variant="outline"
                 >

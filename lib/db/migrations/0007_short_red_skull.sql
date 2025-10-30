@@ -1,0 +1,1 @@
+ALTER TABLE "RegulatoryDocument" ADD COLUMN "search_vector" text;
