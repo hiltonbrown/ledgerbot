@@ -156,42 +156,15 @@ export async function batchScrapeUrls(
  * @param html - HTML string to process
  * @returns Plain text with HTML tags removed
  */
+import * as cheerio from 'cheerio';
+
 export function extractTextFromHtml(html: string): string {
-  // Remove script and style tags and their content (repeat until all removed)
-  let text = html;
-  let previous;
-  do {
-    previous = text;
-    text = text.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
-  } while (text !== previous);
-  do {
-    previous = text;
-    text = text.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "");
-  } while (text !== previous);
-
-  // Remove HTML tags
-  text = text.replace(/<[^>]+>/g, " ");
-
-  // Decode common HTML entities
-  const entities: Record<string, string> = {
-    "&nbsp;": " ",
-    "&amp;": "&",
-    "&lt;": "<",
-    "&gt;": ">",
-    "&quot;": '"',
-    "&#39;": "'",
-    "&apos;": "'",
-  };
-
-  for (const [entity, char] of Object.entries(entities)) {
-    text = text.replace(new RegExp(entity, "g"), char);
-  }
-
-  // Collapse multiple whitespace characters into single space
-  text = text.replace(/\s+/g, " ");
-
-  // Trim leading and trailing whitespace
-  return text.trim();
+  const $ = cheerio.load(html, { decodeEntities: true });
+  // Remove all script and style tags
+  $("script, style").remove();
+  let text = $.text();
+  // Collapse multiple whitespace characters into single space and trim
+  return text.replace(/\s+/g, " ").trim();
 }
 
 /**
