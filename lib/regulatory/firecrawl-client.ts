@@ -159,7 +159,7 @@ export async function batchScrapeUrls(
 import * as cheerio from 'cheerio';
 
 export function extractTextFromHtml(html: string): string {
-  const $ = cheerio.load(html, { decodeEntities: true });
+  const $ = cheerio.load(html);
   // Remove all script and style tags
   $("script, style").remove();
   let text = $.text();
