@@ -7,6 +7,9 @@ interface RegulatorySearchResult {
   title: string;
   url: string;
   category: string;
+  excerpt?: string;
+  relevanceScore?: number;
+  effectiveDate?: string | null;
 }
 
 interface ToolCall {
