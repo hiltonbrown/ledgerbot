@@ -2,9 +2,19 @@
  * Confidence scoring for AI responses based on regulatory citations
  */
 
-// Temporary type definition for ToolCall
-type ToolCall = any;
+// Definition for ToolCall and nested result structure
+interface RegulatorySearchResult {
+  title: string;
+  url: string;
+  category: string;
+}
 
+interface ToolCall {
+  toolName: string;
+  result?: {
+    results?: RegulatorySearchResult[];
+  };
+}
 /**
  * Citation extracted from regulatory search results
  */
