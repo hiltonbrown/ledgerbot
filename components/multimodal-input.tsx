@@ -557,6 +557,7 @@ function PureToolSelectorCompact({
     <DropdownMenu>
       <DropdownMenuTrigger
         className="flex h-8 items-center gap-2 rounded-lg border-0 bg-background px-2 text-foreground shadow-none transition-colors hover:bg-accent focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+        suppressHydrationWarning
         type="button"
       >
         <SparklesIcon size={16} />
@@ -619,6 +620,7 @@ function PureReasoningToggle({
           disabled ? "cursor-not-allowed" : "cursor-pointer"
         )}
         htmlFor={switchId}
+        suppressHydrationWarning
       >
         Reasoning
       </Label>
@@ -629,6 +631,7 @@ function PureReasoningToggle({
         disabled={disabled}
         id={switchId}
         onCheckedChange={(checked) => onToggle?.(checked)}
+        suppressHydrationWarning
       />
     </div>
   );

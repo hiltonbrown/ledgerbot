@@ -1,10 +1,4 @@
-import {
-  createClient,
-  type RedisClientType,
-  type RedisDefaultFunctions,
-  type RedisDefaultModules,
-  type RedisDefaultScripts,
-} from "redis";
+import { createClient, type RedisClientType } from "redis";
 
 const STREAM_BUFFER_TTL_SECONDS = 15;
 const MAX_RECONNECT_RETRIES = 5;
@@ -54,11 +48,7 @@ const logMissingUrl = () => {
   );
 };
 
-type RedisClient = RedisClientType<
-  RedisDefaultModules,
-  RedisDefaultFunctions,
-  RedisDefaultScripts
->;
+type RedisClient = RedisClientType;
 
 type RedisClients = {
   publisher: RedisClient;

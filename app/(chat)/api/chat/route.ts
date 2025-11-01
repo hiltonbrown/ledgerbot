@@ -287,6 +287,12 @@ export async function POST(request: Request) {
           ? [...activeTools, ...xeroToolNames]
           : activeTools;
 
+        console.log(
+          "[debug] Starting streamText with model:",
+          selectedChatModel,
+          { chatId: id, streamId }
+        );
+
         const result = streamText({
           model: myProvider.languageModel(selectedChatModel),
           system: systemPrompt({
@@ -351,7 +357,10 @@ export async function POST(request: Request) {
           },
         });
 
-        result.consumeStream();
+        console.log("[debug] Merging stream to dataStream", {
+          chatId: id,
+          streamId,
+        });
 
         dataStream.merge(
           result.toUIMessageStream({
@@ -395,6 +404,11 @@ export async function POST(request: Request) {
     const streamContext = await getStreamContext();
     const sseStream = stream.pipeThrough(new JsonToSseTransformStream());
 
+    console.log("[debug] Stream created, context available:", !!streamContext, {
+      streamId,
+      chatId: id,
+    });
+
     if (streamContext) {
       const [resumableSource, fallbackSource] = sseStream.tee();
 
@@ -405,6 +419,7 @@ export async function POST(request: Request) {
         );
 
         if (resumableStream) {
+          console.log("[debug] Returning resumable stream", { streamId });
           return new Response(resumableStream);
         }
 
@@ -422,6 +437,9 @@ export async function POST(request: Request) {
       }
     }
 
+    console.log("[debug] No stream context, returning direct SSE stream", {
+      streamId,
+    });
     return new Response(sseStream);
   } catch (error) {
     const vercelId = request.headers.get("x-vercel-id");
