@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
-import {
-  deactivateXeroConnection,
-  getActiveXeroConnection,
-} from "@/lib/db/queries";
+import { getActiveXeroConnection } from "@/lib/db/queries";
+import { revokeXeroToken } from "@/lib/xero/connection-manager";
 
 export async function POST() {
   try {
@@ -22,9 +20,22 @@ export async function POST() {
       );
     }
 
-    await deactivateXeroConnection(connection.id);
+    // Revoke the refresh token with Xero before deactivating
+    try {
+      await revokeXeroToken(connection.id);
+      console.log(`Successfully revoked Xero token for user ${user.id}`);
+    } catch (revokeError) {
+      console.error(
+        `Failed to revoke Xero token for user ${user.id}:`,
+        revokeError
+      );
+      // Continue with deactivation even if revocation fails
+    }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      message: "Xero connection disconnected successfully",
+    });
   } catch (error) {
     console.error("Xero disconnect error:", error);
     return NextResponse.json(

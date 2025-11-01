@@ -2,6 +2,7 @@ import "server-only";
 
 import { XeroClient } from "xero-node";
 import {
+  deactivateXeroConnection,
   getActiveXeroConnection,
   getXeroConnectionById,
   removeDuplicateXeroConnectionsForUser,
@@ -68,18 +69,50 @@ export async function getDecryptedConnection(
   const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
 
   if (expiresAt <= fiveMinutesFromNow) {
+    console.log(
+      `Xero token for user ${userId} is expired or expiring soon, attempting refresh`
+    );
     // Token needs refresh
     try {
       const refreshedConnection = await refreshXeroToken(connection.id);
       if (refreshedConnection) {
+        console.log(`Successfully refreshed Xero token for user ${userId}`);
         return {
           ...refreshedConnection,
           accessToken: decryptToken(refreshedConnection.accessToken),
           refreshToken: decryptToken(refreshedConnection.refreshToken),
         };
       }
+      console.warn(
+        `Failed to refresh Xero token for user ${userId}, token may be expired`
+      );
+      // Deactivate the connection since refresh failed
+      try {
+        await deactivateXeroConnection(connection.id);
+        console.log(
+          `Deactivated Xero connection ${connection.id} due to refresh failure`
+        );
+      } catch (deactivateError) {
+        console.error(
+          `Failed to deactivate Xero connection ${connection.id}:`,
+          deactivateError
+        );
+      }
+      return null;
     } catch (error) {
-      console.error("Failed to refresh Xero token:", error);
+      console.error(`Failed to refresh Xero token for user ${userId}:`, error);
+      // Deactivate the connection since refresh failed
+      try {
+        await deactivateXeroConnection(connection.id);
+        console.log(
+          `Deactivated Xero connection ${connection.id} due to refresh failure`
+        );
+      } catch (deactivateError) {
+        console.error(
+          `Failed to deactivate Xero connection ${connection.id}:`,
+          deactivateError
+        );
+      }
       return null;
     }
   }
@@ -97,12 +130,17 @@ async function refreshXeroToken(
   const connection = await getXeroConnectionById(connectionId);
 
   if (!connection) {
+    console.warn(`Xero connection ${connectionId} not found for refresh`);
     return null;
   }
 
   const xeroClient = createXeroClient();
 
   try {
+    console.log(
+      `Attempting to refresh Xero token for connection ${connectionId}`
+    );
+
     const decryptedAccessToken = decryptToken(connection.accessToken);
     const decryptedRefreshToken = decryptToken(connection.refreshToken);
 
@@ -125,11 +163,18 @@ async function refreshXeroToken(
     const tokenSet = await xeroClient.refreshToken();
 
     if (!tokenSet.access_token || !tokenSet.refresh_token) {
+      console.error(
+        "Invalid token response from Xero - missing access_token or refresh_token"
+      );
       throw new Error("Invalid token response from Xero");
     }
 
     const expiresAt = new Date(
       Date.now() + (tokenSet.expires_in || 1800) * 1000
+    );
+
+    console.log(
+      `Successfully refreshed Xero token for connection ${connectionId}, expires at ${expiresAt.toISOString()}`
     );
 
     const updatedConnection = await updateXeroTokens({
@@ -141,7 +186,28 @@ async function refreshXeroToken(
 
     return updatedConnection;
   } catch (error) {
-    console.error("Failed to refresh Xero token:", error);
+    console.error(
+      `Failed to refresh Xero token for connection ${connectionId}:`,
+      {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      }
+    );
+
+    // Check if this is a refresh token expiry error
+    if (
+      error instanceof Error &&
+      (error.message.includes("invalid_grant") ||
+        error.message.includes("refresh_token") ||
+        error.message.includes("expired"))
+    ) {
+      console.warn(
+        `Refresh token appears to be expired for connection ${connectionId}, user will need to re-authenticate`
+      );
+      // Don't throw here - let the caller handle the null return and potentially deactivate the connection
+      return null;
+    }
+
     throw error;
   }
 }
@@ -180,4 +246,67 @@ export async function getXeroAuthUrl(state: string): Promise<string> {
 
 export function getXeroScopes(): string[] {
   return XERO_SCOPES;
+}
+
+/**
+ * Revoke a Xero refresh token and deactivate the connection
+ */
+export async function revokeXeroToken(connectionId: string): Promise<void> {
+  try {
+    console.log(
+      `Attempting to revoke Xero token for connection ${connectionId}`
+    );
+
+    const connection = await getXeroConnectionById(connectionId);
+    if (!connection) {
+      console.warn(`Xero connection ${connectionId} not found for revocation`);
+      return;
+    }
+
+    const xeroClient = createXeroClient();
+
+    try {
+      const decryptedRefreshToken = decryptToken(connection.refreshToken);
+
+      await xeroClient.initialize();
+
+      // Set the token set first, then revoke
+      await xeroClient.setTokenSet({
+        access_token: decryptToken(connection.accessToken),
+        refresh_token: decryptedRefreshToken,
+        token_type: "Bearer",
+        expires_in: Math.max(
+          Math.floor(
+            (new Date(connection.expiresAt).getTime() - Date.now()) / 1000
+          ),
+          0
+        ),
+      });
+
+      // Revoke the refresh token using Xero's revocation endpoint
+      await xeroClient.revokeToken();
+
+      console.log(
+        `Successfully revoked Xero refresh token for connection ${connectionId}`
+      );
+    } catch (revokeError) {
+      console.error(
+        `Failed to revoke Xero token for connection ${connectionId}:`,
+        revokeError
+      );
+      // Continue with deactivation even if revocation fails
+    }
+
+    // Deactivate the connection regardless of revocation success
+    await deactivateXeroConnection(connectionId);
+    console.log(
+      `Deactivated Xero connection ${connectionId} after token revocation`
+    );
+  } catch (error) {
+    console.error(
+      `Error during Xero token revocation for connection ${connectionId}:`,
+      error
+    );
+    throw error;
+  }
 }
