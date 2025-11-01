@@ -16,7 +16,7 @@ type CreateDocumentProps = {
 export const createDocument = ({ user, dataStream }: CreateDocumentProps) =>
   tool({
     description:
-      "Create a NEW document for writing or content creation activities. Use this ONLY when starting completely new content that is unrelated to existing documents in this conversation. DO NOT use if user wants to modify existing content - use updateDocument instead. This generates a new document ID and saves it separately.",
+      "Create a BRAND NEW document artifact. Only use when starting completely fresh content that has no relationship to existing documents in this conversation. This generates a unique document ID and creates a separate artifact.",
     inputSchema: z.object({
       title: z.string().describe("Title for the new document"),
       kind: z

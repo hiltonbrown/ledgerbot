@@ -1,4 +1,8 @@
-import { createUIMessageStream, streamText, JsonToSseTransformStream } from "ai";
+import {
+  createUIMessageStream,
+  JsonToSseTransformStream,
+  streamText,
+} from "ai";
 import { NextResponse } from "next/server";
 import { getModel } from "../../../../lib/ai/providers";
 import { regulatoryTools } from "../../../../lib/ai/tools/regulatory-tools";
