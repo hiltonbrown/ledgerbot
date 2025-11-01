@@ -8,11 +8,17 @@ export const regulatorySearch = tool({
     Good queries are specific, like "what is the minimum wage for a retail worker?" or "superannuation guarantee percentage".`,
   inputSchema: z.object({
     query: z.string().describe("The specific question or topic to search for."),
-    category: z.enum(["award", "tax_ruling", "payroll_tax", "all"])
+    category: z
+      .enum(["award", "tax_ruling", "payroll_tax", "all"])
       .optional()
       .default("all")
       .describe("The category to search within."),
-    limit: z.number().max(10).optional().default(5).describe("The maximum number of results to return."),
+    limit: z
+      .number()
+      .max(10)
+      .optional()
+      .default(5)
+      .describe("The maximum number of results to return."),
   }),
   execute: async (args) => {
     const { query, category, limit } = args;
@@ -25,10 +31,15 @@ export const regulatorySearch = tool({
       });
 
       if (results.length === 0) {
-        return { success: true, count: 0, results: [], message: "No results found." };
+        return {
+          success: true,
+          count: 0,
+          results: [],
+          message: "No results found.",
+        };
       }
 
-      const formattedResults = results.map(r => ({
+      const formattedResults = results.map((r) => ({
         title: r.title,
         url: r.sourceUrl,
         category: r.category,
@@ -43,7 +54,10 @@ export const regulatorySearch = tool({
       };
     } catch (error) {
       console.error("[Regulatory Tool] Error:", error);
-      return { success: false, message: "An error occurred during the search." };
+      return {
+        success: false,
+        message: "An error occurred during the search.",
+      };
     }
   },
 });

@@ -65,6 +65,9 @@ export const message = pgTable("Message_v2", {
   parts: json("parts").notNull(),
   attachments: json("attachments").notNull(),
   createdAt: timestamp("createdAt").notNull(),
+  confidence: real("confidence"), // Confidence score (0-1) for Q&A agent responses
+  citations: jsonb("citations"), // Regulatory citations for Q&A agent responses
+  needsReview: boolean("needsReview"), // Flag for low-confidence responses requiring human review
 });
 
 export type DBMessage = InferSelectModel<typeof message>;
@@ -315,22 +318,22 @@ export type RegulatoryScrapeJob = InferSelectModel<typeof regulatoryScrapeJob>;
 export type RegulatoryScrapeJobInsert = typeof regulatoryScrapeJob.$inferInsert;
 
 export const qaReviewRequest = pgTable(
-  "qa_review_request",
+  "QaReviewRequest",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    userId: uuid("user_id")
+    userId: uuid("userId")
       .notNull()
       .references(() => user.id),
-    messageId: text("message_id").notNull(),
+    messageId: text("messageId").notNull(),
     query: text("query").notNull(),
     response: text("response").notNull(),
     confidence: real("confidence").notNull(),
     citations: jsonb("citations"),
     status: varchar("status", { length: 20 }).default("pending").notNull(),
-    assignedTo: uuid("assigned_to").references(() => user.id),
-    resolutionNotes: text("resolution_notes"),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    resolvedAt: timestamp("resolved_at"),
+    assignedTo: uuid("assignedTo").references(() => user.id),
+    resolutionNotes: text("resolutionNotes"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    resolvedAt: timestamp("resolvedAt"),
   },
   (table) => ({
     userIdIdx: index("qa_review_request_user_id_idx").on(table.userId),

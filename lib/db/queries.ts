@@ -21,6 +21,7 @@ import type { ArtifactKind } from "@/components/artifact";
 import type { VisibilityType } from "@/components/visibility-selector";
 import { ChatSDKError } from "../errors";
 import type { AppUsage } from "../usage";
+import * as schema from "./schema";
 import {
   type Chat,
   type ContextFile,
@@ -43,8 +44,6 @@ import {
   xeroConnection,
 } from "./schema";
 import { generateHashedPassword } from "./utils";
-
-import * as schema from "./schema";
 
 // biome-ignore lint: Forbidden non-null assertion.
 const client = postgres(process.env.POSTGRES_URL!);

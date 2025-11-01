@@ -1,5 +1,5 @@
-import he from 'he';
-import * as cheerio from 'cheerio';
+import * as cheerio from "cheerio";
+import he from "he";
 
 /**
  * Represents the result of a scraping operation for a single URL.
@@ -35,7 +35,7 @@ async function waitForRateLimit() {
   if (timeSinceLastRequest < RATE_LIMIT_MS) {
     const delay = RATE_LIMIT_MS - timeSinceLastRequest;
     console.log(`Rate limiting: waiting for ${delay}ms...`);
-    await new Promise(resolve => setTimeout(resolve, delay));
+    await new Promise((resolve) => setTimeout(resolve, delay));
   }
 }
 
@@ -46,12 +46,15 @@ async function waitForRateLimit() {
  * @param options Optional scraping parameters.
  * @returns A promise that resolves to a ScrapeResult object.
  */
-export async function scrapeUrl(url: string, options?: ScrapeOptions): Promise<ScrapeResult> {
+export async function scrapeUrl(
+  url: string,
+  options?: ScrapeOptions
+): Promise<ScrapeResult> {
   console.log(`[Firecrawl] Scraping URL: ${url}`);
   await waitForRateLimit();
   lastRequestTime = Date.now();
 
-  const timeout = options?.timeout ?? 30000;
+  const timeout = options?.timeout ?? 30_000;
 
   try {
     // Placeholder scraping logic
@@ -59,7 +62,9 @@ export async function scrapeUrl(url: string, options?: ScrapeOptions): Promise<S
     const mockMarkdown = `# Mock Content\n\nThis is mock content from ${url}.`;
 
     // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 500));
+    await new Promise((resolve) =>
+      setTimeout(resolve, 500 + Math.random() * 500)
+    );
 
     console.log(`[Firecrawl] Successfully scraped: ${url}`);
     return {
@@ -74,8 +79,8 @@ export async function scrapeUrl(url: string, options?: ScrapeOptions): Promise<S
     console.error(`[Firecrawl] Error scraping ${url}:`, error);
     return {
       url,
-      markdown: '',
-      html: '',
+      markdown: "",
+      html: "",
       success: false,
       error: error instanceof Error ? error.message : String(error),
       scrapedAt: new Date(),
@@ -90,7 +95,10 @@ export async function scrapeUrl(url: string, options?: ScrapeOptions): Promise<S
  * @param options Optional scraping parameters for each URL.
  * @returns A promise that resolves to an array of ScrapeResult objects.
  */
-export async function batchScrapeUrls(urls: string[], options?: ScrapeOptions): Promise<ScrapeResult[]> {
+export async function batchScrapeUrls(
+  urls: string[],
+  options?: ScrapeOptions
+): Promise<ScrapeResult[]> {
   const results: ScrapeResult[] = [];
   let count = 0;
   for (const url of urls) {
@@ -112,13 +120,13 @@ export async function batchScrapeUrls(urls: string[], options?: ScrapeOptions): 
 export function extractTextFromHtml(html: string): string {
   try {
     const $ = cheerio.load(html);
-    const text = $('body').text();
+    const text = $("body").text();
     const decodedText = he.decode(text);
     // Collapse whitespace (multiple spaces/newlines to a single space)
-    return decodedText.replace(/\s+/g, ' ').trim();
+    return decodedText.replace(/\s+/g, " ").trim();
   } catch (error) {
-    console.error('Error extracting text from HTML:', error);
-    return '';
+    console.error("Error extracting text from HTML:", error);
+    return "";
   }
 }
 

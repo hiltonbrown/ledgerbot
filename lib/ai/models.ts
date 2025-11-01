@@ -19,7 +19,8 @@ export const chatModels: ChatModel[] = [
   {
     id: "anthropic-claude-haiku-4-5",
     name: "Anthropic Claude Haiku 4.5",
-    description: "Lightweight Claude model optimized for fast, cost-efficient replies",
+    description:
+      "Lightweight Claude model optimized for fast, cost-efficient replies",
     vercelId: "anthropic/claude-haiku-4.5",
   },
   {

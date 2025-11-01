@@ -8,7 +8,9 @@ import { runScrapingJob } from "../lib/regulatory/scraper";
 
 async function populateData() {
   console.log("Starting full regulatory data population...");
-  console.warn("WARNING: This may take 30-60 minutes due to rate limiting and external API calls.");
+  console.warn(
+    "WARNING: This may take 30-60 minutes due to rate limiting and external API calls."
+  );
 
   try {
     const job = await runScrapingJob({}); // No filters for a full scrape
@@ -27,7 +29,10 @@ async function populateData() {
       console.log("✅ Data population successful.");
     }
   } catch (error) {
-    console.error("❌ An unexpected error occurred during data population:", error);
+    console.error(
+      "❌ An unexpected error occurred during data population:",
+      error
+    );
   }
 }
 

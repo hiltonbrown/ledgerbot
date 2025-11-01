@@ -9,12 +9,14 @@ export type ToolCall = any;
 function getAverageRelevance(toolCalls: ToolCall[]): number {
   const relevanceScores: number[] = [];
 
-  const searchTools = toolCalls.filter(tc => tc.toolName === 'regulatorySearch' && tc.result?.success);
+  const searchTools = toolCalls.filter(
+    (tc) => tc.toolName === "regulatorySearch" && tc.result?.success
+  );
 
   for (const tool of searchTools) {
     if (tool.result.results) {
       for (const res of tool.result.results) {
-        if (typeof res.relevanceScore === 'number') {
+        if (typeof res.relevanceScore === "number") {
           relevanceScores.push(res.relevanceScore);
         }
       }
@@ -34,16 +36,25 @@ function getAverageRelevance(toolCalls: ToolCall[]): number {
  */
 export function detectHedging(text: string): number {
   const hedges = [
-    "i'm not sure", "i don't know", "might be", "could be",
-    "possibly", "perhaps", "uncertain", "unclear", "i think",
-    "i believe", "probably", "may"
+    "i'm not sure",
+    "i don't know",
+    "might be",
+    "could be",
+    "possibly",
+    "perhaps",
+    "uncertain",
+    "unclear",
+    "i think",
+    "i believe",
+    "probably",
+    "may",
   ];
 
   const lowerText = text.toLowerCase();
   let count = 0;
 
   for (const hedge of hedges) {
-    count += (lowerText.match(new RegExp(`\b${hedge}\b`, 'g')) || []).length;
+    count += (lowerText.match(new RegExp(`\b${hedge}\b`, "g")) || []).length;
   }
 
   return Math.min(count * 0.05, 0.3);
@@ -55,11 +66,16 @@ export function detectHedging(text: string): number {
  * @param responseText The final text of the AI response.
  * @returns A confidence score between 0 and 1.
  */
-export function calculateConfidence(toolCalls: ToolCall[], responseText: string): number {
+export function calculateConfidence(
+  toolCalls: ToolCall[],
+  responseText: string
+): number {
   let score = 0.5; // Base score
 
   // Factor 1: Number of regulatory citations
-  const citationCount = toolCalls.filter(tc => tc.toolName === 'regulatorySearch' && tc.result?.success).length;
+  const citationCount = toolCalls.filter(
+    (tc) => tc.toolName === "regulatorySearch" && tc.result?.success
+  ).length;
   score += Math.min(citationCount * 0.1, 0.3);
 
   // Factor 2: Average relevance scores
@@ -67,7 +83,7 @@ export function calculateConfidence(toolCalls: ToolCall[], responseText: string)
   score += avgRelevance * 0.2;
 
   // Factor 3: Xero data integration
-  const hasXeroCall = toolCalls.some(tc => tc.toolName.startsWith('xero_'));
+  const hasXeroCall = toolCalls.some((tc) => tc.toolName.startsWith("xero_"));
   if (hasXeroCall) {
     score += 0.15;
   }
@@ -91,7 +107,10 @@ export function calculateConfidence(toolCalls: ToolCall[], responseText: string)
  * @param threshold The threshold below which review is required.
  * @returns True if the confidence is below the threshold, false otherwise.
  */
-export function requiresHumanReview(confidence: number, threshold = 0.6): boolean {
+export function requiresHumanReview(
+  confidence: number,
+  threshold = 0.6
+): boolean {
   return confidence < threshold;
 }
 
@@ -100,11 +119,15 @@ export function requiresHumanReview(confidence: number, threshold = 0.6): boolea
  * @param toolCalls The tool calls made to generate the response.
  * @returns An array of unique citation objects.
  */
-export function extractCitations(toolCalls: ToolCall[]): Array<{ title: string; url: string; category: string }> {
+export function extractCitations(
+  toolCalls: ToolCall[]
+): Array<{ title: string; url: string; category: string }> {
   const citations: { title: string; url: string; category: string }[] = [];
   const seenUrls = new Set<string>();
 
-  const searchTools = toolCalls.filter(tc => tc.toolName === 'regulatorySearch' && tc.result?.success);
+  const searchTools = toolCalls.filter(
+    (tc) => tc.toolName === "regulatorySearch" && tc.result?.success
+  );
 
   for (const tool of searchTools) {
     if (tool.result.results) {

@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getAuthUser } from "../../../../lib/auth/clerk-helpers";
-import { searchRegulatoryDocuments, SearchFilters } from "../../../../lib/regulatory/search";
+import {
+  type SearchFilters,
+  searchRegulatoryDocuments,
+} from "../../../../lib/regulatory/search";
 
 /**
  * @swagger
@@ -45,21 +48,24 @@ export async function GET(req: Request) {
     await getAuthUser(); // Authentication check
 
     const { searchParams } = new URL(req.url);
-    const query = searchParams.get('q');
+    const query = searchParams.get("q");
 
     if (!query) {
-      return NextResponse.json({ error: "Missing required query parameter 'q'" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing required query parameter 'q'" },
+        { status: 400 }
+      );
     }
 
     const filters: SearchFilters = {};
-    const country = searchParams.get('country');
+    const country = searchParams.get("country");
     if (country) filters.country = country;
 
-    const category = searchParams.get('category');
-    if (category) filters.category = category.split(',');
+    const category = searchParams.get("category");
+    if (category) filters.category = category.split(",");
 
-    const limit = searchParams.get('limit');
-    if (limit) filters.limit = parseInt(limit, 10);
+    const limit = searchParams.get("limit");
+    if (limit) filters.limit = Number.parseInt(limit, 10);
 
     console.log(`[API] Searching for: "${query}" with filters:`, filters);
 
@@ -71,12 +77,11 @@ export async function GET(req: Request) {
       count: results.length,
       results,
     });
-
   } catch (error) {
-    console.error('[API] Error in regulatory search:', error);
+    console.error("[API] Error in regulatory search:", error);
     if (error instanceof Error && error.message.includes("Not authenticated")) {
-        return new NextResponse('Not authenticated', { status: 401 });
+      return new NextResponse("Not authenticated", { status: 401 });
     }
-    return new NextResponse('Internal Server Error', { status: 500 });
+    return new NextResponse("Internal Server Error", { status: 500 });
   }
 }

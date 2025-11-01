@@ -156,9 +156,7 @@ export const ReasoningTrigger = memo(
         {children ?? (
           <>
             <BrainIcon className="size-4 shrink-0 text-purple-600 dark:text-purple-400" />
-            <div className="flex flex-1 items-center gap-2">
-              {statusLabel}
-            </div>
+            <div className="flex flex-1 items-center gap-2">{statusLabel}</div>
             <ChevronDownIcon
               className={cn(
                 "size-4 shrink-0 text-purple-600 transition-transform dark:text-purple-400",

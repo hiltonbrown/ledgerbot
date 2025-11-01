@@ -1,4 +1,4 @@
-import { searchRegulatoryDocuments, getDocumentsByCategory } from "./search";
+import { getDocumentsByCategory, searchRegulatoryDocuments } from "./search";
 
 async function test() {
   console.log("Test 1: Search 'minimum wage'");

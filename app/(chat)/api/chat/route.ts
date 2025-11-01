@@ -245,6 +245,9 @@ export async function POST(request: Request) {
           parts: message.parts,
           attachments: [],
           createdAt: new Date(),
+          confidence: null,
+          citations: null,
+          needsReview: null,
         },
       ],
     });
@@ -382,6 +385,9 @@ export async function POST(request: Request) {
             createdAt: new Date(),
             attachments: [],
             chatId: id,
+            confidence: null,
+            citations: null,
+            needsReview: null,
           })),
         });
 

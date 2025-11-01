@@ -8,7 +8,11 @@ import { userSettings } from "@/lib/db/schema";
 // Load default system prompt from markdown file
 const loadDefaultSystemPrompt = () => {
   try {
-    const promptPath = join(process.cwd(), "prompts", "default-system-prompt.md");
+    const promptPath = join(
+      process.cwd(),
+      "prompts",
+      "default-system-prompt.md"
+    );
     return readFileSync(promptPath, "utf-8");
   } catch (error) {
     console.error("Failed to load default system prompt:", error);
@@ -20,7 +24,11 @@ const loadDefaultSystemPrompt = () => {
 // Load default spreadsheet prompt from markdown file
 const loadDefaultSpreadsheetPrompt = () => {
   try {
-    const promptPath = join(process.cwd(), "prompts", "default-spreadsheet-prompt.md");
+    const promptPath = join(
+      process.cwd(),
+      "prompts",
+      "default-spreadsheet-prompt.md"
+    );
     return readFileSync(promptPath, "utf-8");
   } catch (error) {
     console.error("Failed to load default spreadsheet prompt:", error);

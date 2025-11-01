@@ -4,7 +4,7 @@ import {
   CreditNote,
   Invoice,
   Phone,
-  QuoteStatusCodes,
+  type QuoteStatusCodes,
   XeroClient,
 } from "xero-node";
 import { updateXeroTokens } from "@/lib/db/queries";

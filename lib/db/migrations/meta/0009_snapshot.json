@@ -1,6 +1,6 @@
 {
-  "id": "07482098-e3cc-4069-83ec-1aea347523cb",
-  "prevId": "f93ba5c4-e5bf-4286-8c1e-71b46856be81",
+  "id": "8dde8e51-45e5-4ccb-a027-e31e88708a2a",
+  "prevId": "07482098-e3cc-4069-83ec-1aea347523cb",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -300,6 +300,24 @@
           "type": "timestamp",
           "primaryKey": false,
           "notNull": true
+        },
+        "confidence": {
+          "name": "confidence",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "citations": {
+          "name": "citations",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "needsReview": {
+          "name": "needsReview",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
@@ -411,7 +429,7 @@
         },
         "confidence": {
           "name": "confidence",
-          "type": "integer",
+          "type": "real",
           "primaryKey": false,
           "notNull": true
         },
@@ -714,7 +732,7 @@
           "name": "sourceUrl",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "country": {
           "name": "country",

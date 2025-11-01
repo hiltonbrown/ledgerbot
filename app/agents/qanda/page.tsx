@@ -3,6 +3,7 @@
 import { useChat } from "@ai-sdk/react";
 import {
   BookOpen,
+  ExternalLink,
   MessageSquareText,
   Send,
   ThumbsDown,
@@ -29,6 +30,18 @@ type RegulatoryStats = {
   totalDocuments: number;
 };
 
+type Citation = {
+  title: string;
+  url: string;
+  category: string;
+};
+
+type MessageMetadata = {
+  confidence?: number;
+  citations?: Citation[];
+  needsReview?: boolean;
+};
+
 const suggestedQuestions = [
   "What's the minimum wage for a Level 3 retail worker?",
   "Explain the superannuation guarantee rate for FY2024-25",
@@ -37,10 +50,35 @@ const suggestedQuestions = [
   "What Fair Work awards apply to hospitality workers?",
 ];
 
+function getConfidenceBadge(confidence: number) {
+  if (confidence >= 0.8) {
+    return (
+      <Badge className="bg-green-500 hover:bg-green-600">
+        High ({(confidence * 100).toFixed(0)}%)
+      </Badge>
+    );
+  }
+  if (confidence >= 0.6) {
+    return (
+      <Badge className="bg-yellow-500 hover:bg-yellow-600">
+        Medium ({(confidence * 100).toFixed(0)}%)
+      </Badge>
+    );
+  }
+  return (
+    <Badge className="bg-red-500 hover:bg-red-600">
+      Low ({(confidence * 100).toFixed(0)}%)
+    </Badge>
+  );
+}
+
 export default function QandAAgentPage() {
   const [streamResponses, setStreamResponses] = useState(true);
   const [showCitations, setShowCitations] = useState(true);
   const [input, setInput] = useState("");
+  const [messageMetadata, setMessageMetadata] = useState<
+    Map<string, MessageMetadata>
+  >(new Map());
 
   // Fetch regulatory knowledge base stats
   const { data: kbStats } = useSWR<RegulatoryStats>(
@@ -58,7 +96,7 @@ export default function QandAAgentPage() {
   );
 
   // Use real chat API
-  const { messages, sendMessage, status } = useChat({
+  const chat = useChat({
     id: "qanda-agent",
     transport: new (require("ai").DefaultChatTransport)({
       api: "/api/agents/qanda",
@@ -77,6 +115,8 @@ export default function QandAAgentPage() {
     }),
   });
 
+  const { messages, sendMessage, status } = chat;
+
   const handleSendMessage = () => {
     if (!input.trim()) {
       return;
@@ -90,6 +130,25 @@ export default function QandAAgentPage() {
 
   const handleSuggestedQuestion = (question: string) => {
     setInput(question);
+  };
+
+  const handleVote = async (messageId: string, isUpvoted: boolean) => {
+    try {
+      await fetch("/api/vote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chatId: "qanda-agent",
+          messageId,
+          isUpvoted,
+        }),
+      });
+      console.log(
+        `Voted ${isUpvoted ? "up" : "down"} for message ${messageId}`
+      );
+    } catch (error) {
+      console.error("Error voting:", error);
+    }
   };
 
   return (
@@ -172,51 +231,117 @@ export default function QandAAgentPage() {
             {/* Conversation History */}
             <ScrollArea className="h-[500px] rounded-md border bg-muted/20 p-4">
               <div className="space-y-4">
-                {messages.map((message: any) => (
-                  <div
-                    className="rounded-lg border bg-card p-4 shadow-sm"
-                    data-role={message.role}
-                    key={message.id}
-                  >
-                    <div className="flex items-center justify-between text-muted-foreground text-xs">
-                      <span className="font-medium text-foreground capitalize">
-                        {message.role}
-                      </span>
-                      <span>
-                        {new Date().toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                    </div>
+                {messages.map((message) => {
+                  const metadata = message.id
+                    ? messageMetadata.get(message.id)
+                    : undefined;
 
-                    <div className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">
-                      {message.content}
-                    </div>
-
-                    {/* Citations - will be added with data streaming in future update */}
-
-                    {/* Assistant Response Metadata - placeholder for now */}
-                    {message.role === "assistant" && (
-                      <div className="mt-3 flex items-center justify-between text-muted-foreground text-xs">
-                        <div className="flex items-center gap-4">
-                          <span className="flex items-center gap-1">
-                            Confidence:{" "}
-                            <Badge variant="secondary">Calculating...</Badge>
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button size="icon" variant="ghost">
-                            <ThumbsUp className="h-4 w-4" />
-                          </Button>
-                          <Button size="icon" variant="ghost">
-                            <ThumbsDown className="h-4 w-4" />
-                          </Button>
-                        </div>
+                  return (
+                    <div
+                      className="rounded-lg border bg-card p-4 shadow-sm"
+                      data-role={message.role}
+                      key={message.id}
+                    >
+                      <div className="flex items-center justify-between text-muted-foreground text-xs">
+                        <span className="font-medium text-foreground capitalize">
+                          {message.role}
+                        </span>
+                        <span>
+                          {new Date().toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
                       </div>
-                    )}
-                  </div>
-                ))}
+
+                      <div className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">
+                        {message.parts
+                          ?.map((part, idx) =>
+                            part.type === "text" ? part.text : null
+                          )
+                          .filter(Boolean)
+                          .join("") || ""}
+                      </div>
+
+                      {/* Citations */}
+                      {message.role === "assistant" &&
+                        showCitations &&
+                        metadata?.citations &&
+                        metadata.citations.length > 0 && (
+                          <div className="mt-3 space-y-2">
+                            <p className="font-medium text-xs">
+                              Regulatory citations:
+                            </p>
+                            <div className="space-y-1">
+                              {metadata.citations.map((citation, idx) => (
+                                <a
+                                  className="flex items-center gap-2 rounded-md border bg-muted/40 p-2 text-xs transition-colors hover:bg-muted"
+                                  href={citation.url}
+                                  key={idx}
+                                  rel="noopener noreferrer"
+                                  target="_blank"
+                                >
+                                  <ExternalLink className="h-3 w-3 shrink-0" />
+                                  <span className="flex-1 truncate">
+                                    {citation.title}
+                                  </span>
+                                  <Badge className="shrink-0" variant="outline">
+                                    {citation.category}
+                                  </Badge>
+                                </a>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                      {/* Assistant Response Metadata */}
+                      {message.role === "assistant" && (
+                        <div className="mt-3 flex items-center justify-between text-muted-foreground text-xs">
+                          <div className="flex items-center gap-4">
+                            {metadata?.confidence !== undefined ? (
+                              <span className="flex items-center gap-1">
+                                Confidence:{" "}
+                                {getConfidenceBadge(metadata.confidence)}
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1">
+                                Confidence:{" "}
+                                <Badge variant="secondary">
+                                  Calculating...
+                                </Badge>
+                              </span>
+                            )}
+                            {metadata?.needsReview && (
+                              <Badge className="bg-orange-500 hover:bg-orange-600">
+                                Requires Review
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              onClick={() =>
+                                message.id && handleVote(message.id, true)
+                              }
+                              size="icon"
+                              variant="ghost"
+                            >
+                              <ThumbsUp className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              onClick={() =>
+                                message.id && handleVote(message.id, false)
+                              }
+                              size="icon"
+                              variant="ghost"
+                            >
+                              <ThumbsDown className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </ScrollArea>
 
@@ -324,10 +449,10 @@ export default function QandAAgentPage() {
                   <div>
                     <p className="font-medium text-sm">Confidence Threshold</p>
                     <p className="text-muted-foreground">
-                      Minimum 70% for responses
+                      Minimum 60% for responses
                     </p>
                   </div>
-                  <Badge variant="outline">70%</Badge>
+                  <Badge variant="outline">60%</Badge>
                 </div>
               </div>
               <Separator />

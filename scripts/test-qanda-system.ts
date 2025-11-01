@@ -1,7 +1,12 @@
+import {
+  calculateConfidence,
+  detectHedging,
+  requiresHumanReview,
+  type ToolCall,
+} from "../lib/regulatory/confidence";
 import { parseRegulatoryConfig } from "../lib/regulatory/config-parser";
 import { runScrapingJob } from "../lib/regulatory/scraper";
 import { searchRegulatoryDocuments } from "../lib/regulatory/search";
-import { calculateConfidence, detectHedging, requiresHumanReview, ToolCall } from "../lib/regulatory/confidence";
 
 async function testSystem() {
   let passed = 0;
@@ -14,7 +19,9 @@ async function testSystem() {
   try {
     const sources = await parseRegulatoryConfig();
     if (sources.length > 0) {
-      console.log(`✅ Config Parser: Found ${sources.length} regulatory sources.`);
+      console.log(
+        `✅ Config Parser: Found ${sources.length} regulatory sources.`
+      );
       passed++;
     } else {
       console.log("❌ Config Parser: No regulatory sources found.");
@@ -32,11 +39,16 @@ async function testSystem() {
       country: "AU",
       priority: "high",
     });
-    if (job.status === "completed" || job.status === "failed") { // Job can complete with failures
-      console.log(`✅ Scraping Job: Completed with status '${job.status}'. Scraped: ${job.documentsScraped}, Updated: ${job.documentsUpdated}, Failed: ${job.errorMessage ? 1 : 0}.`);
+    if (job.status === "completed" || job.status === "failed") {
+      // Job can complete with failures
+      console.log(
+        `✅ Scraping Job: Completed with status '${job.status}'. Scraped: ${job.documentsScraped}, Updated: ${job.documentsUpdated}, Failed: ${job.errorMessage ? 1 : 0}.`
+      );
       passed++;
     } else {
-      console.log(`❌ Scraping Job: Did not complete as expected. Status: ${job.status}`);
+      console.log(
+        `❌ Scraping Job: Did not complete as expected. Status: ${job.status}`
+      );
       failed++;
     }
   } catch (error) {
@@ -52,10 +64,14 @@ async function testSystem() {
       limit: 1,
     });
     if (searchResults.length > 0) {
-      console.log(`✅ Search: Found ${searchResults.length} result(s) for "minimum wage". Sample: ${searchResults[0].title}`);
+      console.log(
+        `✅ Search: Found ${searchResults.length} result(s) for "minimum wage". Sample: ${searchResults[0].title}`
+      );
       passed++;
     } else {
-      console.log("❌ Search: No results found for \"minimum wage\". (This might be expected if no data is scraped yet)");
+      console.log(
+        '❌ Search: No results found for "minimum wage". (This might be expected if no data is scraped yet)'
+      );
       failed++;
     }
   } catch (error) {
@@ -67,16 +83,25 @@ async function testSystem() {
   console.log("\n[Test 4] Testing Confidence Scoring...");
   try {
     const mockToolCalls: ToolCall[] = [
-      { toolName: "regulatorySearch", result: { success: true, results: [{ relevanceScore: 0.8 }, { relevanceScore: 0.7 }] } },
+      {
+        toolName: "regulatorySearch",
+        result: {
+          success: true,
+          results: [{ relevanceScore: 0.8 }, { relevanceScore: 0.7 }],
+        },
+      },
       { toolName: "xero_list_invoices", result: { success: true } },
     ];
-    const mockResponseText = "This is a response with some information. I think it might be correct.";
+    const mockResponseText =
+      "This is a response with some information. I think it might be correct.";
 
     const confidence = calculateConfidence(mockToolCalls, mockResponseText);
     const hedgingPenalty = detectHedging(mockResponseText);
     const needsReview = requiresHumanReview(confidence, 0.7);
 
-    console.log(`✅ Confidence: Score: ${confidence.toFixed(2)}, Hedging Penalty: ${hedgingPenalty.toFixed(2)}, Needs Review (threshold 0.7): ${needsReview}`);
+    console.log(
+      `✅ Confidence: Score: ${confidence.toFixed(2)}, Hedging Penalty: ${hedgingPenalty.toFixed(2)}, Needs Review (threshold 0.7): ${needsReview}`
+    );
     if (confidence > 0 && hedgingPenalty > 0) {
       passed++;
     } else {

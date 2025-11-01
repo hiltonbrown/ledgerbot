@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -57,9 +57,7 @@ export function XeroOrganizationCard({
     } catch (err) {
       console.error("Organization switch error:", err);
       setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to switch organization"
+        err instanceof Error ? err.message : "Failed to switch organization"
       );
       setIsSwitching(false);
     }

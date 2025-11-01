@@ -1,6 +1,6 @@
-import { db } from '../db/queries';
-import { regulatoryDocument, RegulatoryDocument } from '../db/schema';
-import { eq, and, sql, desc, not, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray, not, sql } from "drizzle-orm";
+import { db } from "../db/queries";
+import { type RegulatoryDocument, regulatoryDocument } from "../db/schema";
 
 /**
  * Represents a single item in a list of search results.
@@ -33,12 +33,18 @@ export interface SearchFilters {
  * @param filters Optional filters for the search.
  * @returns A promise that resolves to an array of SearchResult objects.
  */
-export async function searchRegulatoryDocuments(query: string, filters?: SearchFilters): Promise<SearchResult[]> {
+export async function searchRegulatoryDocuments(
+  query: string,
+  filters?: SearchFilters
+): Promise<SearchResult[]> {
   const limit = filters?.limit ?? 10;
   const tsQuery = sql`plainto_tsquery('english', ${query})`;
 
   try {
-    const conditions = [sql`${regulatoryDocument.searchVector} @@ ${tsQuery}`, eq(regulatoryDocument.status, 'active')];
+    const conditions = [
+      sql`${regulatoryDocument.searchVector} @@ ${tsQuery}`,
+      eq(regulatoryDocument.status, "active"),
+    ];
 
     if (filters?.country) {
       conditions.push(eq(regulatoryDocument.country, filters.country));
@@ -47,11 +53,16 @@ export async function searchRegulatoryDocuments(query: string, filters?: SearchF
       conditions.push(inArray(regulatoryDocument.category, filters.category));
     }
     if (filters?.dateRange) {
-      conditions.push(sql`${regulatoryDocument.effectiveDate} >= ${filters.dateRange.start}`);
-      conditions.push(sql`${regulatoryDocument.effectiveDate} <= ${filters.dateRange.end}`);
+      conditions.push(
+        sql`${regulatoryDocument.effectiveDate} >= ${filters.dateRange.start}`
+      );
+      conditions.push(
+        sql`${regulatoryDocument.effectiveDate} <= ${filters.dateRange.end}`
+      );
     }
 
-    const results = await db.select({
+    const results = await db
+      .select({
         documentId: regulatoryDocument.id,
         title: regulatoryDocument.title,
         sourceUrl: regulatoryDocument.sourceUrl,
@@ -64,14 +75,15 @@ export async function searchRegulatoryDocuments(query: string, filters?: SearchF
       })
       .from(regulatoryDocument)
       .where(and(...conditions))
-      .orderBy(desc(sql`ts_rank(${regulatoryDocument.searchVector}, ${tsQuery})`))
+      .orderBy(
+        desc(sql`ts_rank(${regulatoryDocument.searchVector}, ${tsQuery})`)
+      )
       .limit(limit);
 
     return results as SearchResult[];
-
   } catch (error) {
-    console.error('Error searching regulatory documents:', error);
-    throw new Error('Failed to execute search for regulatory documents.');
+    console.error("Error searching regulatory documents:", error);
+    throw new Error("Failed to execute search for regulatory documents.");
   }
 }
 
@@ -81,7 +93,10 @@ export async function searchRegulatoryDocuments(query: string, filters?: SearchF
  * @param limit The maximum number of similar documents to return.
  * @returns A promise that resolves to an array of SearchResult objects.
  */
-export async function getSimilarDocuments(documentId: string, limit = 5): Promise<SearchResult[]> {
+export async function getSimilarDocuments(
+  documentId: string,
+  limit = 5
+): Promise<SearchResult[]> {
   try {
     const sourceDocument = await db.query.regulatoryDocument.findFirst({
       where: eq(regulatoryDocument.id, documentId),
@@ -91,14 +106,20 @@ export async function getSimilarDocuments(documentId: string, limit = 5): Promis
       return [];
     }
 
-    const similar = await searchRegulatoryDocuments(sourceDocument.title, { limit: limit + 1 });
+    const similar = await searchRegulatoryDocuments(sourceDocument.title, {
+      limit: limit + 1,
+    });
 
     // Filter out the source document itself from the results
-    return similar.filter(doc => doc.documentId !== documentId).slice(0, limit);
-
+    return similar
+      .filter((doc) => doc.documentId !== documentId)
+      .slice(0, limit);
   } catch (error) {
-    console.error(`Error finding similar documents for ID ${documentId}:`, error);
-    throw new Error('Failed to get similar documents.');
+    console.error(
+      `Error finding similar documents for ID ${documentId}:`,
+      error
+    );
+    throw new Error("Failed to get similar documents.");
   }
 }
 
@@ -108,18 +129,21 @@ export async function getSimilarDocuments(documentId: string, limit = 5): Promis
  * @param limit The maximum number of documents to return.
  * @returns A promise that resolves to an array of RegulatoryDocument objects.
  */
-export async function getDocumentsByCategory(category: string, limit = 20): Promise<RegulatoryDocument[]> {
+export async function getDocumentsByCategory(
+  category: string,
+  limit = 20
+): Promise<RegulatoryDocument[]> {
   try {
     return await db.query.regulatoryDocument.findMany({
-        where: and(
-            eq(regulatoryDocument.category, category),
-            eq(regulatoryDocument.status, 'active')
-        ),
-        orderBy: desc(regulatoryDocument.scrapedAt),
-        limit,
+      where: and(
+        eq(regulatoryDocument.category, category),
+        eq(regulatoryDocument.status, "active")
+      ),
+      orderBy: desc(regulatoryDocument.scrapedAt),
+      limit,
     });
   } catch (error) {
     console.error(`Error getting documents for category ${category}:`, error);
-    throw new Error('Failed to get documents by category.');
+    throw new Error("Failed to get documents by category.");
   }
 }

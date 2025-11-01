@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAuthUser } from "../../../../lib/auth/clerk-helpers";
-import { runScrapingJob } from "../../../../lib/regulatory/scraper";
 import { getRecentScrapingJobs } from "../../../../lib/db/queries";
+import { runScrapingJob } from "../../../../lib/regulatory/scraper";
 
 /**
  * @swagger
@@ -39,25 +39,25 @@ import { getRecentScrapingJobs } from "../../../../lib/db/queries";
 export async function POST(req: Request) {
   try {
     await getAuthUser(); // Authentication check
-    console.log('[API] Received request to trigger scraping job.');
+    console.log("[API] Received request to trigger scraping job.");
 
     const filters = await req.json();
-    console.log('[API] Job filters:', filters);
+    console.log("[API] Job filters:", filters);
 
     // Do not await this, run in background
     runScrapingJob(filters);
 
     return NextResponse.json({
       success: true,
-      message: "Scraping job started in the background. Check the job status for progress.",
+      message:
+        "Scraping job started in the background. Check the job status for progress.",
     });
-
   } catch (error) {
-    console.error('[API] Error triggering scraping job:', error);
+    console.error("[API] Error triggering scraping job:", error);
     if (error instanceof Error && error.message.includes("Not authenticated")) {
-        return new NextResponse('Not authenticated', { status: 401 });
+      return new NextResponse("Not authenticated", { status: 401 });
     }
-    return new NextResponse('Internal Server Error', { status: 500 });
+    return new NextResponse("Internal Server Error", { status: 500 });
   }
 }
 
@@ -84,16 +84,16 @@ export async function POST(req: Request) {
 export async function GET() {
   try {
     await getAuthUser(); // Authentication check
-    console.log('[API] Fetching recent scraping jobs.');
+    console.log("[API] Fetching recent scraping jobs.");
 
     const jobs = await getRecentScrapingJobs(20);
 
     return NextResponse.json({ jobs });
   } catch (error) {
-    console.error('[API] Error fetching recent scraping jobs:', error);
+    console.error("[API] Error fetching recent scraping jobs:", error);
     if (error instanceof Error && error.message.includes("Not authenticated")) {
-        return new NextResponse('Not authenticated', { status: 401 });
+      return new NextResponse("Not authenticated", { status: 401 });
     }
-    return new NextResponse('Internal Server Error', { status: 500 });
+    return new NextResponse("Internal Server Error", { status: 500 });
   }
 }

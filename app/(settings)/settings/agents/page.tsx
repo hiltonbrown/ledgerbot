@@ -886,43 +886,22 @@ export default function AgentSettingsPage() {
             <SettingRow label="Regulatory source categories">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label
-                    className="font-normal text-sm"
-                    htmlFor="kb-fair-work"
-                  >
+                  <Label className="font-normal text-sm" htmlFor="kb-fair-work">
                     Fair Work awards
                   </Label>
-                  <Switch
-                    checked
-                    disabled
-                    id="kb-fair-work"
-                  />
+                  <Switch checked disabled id="kb-fair-work" />
                 </div>
                 <div className="flex items-center justify-between">
-                  <Label
-                    className="font-normal text-sm"
-                    htmlFor="kb-ato"
-                  >
+                  <Label className="font-normal text-sm" htmlFor="kb-ato">
                     ATO tax rulings
                   </Label>
-                  <Switch
-                    checked
-                    disabled
-                    id="kb-ato"
-                  />
+                  <Switch checked disabled id="kb-ato" />
                 </div>
                 <div className="flex items-center justify-between">
-                  <Label
-                    className="font-normal text-sm"
-                    htmlFor="kb-payroll"
-                  >
+                  <Label className="font-normal text-sm" htmlFor="kb-payroll">
                     State payroll tax
                   </Label>
-                  <Switch
-                    checked
-                    disabled
-                    id="kb-payroll"
-                  />
+                  <Switch checked disabled id="kb-payroll" />
                 </div>
               </div>
             </SettingRow>
@@ -931,10 +910,7 @@ export default function AgentSettingsPage() {
               description="Show regulatory citations with responses"
               label="Display citations"
             >
-              <Switch
-                checked
-                disabled
-              />
+              <Switch checked disabled />
             </SettingRow>
 
             <SettingRow
