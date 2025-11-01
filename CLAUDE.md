@@ -261,7 +261,7 @@ LedgerBot features specialized AI agent workspaces for accounting automation (`a
 
 The Q&A agent provides regulatory-aware assistance for Australian tax law, employment law, and compliance obligations.
 
-**Implementation Status**: UI complete, backend RAG system planned for future implementation
+**Implementation Status**: **FULLY IMPLEMENTED** ✅
 
 **Key Features** (`/agents/qanda/page.tsx`):
 - **Interactive Chat Interface**: Full conversation history with real-time messaging
@@ -271,6 +271,23 @@ The Q&A agent provides regulatory-aware assistance for Australian tax law, emplo
 - **Human Review Escalation**: Flagging and escalation for low-confidence responses
 - **Suggested Questions**: Common Australian regulatory queries (minimum wage, super, payroll tax, BAS)
 - **Stream Controls**: Toggles for streaming responses and showing/hiding citations
+
+**Backend Implementation** (completed):
+- **Database schema**: `regulatoryDocument`, `regulatoryScrapeJob`, and `qaReviewRequest` tables with full-text search
+- **Configuration system**: Markdown-based source management (`config/regulatory-sources.md`) with 10 Australian sources
+- **Scraping infrastructure**: Firecrawl integration with rate limiting (1 req/2s) and job orchestration
+- **Full-text search**: PostgreSQL tsvector with GIN indexes, relevance ranking, and context excerpts
+- **AI tool**: `regulatorySearch` tool for RAG retrieval with category filtering
+- **Confidence scoring**: Multi-factor algorithm analyzing citations, relevance, hedging language, and Xero integration
+- **API endpoints**:
+  - `/api/agents/qanda` - Streaming chat with regulatory + Xero tools
+  - `/api/regulatory/search` - Full-text search
+  - `/api/regulatory/scrape` - Manual scraping trigger
+  - `/api/regulatory/stats` - Knowledge base statistics
+  - `/api/agents/qanda/review` - Review request management
+  - `/api/cron/regulatory-sync` - Scheduled daily sync
+- **Cron job**: Daily scheduled sync via Vercel Cron (2:00 AM UTC) for high-priority sources
+- **Human review**: Review request system for low-confidence responses with database tracking
 
 **Settings Integration** (`/settings/agents`):
 - Response confidence threshold (0-100%)
@@ -285,20 +302,17 @@ The Q&A agent provides regulatory-aware assistance for Australian tax law, emplo
 - Citation display toggle
 - Human escalation toggle for low-confidence queries
 
-**API Routes**:
-- `/api/regulatory/stats`: Returns regulatory knowledge base statistics (placeholder implementation)
-- Future: `/api/agents/qanda`: Main Q&A agent endpoint with RAG integration
+**Usage**:
+Users can now ask regulatory questions directly in the Q&A agent at `/agents/qanda`:
+- "What is the current minimum wage in Australia?"
+- "What are my superannuation obligations?"
+- "What is the payroll tax threshold in NSW?"
+- "When are BAS lodgements due for quarterly reporters?"
+- "What Fair Work awards apply to hospitality workers?"
 
-**Planned Backend Integration**:
-The regulatory RAG system will include:
-- Database schema for `regulatoryDocument` and `regulatoryScrapeJob` tables
-- Automated web scraping via Firecrawl MCP for Fair Work awards, ATO rulings, and state payroll tax guidance
-- Markdown-based configuration system (`/config/regulatory-sources.md`) for maintainable source management
-- PostgreSQL full-text search for regulatory document retrieval
-- Vercel Cron jobs for scheduled content updates
-- Citation extraction and confidence scoring in responses
+The agent searches the regulatory knowledge base using PostgreSQL full-text search and provides answers with citations to official government sources (Fair Work, ATO, state revenue offices). Responses include confidence scores and automatic review request creation for low-confidence answers.
 
-See `/docs/qanda-agent-ui-update.md` for detailed UI implementation notes.
+See `/docs/regulatory-system-summary.md` for complete implementation details and `/docs/qanda-agent-ui-update.md` for UI implementation notes.
 
 ### Database Schema
 

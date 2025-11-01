@@ -19,7 +19,9 @@ export const createDocument = ({ user, dataStream }: CreateDocumentProps) =>
       "Create a NEW document for writing or content creation activities. Use this ONLY when starting completely new content that is unrelated to existing documents in this conversation. DO NOT use if user wants to modify existing content - use updateDocument instead. This generates a new document ID and saves it separately.",
     inputSchema: z.object({
       title: z.string().describe("Title for the new document"),
-      kind: z.enum(artifactKinds).describe("Type of document: text, code, or sheet"),
+      kind: z
+        .enum(artifactKinds)
+        .describe("Type of document: text, code, or sheet"),
     }),
     execute: async ({ title, kind }) => {
       const id = generateUUID();

@@ -21,6 +21,7 @@ import type { ArtifactKind } from "@/components/artifact";
 import type { VisibilityType } from "@/components/visibility-selector";
 import { ChatSDKError } from "../errors";
 import type { AppUsage } from "../usage";
+import * as schema from "./schema";
 import {
   type Chat,
   type ContextFile,
@@ -29,6 +30,10 @@ import {
   type DBMessage,
   document,
   message,
+  type RegulatoryDocument,
+  type RegulatoryScrapeJob,
+  regulatoryDocument,
+  regulatoryScrapeJob,
   type Suggestion,
   stream,
   suggestion,
@@ -42,7 +47,7 @@ import { generateHashedPassword } from "./utils";
 
 // biome-ignore lint: Forbidden non-null assertion.
 const client = postgres(process.env.POSTGRES_URL!);
-export const db = drizzle(client);
+export const db = drizzle(client, { schema });
 
 export async function getUser(email: string): Promise<User[]> {
   try {
@@ -1217,6 +1222,157 @@ export async function activateXeroConnection(
     throw new ChatSDKError(
       "bad_request:database",
       `Failed to activate Xero connection: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+
+// ============================================================================
+// Regulatory Document Queries
+// ============================================================================
+
+/**
+ * Gets regulatory documents with optional filters
+ * @param filters - Optional filters for country, category, status, and limit
+ * @returns Promise resolving to array of RegulatoryDocument objects
+ */
+export async function getRegulatoryDocuments(filters?: {
+  country?: string;
+  category?: string;
+  status?: string;
+  limit?: number;
+}): Promise<RegulatoryDocument[]> {
+  try {
+    const conditions: SQL[] = [];
+
+    if (filters?.country) {
+      conditions.push(eq(regulatoryDocument.country, filters.country));
+    }
+    if (filters?.category) {
+      conditions.push(eq(regulatoryDocument.category, filters.category));
+    }
+    if (filters?.status) {
+      conditions.push(eq(regulatoryDocument.status, filters.status));
+    }
+
+    const whereCondition =
+      conditions.length === 0
+        ? undefined
+        : conditions.length === 1
+          ? conditions[0]
+          : and(...conditions);
+
+    let query = db
+      .select()
+      .from(regulatoryDocument)
+      .orderBy(desc(regulatoryDocument.createdAt));
+
+    if (whereCondition) {
+      query = query.where(whereCondition) as typeof query;
+    }
+
+    if (filters?.limit) {
+      query = query.limit(filters.limit) as typeof query;
+    }
+
+    return await query;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get regulatory documents"
+    );
+  }
+}
+
+/**
+ * Gets a single regulatory document by ID
+ * @param id - The document ID
+ * @returns Promise resolving to RegulatoryDocument or null
+ */
+export async function getRegulatoryDocumentById(
+  id: string
+): Promise<RegulatoryDocument | null> {
+  try {
+    const [doc] = await db
+      .select()
+      .from(regulatoryDocument)
+      .where(eq(regulatoryDocument.id, id))
+      .limit(1);
+
+    return doc ?? null;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get regulatory document by id"
+    );
+  }
+}
+
+/**
+ * Gets a single regulatory document by source URL
+ * @param url - The source URL
+ * @returns Promise resolving to RegulatoryDocument or null
+ */
+export async function getRegulatoryDocumentByUrl(
+  url: string
+): Promise<RegulatoryDocument | null> {
+  try {
+    const [doc] = await db
+      .select()
+      .from(regulatoryDocument)
+      .where(eq(regulatoryDocument.sourceUrl, url))
+      .limit(1);
+
+    return doc ?? null;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get regulatory document by url"
+    );
+  }
+}
+
+/**
+ * Gets a single scraping job by ID
+ * @param id - The job ID
+ * @returns Promise resolving to RegulatoryScrapeJob or null
+ */
+export async function getScrapingJobById(
+  id: string
+): Promise<RegulatoryScrapeJob | null> {
+  try {
+    const [job] = await db
+      .select()
+      .from(regulatoryScrapeJob)
+      .where(eq(regulatoryScrapeJob.id, id))
+      .limit(1);
+
+    return job ?? null;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get scraping job by id"
+    );
+  }
+}
+
+/**
+ * Gets recent scraping jobs
+ * @param limit - Maximum number of jobs to return (default: 10)
+ * @returns Promise resolving to array of RegulatoryScrapeJob objects
+ */
+export async function getRecentScrapingJobs(
+  limit = 10
+): Promise<RegulatoryScrapeJob[]> {
+  try {
+    return await db
+      .select()
+      .from(regulatoryScrapeJob)
+      .orderBy(desc(regulatoryScrapeJob.createdAt))
+      .limit(limit);
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get recent scraping jobs"
     );
   }
 }

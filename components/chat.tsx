@@ -185,6 +185,11 @@ export function Chat({
       },
     }),
     onData: (dataPart) => {
+      console.log(
+        "[debug] Client received data part:",
+        dataPart.type,
+        dataPart
+      );
       setDataStream((ds) => {
         const newArray = ds ? [...ds] : [];
         newArray.push(dataPart as any);

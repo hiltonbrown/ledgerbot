@@ -1,6 +1,6 @@
 /**
  * Tests for artifact duplication prevention
- * 
+ *
  * These tests verify that the AI correctly uses updateDocument instead of
  * createDocument when users request modifications to existing content.
  */
@@ -279,7 +279,7 @@ export const edgeCaseScenarios: TestScenario[] = [
 
 /**
  * Expected behavior summary for documentation:
- * 
+ *
  * UPDATE (use updateDocument) when user says:
  * - "Change it to..."
  * - "Make it..."
@@ -291,7 +291,7 @@ export const edgeCaseScenarios: TestScenario[] = [
  * - "Revise..."
  * - "Modify..."
  * - References "it", "the document", "this"
- * 
+ *
  * CREATE (use createDocument) when user says:
  * - "Create a new document..."
  * - "Write a separate document..."

@@ -42,6 +42,12 @@ import {
   updateChatLastContextById,
 } from "@/lib/db/queries";
 import { ChatSDKError } from "@/lib/errors";
+import {
+  createPublisherWithTtl,
+  createSubscriberWrapper,
+  getRedisClients,
+  streamBufferTtlSeconds,
+} from "@/lib/redis/config";
 import type { ChatMessage } from "@/lib/types";
 import type { UserType } from "@/lib/types/auth";
 import type { AppUsage } from "@/lib/usage";
@@ -52,6 +58,8 @@ import { type PostRequestBody, postRequestBodySchema } from "./schema";
 export const maxDuration = 60;
 
 let globalStreamContext: ResumableStreamContext | null = null;
+let streamContextInitialization: Promise<ResumableStreamContext | null> | null =
+  null;
 
 const getTokenlensCatalog = cache(
   async (): Promise<ModelCatalog | undefined> => {
@@ -69,24 +77,58 @@ const getTokenlensCatalog = cache(
   { revalidate: 24 * 60 * 60 } // 24 hours
 );
 
-export function getStreamContext() {
-  if (!globalStreamContext) {
-    try {
-      globalStreamContext = createResumableStreamContext({
-        waitUntil: after,
-      });
-    } catch (error: any) {
-      if (error.message.includes("REDIS_URL")) {
-        console.log(
-          " > Resumable streams are disabled due to missing REDIS_URL"
-        );
-      } else {
-        console.error(error);
-      }
-    }
+/**
+ * Lazily initializes the resumable stream context backed by Redis.
+ *
+ * Returns null when Redis is unavailable so the API can gracefully fall back to
+ * non-resumable streaming.
+ */
+export async function getStreamContext(): Promise<ResumableStreamContext | null> {
+  if (globalStreamContext) {
+    return globalStreamContext;
   }
 
-  return globalStreamContext;
+  if (streamContextInitialization) {
+    return streamContextInitialization;
+  }
+
+  streamContextInitialization = (async () => {
+    const redisClients = await getRedisClients();
+
+    if (!redisClients) {
+      return null;
+    }
+
+    try {
+      const context = createResumableStreamContext({
+        waitUntil: after,
+        keyPrefix: "ledgerbot",
+        subscriber: createSubscriberWrapper(redisClients.subscriber),
+        publisher: createPublisherWithTtl(redisClients.publisher),
+      });
+
+      console.log(
+        `[redis] Resumable streams enabled (ttl=${streamBufferTtlSeconds}s)`
+      );
+
+      globalStreamContext = context;
+      return context;
+    } catch (error) {
+      console.error(
+        "[redis] Failed to initialize resumable stream context",
+        error
+      );
+      return null;
+    }
+  })();
+
+  const context = await streamContextInitialization;
+
+  if (!context) {
+    streamContextInitialization = null;
+  }
+
+  return context;
 }
 
 function includeAttachmentText(messages: ChatMessage[]): ChatMessage[] {
@@ -203,6 +245,9 @@ export async function POST(request: Request) {
           parts: message.parts,
           attachments: [],
           createdAt: new Date(),
+          confidence: null,
+          citations: null,
+          needsReview: null,
         },
       ],
     });
@@ -214,7 +259,7 @@ export async function POST(request: Request) {
 
     const sendReasoning = isReasoningModelId(selectedChatModel)
       ? true
-      : streamReasoning ?? false;
+      : (streamReasoning ?? false);
     const preferenceForDisplay = showReasoningPreference ?? true;
 
     // Debug logging for API reasoning state
@@ -244,6 +289,12 @@ export async function POST(request: Request) {
         const finalActiveTools: string[] = xeroConnection
           ? [...activeTools, ...xeroToolNames]
           : activeTools;
+
+        console.log(
+          "[debug] Starting streamText with model:",
+          selectedChatModel,
+          { chatId: id, streamId }
+        );
 
         const result = streamText({
           model: myProvider.languageModel(selectedChatModel),
@@ -309,7 +360,10 @@ export async function POST(request: Request) {
           },
         });
 
-        result.consumeStream();
+        console.log("[debug] Merging stream to dataStream", {
+          chatId: id,
+          streamId,
+        });
 
         dataStream.merge(
           result.toUIMessageStream({
@@ -331,6 +385,9 @@ export async function POST(request: Request) {
             createdAt: new Date(),
             attachments: [],
             chatId: id,
+            confidence: null,
+            citations: null,
+            needsReview: null,
           })),
         });
 
@@ -350,17 +407,46 @@ export async function POST(request: Request) {
       },
     });
 
-    // const streamContext = getStreamContext();
+    const streamContext = await getStreamContext();
+    const sseStream = stream.pipeThrough(new JsonToSseTransformStream());
 
-    // if (streamContext) {
-    //   return new Response(
-    //     await streamContext.resumableStream(streamId, () =>
-    //       stream.pipeThrough(new JsonToSseTransformStream())
-    //     )
-    //   );
-    // }
+    console.log("[debug] Stream created, context available:", !!streamContext, {
+      streamId,
+      chatId: id,
+    });
 
-    return new Response(stream.pipeThrough(new JsonToSseTransformStream()));
+    if (streamContext) {
+      const [resumableSource, fallbackSource] = sseStream.tee();
+
+      try {
+        const resumableStream = await streamContext.resumableStream(
+          streamId,
+          () => resumableSource
+        );
+
+        if (resumableStream) {
+          console.log("[debug] Returning resumable stream", { streamId });
+          return new Response(resumableStream);
+        }
+
+        console.warn(
+          "[redis] Resumable stream returned null, falling back to direct stream",
+          { streamId }
+        );
+        return new Response(fallbackSource);
+      } catch (redisError) {
+        console.error(
+          "[redis] Failed to start resumable stream, falling back to direct stream",
+          { streamId, error: redisError }
+        );
+        return new Response(fallbackSource);
+      }
+    }
+
+    console.log("[debug] No stream context, returning direct SSE stream", {
+      streamId,
+    });
+    return new Response(sseStream);
   } catch (error) {
     const vercelId = request.headers.get("x-vercel-id");
 

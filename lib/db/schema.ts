@@ -2,11 +2,13 @@ import type { InferSelectModel } from "drizzle-orm";
 import {
   boolean,
   foreignKey,
+  index,
   integer,
   json,
   jsonb,
   pgTable,
   primaryKey,
+  real,
   text,
   timestamp,
   uuid,
@@ -63,6 +65,9 @@ export const message = pgTable("Message_v2", {
   parts: json("parts").notNull(),
   attachments: json("attachments").notNull(),
   createdAt: timestamp("createdAt").notNull(),
+  confidence: real("confidence"), // Confidence score (0-1) for Q&A agent responses
+  citations: jsonb("citations"), // Regulatory citations for Q&A agent responses
+  needsReview: boolean("needsReview"), // Flag for low-confidence responses requiring human review
 });
 
 export type DBMessage = InferSelectModel<typeof message>;
@@ -248,3 +253,93 @@ export const xeroConnection = pgTable("XeroConnection", {
 });
 
 export type XeroConnection = InferSelectModel<typeof xeroConnection>;
+
+export const regulatoryDocument = pgTable(
+  "RegulatoryDocument",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    country: varchar("country", { length: 2 }).notNull(),
+    category: varchar("category", { length: 50 }).notNull(),
+    title: text("title").notNull(),
+    sourceUrl: text("sourceUrl").notNull().unique(),
+    content: text("content"),
+    extractedText: text("extractedText"),
+    tokenCount: integer("tokenCount").default(0),
+    effectiveDate: timestamp("effectiveDate"),
+    expiryDate: timestamp("expiryDate"),
+    status: varchar("status", { length: 20 }).notNull().default("active"),
+    scrapedAt: timestamp("scrapedAt").notNull(),
+    lastCheckedAt: timestamp("lastCheckedAt").notNull(),
+    searchVector: text("search_vector"), // tsvector managed by database trigger
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  },
+  (table) => ({
+    countryIdx: index("regulatory_document_country_idx").on(table.country),
+    categoryIdx: index("regulatory_document_category_idx").on(table.category),
+    statusIdx: index("regulatory_document_status_idx").on(table.status),
+    sourceUrlIdx: index("regulatory_document_source_url_idx").on(
+      table.sourceUrl
+    ),
+  })
+);
+
+export type RegulatoryDocument = InferSelectModel<typeof regulatoryDocument>;
+export type RegulatoryDocumentInsert = typeof regulatoryDocument.$inferInsert;
+
+export const regulatoryScrapeJob = pgTable(
+  "RegulatoryScrapeJob",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    sourceUrl: text("sourceUrl"),
+    country: varchar("country", { length: 2 }),
+    category: varchar("category", { length: 50 }),
+    status: varchar("status", { length: 20 }).notNull().default("pending"),
+    startedAt: timestamp("startedAt"),
+    completedAt: timestamp("completedAt"),
+    documentsScraped: integer("documentsScraped").default(0),
+    documentsUpdated: integer("documentsUpdated").default(0),
+    documentsArchived: integer("documentsArchived").default(0),
+    errorMessage: text("errorMessage"),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+  },
+  (table) => ({
+    statusIdx: index("regulatory_scrape_job_status_idx").on(table.status),
+    countryIdx: index("regulatory_scrape_job_country_idx").on(table.country),
+    createdAtIdx: index("regulatory_scrape_job_created_at_idx").on(
+      table.createdAt
+    ),
+  })
+);
+
+export type RegulatoryScrapeJob = InferSelectModel<typeof regulatoryScrapeJob>;
+export type RegulatoryScrapeJobInsert = typeof regulatoryScrapeJob.$inferInsert;
+
+export const qaReviewRequest = pgTable(
+  "QaReviewRequest",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("userId")
+      .notNull()
+      .references(() => user.id),
+    messageId: text("messageId").notNull(),
+    query: text("query").notNull(),
+    response: text("response").notNull(),
+    confidence: real("confidence").notNull(),
+    citations: jsonb("citations"),
+    status: varchar("status", { length: 20 }).default("pending").notNull(),
+    assignedTo: uuid("assignedTo").references(() => user.id),
+    resolutionNotes: text("resolutionNotes"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    resolvedAt: timestamp("resolvedAt"),
+  },
+  (table) => ({
+    userIdIdx: index("qa_review_request_user_id_idx").on(table.userId),
+    statusIdx: index("qa_review_request_status_idx").on(table.status),
+  })
+);
+
+export type QaReviewRequest = InferSelectModel<typeof qaReviewRequest>;
+export type QaReviewRequestInsert = typeof qaReviewRequest.$inferInsert;

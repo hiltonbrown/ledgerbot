@@ -55,3 +55,7 @@ export const myProvider = isTestEnvironment
         "artifact-model": vercelGateway.languageModel("xai/grok-2-1212"),
       },
     });
+
+export function getModel(modelId: string) {
+  return myProvider.languageModel(modelId);
+}
