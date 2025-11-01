@@ -18,6 +18,7 @@ LedgerBot (officially "intellisync-chatbot" in package.json) is an AI-powered ac
 - **Testing**: Playwright
 - **Monitoring**: TokenLens for token usage tracking with cached model catalog
 - **Integration**: Model Context Protocol (MCP) SDK for third-party service integrations
+- **Web Scraping**: Firecrawl API for regulatory document scraping
 
 ## Setup & Maintenance Notes
 ⚠️ Avoid editing node_modules or dependency source files.
@@ -58,6 +59,8 @@ Copy `.env.example` to `.env.local` and configure:
 - `AI_GATEWAY_API_KEY`: Required for non-Vercel deployments (OIDC used on Vercel)
 - `AI_GATEWAY_URL`: Optional, override when using a custom Gateway domain
 - `REDIS_URL`: Optional, enables resumable streams
+- `FIRECRAWL_API_KEY`: Required for regulatory document scraping (get from https://firecrawl.dev/)
+- `CRON_SECRET`: Required for securing cron job endpoints (generate with: `openssl rand -base64 32`)
 
 ## Architecture
 

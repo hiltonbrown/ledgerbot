@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { runScrapingJob } from "../../../../lib/regulatory/scraper";
 
+// Configure route for Vercel cron jobs
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const maxDuration = 60; // 60 seconds max duration
+
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
