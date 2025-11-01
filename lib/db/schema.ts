@@ -19,7 +19,6 @@ import type { AppUsage } from "../usage";
 export const user = pgTable("User", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),
   email: varchar("email", { length: 64 }).notNull(),
-  password: varchar("password", { length: 64 }), // Keep for migration period
   clerkId: varchar("clerkId", { length: 255 }).unique(), // Nullable during migration
   clerkSynced: boolean("clerkSynced").default(false), // Track sync status
   createdAt: timestamp("createdAt").notNull().defaultNow(), // Add timestamp

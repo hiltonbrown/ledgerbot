@@ -43,7 +43,6 @@ import {
   type XeroConnection,
   xeroConnection,
 } from "./schema";
-import { generateHashedPassword } from "./utils";
 
 // biome-ignore lint: Forbidden non-null assertion.
 const client = postgres(process.env.POSTGRES_URL!);
@@ -57,16 +56,6 @@ export async function getUser(email: string): Promise<User[]> {
       "bad_request:database",
       "Failed to get user by email"
     );
-  }
-}
-
-export async function createUser(email: string, password: string) {
-  const hashedPassword = generateHashedPassword(password);
-
-  try {
-    return await db.insert(user).values({ email, password: hashedPassword });
-  } catch (_error) {
-    throw new ChatSDKError("bad_request:database", "Failed to create user");
   }
 }
 

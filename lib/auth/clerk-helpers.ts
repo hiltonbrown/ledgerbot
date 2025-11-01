@@ -88,7 +88,6 @@ export async function getAuthUser(): Promise<AuthUser | null> {
         email,
         clerkId: clerkUserId,
         clerkSynced: true,
-        password: null, // No password with Clerk
       })
       .returning();
 
