@@ -1,4 +1,4 @@
-import { createUIMessageStream, streamText } from "ai";
+import { createUIMessageStream, streamText, JsonToSseTransformStream } from "ai";
 import { NextResponse } from "next/server";
 import { getModel } from "../../../../lib/ai/providers";
 import { regulatoryTools } from "../../../../lib/ai/tools/regulatory-tools";
@@ -72,7 +72,7 @@ export async function POST(req: Request) {
 
     const model = getModel(settings?.model || "anthropic-claude-sonnet-4-5");
 
-    return createUIMessageStream({
+    const stream = createUIMessageStream({
       execute: ({ writer: dataStream }) => {
         const result = streamText({
           model,
@@ -164,6 +164,10 @@ export async function POST(req: Request) {
         return error instanceof Error ? error.message : String(error);
       },
     });
+
+    // Convert to SSE stream and return as Response
+    const sseStream = stream.pipeThrough(new JsonToSseTransformStream());
+    return new Response(sseStream);
   } catch (error) {
     console.error("[Q&A Agent] Error handling chat request:", error);
     return new NextResponse("Internal Server Error", { status: 500 });
