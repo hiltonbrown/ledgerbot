@@ -40,7 +40,7 @@ async function waitForRateLimit() {
 }
 
 /**
- * Scrapes a single URL with rate limiting.
+ * Scrapes a single URL with rate limiting using Firecrawl API.
  *
  * @param url The URL to scrape.
  * @param options Optional scraping parameters.
@@ -57,21 +57,52 @@ export async function scrapeUrl(
   const timeout = options?.timeout ?? 30_000;
 
   try {
-    // Placeholder scraping logic
-    const mockHtml = `<html><head><title>Mock Title for ${url}</title></head><body><h1>Mock Content</h1><p>This is mock content from ${url}.</p></body></html>`;
-    const mockMarkdown = `# Mock Content\n\nThis is mock content from ${url}.`;
+    const formats = options?.formats ?? ["markdown", "html"];
+    const onlyMainContent = options?.onlyMainContent ?? true;
 
-    // Simulate network delay
-    await new Promise((resolve) =>
-      setTimeout(resolve, 500 + Math.random() * 500)
-    );
+    // Call Firecrawl API via fetch
+    const firecrawlApiKey = process.env.FIRECRAWL_API_KEY;
+    if (!firecrawlApiKey) {
+      throw new Error("FIRECRAWL_API_KEY environment variable is not set");
+    }
+
+    const response = await fetch("https://api.firecrawl.dev/v1/scrape", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${firecrawlApiKey}`,
+      },
+      body: JSON.stringify({
+        url,
+        formats,
+        onlyMainContent,
+        timeout,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Firecrawl API error (${response.status}): ${errorText}`
+      );
+    }
+
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.error || "Firecrawl scraping failed");
+    }
+
+    const markdown = data.data?.markdown || "";
+    const html = data.data?.html || data.data?.rawHtml || "";
+    const title = data.data?.metadata?.title || "";
 
     console.log(`[Firecrawl] Successfully scraped: ${url}`);
     return {
       url,
-      markdown: mockMarkdown,
-      html: mockHtml,
-      title: `Mock Title for ${url}`,
+      markdown,
+      html,
+      title,
       success: true,
       scrapedAt: new Date(),
     };
