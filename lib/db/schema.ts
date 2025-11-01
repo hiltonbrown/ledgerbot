@@ -8,6 +8,7 @@ import {
   jsonb,
   pgTable,
   primaryKey,
+  real,
   text,
   timestamp,
   uuid,
@@ -288,7 +289,7 @@ export const regulatoryScrapeJob = pgTable(
   "RegulatoryScrapeJob",
   {
     id: uuid("id").primaryKey().notNull().defaultRandom(),
-    sourceUrl: text("sourceUrl").notNull(),
+    sourceUrl: text("sourceUrl"),
     country: varchar("country", { length: 2 }),
     category: varchar("category", { length: 50 }),
     status: varchar("status", { length: 20 }).notNull().default("pending"),
@@ -314,22 +315,22 @@ export type RegulatoryScrapeJob = InferSelectModel<typeof regulatoryScrapeJob>;
 export type RegulatoryScrapeJobInsert = typeof regulatoryScrapeJob.$inferInsert;
 
 export const qaReviewRequest = pgTable(
-  "QaReviewRequest",
+  "qa_review_request",
   {
-    id: uuid("id").primaryKey().notNull().defaultRandom(),
-    userId: uuid("userId")
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
       .notNull()
       .references(() => user.id),
-    messageId: text("messageId").notNull(),
+    messageId: text("message_id").notNull(),
     query: text("query").notNull(),
     response: text("response").notNull(),
-    confidence: integer("confidence").notNull(),
+    confidence: real("confidence").notNull(),
     citations: jsonb("citations"),
-    status: varchar("status", { length: 20 }).notNull().default("pending"),
-    assignedTo: uuid("assignedTo").references(() => user.id),
-    resolutionNotes: text("resolutionNotes"),
-    createdAt: timestamp("createdAt").notNull().defaultNow(),
-    resolvedAt: timestamp("resolvedAt"),
+    status: varchar("status", { length: 20 }).default("pending").notNull(),
+    assignedTo: uuid("assigned_to").references(() => user.id),
+    resolutionNotes: text("resolution_notes"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    resolvedAt: timestamp("resolved_at"),
   },
   (table) => ({
     userIdIdx: index("qa_review_request_user_id_idx").on(table.userId),

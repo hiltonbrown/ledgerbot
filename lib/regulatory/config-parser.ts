@@ -1,186 +1,127 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import fs from 'fs/promises';
+import path from 'path';
 
 /**
- * Represents a regulatory source configuration
+ * Represents a single regulatory source defined in the configuration.
  */
-export type RegulatorySource = {
-  country: string; // "AU", "NZ", etc.
-  section: string; // "Fair Work (Employment Law)"
-  subsection: string; // "Minimum Wages"
-  sourceType: string; // "web_scraping"
+export interface RegulatorySource {
+  country: string;        // "AU", "NZ", etc.
+  section: string;        // "Fair Work (Employment Law)"
+  subsection: string;     // "Minimum Wages"
+  sourceType: string;     // "web_scraping"
   url: string;
-  updateFrequency: "daily" | "weekly" | "monthly" | "quarterly";
-  priority: "high" | "medium" | "low";
-  category: "award" | "tax_ruling" | "payroll_tax" | "custom";
-};
+  updateFrequency: 'daily' | 'weekly' | 'monthly' | 'quarterly';
+  priority: 'high' | 'medium' | 'low';
+  category: 'award' | 'tax_ruling' | 'payroll_tax' | 'custom';
+}
 
-// Regex patterns defined at module level for performance
-const COUNTRY_REGEX = /##\s+.*\(([A-Z]{2})\)/;
-const SECTION_REGEX = /^###\s+/;
-const SUBSECTION_REGEX = /^####\s+/;
-const METADATA_REGEX = /^-\s+\*\*([^:]+):\*\*\s+(.+)$/;
+const configPath = path.resolve(process.cwd(), 'config/regulatory-sources.md');
 
 /**
- * Parses the regulatory-sources.md configuration file into structured TypeScript objects
- * @returns Promise resolving to array of RegulatorySource objects
- * @throws Returns empty array if file not found or parsing fails
+ * Parses the regulatory-sources.md file into an array of structured objects.
+ *
+ * @returns A promise that resolves to an array of RegulatorySource objects.
+ *          Returns an empty array if the file cannot be read or parsed.
  */
 export async function parseRegulatoryConfig(): Promise<RegulatorySource[]> {
   try {
-    const configPath = join(process.cwd(), "config", "regulatory-sources.md");
-    const content = await readFile(configPath, "utf-8");
-    const lines = content.split("\n");
+    const content = await fs.readFile(configPath, 'utf-8');
+    const lines = content.split('\n');
 
     const sources: RegulatorySource[] = [];
-    let currentCountry = "";
-    let currentSection = "";
-    let currentSubsection = "";
+    let currentCountry = '';
+    let currentSection = '';
+    let currentSubsection = '';
     let currentSource: Partial<RegulatorySource> = {};
 
     for (const line of lines) {
-      const trimmed = line.trim();
+      const trimmedLine = line.trim();
 
-      // Skip empty lines and horizontal rules
-      if (!trimmed || trimmed === "---") {
-        continue;
-      }
-
-      // Parse country heading (## Australia (AU))
-      if (trimmed.startsWith("## ")) {
-        const match = trimmed.match(COUNTRY_REGEX);
+      if (trimmedLine.startsWith('## ')) {
+        const match = trimmedLine.match(/## (.*) \((.*)\)/);
         if (match) {
-          currentCountry = match[1];
-          currentSection = "";
-          currentSubsection = "";
+          currentCountry = match[2];
         }
-        continue;
-      }
-
-      // Parse section heading (### Fair Work (Employment Law))
-      if (trimmed.startsWith("### ")) {
-        currentSection = trimmed.replace(SECTION_REGEX, "");
-        currentSubsection = "";
-        continue;
-      }
-
-      // Parse subsection heading (#### Minimum Wages)
-      if (trimmed.startsWith("#### ")) {
-        // Save previous source if it exists
-        if (
-          currentSource.url &&
-          currentCountry &&
-          currentSection &&
-          currentSubsection
-        ) {
-          sources.push(currentSource as RegulatorySource);
+      } else if (trimmedLine.startsWith('### ')) {
+        currentSection = trimmedLine.substring(4).trim();
+      } else if (trimmedLine.startsWith('#### ')) {
+        // When a new subsection starts, save the previous source if it exists and is complete
+        if (currentSource.url) {
+            sources.push(currentSource as RegulatorySource);
         }
-
-        // Start new source
-        currentSubsection = trimmed.replace(SUBSECTION_REGEX, "");
+        currentSubsection = trimmedLine.substring(5).trim();
         currentSource = {
-          country: currentCountry,
-          section: currentSection,
-          subsection: currentSubsection,
+            country: currentCountry,
+            section: currentSection,
+            subsection: currentSubsection,
         };
-        continue;
-      }
-
-      // Parse metadata lines (- **Field:** value)
-      if (trimmed.startsWith("- **")) {
-        const match = trimmed.match(METADATA_REGEX);
-        if (match) {
-          const [, field, value] = match;
-          const fieldKey = field.trim();
-          const fieldValue = value.trim();
-
-          switch (fieldKey) {
-            case "Source Type":
-              currentSource.sourceType = fieldValue;
+      } else if (trimmedLine.startsWith('- **')) {
+        const match = trimmedLine.match(/- \*\*(.*):\*\* (.*)/);
+        if (match && currentSource) {
+          const key = match[1].trim();
+          const value = match[2].trim();
+          switch (key) {
+            case 'Source Type':
+              currentSource.sourceType = value;
               break;
-            case "URL":
-              currentSource.url = fieldValue;
+            case 'URL':
+              currentSource.url = value;
               break;
-            case "Update Frequency":
-              currentSource.updateFrequency = fieldValue as
-                | "daily"
-                | "weekly"
-                | "monthly"
-                | "quarterly";
+            case 'Update Frequency':
+              currentSource.updateFrequency = value as RegulatorySource['updateFrequency'];
               break;
-            case "Priority":
-              currentSource.priority = fieldValue as "high" | "medium" | "low";
+            case 'Priority':
+              currentSource.priority = value as RegulatorySource['priority'];
               break;
-            case "Category":
-              currentSource.category = fieldValue as
-                | "award"
-                | "tax_ruling"
-                | "payroll_tax"
-                | "custom";
-              break;
-            default:
-              // Ignore unknown fields
+            case 'Category':
+              currentSource.category = value as RegulatorySource['category'];
               break;
           }
         }
       }
     }
 
-    // Add the last source if it exists
-    if (
-      currentSource.url &&
-      currentCountry &&
-      currentSection &&
-      currentSubsection
-    ) {
+    // Add the last processed source if it's complete
+    if (currentSource.url) {
       sources.push(currentSource as RegulatorySource);
     }
 
     return sources;
   } catch (error) {
-    console.error("Error parsing regulatory config:", error);
+    console.error('Error parsing regulatory config:', error);
     return [];
   }
 }
 
 /**
- * Gets regulatory sources filtered by country code
- * @param country - Two-letter country code (e.g., "AU", "NZ")
- * @returns Promise resolving to array of RegulatorySource objects for the specified country
+ * Filters regulatory sources by country.
+ *
+ * @param country The 2-letter country code (e.g., "AU").
+ * @returns A promise that resolves to an array of RegulatorySource objects for the specified country.
  */
-export async function getSourcesByCountry(
-  country: string
-): Promise<RegulatorySource[]> {
-  const sources = await parseRegulatoryConfig();
-  return sources.filter(
-    (source) => source.country.toLowerCase() === country.toLowerCase()
-  );
+export async function getSourcesByCountry(country: string): Promise<RegulatorySource[]> {
+  const allSources = await parseRegulatoryConfig();
+  return allSources.filter(source => source.country === country);
 }
 
 /**
- * Gets regulatory sources filtered by category
- * @param category - Category type ("award", "tax_ruling", "payroll_tax", "custom")
- * @returns Promise resolving to array of RegulatorySource objects for the specified category
+ * Filters regulatory sources by category.
+ *
+ * @param category The category to filter by (e.g., "award", "tax_ruling").
+ * @returns A promise that resolves to an array of RegulatorySource objects for the specified category.
  */
-export async function getSourcesByCategory(
-  category: string
-): Promise<RegulatorySource[]> {
-  const sources = await parseRegulatoryConfig();
-  return sources.filter(
-    (source) => source.category.toLowerCase() === category.toLowerCase()
-  );
+export async function getSourcesByCategory(category: 'award' | 'tax_ruling' | 'payroll_tax' | 'custom'): Promise<RegulatorySource[]> {
+  const allSources = await parseRegulatoryConfig();
+  return allSources.filter(source => source.category === category);
 }
 
 /**
- * Gets regulatory sources filtered by priority level
- * @param priority - Priority level ("high", "medium", "low")
- * @returns Promise resolving to array of RegulatorySource objects for the specified priority
+ * Filters regulatory sources by priority.
+ *
+ * @param priority The priority to filter by (e.g., "high", "medium", "low").
+ * @returns A promise that resolves to an array of RegulatorySource objects for the specified priority.
  */
-export async function getSourcesByPriority(
-  priority: string
-): Promise<RegulatorySource[]> {
-  const sources = await parseRegulatoryConfig();
-  return sources.filter(
-    (source) => source.priority.toLowerCase() === priority.toLowerCase()
-  );
+export async function getSourcesByPriority(priority: 'high' | 'medium' | 'low'): Promise<RegulatorySource[]> {
+  const allSources = await parseRegulatoryConfig();
+  return allSources.filter(source => source.priority === priority);
 }

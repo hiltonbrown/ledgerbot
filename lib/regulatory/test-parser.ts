@@ -1,4 +1,4 @@
-import { getSourcesByCountry, parseRegulatoryConfig } from "./config-parser";
+import { parseRegulatoryConfig, getSourcesByCountry } from "./config-parser";
 
 async function test() {
   const all = await parseRegulatoryConfig();

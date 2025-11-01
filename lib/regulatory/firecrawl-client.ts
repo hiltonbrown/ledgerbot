@@ -1,11 +1,10 @@
-/**
- * Firecrawl MCP client wrapper with rate limiting for regulatory document scraping
- */
+import he from 'he';
+import * as cheerio from 'cheerio';
 
 /**
- * Result of a web scraping operation
+ * Represents the result of a scraping operation for a single URL.
  */
-export type ScrapeResult = {
+export interface ScrapeResult {
   url: string;
   markdown: string;
   html: string;
@@ -13,167 +12,124 @@ export type ScrapeResult = {
   success: boolean;
   error?: string;
   scrapedAt: Date;
-};
+}
 
 /**
- * Options for scraping operations
+ * Defines the options available for a scraping operation.
  */
-export type ScrapeOptions = {
+export interface ScrapeOptions {
   formats?: ("markdown" | "html")[];
   onlyMainContent?: boolean;
-  timeout?: number;
-};
+  timeout?: number; // in milliseconds
+}
 
-// Rate limiting configuration
-const RATE_LIMIT_MS = 2000; // 1 request per 2 seconds (Firecrawl free tier)
+const RATE_LIMIT_MS = 2000; // 1 request per 2 seconds for Firecrawl free tier
 let lastRequestTime = 0;
 
 /**
- * Waits if necessary to respect rate limits
- * @returns Promise that resolves when it's safe to make the next request
+ * Waits if necessary to respect the rate limit.
  */
-async function waitForRateLimit(): Promise<void> {
+async function waitForRateLimit() {
   const now = Date.now();
   const timeSinceLastRequest = now - lastRequestTime;
-  const waitTime = Math.max(0, RATE_LIMIT_MS - timeSinceLastRequest);
-
-  if (waitTime > 0) {
-    console.log(`⏳ Rate limit: waiting ${waitTime}ms before next request`);
-    await new Promise((resolve) => setTimeout(resolve, waitTime));
+  if (timeSinceLastRequest < RATE_LIMIT_MS) {
+    const delay = RATE_LIMIT_MS - timeSinceLastRequest;
+    console.log(`Rate limiting: waiting for ${delay}ms...`);
+    await new Promise(resolve => setTimeout(resolve, delay));
   }
-
-  lastRequestTime = Date.now();
 }
 
 /**
- * Scrapes a single URL with rate limiting
- * @param url - The URL to scrape
- * @param options - Scraping options
- * @returns Promise resolving to scrape result
+ * Scrapes a single URL with rate limiting.
+ *
+ * @param url The URL to scrape.
+ * @param options Optional scraping parameters.
+ * @returns A promise that resolves to a ScrapeResult object.
  */
-export async function scrapeUrl(
-  url: string,
-  options: ScrapeOptions = {}
-): Promise<ScrapeResult> {
-  const {
-    formats = ["markdown", "html"],
-    onlyMainContent = true,
-    timeout = 30_000,
-  } = options;
+export async function scrapeUrl(url: string, options?: ScrapeOptions): Promise<ScrapeResult> {
+  console.log(`[Firecrawl] Scraping URL: ${url}`);
+  await waitForRateLimit();
+  lastRequestTime = Date.now();
 
-  console.log(`🔍 Scraping: ${url}`);
+  const timeout = options?.timeout ?? 30000;
 
   try {
-    // Wait for rate limit
-    await waitForRateLimit();
-
-    // TODO: Replace with actual Firecrawl MCP integration
-    // For now, return mock data
-    console.log(`  ✓ Formats: ${formats.join(", ")}`);
-    console.log(`  ✓ Main content only: ${onlyMainContent}`);
-    console.log(`  ✓ Timeout: ${timeout}ms`);
+    // Placeholder scraping logic
+    const mockHtml = `<html><head><title>Mock Title for ${url}</title></head><body><h1>Mock Content</h1><p>This is mock content from ${url}.</p></body></html>`;
+    const mockMarkdown = `# Mock Content\n\nThis is mock content from ${url}.`;
 
     // Simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 500));
 
-    const mockMarkdown = `# Mock Content for ${url}\n\nThis is placeholder content that will be replaced with actual scraped data from Firecrawl MCP.\n\n## Section 1\nSample regulatory text...\n\n## Section 2\nMore regulatory information...`;
-
-    const mockHtml = `<!DOCTYPE html>
-<html>
-<head><title>Mock Page</title></head>
-<body>
-<h1>Mock Content for ${url}</h1>
-<p>This is placeholder content that will be replaced with actual scraped data from Firecrawl MCP.</p>
-<h2>Section 1</h2>
-<p>Sample regulatory text...</p>
-<h2>Section 2</h2>
-<p>More regulatory information...</p>
-</body>
-</html>`;
-
-    const result: ScrapeResult = {
+    console.log(`[Firecrawl] Successfully scraped: ${url}`);
+    return {
       url,
-      markdown: formats.includes("markdown") ? mockMarkdown : "",
-      html: formats.includes("html") ? mockHtml : "",
-      title: "Mock Page Title",
+      markdown: mockMarkdown,
+      html: mockHtml,
+      title: `Mock Title for ${url}`,
       success: true,
       scrapedAt: new Date(),
     };
-
-    console.log(`  ✅ Successfully scraped ${url}`);
-    return result;
   } catch (error) {
-    console.error(`  ❌ Failed to scrape ${url}:`, error);
+    console.error(`[Firecrawl] Error scraping ${url}:`, error);
     return {
       url,
-      markdown: "",
-      html: "",
+      markdown: '',
+      html: '',
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: error instanceof Error ? error.message : String(error),
       scrapedAt: new Date(),
     };
   }
 }
 
 /**
- * Scrapes multiple URLs sequentially with rate limiting
- * @param urls - Array of URLs to scrape
- * @param options - Scraping options
- * @returns Promise resolving to array of scrape results
+ * Scrapes a list of URLs sequentially with rate limiting between requests.
+ *
+ * @param urls An array of URLs to scrape.
+ * @param options Optional scraping parameters for each URL.
+ * @returns A promise that resolves to an array of ScrapeResult objects.
  */
-export async function batchScrapeUrls(
-  urls: string[],
-  options: ScrapeOptions = {}
-): Promise<ScrapeResult[]> {
-  console.log(`\n📦 Batch scraping ${urls.length} URLs...`);
-
+export async function batchScrapeUrls(urls: string[], options?: ScrapeOptions): Promise<ScrapeResult[]> {
   const results: ScrapeResult[] = [];
-
-  for (let i = 0; i < urls.length; i++) {
-    const url = urls[i];
-    console.log(`\n[${i + 1}/${urls.length}] Processing: ${url}`);
-
+  let count = 0;
+  for (const url of urls) {
+    count++;
+    console.log(`[Firecrawl] Processing batch: ${count}/${urls.length}`);
     const result = await scrapeUrl(url, options);
     results.push(result);
-
-    const successCount = results.filter((r) => r.success).length;
-    const failureCount = results.length - successCount;
-    console.log(
-      `  📊 Progress: ${results.length}/${urls.length} (✅ ${successCount} success, ❌ ${failureCount} failed)`
-    );
   }
-
-  console.log("\n✅ Batch scraping complete!");
-  console.log(
-    `  Total: ${results.length}, Success: ${results.filter((r) => r.success).length}, Failed: ${results.filter((r) => !r.success).length}`
-  );
-
   return results;
 }
 
 /**
- * Extracts plain text from HTML content
- * @param html - HTML string to process
- * @returns Plain text with HTML tags removed
+ * Extracts plain text from an HTML string.
+ * It removes HTML tags, decodes entities, and collapses whitespace.
+ *
+ * @param html The HTML string to process.
+ * @returns The extracted plain text.
  */
-import * as cheerio from 'cheerio';
-
 export function extractTextFromHtml(html: string): string {
-  const $ = cheerio.load(html);
-  // Remove all script and style tags
-  $("script, style").remove();
-  let text = $.text();
-  // Collapse multiple whitespace characters into single space and trim
-  return text.replace(/\s+/g, " ").trim();
+  try {
+    const $ = cheerio.load(html);
+    const text = $('body').text();
+    const decodedText = he.decode(text);
+    // Collapse whitespace (multiple spaces/newlines to a single space)
+    return decodedText.replace(/\s+/g, ' ').trim();
+  } catch (error) {
+    console.error('Error extracting text from HTML:', error);
+    return '';
+  }
 }
 
 /**
- * Estimates token count for text (rough approximation)
- * @param text - Text to count tokens for
- * @returns Estimated token count (1 token ≈ 4 characters)
+ * Provides a rough approximation of the number of tokens in a string.
+ * (Based on the approximation that 1 token ≈ 4 characters)
+ *
+ * @param text The input string.
+ * @returns The estimated number of tokens.
  */
 export function countTokens(text: string): number {
-  // Rough approximation: 1 token ≈ 4 characters
-  // This is a simplified estimate; actual tokenization varies by model
+  if (!text) return 0;
   return Math.ceil(text.length / 4);
 }

@@ -1,111 +1,99 @@
 import { NextResponse } from "next/server";
-import { getAuthUser } from "@/lib/auth/clerk-helpers";
-import { getRecentScrapingJobs } from "@/lib/db/queries";
-import { runScrapingJob } from "@/lib/regulatory/scraper";
+import { getAuthUser } from "../../../../lib/auth/clerk-helpers";
+import { runScrapingJob } from "../../../../lib/regulatory/scraper";
+import { getRecentScrapingJobs } from "../../../../lib/db/queries";
 
 /**
- * POST /api/regulatory/scrape
- * Triggers a new regulatory document scraping job
+ * @swagger
+ * /api/regulatory/scrape:
+ *   post:
+ *     summary: Manually trigger a regulatory scraping job
+ *     description: Requires authentication. Kicks off a new scraping job based on optional filters.
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               country: { type: string, example: 'AU' }
+ *               category: { type: string, example: 'tax_ruling' }
+ *               priority: { type: string, example: 'high' }
+ *     responses:
+ *       200:
+ *         description: Job started successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean }
+ *                 jobId: { type: string }
+ *                 status: { type: string }
+ *                 documentsScraped: { type: number }
+ *                 documentsUpdated: { type: number }
+ *       401:
+ *         description: Not authenticated.
+ *       500:
+ *         description: Internal server error.
  */
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
-    // Require authentication
-    const user = await getAuthUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    await getAuthUser(); // Authentication check
+    console.log('[API] Received request to trigger scraping job.');
 
-    console.log(`🔐 User ${user.id} triggered scraping job`);
+    const filters = await req.json();
+    console.log('[API] Job filters:', filters);
 
-    // Parse request body
-    const body = await request.json();
-    const { country, category, priority, force } = body;
-
-    console.log("📋 Scraping job parameters:", {
-      country,
-      category,
-      priority,
-      force,
-    });
-
-    // Build filters
-    const filters: {
-      country?: string;
-      category?: string;
-      priority?: string;
-    } = {};
-
-    if (country) {
-      filters.country = country;
-    }
-    if (category) {
-      filters.category = category;
-    }
-    if (priority) {
-      filters.priority = priority;
-    }
-
-    // Run scraping job
-    console.log("🚀 Starting scraping job...");
-    const job = await runScrapingJob(filters);
-
-    console.log(`✅ Scraping job completed: ${job.id}`);
-    console.log(`📊 Status: ${job.status}`);
-    console.log(`📊 Documents scraped: ${job.documentsScraped}`);
-    console.log(`📊 Documents updated: ${job.documentsUpdated}`);
+    // Do not await this, run in background
+    runScrapingJob(filters);
 
     return NextResponse.json({
       success: true,
-      jobId: job.id,
-      status: job.status,
-      documentsScraped: job.documentsScraped,
-      documentsUpdated: job.documentsUpdated,
-      documentsArchived: job.documentsArchived,
-      startedAt: job.startedAt,
-      completedAt: job.completedAt,
-      errorMessage: job.errorMessage,
+      message: "Scraping job started in the background. Check the job status for progress.",
     });
+
   } catch (error) {
-    console.error("❌ Error in scraping job:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    console.error('[API] Error triggering scraping job:', error);
+    if (error instanceof Error && error.message.includes("Not authenticated")) {
+        return new NextResponse('Not authenticated', { status: 401 });
+    }
+    return new NextResponse('Internal Server Error', { status: 500 });
   }
 }
 
 /**
- * GET /api/regulatory/scrape
- * Returns recent scraping jobs
+ * @swagger
+ * /api/regulatory/scrape:
+ *   get:
+ *     summary: Get recent scraping jobs
+ *     description: Requires authentication. Retrieves the 20 most recent scraping jobs.
+ *     responses:
+ *       200:
+ *         description: A list of recent jobs.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 jobs: { type: array, items: { $ref: '#/components/schemas/RegulatoryScrapeJob' } }
+ *       401:
+ *         description: Not authenticated.
+ *       500:
+ *         description: Internal server error.
  */
 export async function GET() {
   try {
-    // Require authentication
-    const user = await getAuthUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    await getAuthUser(); // Authentication check
+    console.log('[API] Fetching recent scraping jobs.');
 
-    console.log(`🔐 User ${user.id} requested recent scraping jobs`);
-
-    // Get recent jobs
     const jobs = await getRecentScrapingJobs(20);
 
-    console.log(`📊 Returning ${jobs.length} recent scraping jobs`);
-
-    return NextResponse.json({
-      jobs,
-    });
+    return NextResponse.json({ jobs });
   } catch (error) {
-    console.error("❌ Error fetching scraping jobs:", error);
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    console.error('[API] Error fetching recent scraping jobs:', error);
+    if (error instanceof Error && error.message.includes("Not authenticated")) {
+        return new NextResponse('Not authenticated', { status: 401 });
+    }
+    return new NextResponse('Internal Server Error', { status: 500 });
   }
 }

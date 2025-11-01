@@ -1,15 +1,11 @@
 import { streamText } from "ai";
 import { NextResponse } from "next/server";
-import { myProvider } from "@/lib/ai/providers";
-import { regulatoryTools } from "@/lib/ai/tools/regulatory-tools";
-import { createXeroTools } from "@/lib/ai/tools/xero-tools";
-import { getAuthUser } from "@/lib/auth/clerk-helpers";
-import { getActiveXeroConnection } from "@/lib/db/queries";
-import {
-  calculateConfidence,
-  extractCitations,
-  requiresHumanReview,
-} from "@/lib/regulatory/confidence";
+import { getAuthUser } from "../../../../lib/auth/clerk-helpers";
+import { getModel } from "../../../../lib/ai/providers";
+import { regulatoryTools } from "../../../../lib/ai/tools/regulatory-tools";
+import { createXeroTools } from "../../../../lib/ai/tools/xero-tools";
+import { getActiveXeroConnection } from "../../../../lib/db/queries";
+import { calculateConfidence, extractCitations, requiresHumanReview } from "../../../../lib/regulatory/confidence";
 
 export const maxDuration = 60;
 
@@ -34,83 +30,37 @@ Important:
 - Always indicate the effective date of regulatory information
 - Distinguish between mandatory requirements and best practices`;
 
-/**
- * POST /api/agents/qanda
- * Handles Q&A agent chat requests with regulatory and Xero tools
- */
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
-    // Require authentication
     const user = await getAuthUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return new NextResponse('Not authenticated', { status: 401 });
     }
 
-    console.log(`🤖 Q&A agent request from user ${user.id}`);
+    const { messages, settings } = await req.json();
 
-    // Parse request body
-    const body = await request.json();
-    const { messages, settings } = body;
-
-    if (!messages || !Array.isArray(messages)) {
-      return NextResponse.json(
-        { error: "Invalid messages format" },
-        { status: 400 }
-      );
-    }
-
-    // Check for Xero connection
     const xeroConnection = await getActiveXeroConnection(user.id);
-    const hasXero = !!xeroConnection;
-
-    console.log(`🔗 Xero connection: ${hasXero ? "active" : "not connected"}`);
-
-    // Build tools object
-    const tools = {
-      ...regulatoryTools,
-    };
-
-    // Add Xero tools if connected
-    if (hasXero) {
+    const tools: any = { ...regulatoryTools };
+    if (xeroConnection) {
+      console.log("[Q&A Agent] Xero connection found, adding Xero tools.");
       const xeroTools = createXeroTools(user.id);
       Object.assign(tools, xeroTools);
-      console.log(`✅ Added ${Object.keys(xeroTools).length} Xero tools`);
     }
 
-    console.log(`🔧 Total tools available: ${Object.keys(tools).length}`);
+    const model = getModel(settings?.model || "anthropic-claude-sonnet-4-5");
 
-    // Get model
-    const modelId = settings?.model || "anthropic-claude-sonnet-4-5";
-    const model = myProvider.languageModel(modelId);
-
-    console.log(`🤖 Using model: ${modelId}`);
-
-    // Stream response
-    const result = streamText({
+    const result = await streamText({
       model,
       system: SYSTEM_PROMPT,
       messages,
       tools,
-      onFinish: ({ text, toolCalls, usage }) => {
-        console.log("\n📊 Response finished");
-
-        // Calculate confidence score
-        const confidence = calculateConfidence(toolCalls || [], text);
-        console.log(`  Confidence: ${confidence.toFixed(3)}`);
-
-        // Extract citations
-        const citations = extractCitations(toolCalls || []);
-        console.log(`  Citations: ${citations.length}`);
-
-        // Check if review required
+      onFinish: async (result) => {
+        const { text, toolCalls, usage } = result;
+        const confidence = calculateConfidence(toolCalls, text);
+        const citations = extractCitations(toolCalls);
         const needsReview = requiresHumanReview(confidence);
-        console.log(`  Needs review: ${needsReview}`);
 
-        // Log usage
-        console.log("  Usage:", usage);
-
-        // Log summary
-        console.log("\n📋 Response Summary:", {
+        console.log("[Q&A Agent] Finished processing response:", {
           userId: user.id,
           confidence: confidence.toFixed(3),
           citationCount: citations.length,
@@ -118,31 +68,19 @@ export async function POST(request: Request) {
           usage,
         });
 
-        // TODO: Save response metadata to database
-        // - Store confidence score
-        // - Store citations
-        // - Store review status
+        // TODO: Save message, confidence score, and citations to the database
 
-        // TODO: Trigger review notification if needed
-        // if (needsReview) {
-        //   await notifyHumanReviewer({
-        //     userId: user.id,
-        //     confidence,
-        //     citations,
-        //     responseText: text,
-        //   });
-        // }
+        if (needsReview) {
+          // TODO: Trigger a notification or create a task for human review
+          console.warn(`[Q&A Agent] Response for user ${user.id} requires human review (Confidence: ${confidence.toFixed(3)})`);
+        }
       },
     });
 
     return result.toTextStreamResponse();
+
   } catch (error) {
-    console.error("❌ Error in Q&A agent:", error);
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    console.error("[Q&A Agent] Error handling chat request:", error);
+    return new NextResponse('Internal Server Error', { status: 500 });
   }
 }

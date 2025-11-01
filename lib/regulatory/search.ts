@@ -1,15 +1,11 @@
-/**
- * Full-text search for regulatory documents using PostgreSQL tsvector
- */
-
-import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
-import { db } from "../db/queries";
-import { type RegulatoryDocument, regulatoryDocument } from "../db/schema";
+import { db } from '../db/queries';
+import { regulatoryDocument, RegulatoryDocument } from '../db/schema';
+import { eq, and, sql, desc, not, inArray } from 'drizzle-orm';
 
 /**
- * Search result with relevance scoring and excerpts
+ * Represents a single item in a list of search results.
  */
-export type SearchResult = {
+export interface SearchResult {
   documentId: string;
   title: string;
   sourceUrl: string;
@@ -19,209 +15,111 @@ export type SearchResult = {
   excerpt: string;
   effectiveDate: Date | null;
   metadata: Record<string, unknown>;
-};
+}
 
 /**
- * Filters for search queries
+ * Defines the available filters for a search query.
  */
-export type SearchFilters = {
+export interface SearchFilters {
   country?: string;
   category?: string[];
   dateRange?: { start: Date; end: Date };
   limit?: number;
-};
+}
 
 /**
- * Searches regulatory documents using PostgreSQL full-text search
- * @param query - Search query string
- * @param filters - Optional filters for country, category, date range, and limit
- * @returns Promise resolving to array of SearchResult objects ordered by relevance
+ * Searches regulatory documents using full-text search.
+ * @param query The search query string.
+ * @param filters Optional filters for the search.
+ * @returns A promise that resolves to an array of SearchResult objects.
  */
-export async function searchRegulatoryDocuments(
-  query: string,
-  filters?: SearchFilters
-): Promise<SearchResult[]> {
+export async function searchRegulatoryDocuments(query: string, filters?: SearchFilters): Promise<SearchResult[]> {
+  const limit = filters?.limit ?? 10;
+  const tsQuery = sql`plainto_tsquery('english', ${query})`;
+
   try {
-    console.log(`🔍 Searching regulatory documents: "${query}"`);
-    if (filters) {
-      console.log("📋 Filters:", filters);
-    }
-
-    const limit = filters?.limit ?? 10;
-
-    // Build WHERE conditions
-    const conditions = [
-      eq(regulatoryDocument.status, "active"),
-      sql`${regulatoryDocument.searchVector} @@ plainto_tsquery('english', ${query})`,
-    ];
+    const conditions = [sql`${regulatoryDocument.searchVector} @@ ${tsQuery}`, eq(regulatoryDocument.status, 'active')];
 
     if (filters?.country) {
       conditions.push(eq(regulatoryDocument.country, filters.country));
     }
-
     if (filters?.category && filters.category.length > 0) {
       conditions.push(inArray(regulatoryDocument.category, filters.category));
     }
-
     if (filters?.dateRange) {
-      conditions.push(
-        sql`${regulatoryDocument.effectiveDate} >= ${filters.dateRange.start}`
-      );
-      conditions.push(
-        sql`${regulatoryDocument.effectiveDate} <= ${filters.dateRange.end}`
-      );
+      conditions.push(sql`${regulatoryDocument.effectiveDate} >= ${filters.dateRange.start}`);
+      conditions.push(sql`${regulatoryDocument.effectiveDate} <= ${filters.dateRange.end}`);
     }
 
-    // Execute search query with relevance scoring and excerpts
-    const results = await db
-      .select({
+    const results = await db.select({
         documentId: regulatoryDocument.id,
         title: regulatoryDocument.title,
         sourceUrl: regulatoryDocument.sourceUrl,
         category: regulatoryDocument.category,
         country: regulatoryDocument.country,
-        relevanceScore: sql<number>`ts_rank(${regulatoryDocument.searchVector}, plainto_tsquery('english', ${query}))`,
-        excerpt: sql<string>`ts_headline('english', ${regulatoryDocument.extractedText}, plainto_tsquery('english', ${query}), 'MaxWords=50, MinWords=20, MaxFragments=1')`,
+        relevanceScore: sql<number>`ts_rank(${regulatoryDocument.searchVector}, ${tsQuery})`,
+        excerpt: sql<string>`ts_headline('english', ${regulatoryDocument.extractedText}, ${tsQuery}, 'MaxWords=50, MinWords=20, MaxFragments=1')`,
         effectiveDate: regulatoryDocument.effectiveDate,
         metadata: regulatoryDocument.metadata,
       })
       .from(regulatoryDocument)
       .where(and(...conditions))
-      .orderBy(
-        sql`ts_rank(${regulatoryDocument.searchVector}, plainto_tsquery('english', ${query})) DESC`
-      )
+      .orderBy(desc(sql`ts_rank(${regulatoryDocument.searchVector}, ${tsQuery})`))
       .limit(limit);
 
-    console.log(`✅ Found ${results.length} matching documents`);
+    return results as SearchResult[];
 
-    return results.map((row) => ({
-      documentId: row.documentId,
-      title: row.title,
-      sourceUrl: row.sourceUrl,
-      category: row.category,
-      country: row.country,
-      relevanceScore: row.relevanceScore,
-      excerpt: row.excerpt,
-      effectiveDate: row.effectiveDate,
-      metadata: (row.metadata as Record<string, unknown>) ?? {},
-    }));
   } catch (error) {
-    console.error("❌ Error searching regulatory documents:", error);
-    throw new Error(
-      `Failed to search regulatory documents: ${error instanceof Error ? error.message : "Unknown error"}`
-    );
+    console.error('Error searching regulatory documents:', error);
+    throw new Error('Failed to execute search for regulatory documents.');
   }
 }
 
 /**
- * Finds documents similar to a given document
- * @param documentId - The ID of the source document
- * @param limit - Maximum number of similar documents to return (default: 5)
- * @returns Promise resolving to array of SearchResult objects
+ * Finds documents that are similar to a given document by searching for its title.
+ * @param documentId The ID of the source document for comparison.
+ * @param limit The maximum number of similar documents to return.
+ * @returns A promise that resolves to an array of SearchResult objects.
  */
-export async function getSimilarDocuments(
-  documentId: string,
-  limit = 5
-): Promise<SearchResult[]> {
+export async function getSimilarDocuments(documentId: string, limit = 5): Promise<SearchResult[]> {
   try {
-    console.log(`🔍 Finding documents similar to: ${documentId}`);
+    const sourceDocument = await db.query.regulatoryDocument.findFirst({
+      where: eq(regulatoryDocument.id, documentId),
+    });
 
-    // Get the source document
-    const [sourceDoc] = await db
-      .select()
-      .from(regulatoryDocument)
-      .where(eq(regulatoryDocument.id, documentId))
-      .limit(1);
-
-    if (!sourceDoc) {
-      console.log("❌ Source document not found");
+    if (!sourceDocument || !sourceDocument.title) {
       return [];
     }
 
-    console.log(`📄 Source document: "${sourceDoc.title}"`);
+    const similar = await searchRegulatoryDocuments(sourceDocument.title, { limit: limit + 1 });
 
-    // Use the source document's title as the search query
-    const query = sourceDoc.title;
+    // Filter out the source document itself from the results
+    return similar.filter(doc => doc.documentId !== documentId).slice(0, limit);
 
-    // Search for similar documents, excluding the source document
-    const results = await db
-      .select({
-        documentId: regulatoryDocument.id,
-        title: regulatoryDocument.title,
-        sourceUrl: regulatoryDocument.sourceUrl,
-        category: regulatoryDocument.category,
-        country: regulatoryDocument.country,
-        relevanceScore: sql<number>`ts_rank(${regulatoryDocument.searchVector}, plainto_tsquery('english', ${query}))`,
-        excerpt: sql<string>`ts_headline('english', ${regulatoryDocument.extractedText}, plainto_tsquery('english', ${query}), 'MaxWords=50, MinWords=20, MaxFragments=1')`,
-        effectiveDate: regulatoryDocument.effectiveDate,
-        metadata: regulatoryDocument.metadata,
-      })
-      .from(regulatoryDocument)
-      .where(
-        and(
-          eq(regulatoryDocument.status, "active"),
-          ne(regulatoryDocument.id, documentId),
-          sql`${regulatoryDocument.searchVector} @@ plainto_tsquery('english', ${query})`
-        )
-      )
-      .orderBy(
-        sql`ts_rank(${regulatoryDocument.searchVector}, plainto_tsquery('english', ${query})) DESC`
-      )
-      .limit(limit);
-
-    console.log(`✅ Found ${results.length} similar documents`);
-
-    return results.map((row) => ({
-      documentId: row.documentId,
-      title: row.title,
-      sourceUrl: row.sourceUrl,
-      category: row.category,
-      country: row.country,
-      relevanceScore: row.relevanceScore,
-      excerpt: row.excerpt,
-      effectiveDate: row.effectiveDate,
-      metadata: (row.metadata as Record<string, unknown>) ?? {},
-    }));
   } catch (error) {
-    console.error("❌ Error finding similar documents:", error);
-    throw new Error(
-      `Failed to find similar documents: ${error instanceof Error ? error.message : "Unknown error"}`
-    );
+    console.error(`Error finding similar documents for ID ${documentId}:`, error);
+    throw new Error('Failed to get similar documents.');
   }
 }
 
 /**
- * Gets documents by category
- * @param category - The category to filter by
- * @param limit - Maximum number of documents to return (default: 20)
- * @returns Promise resolving to array of RegulatoryDocument objects
+ * Retrieves a list of active documents for a specific category.
+ * @param category The category to filter by.
+ * @param limit The maximum number of documents to return.
+ * @returns A promise that resolves to an array of RegulatoryDocument objects.
  */
-export async function getDocumentsByCategory(
-  category: string,
-  limit = 20
-): Promise<RegulatoryDocument[]> {
+export async function getDocumentsByCategory(category: string, limit = 20): Promise<RegulatoryDocument[]> {
   try {
-    console.log(`📂 Getting documents for category: ${category}`);
-
-    const results = await db
-      .select()
-      .from(regulatoryDocument)
-      .where(
-        and(
-          eq(regulatoryDocument.category, category),
-          eq(regulatoryDocument.status, "active")
-        )
-      )
-      .orderBy(desc(regulatoryDocument.scrapedAt))
-      .limit(limit);
-
-    console.log(`✅ Found ${results.length} documents in category ${category}`);
-
-    return results;
+    return await db.query.regulatoryDocument.findMany({
+        where: and(
+            eq(regulatoryDocument.category, category),
+            eq(regulatoryDocument.status, 'active')
+        ),
+        orderBy: desc(regulatoryDocument.scrapedAt),
+        limit,
+    });
   } catch (error) {
-    console.error("❌ Error getting documents by category:", error);
-    throw new Error(
-      `Failed to get documents by category: ${error instanceof Error ? error.message : "Unknown error"}`
-    );
+    console.error(`Error getting documents for category ${category}:`, error);
+    throw new Error('Failed to get documents by category.');
   }
 }

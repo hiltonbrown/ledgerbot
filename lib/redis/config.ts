@@ -63,7 +63,6 @@ const createRedisClient = (label: "publisher" | "subscriber"): RedisClient => {
   const client = createClient({
     url: redisUrl,
     socket: {
-      tls: shouldUseTls,
       reconnectStrategy,
     },
   });
