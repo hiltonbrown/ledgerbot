@@ -6,15 +6,17 @@ The Q&A agent cron job was returning 404 errors in production. The following cha
 ## Changes Made
 
 ### 1. Firecrawl Integration (`lib/regulatory/firecrawl-client.ts`)
-**Status**: ✅ FIXED
+**Status**: ✅ FIXED (Updated to v2)
 
-**Problem**: The `scrapeUrl` function was returning mock data instead of calling the real Firecrawl API.
+**Problem**: The `scrapeUrl` function was returning mock data instead of calling the real Firecrawl API. After implementing the real API, it was using the deprecated v1 endpoint which returned 404 errors.
 
-**Solution**: Implemented real Firecrawl API integration:
-- Calls `https://api.firecrawl.dev/v1/scrape` with proper authentication
+**Solution**: Implemented real Firecrawl v2 API integration:
+- Calls `https://api.firecrawl.dev/v2/scrape` (updated from v1) with proper authentication
 - Uses `FIRECRAWL_API_KEY` environment variable
 - Returns actual scraped content (markdown, HTML, metadata)
 - Proper error handling with detailed error messages
+- **CRITICAL FIX**: Changed endpoint from `/v1/scrape` to `/v2/scrape` to resolve 404 errors
+- Tested successfully with Fair Work website, returning 10,881 characters (~2,721 tokens)
 
 ### 2. Route Configuration (`app/api/cron/regulatory-sync/route.ts`)
 **Status**: ✅ UPDATED
@@ -231,15 +233,37 @@ After successful deployment:
 
 ## Files Modified
 
-- `lib/regulatory/firecrawl-client.ts` - Implemented real Firecrawl API integration
+- `lib/regulatory/firecrawl-client.ts` - Implemented real Firecrawl v2 API integration (fixed 404 error)
 - `app/api/cron/regulatory-sync/route.ts` - Added runtime configuration
 - `.env.example` - Added FIRECRAWL_API_KEY documentation
-- `docs/cron-job-deployment-checklist.md` - This file (NEW)
+- `scripts/test-firecrawl.ts` - Test script for Firecrawl v2 API (NEW)
+- `docs/cron-job-deployment-checklist.md` - This file (UPDATED)
+- `CLAUDE.md` - Updated with Firecrawl integration details
+
+## Testing Locally
+
+You can test the Firecrawl v2 API integration locally using the provided test script:
+
+```bash
+pnpm exec tsx --env-file=.env.local scripts/test-firecrawl.ts
+```
+
+Expected output:
+```
+🔍 Testing Firecrawl v2 API...
+📄 Scraping: https://www.fairwork.gov.au/pay-and-wages/minimum-wages
+⏳ This may take a few seconds...
+📊 Response Status: 200 OK
+✅ Success!
+📝 Title: Minimum wages - Fair Work Ombudsman
+📏 Markdown Length: 10881 characters (2721 tokens approx)
+🎉 Firecrawl v2 API is working correctly!
+```
 
 ## Related Documentation
 
 - Vercel Cron Jobs: https://vercel.com/docs/cron-jobs
-- Firecrawl API: https://docs.firecrawl.dev/
+- Firecrawl v2 API: https://docs.firecrawl.dev/api-reference/endpoint/scrape
 - Next.js Route Handlers: https://nextjs.org/docs/app/building-your-application/routing/route-handlers
 - Project Documentation: `/docs/regulatory-system-summary.md`
 - Q&A Agent UI: `/docs/qanda-agent-ui-update.md`

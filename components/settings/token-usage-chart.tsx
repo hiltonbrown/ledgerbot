@@ -104,19 +104,19 @@ export function TokenUsageChart({
               />
               <Area
                 dataKey="inputTokens"
-                fill="var(--color-inputTokens)"
+                fill={chartConfig.inputTokens.color}
                 fillOpacity={0.6}
                 stackId="tokens"
-                stroke="var(--color-inputTokens)"
+                stroke={chartConfig.inputTokens.color}
                 strokeWidth={2}
                 type="monotone"
               />
               <Area
                 dataKey="outputTokens"
-                fill="var(--color-outputTokens)"
+                fill={chartConfig.outputTokens.color}
                 fillOpacity={0.6}
                 stackId="tokens"
-                stroke="var(--color-outputTokens)"
+                stroke={chartConfig.outputTokens.color}
                 strokeWidth={2}
                 type="monotone"
               />

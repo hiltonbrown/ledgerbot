@@ -77,12 +77,12 @@ export function UsageBarChart({ metrics }: { metrics: UsageMetric[] }) {
               />
               <Bar
                 dataKey="used"
-                fill="var(--color-used)"
+                fill={chartConfig.used.color}
                 radius={[6, 6, 0, 0]}
               />
               <Bar
                 dataKey="limit"
-                fill="var(--color-limit)"
+                fill={chartConfig.limit.color}
                 radius={[6, 6, 0, 0]}
               />
             </BarChart>

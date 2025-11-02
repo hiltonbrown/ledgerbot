@@ -6,6 +6,7 @@ const isPublicRoute = createRouteMatcher([
   "/login(.*)",
   "/register(.*)",
   "/api/webhooks(.*)",
+  "/api/cron(.*)", // Allow cron jobs (secured with CRON_SECRET)
   "/settings/user(.*)", // Allow Clerk UserProfile catch-all routes
   "/account(.*)", // Allow Clerk UserProfile catch-all routes
   "/ping",

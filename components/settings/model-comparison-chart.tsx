@@ -103,13 +103,13 @@ export function ModelComparisonChart({
               />
               <Bar
                 dataKey="inputTokens"
-                fill="var(--color-inputTokens)"
+                fill={chartConfig.inputTokens.color}
                 radius={[0, 0, 0, 0]}
                 stackId="tokens"
               />
               <Bar
                 dataKey="outputTokens"
-                fill="var(--color-outputTokens)"
+                fill={chartConfig.outputTokens.color}
                 radius={[6, 6, 0, 0]}
                 stackId="tokens"
               />

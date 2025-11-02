@@ -66,7 +66,7 @@ export async function scrapeUrl(
       throw new Error("FIRECRAWL_API_KEY environment variable is not set");
     }
 
-    const response = await fetch("https://api.firecrawl.dev/v1/scrape", {
+    const response = await fetch("https://api.firecrawl.dev/v2/scrape", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -82,9 +82,7 @@ export async function scrapeUrl(
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(
-        `Firecrawl API error (${response.status}): ${errorText}`
-      );
+      throw new Error(`Firecrawl API error (${response.status}): ${errorText}`);
     }
 
     const data = await response.json();
