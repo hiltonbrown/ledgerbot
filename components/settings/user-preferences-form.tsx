@@ -72,8 +72,7 @@ export function UserPreferencesForm({ data }: { data: UserSettings }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          firstName: formState.personalisation.firstName,
-          lastName: formState.personalisation.lastName,
+          // firstName and lastName are managed by Clerk, not sent in update
           country: formState.personalisation.country,
           state: formState.personalisation.state,
           isLocked: formState.personalisation.isLocked,
@@ -109,23 +108,45 @@ export function UserPreferencesForm({ data }: { data: UserSettings }) {
     <form className="space-y-8" onSubmit={handleSubmit}>
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="name">Full name</Label>
+          <Label htmlFor="firstName">First Name</Label>
           <Input
-            id="name"
-            onChange={handleInputChange("name")}
-            placeholder="Jane Doe"
-            value={formState.name}
+            className="bg-muted"
+            disabled
+            id="firstName"
+            placeholder="Jane"
+            value={formState.personalisation.firstName}
           />
+          <p className="text-muted-foreground text-xs">
+            Managed by Clerk authentication
+          </p>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="lastName">Last Name</Label>
+          <Input
+            className="bg-muted"
+            disabled
+            id="lastName"
+            placeholder="Doe"
+            value={formState.personalisation.lastName}
+          />
+          <p className="text-muted-foreground text-xs">
+            Managed by Clerk authentication
+          </p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
           <Input
+            className="bg-muted"
+            disabled
             id="email"
             onChange={handleInputChange("email")}
             placeholder="you@example.com"
             type="email"
             value={formState.email}
           />
+          <p className="text-muted-foreground text-xs">
+            Managed by Clerk authentication
+          </p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="jobTitle">Role</Label>
