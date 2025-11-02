@@ -151,14 +151,7 @@ export function PromptSettingsForm({ data }: { data: UserSettings }) {
       }));
     };
 
-  const handlePersonalInputChange =
-    (field: "firstName" | "lastName") =>
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      setPersonalState((state) => ({
-        ...state,
-        [field]: event.target.value,
-      }));
-    };
+  // firstName and lastName removed - managed by Clerk
 
   const handlePersonalSelectChange =
     (field: "country" | "state" | "defaultModel") => (value: string) => {
@@ -203,8 +196,7 @@ export function PromptSettingsForm({ data }: { data: UserSettings }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          firstName: personalState.firstName,
-          lastName: personalState.lastName,
+          // firstName and lastName removed - managed by Clerk
           country: personalState.country,
           state: personalState.state,
           isLocked: personalState.isLocked,
@@ -257,26 +249,6 @@ export function PromptSettingsForm({ data }: { data: UserSettings }) {
           </label>
         </div>
         <div className="grid gap-6 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="firstName">First name</Label>
-            <Input
-              disabled={personalState.isLocked}
-              id="firstName"
-              onChange={handlePersonalInputChange("firstName")}
-              placeholder="Alex"
-              value={personalState.firstName}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="lastName">Last name</Label>
-            <Input
-              disabled={personalState.isLocked}
-              id="lastName"
-              onChange={handlePersonalInputChange("lastName")}
-              placeholder="Rivers"
-              value={personalState.lastName}
-            />
-          </div>
           <div className="space-y-2">
             <Label htmlFor="country">Country</Label>
             <Select

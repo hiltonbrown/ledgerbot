@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { currentUser } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth/clerk-helpers";
 import { db } from "@/lib/db/queries";
@@ -141,14 +142,23 @@ const USER_SETTINGS: UserSettings = {
 export async function getUserSettings(): Promise<UserSettings> {
   const user = await requireAuth();
 
+  // Get Clerk user data for firstName and lastName
+  const clerkUser = await currentUser();
+
   const [dbSettings] = await db
     .select()
     .from(userSettings)
     .where(eq(userSettings.userId, user.id));
 
+  // Use Clerk's firstName/lastName if available, otherwise fall back to defaults
+  const firstName =
+    clerkUser?.firstName || USER_SETTINGS.personalisation.firstName;
+  const lastName =
+    clerkUser?.lastName || USER_SETTINGS.personalisation.lastName;
+
   // Merge database settings with defaults
   return {
-    name: `${dbSettings?.firstName || USER_SETTINGS.personalisation.firstName} ${dbSettings?.lastName || USER_SETTINGS.personalisation.lastName}`,
+    name: `${firstName} ${lastName}`,
     email: user.email,
     jobTitle: USER_SETTINGS.jobTitle,
     language: USER_SETTINGS.language,
@@ -156,9 +166,8 @@ export async function getUserSettings(): Promise<UserSettings> {
     about: USER_SETTINGS.about,
     personalisation: {
       isLocked: dbSettings?.isLocked ?? USER_SETTINGS.personalisation.isLocked,
-      firstName:
-        dbSettings?.firstName || USER_SETTINGS.personalisation.firstName,
-      lastName: dbSettings?.lastName || USER_SETTINGS.personalisation.lastName,
+      firstName,
+      lastName,
       country: dbSettings?.country || USER_SETTINGS.personalisation.country,
       state: dbSettings?.state || USER_SETTINGS.personalisation.state,
       defaultModel:

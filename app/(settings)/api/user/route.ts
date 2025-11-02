@@ -17,8 +17,7 @@ export async function POST(request: Request) {
     const body = await request.json();
 
     const {
-      firstName,
-      lastName,
+      // firstName and lastName are now managed by Clerk, not stored in userSettings
       country,
       state,
       isLocked,
@@ -37,12 +36,10 @@ export async function POST(request: Request) {
       .where(eq(userSettings.userId, user.id));
 
     if (existingSettings) {
-      // Update existing settings
+      // Update existing settings (excluding firstName/lastName)
       await db
         .update(userSettings)
         .set({
-          firstName,
-          lastName,
           country,
           state,
           isLocked,
@@ -56,11 +53,9 @@ export async function POST(request: Request) {
         })
         .where(eq(userSettings.userId, user.id));
     } else {
-      // Insert new settings
+      // Insert new settings (excluding firstName/lastName)
       await db.insert(userSettings).values({
         userId: user.id,
-        firstName,
-        lastName,
         country,
         state,
         isLocked,
