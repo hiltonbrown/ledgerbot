@@ -54,15 +54,19 @@ async function getXeroClient(
     clientSecret: process.env.XERO_CLIENT_SECRET || "",
     redirectUris: [process.env.XERO_REDIRECT_URI || ""],
     scopes: connection.scopes,
+    httpTimeout: 10_000, // 10 seconds - prevent timeout issues
   });
 
+  // Initialize the client BEFORE setting token set
+  await client.initialize();
+
+  // Use standard 30 minutes (1800 seconds) for expires_in
+  // The getDecryptedConnection already handles token refresh if expired
   await client.setTokenSet({
     access_token: connection.accessToken,
     refresh_token: connection.refreshToken,
     token_type: "Bearer",
-    expires_in: Math.floor(
-      (new Date(connection.expiresAt).getTime() - Date.now()) / 1000
-    ),
+    expires_in: 1800, // Standard 30 minutes
   });
 
   return { client, connection };

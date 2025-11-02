@@ -45,6 +45,7 @@ export function createXeroClient(state?: string): XeroClient {
     redirectUris: [redirectUri],
     scopes: XERO_SCOPES,
     state,
+    httpTimeout: 10_000, // 10 seconds - prevent timeout issues with token refresh
   });
 }
 
@@ -144,19 +145,16 @@ async function refreshXeroToken(
     const decryptedAccessToken = decryptToken(connection.accessToken);
     const decryptedRefreshToken = decryptToken(connection.refreshToken);
 
+    // Initialize the client BEFORE setting token set and refreshing
     await xeroClient.initialize();
 
     // Set the current token set before refreshing
+    // Use standard 30 minutes (1800 seconds) for expires_in instead of calculating from expired token
     await xeroClient.setTokenSet({
       access_token: decryptedAccessToken,
       refresh_token: decryptedRefreshToken,
       token_type: "Bearer",
-      expires_in: Math.max(
-        Math.floor(
-          (new Date(connection.expiresAt).getTime() - Date.now()) / 1000
-        ),
-        0
-      ),
+      expires_in: 1800, // Standard 30 minutes - don't use expired token's remaining time
     });
 
     // Refresh the token (no arguments needed)
@@ -271,16 +269,12 @@ export async function revokeXeroToken(connectionId: string): Promise<void> {
       await xeroClient.initialize();
 
       // Set the token set first, then revoke
+      // Use standard 30 minutes (1800 seconds) for expires_in
       await xeroClient.setTokenSet({
         access_token: decryptToken(connection.accessToken),
         refresh_token: decryptedRefreshToken,
         token_type: "Bearer",
-        expires_in: Math.max(
-          Math.floor(
-            (new Date(connection.expiresAt).getTime() - Date.now()) / 1000
-          ),
-          0
-        ),
+        expires_in: 1800, // Standard 30 minutes - don't use expired token's remaining time
       });
 
       // Revoke the refresh token using Xero's revocation endpoint
