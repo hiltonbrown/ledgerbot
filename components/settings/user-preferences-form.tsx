@@ -139,7 +139,6 @@ export function UserPreferencesForm({ data }: { data: UserSettings }) {
             className="bg-muted"
             disabled
             id="email"
-            onChange={handleInputChange("email")}
             placeholder="you@example.com"
             type="email"
             value={formState.email}
