@@ -32,11 +32,13 @@ async function testFirecrawlV2() {
         url: testUrl,
         formats: ["markdown", "html"],
         onlyMainContent: true,
-        timeout: 30000,
+        timeout: 30_000,
       }),
     });
 
-    console.log(`📊 Response Status: ${response.status} ${response.statusText}`);
+    console.log(
+      `📊 Response Status: ${response.status} ${response.statusText}`
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -63,7 +65,7 @@ async function testFirecrawlV2() {
       `📏 Markdown Length: ${markdown.length} characters (${Math.ceil(markdown.length / 4)} tokens approx)`
     );
     console.log(`📏 HTML Length: ${html.length} characters`);
-    console.log(`\n📋 First 200 characters of markdown:`);
+    console.log("\n📋 First 200 characters of markdown:");
     console.log(markdown.substring(0, 200) + "...\n");
 
     console.log("🎉 Firecrawl v2 API is working correctly!");

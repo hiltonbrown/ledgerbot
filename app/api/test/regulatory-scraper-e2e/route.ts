@@ -1,13 +1,16 @@
+import { desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db/queries";
-import { regulatoryDocument, regulatoryScrapeJob } from "../../../../lib/db/schema";
-import { eq, desc } from "drizzle-orm";
 import {
-  scrapeRegulatoryDocument,
-  scrapeAndSaveDocument,
-  runScrapingJob,
-} from "../../../../lib/regulatory/scraper";
+  regulatoryDocument,
+  regulatoryScrapeJob,
+} from "../../../../lib/db/schema";
 import type { RegulatorySource } from "../../../../lib/regulatory/config-parser";
+import {
+  runScrapingJob,
+  scrapeAndSaveDocument,
+  scrapeRegulatoryDocument,
+} from "../../../../lib/regulatory/scraper";
 
 // Test data - single source for quick testing
 const testSource: RegulatorySource = {
@@ -26,26 +29,35 @@ export async function GET(request: Request) {
     // Simple auth check for test endpoint - require test-secret header
     const testSecret = request.headers.get("x-test-secret");
     if (testSecret !== process.env.CRON_SECRET) {
-      return NextResponse.json({
-        success: false,
-        error: "Unauthorized - provide x-test-secret header",
-      }, { status: 401 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Unauthorized - provide x-test-secret header",
+        },
+        { status: 401 }
+      );
     }
 
     const results: any[] = [];
     results.push({ step: "START", message: "Starting end-to-end test" });
 
     // TEST 1: Scrape document (Firecrawl API call)
-    results.push({ step: "TEST_1", message: "Scraping document from Firecrawl API" });
+    results.push({
+      step: "TEST_1",
+      message: "Scraping document from Firecrawl API",
+    });
 
     const documentData = await scrapeRegulatoryDocument(testSource);
 
     if (!documentData) {
-      return NextResponse.json({
-        success: false,
-        error: "scrapeRegulatoryDocument returned null",
-        results,
-      }, { status: 500 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: "scrapeRegulatoryDocument returned null",
+          results,
+        },
+        { status: 500 }
+      );
     }
 
     results.push({
@@ -67,11 +79,14 @@ export async function GET(request: Request) {
     const saveResult1 = await scrapeAndSaveDocument(testSource);
 
     if (saveResult1.action === "failed") {
-      return NextResponse.json({
-        success: false,
-        error: saveResult1.error || "Save failed",
-        results,
-      }, { status: 500 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: saveResult1.error || "Save failed",
+          results,
+        },
+        { status: 500 }
+      );
     }
 
     results.push({
@@ -98,7 +113,10 @@ export async function GET(request: Request) {
     });
 
     // TEST 4: Query database to verify
-    results.push({ step: "TEST_4", message: "Querying database for saved document" });
+    results.push({
+      step: "TEST_4",
+      message: "Querying database for saved document",
+    });
 
     const savedDoc = await db.query.regulatoryDocument.findFirst({
       where: eq(regulatoryDocument.sourceUrl, testSource.url),
@@ -106,11 +124,14 @@ export async function GET(request: Request) {
     });
 
     if (!savedDoc) {
-      return NextResponse.json({
-        success: false,
-        error: "Document not found in database",
-        results,
-      }, { status: 500 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Document not found in database",
+          results,
+        },
+        { status: 500 }
+      );
     }
 
     results.push({
@@ -151,18 +172,24 @@ export async function GET(request: Request) {
     });
 
     // TEST 6: Verify job record in database
-    results.push({ step: "TEST_6", message: "Verifying job record in database" });
+    results.push({
+      step: "TEST_6",
+      message: "Verifying job record in database",
+    });
 
     const jobRecord = await db.query.regulatoryScrapeJob.findFirst({
       where: eq(regulatoryScrapeJob.id, job.id),
     });
 
     if (!jobRecord) {
-      return NextResponse.json({
-        success: false,
-        error: "Job record not found in database",
-        results,
-      }, { status: 500 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Job record not found in database",
+          results,
+        },
+        { status: 500 }
+      );
     }
 
     results.push({
@@ -188,7 +215,7 @@ export async function GET(request: Request) {
       message: `Found ${allDocs.length} active documents`,
       data: {
         totalDocuments: allDocs.length,
-        sampleDocuments: allDocs.slice(0, 5).map(doc => ({
+        sampleDocuments: allDocs.slice(0, 5).map((doc) => ({
           title: doc.title,
           tokenCount: doc.tokenCount,
           sourceUrl: doc.sourceUrl,
@@ -207,12 +234,14 @@ export async function GET(request: Request) {
       message: "End-to-end test completed successfully",
       results,
     });
-
   } catch (error) {
     console.error("E2E test error:", error);
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    );
   }
 }

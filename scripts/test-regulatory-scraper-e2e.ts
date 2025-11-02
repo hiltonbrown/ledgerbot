@@ -6,17 +6,17 @@
  */
 
 import "dotenv/config";
+import { desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { regulatoryDocument, regulatoryScrapeJob } from "../lib/db/schema";
-import { eq, desc } from "drizzle-orm";
-import {
-  scrapeRegulatoryDocument,
-  scrapeAndSaveDocument,
-  runScrapingJob,
-} from "../lib/regulatory/scraper";
-import type { RegulatorySource } from "../lib/regulatory/config-parser";
 import * as schema from "../lib/db/schema";
+import { regulatoryDocument, regulatoryScrapeJob } from "../lib/db/schema";
+import type { RegulatorySource } from "../lib/regulatory/config-parser";
+import {
+  runScrapingJob,
+  scrapeAndSaveDocument,
+  scrapeRegulatoryDocument,
+} from "../lib/regulatory/scraper";
 
 // Initialize database connection directly
 const connectionString = process.env.POSTGRES_URL!;
@@ -26,17 +26,18 @@ const db = drizzle(client, { schema });
 // Test data - single source for quick testing
 const testSource: RegulatorySource = {
   country: "AU",
-  category: "award",
   section: "Fair Work (Employment Law)",
   subsection: "Minimum Wages",
+  sourceType: "web_scraping",
   url: "https://www.fairwork.gov.au/pay-and-wages/minimum-wages",
   updateFrequency: "weekly",
   priority: "high",
+  category: "award",
 };
 
 async function runTests() {
   console.log("🧪 Starting End-to-End Regulatory Scraper Test\n");
-  console.log("=" .repeat(60));
+  console.log("=".repeat(60));
 
   // Check environment
   if (!process.env.FIRECRAWL_API_KEY) {
@@ -53,9 +54,9 @@ async function runTests() {
 
   try {
     // TEST 1: Scrape document (Firecrawl API call)
-    console.log("=" .repeat(60));
+    console.log("=".repeat(60));
     console.log("TEST 1: Scraping document from Firecrawl API");
-    console.log("=" .repeat(60));
+    console.log("=".repeat(60));
     console.log(`📄 URL: ${testSource.url}`);
     console.log("⏳ Calling Firecrawl v2 API...\n");
 
@@ -68,16 +69,18 @@ async function runTests() {
 
     console.log("✅ TEST 1 PASSED: Document scraped successfully");
     console.log(`   📝 Title: ${documentData.title}`);
-    console.log(`   📏 Extracted Text Length: ${documentData.extractedText.length} chars`);
+    console.log(
+      `   📏 Extracted Text Length: ${documentData.extractedText.length} chars`
+    );
     console.log(`   🔢 Token Count: ${documentData.tokenCount} tokens`);
     console.log(`   🌐 Source URL: ${documentData.sourceUrl}`);
     console.log(`   🏷️  Category: ${documentData.category}`);
     console.log(`   🌍 Country: ${documentData.country}\n`);
 
     // TEST 2: Save to database (first time - should create)
-    console.log("=" .repeat(60));
+    console.log("=".repeat(60));
     console.log("TEST 2: Saving document to database (CREATE)");
-    console.log("=" .repeat(60));
+    console.log("=".repeat(60));
 
     const saveResult1 = await scrapeAndSaveDocument(testSource);
 
@@ -88,13 +91,15 @@ async function runTests() {
       process.exit(1);
     }
 
-    console.log(`✅ TEST 2 PASSED: Document saved with action: ${saveResult1.action}`);
+    console.log(
+      `✅ TEST 2 PASSED: Document saved with action: ${saveResult1.action}`
+    );
     console.log(`   🆔 Document ID: ${saveResult1.documentId}\n`);
 
     // TEST 3: Save again (should be unchanged)
-    console.log("=" .repeat(60));
+    console.log("=".repeat(60));
     console.log("TEST 3: Saving same document again (UNCHANGED)");
-    console.log("=" .repeat(60));
+    console.log("=".repeat(60));
 
     const saveResult2 = await scrapeAndSaveDocument(testSource);
 
@@ -109,9 +114,9 @@ async function runTests() {
     console.log(`   🆔 Document ID: ${saveResult2.documentId}\n`);
 
     // TEST 4: Query database to verify
-    console.log("=" .repeat(60));
+    console.log("=".repeat(60));
     console.log("TEST 4: Querying database for saved document");
-    console.log("=" .repeat(60));
+    console.log("=".repeat(60));
 
     const savedDoc = await db.query.regulatoryDocument.findFirst({
       where: eq(regulatoryDocument.sourceUrl, testSource.url),
@@ -126,17 +131,21 @@ async function runTests() {
     console.log("✅ TEST 4 PASSED: Document found in database");
     console.log(`   🆔 ID: ${savedDoc.id}`);
     console.log(`   📝 Title: ${savedDoc.title}`);
-    console.log(`   📏 Extracted Text: ${savedDoc.extractedText.substring(0, 100)}...`);
+    console.log(
+      `   📏 Extracted Text: ${savedDoc.extractedText.substring(0, 100)}...`
+    );
     console.log(`   🔢 Token Count: ${savedDoc.tokenCount}`);
     console.log(`   📅 Scraped At: ${savedDoc.scrapedAt}`);
     console.log(`   📅 Last Checked: ${savedDoc.lastCheckedAt}`);
     console.log(`   ✅ Status: ${savedDoc.status}\n`);
 
     // TEST 5: Run full scraping job (limited to high priority only)
-    console.log("=" .repeat(60));
+    console.log("=".repeat(60));
     console.log("TEST 5: Running full scraping job (high priority sources)");
-    console.log("=" .repeat(60));
-    console.log("⏳ This will scrape multiple sources (may take 30-60 seconds)...\n");
+    console.log("=".repeat(60));
+    console.log(
+      "⏳ This will scrape multiple sources (may take 30-60 seconds)...\n"
+    );
 
     const job = await runScrapingJob({
       country: "AU",
@@ -156,9 +165,9 @@ async function runTests() {
     }
 
     // TEST 6: Verify job record in database
-    console.log("\n" + "=" .repeat(60));
+    console.log("\n" + "=".repeat(60));
     console.log("TEST 6: Verifying job record in database");
-    console.log("=" .repeat(60));
+    console.log("=".repeat(60));
 
     const jobRecord = await db.query.regulatoryScrapeJob.findFirst({
       where: eq(regulatoryScrapeJob.id, job.id),
@@ -176,9 +185,9 @@ async function runTests() {
     console.log(`   🔄 Documents Updated: ${jobRecord.documentsUpdated}\n`);
 
     // TEST 7: Count documents in database
-    console.log("=" .repeat(60));
+    console.log("=".repeat(60));
     console.log("TEST 7: Counting regulatory documents in database");
-    console.log("=" .repeat(60));
+    console.log("=".repeat(60));
 
     const allDocs = await db.query.regulatoryDocument.findMany({
       where: eq(regulatoryDocument.status, "active"),
@@ -196,9 +205,9 @@ async function runTests() {
     }
 
     // Final summary
-    console.log("\n" + "=" .repeat(60));
+    console.log("\n" + "=".repeat(60));
     console.log("🎉 ALL TESTS PASSED!");
-    console.log("=" .repeat(60));
+    console.log("=".repeat(60));
     console.log("\n✅ End-to-End Pipeline Verified:");
     console.log("   1. ✅ Firecrawl v2 API scraping");
     console.log("   2. ✅ Document data transformation");
