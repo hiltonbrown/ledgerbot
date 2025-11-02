@@ -8,7 +8,7 @@ LedgerBot (officially "intellisync-chatbot" in package.json) is an AI-powered ac
 
 ## Key Technologies
 
-- **Framework**: Next.js 15 with experimental PPR (Partial Prerendering)
+- **Framework**: Next.js 16 with experimental PPR (Partial Prerendering)
 - **AI SDK**: Vercel AI SDK with multiple providers (Anthropic Claude, OpenAI GPT-5, Google Gemini, xAI Grok) via AI Gateway
 - **Database**: PostgreSQL with Drizzle ORM
 - **Authentication**: Clerk (clerk.com) - Modern authentication and user management
@@ -338,7 +338,7 @@ See `/docs/regulatory-system-summary.md` for complete implementation details and
   - Metadata: `description`, `tags`, `isPinned`
   - Usage timestamps: `createdAt`, `lastUsedAt`, `processedAt`
 - `UserSettings`: User preferences and customization
-  - Profile: `firstName`, `lastName`, `country`, `state`
+  - Profile: `country`, `state` (firstName/lastName managed by Clerk)
   - AI preferences: `defaultModel`, `defaultReasoning`
   - Custom prompts: `systemPrompt`, `codePrompt`, `sheetPrompt`
   - Customizable chat suggestions with enable/disable and ordering
@@ -649,7 +649,7 @@ gemini -p "@package.json Explain the dependencies and project configuration for 
 
 gemini -p "@next.config.ts Analyze the Next.js configuration and any AI-specific settings"
 
-gemini -p "@middleware.ts Review the middleware implementation for authentication and routing"
+gemini -p "@proxy.ts Review the proxy implementation for authentication and routing"
 ```
 
 **Multiple configuration files:**
@@ -696,7 +696,7 @@ gemini -p "@app/agents/ @components/agents/ Are agent dashboards properly implem
 
 **Verify authentication system:**
 ```bash
-gemini -p "@middleware.ts @app/ @lib/ Is Clerk authentication implemented? Show all auth-related middleware and API routes"
+gemini -p "@proxy.ts @app/ @lib/ Is Clerk authentication implemented? Show all auth-related proxy and API routes"
 
 gemini -p "@app/ @components/ Are protected routes and user sessions properly handled throughout the application?"
 
@@ -724,9 +724,9 @@ gemini -p "@tests/ @playwright.config.ts Is end-to-end testing properly set up w
 gemini -p "@biome.jsonc @package.json Are linting and formatting tools (Biome) configured correctly?"
 ```
 
-**Security and middleware checks:**
+**Security and proxy checks:**
 ```bash
-gemini -p "@middleware.ts @app/api/ Are proper security headers and CORS policies implemented?"
+gemini -p "@proxy.ts @app/api/ Are proper security headers and CORS policies implemented?"
 
 gemini -p "@lib/ @app/ Is input validation and sanitization implemented for user inputs and file uploads?"
 ```

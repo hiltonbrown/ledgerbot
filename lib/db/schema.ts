@@ -210,8 +210,7 @@ export const userSettings = pgTable("UserSettings", {
     .notNull()
     .unique()
     .references(() => user.id, { onDelete: "cascade" }),
-  firstName: varchar("firstName", { length: 255 }),
-  lastName: varchar("lastName", { length: 255 }),
+  // firstName and lastName removed - now managed by Clerk
   country: varchar("country", { length: 10 }),
   state: varchar("state", { length: 10 }),
   isLocked: boolean("isLocked").default(false),
