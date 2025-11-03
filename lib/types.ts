@@ -59,6 +59,7 @@ export type Attachment = {
   fileSize?: number;
   extractedText?: string;
   processingError?: string;
+  documentId?: string;
 };
 
 export const FILE_TYPE_LABELS: Record<string, string> = {
@@ -71,4 +72,5 @@ export const FILE_TYPE_LABELS: Record<string, string> = {
     "Word Document",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
     "Excel Spreadsheet",
+  "text/csv": "CSV Spreadsheet",
 };

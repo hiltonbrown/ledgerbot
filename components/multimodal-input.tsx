@@ -30,9 +30,10 @@ import { SelectItem } from "@/components/ui/select";
 import { chatModels, isReasoningModelId } from "@/lib/ai/models";
 import { myProvider } from "@/lib/ai/providers";
 import { availableTools, type ToolId } from "@/lib/ai/tools";
+import { initialArtifactData, useArtifact } from "@/hooks/use-artifact";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
-import { cn } from "@/lib/utils";
+import { cn, generateUUID } from "@/lib/utils";
 import { Context } from "./elements/context";
 import {
   PromptInput,
@@ -112,6 +113,7 @@ function PureMultimodalInput({
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
+  const { setArtifact } = useArtifact();
 
   const adjustHeight = useCallback(() => {
     if (textareaRef.current) {
@@ -173,6 +175,7 @@ function PureMultimodalInput({
           extractedText: attachment.extractedText,
           fileSize: attachment.fileSize,
           processingError: attachment.processingError,
+          documentId: attachment.documentId,
         })),
         {
           type: "text",
@@ -255,6 +258,68 @@ function PureMultimodalInput({
     [usage]
   );
 
+  useEffect(() => {
+    const csvAttachments = attachments.filter(
+      (attachment) =>
+        attachment.contentType === "text/csv" &&
+        attachment.extractedText &&
+        !attachment.documentId &&
+        !attachment.processingError
+    );
+
+    if (csvAttachments.length === 0) {
+      return;
+    }
+
+    csvAttachments.forEach((attachment) => {
+      const documentId = generateUUID();
+      const baseName = attachment.name?.replace(/\.[^.]+$/, "") ?? "Imported Spreadsheet";
+      const title = baseName.replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim() || "Imported Spreadsheet";
+
+      void (async () => {
+        try {
+          const response = await fetch(`/api/document?id=${documentId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title,
+              kind: "sheet",
+              content: attachment.extractedText ?? "",
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`Failed to persist spreadsheet (${response.status})`);
+          }
+
+          setAttachments((currentAttachments) =>
+            currentAttachments.map((item) =>
+              item.url === attachment.url
+                ? { ...item, documentId }
+                : item
+            )
+          );
+
+          setArtifact({
+            ...initialArtifactData,
+            documentId,
+            title,
+            kind: "sheet",
+            content: attachment.extractedText ?? "",
+            isVisible: true,
+            status: "idle",
+          });
+        } catch (error) {
+          console.error("Failed to import CSV attachment", error);
+          toast.error(
+            `Unable to open ${attachment.name ?? "spreadsheet"} in the editor. Please try again.`,
+            { id: `csv-import-${documentId}` }
+          );
+        }
+      })();
+    });
+  }, [attachments, setAttachments, setArtifact]);
+
   const handleFileChange = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(event.target.files || []);
@@ -295,7 +360,7 @@ function PureMultimodalInput({
         )}
 
       <input
-        accept="image/*,.pdf,.docx,.xlsx"
+        accept="image/*,.pdf,.docx,.xlsx,.csv"
         className="-top-4 -left-4 pointer-events-none fixed size-0.5 opacity-0"
         multiple
         onChange={handleFileChange}

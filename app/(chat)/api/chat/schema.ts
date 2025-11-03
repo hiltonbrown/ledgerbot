@@ -17,12 +17,14 @@ const filePartSchema = z.object({
     "application/pdf",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "text/csv",
   ] as const),
   name: z.string().min(1).max(255),
   url: z.string().url(),
   extractedText: z.string().max(50_000).optional(),
   fileSize: z.number().int().nonnegative().optional(),
   processingError: z.string().optional(),
+  documentId: z.string().uuid().optional(),
 });
 
 const partSchema = z.union([textPartSchema, filePartSchema]);
