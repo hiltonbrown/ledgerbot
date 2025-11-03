@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import {
+  extractCsvData,
   extractDocxText,
   extractPdfText,
   extractXlsxData,
@@ -17,6 +18,7 @@ const SUPPORTED_TYPES = [
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "text/csv",
 ];
 
 const FileSchema = z.object({
@@ -27,7 +29,7 @@ const FileSchema = z.object({
     })
     .refine((file) => SUPPORTED_TYPES.includes(file.type), {
       message:
-        "File type not supported. Allowed formats: PNG, JPG, GIF, WebP, PDF, DOCX, XLSX",
+        "File type not supported. Allowed formats: PNG, JPG, GIF, WebP, PDF, DOCX, XLSX, CSV",
     }),
 });
 
@@ -43,6 +45,10 @@ async function extractDocumentText(file: Blob, contentType: string) {
 
     if (contentType.includes("spreadsheetml")) {
       return { extractedText: await extractXlsxData(file) };
+    }
+
+    if (contentType === "text/csv") {
+      return { extractedText: await extractCsvData(file) };
     }
 
     return { extractedText: "" };

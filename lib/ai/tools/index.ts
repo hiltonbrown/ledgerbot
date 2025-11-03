@@ -7,7 +7,8 @@ const TOOL_DEFINITIONS = [
   {
     id: "createDocument",
     name: "Create Document",
-    description: "Create and manage documents",
+    description:
+      "Create new documents or analyse existing spreadsheets with Mastra",
   },
   {
     id: "updateDocument",

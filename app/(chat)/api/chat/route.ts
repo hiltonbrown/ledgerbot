@@ -134,6 +134,25 @@ export async function getStreamContext(): Promise<ResumableStreamContext | null>
 function includeAttachmentText(messages: ChatMessage[]): ChatMessage[] {
   return messages.map((message) => {
     const newParts = message.parts.map((part) => {
+      if (part.type === "file" && part.mediaType === "text/csv") {
+        const csvPreview = (
+          (part as { extractedText?: string }).extractedText ?? ""
+        )
+          .split("\n")
+          .slice(0, 40)
+          .join("\n");
+        const documentId = (part as { documentId?: string }).documentId;
+        const name = (part as { name?: string }).name ?? "spreadsheet";
+        const instruction = documentId
+          ? `Use the createDocument tool with { "action": "analyze", "documentId": "${documentId}", "question": "<your question>" } to analyze, summarize, or update this CSV.`
+          : "Use the createDocument tool with action `analyze` to analyze, summarize, or update this CSV.";
+
+        return {
+          type: "text" as const,
+          text: `[Spreadsheet Attachment: ${name}]\n${instruction}\n\nPreview (first rows):\n${csvPreview}\n[End Spreadsheet Attachment]`,
+        };
+      }
+
       if (
         part.type === "file" &&
         "extractedText" in part &&

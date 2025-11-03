@@ -27,12 +27,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SelectItem } from "@/components/ui/select";
+import { initialArtifactData, useArtifact } from "@/hooks/use-artifact";
 import { chatModels, isReasoningModelId } from "@/lib/ai/models";
 import { myProvider } from "@/lib/ai/providers";
 import { availableTools, type ToolId } from "@/lib/ai/tools";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
-import { cn } from "@/lib/utils";
+import { cn, generateUUID } from "@/lib/utils";
 import { Context } from "./elements/context";
 import {
   PromptInput,
@@ -112,6 +113,7 @@ function PureMultimodalInput({
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
+  const { setArtifact } = useArtifact();
 
   const adjustHeight = useCallback(() => {
     if (textareaRef.current) {
@@ -173,6 +175,7 @@ function PureMultimodalInput({
           extractedText: attachment.extractedText,
           fileSize: attachment.fileSize,
           processingError: attachment.processingError,
+          documentId: attachment.documentId,
         })),
         {
           type: "text",
@@ -255,6 +258,71 @@ function PureMultimodalInput({
     [usage]
   );
 
+  useEffect(() => {
+    const csvAttachments = attachments.filter(
+      (attachment) =>
+        attachment.contentType === "text/csv" &&
+        attachment.extractedText &&
+        !attachment.documentId &&
+        !attachment.processingError
+    );
+
+    if (csvAttachments.length === 0) {
+      return;
+    }
+
+    csvAttachments.forEach((attachment) => {
+      const documentId = generateUUID();
+      const baseName =
+        attachment.name?.replace(/\.[^.]+$/, "") ?? "Imported Spreadsheet";
+      const title =
+        baseName.replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim() ||
+        "Imported Spreadsheet";
+
+      void (async () => {
+        try {
+          const response = await fetch(`/api/document?id=${documentId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title,
+              kind: "sheet",
+              content: attachment.extractedText ?? "",
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error(
+              `Failed to persist spreadsheet (${response.status})`
+            );
+          }
+
+          setAttachments((currentAttachments) =>
+            currentAttachments.map((item) =>
+              item.url === attachment.url ? { ...item, documentId } : item
+            )
+          );
+
+          setArtifact({
+            ...initialArtifactData,
+            documentId,
+            title,
+            kind: "sheet",
+            content: attachment.extractedText ?? "",
+            isVisible: true,
+            status: "idle",
+          });
+        } catch (error) {
+          console.error("Failed to import CSV attachment", error);
+          toast.error(
+            `Unable to open ${attachment.name ?? "spreadsheet"} in the editor. Please try again.`,
+            { id: `csv-import-${documentId}` }
+          );
+        }
+      })();
+    });
+  }, [attachments, setAttachments, setArtifact]);
+
   const handleFileChange = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(event.target.files || []);
@@ -281,6 +349,58 @@ function PureMultimodalInput({
     [setAttachments, uploadFile]
   );
 
+  const handleFileDrop = useCallback(
+    async (files: File[]) => {
+      setUploadQueue(files.map((file) => file.name));
+
+      try {
+        const uploadPromises = files.map((file) => uploadFile(file));
+        const uploadedAttachments = await Promise.all(uploadPromises);
+        const successfullyUploadedAttachments = uploadedAttachments.filter(
+          (attachment) => attachment !== undefined
+        );
+
+        setAttachments((currentAttachments) => [
+          ...currentAttachments,
+          ...successfullyUploadedAttachments,
+        ]);
+      } catch (error) {
+        console.error("Error uploading files!", error);
+      } finally {
+        setUploadQueue([]);
+      }
+    },
+    [setAttachments, uploadFile]
+  );
+
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+
+  const handleDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDraggingOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDraggingOver(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setIsDraggingOver(false);
+
+      const files = Array.from(event.dataTransfer.files);
+      if (files.length > 0) {
+        void handleFileDrop(files);
+      }
+    },
+    [handleFileDrop]
+  );
+
   return (
     <div className={cn("relative flex w-full flex-col gap-4", className)}>
       {messages.length === 0 &&
@@ -295,8 +415,8 @@ function PureMultimodalInput({
         )}
 
       <input
-        accept="image/*,.pdf,.docx,.xlsx"
-        className="-top-4 -left-4 pointer-events-none fixed size-0.5 opacity-0"
+        accept="image/*,.pdf,.docx,.xlsx,.csv"
+        className="fixed size-0.5 opacity-0 -left-4 -top-4"
         multiple
         onChange={handleFileChange}
         ref={fileInputRef}
@@ -305,7 +425,13 @@ function PureMultimodalInput({
       />
 
       <PromptInput
-        className="rounded-xl border border-border bg-background p-3 shadow-xs transition-all duration-200 focus-within:border-border hover:border-muted-foreground/50"
+        className={cn(
+          "rounded-xl border border-border bg-background p-3 shadow-xs transition-all duration-200 focus-within:border-border hover:border-muted-foreground/50",
+          isDraggingOver && "border-2 border-primary bg-accent/50"
+        )}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
         onSubmit={(event) => {
           event.preventDefault();
           if (isAwaitingResponse) {
@@ -456,8 +582,10 @@ function PureAttachmentsButton({
       disabled={isAwaitingResponse || isReasoningModel}
       onClick={(event) => {
         event.preventDefault();
+        event.stopPropagation();
         fileInputRef.current?.click();
       }}
+      type="button"
       variant="ghost"
     >
       <PaperclipIcon size={14} style={{ width: 14, height: 14 }} />

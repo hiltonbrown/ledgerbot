@@ -340,3 +340,13 @@ export async function extractXlsxData(blob: Blob): Promise<string> {
 
   return sheetOutputs.join("\n\n");
 }
+
+export async function extractCsvData(blob: Blob): Promise<string> {
+  const text = (await blob.text()).trim();
+
+  if (text.length <= 50_000) {
+    return text;
+  }
+
+  return `${text.slice(0, 49_500)}\n... [truncated]`;
+}

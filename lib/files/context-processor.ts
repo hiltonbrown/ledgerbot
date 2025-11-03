@@ -1,6 +1,11 @@
 import { updateContextFileContent } from "@/lib/db/queries";
 
-import { extractDocxText, extractPdfText, extractXlsxData } from "./parsers";
+import {
+  extractCsvData,
+  extractDocxText,
+  extractPdfText,
+  extractXlsxData,
+} from "./parsers";
 
 function estimateTokenCount(text: string | null | undefined): number {
   if (!text) {
@@ -29,6 +34,8 @@ export async function processContextFile(
       extractedText = await extractDocxText(blob);
     } else if (fileType.includes("spreadsheetml")) {
       extractedText = await extractXlsxData(blob);
+    } else if (fileType === "text/csv") {
+      extractedText = await extractCsvData(blob);
     } else if (fileType.startsWith("image/")) {
       extractedText = "";
     }

@@ -76,7 +76,7 @@ export default function QandAAgentPage() {
   const [streamResponses, setStreamResponses] = useState(true);
   const [showCitations, setShowCitations] = useState(true);
   const [input, setInput] = useState("");
-  const [messageMetadata, setMessageMetadata] = useState<
+  const [messageMetadata, _setMessageMetadata] = useState<
     Map<string, MessageMetadata>
   >(new Map());
 
@@ -256,7 +256,7 @@ export default function QandAAgentPage() {
 
                       <div className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">
                         {message.parts
-                          ?.map((part, idx) =>
+                          ?.map((part, _idx) =>
                             part.type === "text" ? part.text : null
                           )
                           .filter(Boolean)

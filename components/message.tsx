@@ -193,7 +193,7 @@ const PurePreviewMessage = ({
             }
 
             if (type === "tool-createDocument") {
-              const { toolCallId } = part;
+              const { toolCallId, state } = part;
 
               if (part.output && "error" in part.output) {
                 return (
@@ -203,6 +203,38 @@ const PurePreviewMessage = ({
                   >
                     Error creating document: {String(part.output.error)}
                   </div>
+                );
+              }
+
+              if (
+                part.output &&
+                typeof part.output === "object" &&
+                "action" in part.output &&
+                part.output.action === "analyze"
+              ) {
+                return (
+                  <Tool defaultOpen={true} key={toolCallId}>
+                    <ToolHeader state={state} type="tool-createDocument" />
+                    <ToolContent>
+                      {state === "input-available" && "input" in part && (
+                        <ToolInput input={(part as any).input} />
+                      )}
+                      {state === "output-available" && (
+                        <ToolOutput
+                          errorText={undefined}
+                          output={
+                            "error" in part.output ? (
+                              <div className="rounded border p-2 text-red-500">
+                                Error: {String(part.output.error)}
+                              </div>
+                            ) : (
+                              <SpreadsheetAnalysisResult result={part.output} />
+                            )
+                          }
+                        />
+                      )}
+                    </ToolContent>
+                  </Tool>
                 );
               }
 
@@ -289,6 +321,73 @@ const PurePreviewMessage = ({
         </div>
       </div>
     </motion.div>
+  );
+};
+
+const SpreadsheetAnalysisResult = ({ result }: { result: any }) => {
+  if (!result) {
+    return null;
+  }
+
+  const {
+    answer,
+    reasoning,
+    highlights,
+    followUpQuestions,
+    sampledRows,
+    numericSummary,
+  } = result;
+
+  return (
+    <div className="space-y-3 text-xs leading-relaxed">
+      {answer && (
+        <div>
+          <span className="font-semibold">Answer:</span> <span>{answer}</span>
+        </div>
+      )}
+      {reasoning && (
+        <div>
+          <span className="font-semibold">Reasoning:</span>{" "}
+          <span>{reasoning}</span>
+        </div>
+      )}
+      {Array.isArray(highlights) && highlights.length > 0 && (
+        <div>
+          <div className="font-semibold">Highlights</div>
+          <ul className="mt-1 list-disc space-y-1 pl-4">
+            {highlights.map((item: string, index: number) => (
+              <li key={`${item}-${index}`}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {Array.isArray(followUpQuestions) && followUpQuestions.length > 0 && (
+        <div>
+          <div className="font-semibold">Follow-up questions</div>
+          <ul className="mt-1 list-disc space-y-1 pl-4">
+            {followUpQuestions.map((item: string, index: number) => (
+              <li key={`${item}-${index}`}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {numericSummary && Object.keys(numericSummary).length > 0 && (
+        <div>
+          <div className="font-semibold">Numeric summary</div>
+          <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap rounded-md bg-muted p-2">
+            {JSON.stringify(numericSummary, null, 2)}
+          </pre>
+        </div>
+      )}
+      {Array.isArray(sampledRows) && sampledRows.length > 0 && (
+        <div>
+          <div className="font-semibold">Sample rows</div>
+          <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap rounded-md bg-muted p-2">
+            {JSON.stringify(sampledRows.slice(0, 5), null, 2)}
+          </pre>
+        </div>
+      )}
+    </div>
   );
 };
 
