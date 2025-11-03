@@ -19,7 +19,7 @@ type RunMastraCsvToQuestionsProps = {
   question: string;
 };
 
-const MASRA_SYSTEM_PROMPT = `You are the Mastra CSV-to-Questions analyst. Given structured CSV data and a business question you:
+const MASTRA_SYSTEM_PROMPT = `You are the Mastra CSV-to-Questions analyst. Given structured CSV data and a business question you:
 1. Inspect the available columns and row counts.
 2. Leverage provided numeric summaries to compute accurate aggregates (sums, averages, min, max).
 3. Highlight key insights that directly answer the question.
