@@ -44,7 +44,12 @@ function buildNumericSummary(
   > = {};
 
   for (const header of headers) {
-    summary[header] = { count: 0, sum: 0, min: Number.POSITIVE_INFINITY, max: Number.NEGATIVE_INFINITY };
+    summary[header] = {
+      count: 0,
+      sum: 0,
+      min: Number.POSITIVE_INFINITY,
+      max: Number.NEGATIVE_INFINITY,
+    };
   }
 
   for (const row of rows) {
@@ -55,7 +60,9 @@ function buildNumericSummary(
       }
 
       const numericValue =
-        typeof value === "number" ? value : Number.parseFloat(String(value).replace(/[^0-9.\-]/g, ""));
+        typeof value === "number"
+          ? value
+          : Number.parseFloat(String(value).replace(/[^0-9.-]/g, ""));
 
       if (!Number.isFinite(numericValue)) {
         continue;
@@ -130,8 +137,8 @@ export async function runMastraCsvToQuestions({
     `Columns: ${headers.length > 0 ? headers.join(", ") : "none"}`,
   ].join("\n");
 
-  const summaryForModel = JSON.stringify(numericSummary).slice(0, 4_000);
-  const sampleForModel = JSON.stringify(sampledRows).slice(0, 4_000);
+  const summaryForModel = JSON.stringify(numericSummary).slice(0, 4000);
+  const sampleForModel = JSON.stringify(sampledRows).slice(0, 4000);
 
   const prompt = `# Dataset Overview\n${datasetDescription}\n\n# Numeric Summary (partial)\n${summaryForModel}\n\n# Sample Rows\n${sampleForModel}\n\n# Question\n${question}\n\nReturn a JSON object with keys answer, reasoning, highlights, followUpQuestions.`;
 

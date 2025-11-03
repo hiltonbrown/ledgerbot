@@ -27,10 +27,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SelectItem } from "@/components/ui/select";
+import { initialArtifactData, useArtifact } from "@/hooks/use-artifact";
 import { chatModels, isReasoningModelId } from "@/lib/ai/models";
 import { myProvider } from "@/lib/ai/providers";
 import { availableTools, type ToolId } from "@/lib/ai/tools";
-import { initialArtifactData, useArtifact } from "@/hooks/use-artifact";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
 import { cn, generateUUID } from "@/lib/utils";
@@ -273,8 +273,11 @@ function PureMultimodalInput({
 
     csvAttachments.forEach((attachment) => {
       const documentId = generateUUID();
-      const baseName = attachment.name?.replace(/\.[^.]+$/, "") ?? "Imported Spreadsheet";
-      const title = baseName.replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim() || "Imported Spreadsheet";
+      const baseName =
+        attachment.name?.replace(/\.[^.]+$/, "") ?? "Imported Spreadsheet";
+      const title =
+        baseName.replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim() ||
+        "Imported Spreadsheet";
 
       void (async () => {
         try {
@@ -289,14 +292,14 @@ function PureMultimodalInput({
           });
 
           if (!response.ok) {
-            throw new Error(`Failed to persist spreadsheet (${response.status})`);
+            throw new Error(
+              `Failed to persist spreadsheet (${response.status})`
+            );
           }
 
           setAttachments((currentAttachments) =>
             currentAttachments.map((item) =>
-              item.url === attachment.url
-                ? { ...item, documentId }
-                : item
+              item.url === attachment.url ? { ...item, documentId } : item
             )
           );
 

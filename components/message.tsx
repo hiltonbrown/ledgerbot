@@ -216,8 +216,8 @@ const PurePreviewMessage = ({
                   <Tool defaultOpen={true} key={toolCallId}>
                     <ToolHeader state={state} type="tool-createDocument" />
                     <ToolContent>
-                      {state === "input-available" && (
-                        <ToolInput input={part.input} />
+                      {state === "input-available" && "input" in part && (
+                        <ToolInput input={(part as any).input} />
                       )}
                       {state === "output-available" && (
                         <ToolOutput
@@ -342,8 +342,7 @@ const SpreadsheetAnalysisResult = ({ result }: { result: any }) => {
     <div className="space-y-3 text-xs leading-relaxed">
       {answer && (
         <div>
-          <span className="font-semibold">Answer:</span>{" "}
-          <span>{answer}</span>
+          <span className="font-semibold">Answer:</span> <span>{answer}</span>
         </div>
       )}
       {reasoning && (

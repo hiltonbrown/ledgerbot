@@ -135,7 +135,9 @@ function includeAttachmentText(messages: ChatMessage[]): ChatMessage[] {
   return messages.map((message) => {
     const newParts = message.parts.map((part) => {
       if (part.type === "file" && part.mediaType === "text/csv") {
-        const csvPreview = (part.extractedText ?? "")
+        const csvPreview = (
+          (part as { extractedText?: string }).extractedText ?? ""
+        )
           .split("\n")
           .slice(0, 40)
           .join("\n");

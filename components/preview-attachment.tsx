@@ -36,10 +36,7 @@ export const PreviewAttachment = ({
       return <FileTextIcon className="size-8 text-blue-500" />;
     }
 
-    if (
-      contentType?.includes("spreadsheetml") ||
-      contentType === "text/csv"
-    ) {
+    if (contentType?.includes("spreadsheetml") || contentType === "text/csv") {
       return <TableIcon className="size-8 text-green-500" />;
     }
 

@@ -5,9 +5,9 @@ import {
   documentHandlersByArtifactKind,
 } from "@/lib/artifacts/server";
 import { getDocumentById } from "@/lib/db/queries";
+import { runMastraCsvToQuestions } from "@/lib/mastra/csv-to-questions";
 import type { ChatMessage } from "@/lib/types";
 import type { AuthUser } from "@/lib/types/auth";
-import { runMastraCsvToQuestions } from "@/lib/mastra/csv-to-questions";
 import { generateUUID } from "@/lib/utils";
 
 type CreateDocumentProps = {
@@ -23,11 +23,7 @@ const inputSchema = z
       .describe(
         "Choose `create` to draft a new document or `analyze` to answer questions about an existing spreadsheet."
       ),
-    title: z
-      .string()
-      .min(1)
-      .describe("Title for the new document")
-      .optional(),
+    title: z.string().min(1).describe("Title for the new document").optional(),
     kind: z
       .enum(artifactKinds)
       .describe("Type of document: text, code, or sheet")
