@@ -416,7 +416,7 @@ function PureMultimodalInput({
 
       <input
         accept="image/*,.pdf,.docx,.xlsx,.csv"
-        className="-top-4 -left-4 pointer-events-none fixed size-0.5 opacity-0"
+        className="fixed size-0.5 opacity-0 -left-4 -top-4"
         multiple
         onChange={handleFileChange}
         ref={fileInputRef}
@@ -582,8 +582,10 @@ function PureAttachmentsButton({
       disabled={isAwaitingResponse || isReasoningModel}
       onClick={(event) => {
         event.preventDefault();
+        event.stopPropagation();
         fileInputRef.current?.click();
       }}
+      type="button"
       variant="ghost"
     >
       <PaperclipIcon size={14} style={{ width: 14, height: 14 }} />
