@@ -4,8 +4,6 @@ import { chatModels } from "@/lib/ai/models";
 import {
   getTokenUsageByUserId,
   getTokenUsageTimeseries,
-  type TokenUsageRow,
-  type TokenUsageTimeseriesRow,
 } from "@/lib/db/queries";
 
 // Legacy usage metric types (keep for backward compatibility)
@@ -87,7 +85,9 @@ export function getUsageSummary(): UsageSummary {
 }
 
 function getModelName(modelId: string | null): string {
-  if (!modelId) return "Unknown Model";
+  if (!modelId) {
+    return "Unknown Model";
+  }
 
   const model = chatModels.find((m) => m.vercelId === modelId);
   return model?.name ?? modelId;
