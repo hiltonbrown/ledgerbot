@@ -137,7 +137,7 @@ export async function runMastraCsvToQuestions({
 
   const { text } = await generateText({
     model: myProvider.languageModel("artifact-model"),
-    system: MASRA_SYSTEM_PROMPT,
+    system: MASTRA_SYSTEM_PROMPT,
     prompt,
   });
 
