@@ -21,15 +21,30 @@ import { cn } from "@/lib/utils";
 
 export type PromptInputProps = HTMLAttributes<HTMLFormElement>;
 
-export const PromptInput = ({ className, ...props }: PromptInputProps) => (
-  <form
-    className={cn(
-      "w-full overflow-hidden rounded-xl border bg-background shadow-xs",
-      className
-    )}
-    {...props}
-  />
-);
+export const PromptInput = ({ className, ...props }: PromptInputProps) => {
+  // Prevent default drag behavior on the form to enable custom drag-and-drop
+  const handleDragOver = (e: React.DragEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    props.onDragOver?.(e);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    props.onDrop?.(e);
+  };
+
+  return (
+    <form
+      className={cn(
+        "w-full overflow-hidden rounded-xl border bg-background shadow-xs",
+        className
+      )}
+      {...props}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    />
+  );
+};
 
 export type PromptInputTextareaProps = ComponentProps<typeof Textarea> & {
   minHeight?: number;

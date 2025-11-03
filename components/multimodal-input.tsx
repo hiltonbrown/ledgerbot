@@ -349,6 +349,58 @@ function PureMultimodalInput({
     [setAttachments, uploadFile]
   );
 
+  const handleFileDrop = useCallback(
+    async (files: File[]) => {
+      setUploadQueue(files.map((file) => file.name));
+
+      try {
+        const uploadPromises = files.map((file) => uploadFile(file));
+        const uploadedAttachments = await Promise.all(uploadPromises);
+        const successfullyUploadedAttachments = uploadedAttachments.filter(
+          (attachment) => attachment !== undefined
+        );
+
+        setAttachments((currentAttachments) => [
+          ...currentAttachments,
+          ...successfullyUploadedAttachments,
+        ]);
+      } catch (error) {
+        console.error("Error uploading files!", error);
+      } finally {
+        setUploadQueue([]);
+      }
+    },
+    [setAttachments, uploadFile]
+  );
+
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+
+  const handleDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDraggingOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDraggingOver(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setIsDraggingOver(false);
+
+      const files = Array.from(event.dataTransfer.files);
+      if (files.length > 0) {
+        void handleFileDrop(files);
+      }
+    },
+    [handleFileDrop]
+  );
+
   return (
     <div className={cn("relative flex w-full flex-col gap-4", className)}>
       {messages.length === 0 &&
@@ -373,7 +425,13 @@ function PureMultimodalInput({
       />
 
       <PromptInput
-        className="rounded-xl border border-border bg-background p-3 shadow-xs transition-all duration-200 focus-within:border-border hover:border-muted-foreground/50"
+        className={cn(
+          "rounded-xl border border-border bg-background p-3 shadow-xs transition-all duration-200 focus-within:border-border hover:border-muted-foreground/50",
+          isDraggingOver && "border-2 border-primary bg-accent/50"
+        )}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
         onSubmit={(event) => {
           event.preventDefault();
           if (isAwaitingResponse) {
