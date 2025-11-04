@@ -301,9 +301,7 @@ async function buildSummary({
   followUp?: string;
 }): Promise<SummarySynthesis> {
   const combined = evaluations.map((evaluation) => {
-    const hit = hits[evaluation.index - 1];
-    const fallback = hits[evaluation.index - 1] ?? hits[evaluation.index];
-    const reference = hit ?? fallback;
+    const reference = hits[evaluation.index - 1] ?? hits[evaluation.index] ?? { title: "Unknown Source", url: "" };
 
     return {
       index: evaluation.index,
