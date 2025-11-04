@@ -120,21 +120,6 @@ export class ChatPage {
     expect(await this.getSelectedModel()).toBe(chatModel.name);
   }
 
-  async getSelectedVisibility() {
-    const visibilityId = await this.page
-      .getByTestId("visibility-selector")
-      .innerText();
-    return visibilityId;
-  }
-
-  async chooseVisibilityFromSelector(chatVisibility: "public" | "private") {
-    await this.page.getByTestId("visibility-selector").click();
-    await this.page
-      .getByTestId(`visibility-selector-item-${chatVisibility}`)
-      .click();
-    expect(await this.getSelectedVisibility()).toBe(chatVisibility);
-  }
-
   async toggleReasoningPreference() {
     await this.page.getByTestId("reasoning-toggle").click();
   }

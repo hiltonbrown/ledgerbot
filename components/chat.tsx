@@ -33,7 +33,7 @@ import { Messages } from "./messages";
 import { MultimodalInput } from "./multimodal-input";
 import { getChatHistoryPaginationKey } from "./sidebar-history";
 import { toast } from "./toast";
-import type { VisibilityType } from "./visibility-selector";
+import type { VisibilityType } from "@/lib/chat/visibility";
 
 export function Chat({
   id,
@@ -257,7 +257,6 @@ export function Chat({
         <ChatHeader
           chatId={id}
           isReadonly={isReadonly}
-          selectedVisibilityType={initialVisibilityType}
         />
 
         <Messages

@@ -2,7 +2,10 @@
 
 import { generateText, type UIMessage } from "ai";
 import { cookies } from "next/headers";
-import type { VisibilityType } from "@/components/visibility-selector";
+import {
+  sanitizeVisibility,
+  type VisibilityType,
+} from "@/lib/chat/visibility";
 import { myProvider } from "@/lib/ai/providers";
 import {
   deleteMessagesByChatIdAfterTimestamp,
@@ -55,5 +58,10 @@ export async function updateChatVisibility({
   chatId: string;
   visibility: VisibilityType;
 }) {
-  await updateChatVisiblityById({ chatId, visibility });
+  const sanitizedVisibility = sanitizeVisibility(visibility);
+
+  await updateChatVisiblityById({
+    chatId,
+    visibility: sanitizedVisibility,
+  });
 }
