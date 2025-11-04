@@ -181,10 +181,9 @@ function attachmentToMetadata(
         parentSessionId: attachment.parentSessionId,
       };
     default:
-      return {
-        sessionId: attachment.sessionId,
-        status: 'error',
-      };
+      throw new Error(
+        `Invalid DeepResearchAttachment type: ${(attachment as any).type}. Attachment: ${JSON.stringify(attachment)}`
+      );
   }
 }
 
