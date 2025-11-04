@@ -211,12 +211,11 @@ export default function DocumentManagementAgentPage() {
           }),
         });
 
-        const data: QuestionsResponse | { error?: string } = await response.json();
-
         if (!response.ok) {
-          throw new Error(data?.error ?? "Failed to generate follow-up questions.");
+          const errorData: { error?: string } = await response.json();
+          throw new Error(errorData?.error ?? "Failed to generate follow-up questions.");
         }
-
+        const data: QuestionsResponse = await response.json();
         setQuestions(data.questions ?? []);
         appendWarnings(data.warnings);
         setError(null);
