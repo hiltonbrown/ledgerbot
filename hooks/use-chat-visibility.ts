@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import { unstable_serialize } from "swr/infinite";
 import { updateChatVisibility } from "@/app/(chat)/actions";
@@ -8,7 +8,11 @@ import {
   type ChatHistory,
   getChatHistoryPaginationKey,
 } from "@/components/sidebar-history";
-import type { VisibilityType } from "@/components/visibility-selector";
+import {
+  DEFAULT_CHAT_VISIBILITY,
+  sanitizeVisibility,
+  type VisibilityType,
+} from "@/lib/chat/visibility";
 
 export function useChatVisibility({
   chatId,
@@ -20,34 +24,59 @@ export function useChatVisibility({
   const { mutate, cache } = useSWRConfig();
   const history: ChatHistory = cache.get("/api/history")?.data;
 
+  const sanitizedInitialVisibility = useMemo(
+    () => sanitizeVisibility(initialVisibilityType),
+    [initialVisibilityType]
+  );
+
   const { data: localVisibility, mutate: setLocalVisibility } = useSWR(
     `${chatId}-visibility`,
     null,
     {
-      fallbackData: initialVisibilityType,
+      fallbackData: sanitizedInitialVisibility,
     }
   );
 
-  const visibilityType = useMemo(() => {
+  const historyVisibility = useMemo(() => {
     if (!history) {
-      return localVisibility;
+      return undefined;
     }
+
     const chat = history.chats.find((currentChat) => currentChat.id === chatId);
-    if (!chat) {
-      return "private";
+
+    return chat?.visibility;
+  }, [history, chatId]);
+
+  const visibilityType = useMemo(() => {
+    const sourceVisibility = historyVisibility ?? localVisibility;
+
+    if (!sourceVisibility) {
+      return DEFAULT_CHAT_VISIBILITY;
     }
-    return chat.visibility;
-  }, [history, chatId, localVisibility]);
 
-  const setVisibilityType = (updatedVisibilityType: VisibilityType) => {
-    setLocalVisibility(updatedVisibilityType);
-    mutate(unstable_serialize(getChatHistoryPaginationKey));
+    return sanitizeVisibility(sourceVisibility);
+  }, [historyVisibility, localVisibility]);
 
-    updateChatVisibility({
-      chatId,
-      visibility: updatedVisibilityType,
-    });
-  };
+  const setVisibilityType = useCallback(
+    (updatedVisibilityType: VisibilityType) => {
+      const sanitizedVisibility = sanitizeVisibility(updatedVisibilityType);
+
+      setLocalVisibility(sanitizedVisibility);
+      mutate(unstable_serialize(getChatHistoryPaginationKey));
+
+      updateChatVisibility({
+        chatId,
+        visibility: sanitizedVisibility,
+      });
+    },
+    [chatId, mutate, setLocalVisibility]
+  );
+
+  useEffect(() => {
+    if (historyVisibility === "public") {
+      setVisibilityType(DEFAULT_CHAT_VISIBILITY);
+    }
+  }, [historyVisibility, setVisibilityType]);
 
   return { visibilityType, setVisibilityType };
 }

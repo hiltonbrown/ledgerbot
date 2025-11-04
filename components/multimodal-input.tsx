@@ -58,7 +58,7 @@ import { SuggestedActions } from "./suggested-actions";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
 import { Switch } from "./ui/switch";
-import type { VisibilityType } from "./visibility-selector";
+import type { VisibilityType } from "@/lib/chat/visibility";
 
 function PureMultimodalInput({
   chatId,

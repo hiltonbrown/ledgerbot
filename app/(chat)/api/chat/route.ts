@@ -17,7 +17,11 @@ import {
 import type { ModelCatalog } from "tokenlens/core";
 import { fetchModels } from "tokenlens/fetch";
 import { getUsage } from "tokenlens/helpers";
-import type { VisibilityType } from "@/components/visibility-selector";
+import {
+  DEFAULT_CHAT_VISIBILITY,
+  sanitizeVisibility,
+  type VisibilityType,
+} from "@/lib/chat/visibility";
 import { buildUserContext } from "@/lib/ai/context-manager";
 import { entitlementsByUserType } from "@/lib/ai/entitlements";
 import { type ChatModel, isReasoningModelId } from "@/lib/ai/models";
@@ -53,6 +57,7 @@ import {
   saveChat,
   saveMessages,
   updateChatLastContextById,
+  updateChatVisiblityById,
 } from "@/lib/db/queries";
 import { ChatSDKError } from "@/lib/errors";
 import {
@@ -267,6 +272,8 @@ export async function POST(request: Request) {
       deepResearch?: boolean;
     } = requestBody;
 
+    const sanitizedVisibility = sanitizeVisibility(selectedVisibilityType);
+
     const user = await getAuthUser();
 
     if (!user) {
@@ -290,6 +297,13 @@ export async function POST(request: Request) {
       if (chat.userId !== user.id) {
         return new ChatSDKError("forbidden:chat").toResponse();
       }
+
+      if (chat.visibility !== DEFAULT_CHAT_VISIBILITY) {
+        await updateChatVisiblityById({
+          chatId: chat.id,
+          visibility: DEFAULT_CHAT_VISIBILITY,
+        });
+      }
     } else {
       const title = await generateTitleFromUserMessage({
         message,
@@ -299,7 +313,7 @@ export async function POST(request: Request) {
         id,
         userId: user.id,
         title,
-        visibility: selectedVisibilityType,
+        visibility: sanitizedVisibility,
       });
     }
 
