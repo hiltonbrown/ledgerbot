@@ -343,7 +343,7 @@ async function buildSummary({
       followUpQuestions: [],
       confidence:
         evaluations.reduce((acc, curr) => acc + (curr.confidence ?? 0), 0) /
-          Math.max(evaluations.length, 1) || 0,
+          Math.max(evaluations.length, 1),
       approvalMessage:
         "Respond with 'approve' to generate a formal report or ask for a deeper investigation.",
     } satisfies SummarySynthesis;
