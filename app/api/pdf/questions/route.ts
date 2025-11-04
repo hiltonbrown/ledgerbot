@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-
+import type { PdfSectionSummary } from "@/lib/agents/docmanagement/types";
 import {
   buildSummaryDocument,
   generatePdfQuestions,
 } from "@/lib/agents/docmanagement/workflow";
-import type { PdfSectionSummary } from "@/lib/agents/docmanagement/types";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import {
   getContextFileById,

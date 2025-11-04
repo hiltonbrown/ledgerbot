@@ -330,10 +330,18 @@ export async function updateContextFileContent({
       })
       .where(eq(contextFile.id, id))
       .returning();
-  } catch (_error) {
+  } catch (error) {
+    console.error("[db] Failed to update context file:", error);
+    console.error("[db] Update params:", {
+      id,
+      extractedText: extractedText ? `${extractedText.length} chars` : undefined,
+      tokenCount,
+      status,
+      errorMessage,
+    });
     throw new ChatSDKError(
       "bad_request:database",
-      "Failed to update context file"
+      `Failed to update context file: ${error instanceof Error ? error.message : String(error)}`
     );
   }
 }

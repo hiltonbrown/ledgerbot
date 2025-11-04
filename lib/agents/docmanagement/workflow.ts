@@ -10,11 +10,14 @@ import type {
   PdfSummaryResult,
 } from "./types";
 
-const SUMMARY_MODEL = "openai-gpt-5-mini";
+// Claude Haiku 4.5 is 3-5x faster than GPT-5-mini for structured extraction
+const SUMMARY_MODEL = "anthropic-claude-haiku-4-5";
 const QA_MODEL = "google-gemini-2-5-flash";
 
-const CHUNK_SIZE = 3200;
-const CHUNK_OVERLAP = 320;
+// Increased chunk size to reduce total API calls (Claude Haiku handles larger context well)
+// 51k chars / 8k chunks = ~7 chunks instead of 16 chunks with old 3.2k size
+const CHUNK_SIZE = 8000; // Increased from 3200
+const CHUNK_OVERLAP = 400; // Proportional increase
 const MAX_EXCERPT_LENGTH = 900;
 
 const CHUNK_SYSTEM_PROMPT = `You are LedgerBot's document intake summariser. The user is an Australian small business operator.
@@ -97,9 +100,12 @@ function accumulateUsage(target: UsageTracker, usage?: UsageTracker | null) {
     return;
   }
 
-  target.totalInputTokens = (target.totalInputTokens ?? 0) + (usage.totalInputTokens ?? 0);
-  target.totalOutputTokens = (target.totalOutputTokens ?? 0) + (usage.totalOutputTokens ?? 0);
-  target.totalBilledTokens = (target.totalBilledTokens ?? 0) + (usage.totalBilledTokens ?? 0);
+  target.totalInputTokens =
+    (target.totalInputTokens ?? 0) + (usage.totalInputTokens ?? 0);
+  target.totalOutputTokens =
+    (target.totalOutputTokens ?? 0) + (usage.totalOutputTokens ?? 0);
+  target.totalBilledTokens =
+    (target.totalBilledTokens ?? 0) + (usage.totalBilledTokens ?? 0);
 }
 
 function cleanJsonResponse(raw: string) {
@@ -184,9 +190,15 @@ function buildSectionPreview(text: string): string {
 export async function summarizePdfContent({
   text,
   fileName,
+  onProgress,
 }: {
   text: string;
   fileName?: string;
+  onProgress?: (event: {
+    stage: "chunking" | "sections" | "consolidating" | "complete";
+    progress: number;
+    message: string;
+  }) => void;
 }): Promise<PdfSummaryResult> {
   const warnings: string[] = [];
 
@@ -204,6 +216,13 @@ export async function summarizePdfContent({
   }
 
   const usage: UsageTracker = {};
+
+  onProgress?.({
+    stage: "chunking",
+    progress: 10,
+    message: "Breaking document into sections...",
+  });
+
   const chunks = chunkText(text);
 
   if (chunks.length === 0) {
@@ -217,14 +236,21 @@ export async function summarizePdfContent({
     };
   }
 
-  const sectionSummaries: PdfSectionSummary[] = [];
+  onProgress?.({
+    stage: "sections",
+    progress: 20,
+    message: `Analyzing ${chunks.length} sections in parallel...`,
+  });
 
-  for (const [index, chunk] of chunks.entries()) {
+  // Process all chunks in parallel for dramatic speedup
+  const chunkPromises = chunks.map(async (chunk, index) => {
     const prompt = `Document: ${fileName ?? "uploaded PDF"}\nSection ${
       index + 1
     } of ${chunks.length}.\n\nSnippet:\n"""${chunk.text.slice(0, CHUNK_SIZE)}"""`;
 
     let parsed = null as ChunkSummary | null;
+    let chunkUsage: UsageTracker = {};
+
     try {
       const { text: responseText, usage: callUsage } = await generateText({
         model: myProvider.languageModel(SUMMARY_MODEL),
@@ -233,7 +259,7 @@ export async function summarizePdfContent({
         temperature: 0.2,
       });
 
-      accumulateUsage(usage, callUsage as UsageTracker);
+      chunkUsage = callUsage as UsageTracker;
       parsed = safeJsonParse<ChunkSummary>(responseText);
     } catch (error) {
       warnings.push(
@@ -250,16 +276,34 @@ export async function summarizePdfContent({
       parsed = deriveFallbackSummary(chunk.text);
     }
 
-    sectionSummaries.push({
-      id: chunk.id,
-      title: parsed.sectionTitle || `Section ${index + 1}`,
-      summary: parsed.sectionSummary,
-      keyFacts: parsed.keyFacts?.slice(0, 5) ?? [],
-      monetaryAmounts: parsed.monetaryAmounts?.slice(0, 5) ?? [],
-      complianceSignals: parsed.complianceSignals?.slice(0, 5) ?? [],
-      sourcePreview: buildSectionPreview(chunk.text),
-    });
-  }
+    return {
+      section: {
+        id: chunk.id,
+        title: parsed.sectionTitle || `Section ${index + 1}`,
+        summary: parsed.sectionSummary,
+        keyFacts: parsed.keyFacts?.slice(0, 5) ?? [],
+        monetaryAmounts: parsed.monetaryAmounts?.slice(0, 5) ?? [],
+        complianceSignals: parsed.complianceSignals?.slice(0, 5) ?? [],
+        sourcePreview: buildSectionPreview(chunk.text),
+      },
+      usage: chunkUsage,
+    };
+  });
+
+  // Wait for all chunks to process in parallel
+  const chunkResults = await Promise.all(chunkPromises);
+
+  onProgress?.({
+    stage: "sections",
+    progress: 60,
+    message: "Section analysis complete. Building consolidated summary...",
+  });
+
+  // Extract sections and accumulate usage
+  const sectionSummaries = chunkResults.map(({ section, usage: chunkUsage }) => {
+    accumulateUsage(usage, chunkUsage);
+    return section;
+  });
 
   const structuredSections = sectionSummaries.map((section) => ({
     id: section.id,
@@ -272,6 +316,12 @@ export async function summarizePdfContent({
 
   let overallSummary = "";
   let highlights: string[] = [];
+
+  onProgress?.({
+    stage: "consolidating",
+    progress: 70,
+    message: "Creating overall summary and highlights...",
+  });
 
   try {
     const { text: responseText, usage: callUsage } = await generateText({
@@ -314,6 +364,12 @@ export async function summarizePdfContent({
       .slice(0, 5);
   }
 
+  onProgress?.({
+    stage: "complete",
+    progress: 100,
+    message: "Summary complete!",
+  });
+
   return {
     summary: overallSummary.trim(),
     highlights,
@@ -354,7 +410,9 @@ export async function generatePdfQuestions({
       system: QUESTION_SYSTEM_PROMPT,
       prompt: `Summary:\n${summary.slice(0, 4000)}\n\nHighlights:\n${highlights
         .slice(0, 8)
-        .join("\n")}\n\nSections:\n${JSON.stringify(condensedSections).slice(0, 8000)}`,
+        .join(
+          "\n"
+        )}\n\nSections:\n${JSON.stringify(condensedSections).slice(0, 8000)}`,
       temperature: 0.25,
     });
 
@@ -367,7 +425,8 @@ export async function generatePdfQuestions({
         .map((question) => ({
           id: question.id || generateUUID(),
           question: question.question.trim(),
-          rationale: question.rationale?.trim() || "Clarify this detail for the ledger.",
+          rationale:
+            question.rationale?.trim() || "Clarify this detail for the ledger.",
           category:
             question.category ??
             (question.question.toLowerCase().includes("gst")
@@ -406,7 +465,8 @@ export async function generatePdfQuestions({
     {
       id: generateUUID(),
       question: "Do the invoice totals (incl. GST) align with purchase orders?",
-      rationale: "Ensures totals are accurate before paying or recognising expense.",
+      rationale:
+        "Ensures totals are accurate before paying or recognising expense.",
       category: "cashflow",
       whenToAsk: "When approving the payment run or matching to a bank feed.",
     },
@@ -505,7 +565,10 @@ export async function answerPdfQuestion({
 
   const historyContext = history
     .slice(-6)
-    .map((entry) => `${entry.role === "user" ? "User" : "LedgerBot"}: ${entry.content}`)
+    .map(
+      (entry) =>
+        `${entry.role === "user" ? "User" : "LedgerBot"}: ${entry.content}`
+    )
     .join("\n");
 
   const promptParts = [
@@ -605,9 +668,7 @@ export function buildSummaryDocument({
       }
       if (section.complianceSignals.length > 0) {
         lines.push("- **Compliance notes:**");
-        section.complianceSignals.forEach((note) =>
-          lines.push(`  - ${note}`)
-        );
+        section.complianceSignals.forEach((note) => lines.push(`  - ${note}`));
       }
     });
   }
@@ -615,7 +676,9 @@ export function buildSummaryDocument({
   if (questions && questions.length > 0) {
     lines.push("\n## Suggested follow-up questions");
     questions.forEach((question) => {
-      lines.push(`- **${question.question}** (_${question.category}_): ${question.rationale}`);
+      lines.push(
+        `- **${question.question}** (_${question.category}_): ${question.rationale}`
+      );
       lines.push(`  - When to ask: ${question.whenToAsk}`);
     });
   }

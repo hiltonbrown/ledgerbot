@@ -5,7 +5,7 @@ export type PdfSectionSummary = {
   keyFacts: string[];
   monetaryAmounts: string[];
   complianceSignals: string[];
-  sourcePreview: string;
+  sourcePreview?: string;
 };
 
 export type PdfSummaryResult = {
@@ -24,7 +24,14 @@ export type PdfGuidedQuestion = {
   id: string;
   question: string;
   rationale: string;
-  category: "cashflow" | "compliance" | "tax" | "operations" | "risk" | "follow-up" | "general";
+  category:
+    | "cashflow"
+    | "compliance"
+    | "tax"
+    | "operations"
+    | "risk"
+    | "follow-up"
+    | "general";
   whenToAsk: string;
 };
 

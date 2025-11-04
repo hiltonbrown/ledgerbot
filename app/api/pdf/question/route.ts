@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-
-import { answerPdfQuestion } from "@/lib/agents/docmanagement/workflow";
 import type { PdfChatMessage } from "@/lib/agents/docmanagement/types";
+import { answerPdfQuestion } from "@/lib/agents/docmanagement/workflow";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import { getContextFileById, touchContextFile } from "@/lib/db/queries";
+import { saveConversationCache } from "@/lib/redis/document-chat-cache";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -27,6 +27,7 @@ const sectionSchema = z.object({
 
 const QuestionSchema = z.object({
   contextFileId: z.string().min(1),
+  documentId: z.string().optional(),
   question: z.string().min(1).max(600),
   summary: z.string().min(1).max(6000),
   sections: z.array(sectionSchema).min(1).max(20),
@@ -81,6 +82,23 @@ export async function POST(request: Request) {
     });
 
     await touchContextFile(contextFile.id);
+
+    // Cache the updated conversation state in Redis
+    const updatedHistory: PdfChatMessage[] = [
+      ...(payload.history || []),
+      { role: "user", content: payload.question },
+      { role: "assistant", content: answer.answer, sources: answer.sources },
+    ];
+
+    // Save to Redis cache (fire-and-forget, don't block response)
+    saveConversationCache(user.id, payload.contextFileId, {
+      contextFileId: payload.contextFileId,
+      documentId: payload.documentId || null,
+      summary: payload.summary,
+      messages: updatedHistory,
+    }).catch((error) => {
+      console.error("[docmanagement] Failed to cache conversation:", error);
+    });
 
     return NextResponse.json(answer);
   } catch (error) {

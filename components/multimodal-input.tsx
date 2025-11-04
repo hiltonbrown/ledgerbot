@@ -423,7 +423,7 @@ function PureMultimodalInput({
 
       <input
         accept="image/*,.pdf,.docx,.xlsx,.csv"
-        className="fixed size-0.5 opacity-0 -left-4 -top-4"
+        className="-left-4 -top-4 fixed size-0.5 opacity-0"
         multiple
         onChange={handleFileChange}
         ref={fileInputRef}

@@ -15,6 +15,7 @@ import {
   type ChangeEvent,
   type FormEvent,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -42,6 +43,7 @@ type UploadResponse = {
   size: number;
   status: "ready" | "needs_ocr";
   tokenEstimate?: number;
+  usedOCR?: boolean;
   warnings?: string[];
 };
 
@@ -132,19 +134,26 @@ export default function DocumentManagementAgentPage() {
   const [questionInput, setQuestionInput] = useState("");
   const [warnings, setWarnings] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [uploadMetadata, setUploadMetadata] = useState<
-    { fileName: string; size: number; tokenEstimate?: number } | null
+  const [uploadMetadata, setUploadMetadata] = useState<{
+    fileName: string;
+    size: number;
+    tokenEstimate?: number;
+  } | null>(null);
+  const [summaryUsage, setSummaryUsage] = useState<
+    SummarizeResponse["usage"] | null
   >(null);
-  const [summaryUsage, setSummaryUsage] = useState<SummarizeResponse["usage"] | null>(
-    null
-  );
   const [isUploading, setIsUploading] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const [isAnswering, setIsAnswering] = useState(false);
+  const [summaryProgress, setSummaryProgress] = useState(0);
+  const [summaryStage, setSummaryStage] = useState("");
 
   const averageConfidence = useMemo(() => {
-    const total = validationQueue.reduce((acc, item) => acc + item.confidence, 0);
+    const total = validationQueue.reduce(
+      (acc, item) => acc + item.confidence,
+      0
+    );
     return Math.round(total / validationQueue.length);
   }, []);
 
@@ -154,14 +163,57 @@ export default function DocumentManagementAgentPage() {
     }
     setWarnings((current) => {
       const unique = new Set(current);
-      messages
-        .filter((message) => Boolean(message && message.trim()))
-        .forEach((message) => {
-          unique.add(message.trim());
-        });
+      for (const message of messages.filter((message) =>
+        Boolean(message?.trim())
+      )) {
+        unique.add(message.trim());
+      }
       return Array.from(unique);
     });
   }, []);
+
+  // Restore conversation from Redis cache on mount (if available)
+  useEffect(() => {
+    async function restoreConversation() {
+      if (!contextFileId) {
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `/api/pdf/conversation?contextFileId=${contextFileId}`
+        );
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data = await response.json();
+
+        if (data.cached && data.data) {
+          console.log(
+            `[docmanagement] Restoring conversation with ${data.data.messages.length} messages`
+          );
+
+          setDocumentId(data.data.documentId);
+          setSummary(data.data.summary);
+
+          // Restore chat messages
+          const restoredMessages: ChatMessage[] = data.data.messages.map(
+            (msg: PdfChatMessage, index: number) => ({
+              ...msg,
+              id: generateUUID(),
+            })
+          );
+          setChatMessages(restoredMessages);
+        }
+      } catch (error) {
+        console.error("[docmanagement] Failed to restore conversation:", error);
+      }
+    }
+
+    restoreConversation();
+  }, [contextFileId]);
 
   const resetWorkflow = useCallback(() => {
     setContextFileId(null);
@@ -213,7 +265,9 @@ export default function DocumentManagementAgentPage() {
 
         if (!response.ok) {
           const errorData: { error?: string } = await response.json();
-          throw new Error(errorData?.error ?? "Failed to generate follow-up questions.");
+          throw new Error(
+            errorData?.error ?? "Failed to generate follow-up questions."
+          );
         }
         const data: QuestionsResponse = await response.json();
         setQuestions(data.questions ?? []);
@@ -235,34 +289,109 @@ export default function DocumentManagementAgentPage() {
   const runSummarization = useCallback(
     async (contextId: string) => {
       setIsSummarizing(true);
+      setSummaryProgress(0);
+      setSummaryStage("Starting...");
+
       try {
         const response = await fetch("/api/pdf/summarize", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ contextFileId: contextId }),
+          body: JSON.stringify({
+            contextFileId: contextId,
+            stream: true, // Enable SSE streaming
+          }),
         });
-
-        const data: SummarizeResponse | { error?: string } = await response.json();
 
         if (!response.ok) {
-          throw new Error(data?.error ?? "Failed to summarise the PDF.");
+          throw new Error("Failed to summarise the PDF.");
         }
 
-        setDocumentId(data.documentId);
-        setSummary(data.summary);
-        setHighlights(data.highlights ?? []);
-        setSections(data.sections ?? []);
-        setSummaryUsage(data.usage ?? null);
-        appendWarnings(data.warnings);
-        setError(null);
+        // Check if response is SSE stream
+        const contentType = response.headers.get("content-type");
+        if (contentType?.includes("text/event-stream")) {
+          // Handle SSE streaming response
+          const reader = response.body?.getReader();
+          const decoder = new TextDecoder();
 
-        await generateQuestionsForSummary(contextId, data.documentId, {
-          summary: data.summary,
-          highlights: data.highlights ?? [],
-          sections: data.sections ?? [],
-        });
+          if (!reader) {
+            throw new Error("Failed to read stream");
+          }
+
+          let buffer = "";
+
+          while (true) {
+            const { done, value } = await reader.read();
+
+            if (done) {
+              break;
+            }
+
+            buffer += decoder.decode(value, { stream: true });
+
+            // Process complete SSE messages
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || ""; // Keep incomplete line in buffer
+
+            for (const line of lines) {
+              if (line.startsWith("event: ")) {
+                const event = line.slice(7);
+                const nextLine = lines[lines.indexOf(line) + 1];
+
+                if (nextLine?.startsWith("data: ")) {
+                  const data = JSON.parse(nextLine.slice(6));
+
+                  if (event === "progress") {
+                    setSummaryProgress(data.progress);
+                    setSummaryStage(data.message);
+                  } else if (event === "complete") {
+                    const summarizeData = data as SummarizeResponse;
+                    setDocumentId(summarizeData.documentId);
+                    setSummary(summarizeData.summary);
+                    setHighlights(summarizeData.highlights ?? []);
+                    setSections(summarizeData.sections ?? []);
+                    setSummaryUsage(summarizeData.usage ?? null);
+                    appendWarnings(summarizeData.warnings);
+                    setError(null);
+
+                    await generateQuestionsForSummary(contextId, summarizeData.documentId, {
+                      summary: summarizeData.summary,
+                      highlights: summarizeData.highlights ?? [],
+                      sections: summarizeData.sections ?? [],
+                    });
+                  } else if (event === "error") {
+                    throw new Error(data.message || "Failed to summarise the PDF.");
+                  }
+                }
+              }
+            }
+          }
+        } else {
+          // Fallback to JSON response (non-streaming)
+          const data: SummarizeResponse | { error?: string } =
+            await response.json();
+
+          const errorData = data as { error?: string };
+          if (errorData.error) {
+            throw new Error(errorData.error);
+          }
+
+          const summarizeData = data as SummarizeResponse;
+          setDocumentId(summarizeData.documentId);
+          setSummary(summarizeData.summary);
+          setHighlights(summarizeData.highlights ?? []);
+          setSections(summarizeData.sections ?? []);
+          setSummaryUsage(summarizeData.usage ?? null);
+          appendWarnings(summarizeData.warnings);
+          setError(null);
+
+          await generateQuestionsForSummary(contextId, summarizeData.documentId, {
+            summary: summarizeData.summary,
+            highlights: summarizeData.highlights ?? [],
+            sections: summarizeData.sections ?? [],
+          });
+        }
       } catch (summarizeError) {
         const message =
           summarizeError instanceof Error
@@ -271,6 +400,8 @@ export default function DocumentManagementAgentPage() {
         setError(message);
       } finally {
         setIsSummarizing(false);
+        setSummaryProgress(0);
+        setSummaryStage("");
       }
     },
     [appendWarnings, generateQuestionsForSummary]
@@ -298,23 +429,35 @@ export default function DocumentManagementAgentPage() {
         const data: UploadResponse | { error?: string } = await response.json();
 
         if (!response.ok) {
-          throw new Error(data?.error ?? "Failed to upload the PDF.");
+          const errorData = data as { error?: string };
+          throw new Error(errorData.error ?? "Failed to upload the PDF.");
         }
 
-        setUploadMetadata({
-          fileName: data.fileName,
-          size: data.size,
-          tokenEstimate: data.tokenEstimate,
-        });
-        appendWarnings(data.warnings);
+        // Type narrowing: at this point, data must be UploadResponse
+        const uploadData = data as UploadResponse;
 
-        if (data.status === "ready") {
-          setContextFileId(data.contextFileId);
-          await runSummarization(data.contextFileId);
+        setUploadMetadata({
+          fileName: uploadData.fileName,
+          size: uploadData.size,
+          tokenEstimate: uploadData.tokenEstimate,
+        });
+
+        // Show OCR success message if OCR was used
+        if (uploadData.usedOCR) {
+          appendWarnings([
+            "This PDF was scanned or image-based. Text was successfully extracted using OCR."
+          ]);
+        } else {
+          appendWarnings(uploadData.warnings);
+        }
+
+        if (uploadData.status === "ready") {
+          setContextFileId(uploadData.contextFileId);
+          await runSummarization(uploadData.contextFileId);
         } else {
           setError(
-            data.warnings?.[0] ??
-              "No searchable text detected. Please run OCR and upload the PDF again."
+            uploadData.warnings?.[0] ??
+              "No searchable text detected. The PDF may be password protected or corrupted."
           );
         }
       } catch (uploadError) {
@@ -373,9 +516,10 @@ export default function DocumentManagementAgentPage() {
         role: "user",
         content: trimmed,
       };
-      const historyPayload: PdfChatMessage[] = [...chatMessages, userMessage].map(
-        ({ role, content, sources }) => ({ role, content, sources })
-      );
+      const historyPayload: PdfChatMessage[] = [
+        ...chatMessages,
+        userMessage,
+      ].map(({ role, content, sources }) => ({ role, content, sources }));
 
       setChatMessages((current) => [...current, userMessage]);
       setQuestionInput("");
@@ -389,6 +533,7 @@ export default function DocumentManagementAgentPage() {
           },
           body: JSON.stringify({
             contextFileId,
+            documentId,
             question: trimmed,
             summary,
             sections,
@@ -399,18 +544,22 @@ export default function DocumentManagementAgentPage() {
         const data: AnswerResponse | { error?: string } = await response.json();
 
         if (!response.ok) {
-          throw new Error(data?.error ?? "Unable to answer the question.");
+          const errorData = data as { error?: string };
+          throw new Error(errorData.error ?? "Unable to answer the question.");
         }
 
-        if ("warnings" in data) {
-          appendWarnings(data.warnings);
+        // Type narrowing: at this point, data must be AnswerResponse
+        const answerData = data as AnswerResponse;
+
+        if ("warnings" in answerData) {
+          appendWarnings(answerData.warnings);
         }
 
         const assistantMessage: ChatMessage = {
           id: generateUUID(),
           role: "assistant",
-          content: data.answer,
-          sources: data.sources,
+          content: answerData.answer,
+          sources: answerData.sources,
         };
 
         setChatMessages((current) => [...current, assistantMessage]);
@@ -429,7 +578,14 @@ export default function DocumentManagementAgentPage() {
         setIsAnswering(false);
       }
     },
-    [appendWarnings, chatMessages, contextFileId, questionInput, sections, summary]
+    [
+      appendWarnings,
+      chatMessages,
+      contextFileId,
+      questionInput,
+      sections,
+      summary,
+    ]
   );
 
   const sectionLookup = useMemo(() => {
@@ -451,20 +607,21 @@ export default function DocumentManagementAgentPage() {
             Intelligent intake workspace
           </CardTitle>
           <p className="text-muted-foreground text-sm">
-            Upload invoices, receipts, or statements to generate a compliance-aware summary and chat
-            with the document using LedgerBot.
+            Upload invoices, receipts, or statements to generate a
+            compliance-aware summary and chat with the document using LedgerBot.
           </p>
         </CardHeader>
         <CardContent>
           <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
             <div className="space-y-4">
               <label
+                aria-disabled={disableUpload}
                 className={`flex flex-col items-center justify-center rounded-lg border border-primary/40 border-dashed bg-primary/5 p-8 text-center transition ${
                   disableUpload
                     ? "cursor-not-allowed opacity-70"
                     : "hover:border-primary hover:bg-primary/10"
                 }`}
-                aria-disabled={disableUpload}
+                htmlFor="pdf-upload-input"
               >
                 {disableUpload ? (
                   <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary" />
@@ -472,17 +629,20 @@ export default function DocumentManagementAgentPage() {
                   <Upload className="mb-3 h-8 w-8 text-primary" />
                 )}
                 <span className="font-medium">
-                  {disableUpload ? "Processing..." : "Upload supporting documents"}
+                  {disableUpload
+                    ? "Processing..."
+                    : "Upload supporting documents"}
                 </span>
                 <span className="text-muted-foreground text-sm">
                   PDF only · 15MB max · enable OCR for scanned copies
                 </span>
                 <Input
-                  ref={fileInputRef}
                   accept="application/pdf"
                   className="hidden"
                   disabled={disableUpload}
+                  id="pdf-upload-input"
                   onChange={handleFileChange}
+                  ref={fileInputRef}
                   type="file"
                 />
               </label>
@@ -491,7 +651,9 @@ export default function DocumentManagementAgentPage() {
                 <div className="rounded-md border bg-muted/40 p-4 text-sm">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="font-medium text-sm">{uploadMetadata.fileName}</p>
+                      <p className="font-medium text-sm">
+                        {uploadMetadata.fileName}
+                      </p>
                       <p className="text-muted-foreground text-xs">
                         {formatFileSize(uploadMetadata.size)}
                         {typeof uploadMetadata.tokenEstimate === "number"
@@ -499,7 +661,10 @@ export default function DocumentManagementAgentPage() {
                           : ""}
                       </p>
                     </div>
-                    <Badge variant="secondary" className="flex items-center gap-1">
+                    <Badge
+                      className="flex items-center gap-1"
+                      variant="secondary"
+                    >
                       {isSummarizing ? (
                         <>
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -513,17 +678,28 @@ export default function DocumentManagementAgentPage() {
                       )}
                     </Badge>
                   </div>
+
+                  {isSummarizing && summaryProgress > 0 && (
+                    <div className="mt-3 space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">{summaryStage}</span>
+                        <span className="font-medium">{summaryProgress}%</span>
+                      </div>
+                      <Progress value={summaryProgress} className="h-1.5" />
+                    </div>
+                  )}
+
                   {summaryUsage && (
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      Model usage · in {summaryUsage.totalInputTokens ?? 0} · out{" "}
-                      {summaryUsage.totalOutputTokens ?? 0}
+                    <p className="mt-2 text-muted-foreground text-xs">
+                      Model usage · in {summaryUsage.totalInputTokens ?? 0} ·
+                      out {summaryUsage.totalOutputTokens ?? 0}
                     </p>
                   )}
                 </div>
               )}
 
               {warnings.length > 0 && (
-                <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+                <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-900 text-sm">
                   <div className="flex items-center gap-2 font-medium">
                     <AlertTriangle className="h-4 w-4" />
                     Attention needed
@@ -537,21 +713,25 @@ export default function DocumentManagementAgentPage() {
               )}
 
               {error && (
-                <div className="rounded-md border border-destructive bg-destructive/10 p-3 text-sm text-destructive">
+                <div className="rounded-md border border-destructive bg-destructive/10 p-3 text-destructive text-sm">
                   {error}
                 </div>
               )}
 
               {summary && (
                 <div className="space-y-3 rounded-md border bg-muted/30 p-4">
-                  <div className="flex items-center gap-2 text-sm font-semibold">
+                  <div className="flex items-center gap-2 font-semibold text-sm">
                     <Sparkles className="h-4 w-4 text-primary" />
                     Ledger-ready summary
                   </div>
-                  <p className="whitespace-pre-wrap text-sm leading-relaxed">{summary}</p>
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                    {summary}
+                  </p>
                   {highlights.length > 0 && (
                     <div>
-                      <p className="text-xs uppercase text-muted-foreground">Key highlights</p>
+                      <p className="text-muted-foreground text-xs uppercase">
+                        Key highlights
+                      </p>
                       <ul className="mt-1 space-y-1 text-sm leading-relaxed">
                         {highlights.map((highlight) => (
                           <li key={highlight}>• {highlight}</li>
@@ -564,7 +744,7 @@ export default function DocumentManagementAgentPage() {
 
               {sections.length > 0 && (
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm font-semibold">
+                  <div className="flex items-center gap-2 font-semibold text-sm">
                     <FileText className="h-4 w-4 text-primary" />
                     Section breakdown
                   </div>
@@ -572,25 +752,27 @@ export default function DocumentManagementAgentPage() {
                     <div className="space-y-4">
                       {sections.map((section, index) => (
                         <div
-                          key={section.id}
                           className="rounded-md bg-background p-4 shadow-sm ring-1 ring-muted/40"
+                          key={section.id}
                         >
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <p className="font-semibold text-sm">
                               {index + 1}. {section.title}
                             </p>
                             {section.monetaryAmounts.length > 0 && (
-                              <Badge variant="outline" className="text-xs">
+                              <Badge className="text-xs" variant="outline">
                                 {section.monetaryAmounts[0]}
                               </Badge>
                             )}
                           </div>
-                          <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+                          <p className="mt-2 whitespace-pre-wrap text-muted-foreground text-sm leading-relaxed">
                             {section.summary}
                           </p>
                           {section.keyFacts.length > 0 && (
-                            <div className="mt-2 text-xs text-muted-foreground">
-                              <p className="font-medium text-muted-foreground/80">Key facts</p>
+                            <div className="mt-2 text-muted-foreground text-xs">
+                              <p className="font-medium text-muted-foreground/80">
+                                Key facts
+                              </p>
                               <ul className="mt-1 space-y-1">
                                 {section.keyFacts.map((fact) => (
                                   <li key={fact}>• {fact}</li>
@@ -599,7 +781,7 @@ export default function DocumentManagementAgentPage() {
                             </div>
                           )}
                           {section.complianceSignals.length > 0 && (
-                            <div className="mt-2 text-xs text-muted-foreground">
+                            <div className="mt-2 text-muted-foreground text-xs">
                               <p className="font-medium text-muted-foreground/80">
                                 Compliance notes
                               </p>
@@ -622,12 +804,11 @@ export default function DocumentManagementAgentPage() {
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <MessageSquare className="h-4 w-4 text-primary" />
-                    <h3 className="text-sm font-semibold">Suggested follow-up questions</h3>
+                    <h3 className="font-semibold text-sm">
+                      Suggested follow-up questions
+                    </h3>
                   </div>
                   <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleRegenerateQuestions}
                     disabled={
                       !contextFileId ||
                       !documentId ||
@@ -635,6 +816,9 @@ export default function DocumentManagementAgentPage() {
                       isGeneratingQuestions ||
                       isSummarizing
                     }
+                    onClick={handleRegenerateQuestions}
+                    size="sm"
+                    variant="outline"
                   >
                     {isGeneratingQuestions ? (
                       <>
@@ -650,20 +834,23 @@ export default function DocumentManagementAgentPage() {
                   {questions.length > 0 ? (
                     questions.map((question) => (
                       <div
+                        className="rounded-md border border-muted-foreground/40 border-dashed p-3"
                         key={question.id}
-                        className="rounded-md border border-dashed border-muted-foreground/40 p-3"
                       >
                         <p className="font-medium">{question.question}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">{question.rationale}</p>
-                        <p className="mt-2 text-[11px] uppercase text-muted-foreground">
+                        <p className="mt-1 text-muted-foreground text-xs">
+                          {question.rationale}
+                        </p>
+                        <p className="mt-2 text-[11px] text-muted-foreground uppercase">
                           {question.category} · {question.whenToAsk}
                         </p>
                       </div>
                     ))
                   ) : (
-                    <p className="text-xs text-muted-foreground">
-                      Guided prompts will appear after LedgerBot summarises the PDF. Use them for
-                      client follow-ups or reconciliation notes.
+                    <p className="text-muted-foreground text-xs">
+                      Guided prompts will appear after LedgerBot summarises the
+                      PDF. Use them for client follow-ups or reconciliation
+                      notes.
                     </p>
                   )}
                 </div>
@@ -672,27 +859,32 @@ export default function DocumentManagementAgentPage() {
               <div className="rounded-md border bg-background p-4 shadow-sm">
                 <div className="flex items-center gap-2">
                   <MessageSquare className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-semibold">Chat with this PDF</h3>
+                  <h3 className="font-semibold text-sm">Chat with this PDF</h3>
                 </div>
                 <ScrollArea className="mt-3 h-72 rounded-md border bg-muted/20 p-3">
                   {chatMessages.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">
-                      Ask natural-language questions once a summary is available. LedgerBot will use
-                      the summary and focused excerpts to answer or flag missing data.
+                    <p className="text-muted-foreground text-xs">
+                      Ask natural-language questions once a summary is
+                      available. LedgerBot will use the summary and focused
+                      excerpts to answer or flag missing data.
                     </p>
                   ) : (
                     <div className="space-y-3">
                       {chatMessages.map((message) => (
                         <div
-                          key={message.id}
                           className={`rounded-md border p-3 text-sm leading-relaxed ${
-                            message.role === "assistant" ? "bg-muted/40" : "bg-background"
+                            message.role === "assistant"
+                              ? "bg-muted/40"
+                              : "bg-background"
                           }`}
+                          key={message.id}
                         >
-                          <p className="text-xs font-semibold uppercase text-muted-foreground">
+                          <p className="font-semibold text-muted-foreground text-xs uppercase">
                             {message.role === "assistant" ? "LedgerBot" : "You"}
                           </p>
-                          <p className="mt-1 whitespace-pre-wrap">{message.content}</p>
+                          <p className="mt-1 whitespace-pre-wrap">
+                            {message.content}
+                          </p>
                           {message.sources && message.sources.length > 0 && (
                             <div className="mt-2 flex flex-wrap gap-2">
                               {message.sources.map((source) => {
@@ -701,7 +893,11 @@ export default function DocumentManagementAgentPage() {
                                   ? `Section ${meta.index}: ${meta.title}`
                                   : "Source excerpt";
                                 return (
-                                  <Badge key={source} variant="outline" className="text-xs">
+                                  <Badge
+                                    className="text-xs"
+                                    key={source}
+                                    variant="outline"
+                                  >
                                     {label}
                                   </Badge>
                                 );
@@ -713,21 +909,25 @@ export default function DocumentManagementAgentPage() {
                     </div>
                   )}
                 </ScrollArea>
-                <form onSubmit={handleAskQuestion} className="mt-3 space-y-2">
+                <form className="mt-3 space-y-2" onSubmit={handleAskQuestion}>
                   <Textarea
-                    placeholder="e.g. What GST amount should we book from this invoice?"
-                    value={questionInput}
-                    onChange={(event) => setQuestionInput(event.target.value)}
                     disabled={!canChat || isAnswering}
+                    onChange={(event) => setQuestionInput(event.target.value)}
+                    placeholder="e.g. What GST amount should we book from this invoice?"
                     rows={3}
+                    value={questionInput}
                   />
                   <div className="flex items-center justify-between">
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-muted-foreground text-xs">
                       Answers combine the summary with relevant PDF excerpts.
                     </p>
                     <Button
+                      disabled={
+                        !canChat ||
+                        isAnswering ||
+                        questionInput.trim().length === 0
+                      }
                       type="submit"
-                      disabled={!canChat || isAnswering || questionInput.trim().length === 0}
                     >
                       {isAnswering ? (
                         <>
@@ -754,8 +954,8 @@ export default function DocumentManagementAgentPage() {
               Live intake overview
             </CardTitle>
             <p className="text-muted-foreground text-sm">
-              Drop PDFs, images or spreadsheets for the agent to classify, extract, and push through
-              the validation flow.
+              Drop PDFs, images or spreadsheets for the agent to classify,
+              extract, and push through the validation flow.
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -771,17 +971,25 @@ export default function DocumentManagementAgentPage() {
               <div className="rounded-lg bg-muted/50 p-4">
                 <p className="text-muted-foreground text-xs uppercase">Today</p>
                 <p className="font-semibold text-xl">38 docs</p>
-                <p className="text-muted-foreground text-xs">92% processed automatically</p>
+                <p className="text-muted-foreground text-xs">
+                  92% processed automatically
+                </p>
               </div>
               <div className="rounded-lg bg-muted/50 p-4">
-                <p className="text-muted-foreground text-xs uppercase">Extraction latency</p>
+                <p className="text-muted-foreground text-xs uppercase">
+                  Extraction latency
+                </p>
                 <p className="font-semibold text-xl">34s avg</p>
                 <p className="text-muted-foreground text-xs">P95 under 45s</p>
               </div>
               <div className="rounded-lg bg-muted/50 p-4">
-                <p className="text-muted-foreground text-xs uppercase">Average confidence</p>
+                <p className="text-muted-foreground text-xs uppercase">
+                  Average confidence
+                </p>
                 <p className="font-semibold text-xl">{averageConfidence}%</p>
-                <p className="text-muted-foreground text-xs">Across last 24 uploads</p>
+                <p className="text-muted-foreground text-xs">
+                  Across last 24 uploads
+                </p>
               </div>
             </div>
           </CardContent>
@@ -790,34 +998,49 @@ export default function DocumentManagementAgentPage() {
           <CardHeader className="space-y-1">
             <CardTitle className="text-lg">Automation guardrails</CardTitle>
             <p className="text-muted-foreground text-sm">
-              Configure safety checks before extracted data lands in the ledger or hits human review
-              queues.
+              Configure safety checks before extracted data lands in the ledger
+              or hits human review queues.
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between rounded-md border bg-muted/40 p-4">
               <div>
-                <p className="font-medium text-sm">Auto-validate high confidence documents</p>
+                <p className="font-medium text-sm">
+                  Auto-validate high confidence documents
+                </p>
                 <p className="text-muted-foreground text-xs">
-                  Approve anything above 85% instantly and forward to reconciliation queues.
+                  Approve anything above 85% instantly and forward to
+                  reconciliation queues.
                 </p>
               </div>
-              <Switch checked={autoValidate} onCheckedChange={setAutoValidate} />
+              <Switch
+                checked={autoValidate}
+                onCheckedChange={setAutoValidate}
+              />
             </div>
             <div className="flex items-center justify-between rounded-md border bg-muted/40 p-4">
               <div>
-                <p className="font-medium text-sm">Detect duplicates on upload</p>
+                <p className="font-medium text-sm">
+                  Detect duplicates on upload
+                </p>
                 <p className="text-muted-foreground text-xs">
-                  Prevent multiple ledger entries when suppliers resend statements or invoices.
+                  Prevent multiple ledger entries when suppliers resend
+                  statements or invoices.
                 </p>
               </div>
-              <Switch checked={dedupeUploads} onCheckedChange={setDedupeUploads} />
+              <Switch
+                checked={dedupeUploads}
+                onCheckedChange={setDedupeUploads}
+              />
             </div>
             <div className="flex items-center justify-between rounded-md border bg-muted/40 p-4">
               <div>
-                <p className="font-medium text-sm">Notify finance Slack channel</p>
+                <p className="font-medium text-sm">
+                  Notify finance Slack channel
+                </p>
                 <p className="text-muted-foreground text-xs">
-                  Send a digest when more than 5 documents require human validation within an hour.
+                  Send a digest when more than 5 documents require human
+                  validation within an hour.
                 </p>
               </div>
               <Switch checked={notifySlack} onCheckedChange={setNotifySlack} />
@@ -830,7 +1053,8 @@ export default function DocumentManagementAgentPage() {
         <CardHeader className="flex flex-col gap-1">
           <CardTitle className="text-lg">Validation queue</CardTitle>
           <p className="text-muted-foreground text-sm">
-            Review extractions that need context before they sync into the general ledger.
+            Review extractions that need context before they sync into the
+            general ledger.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -849,7 +1073,9 @@ export default function DocumentManagementAgentPage() {
                 >
                   <div>
                     <p className="font-medium text-sm">{item.id}</p>
-                    <p className="text-muted-foreground text-xs">{item.vendor}</p>
+                    <p className="text-muted-foreground text-xs">
+                      {item.vendor}
+                    </p>
                     <p className="text-muted-foreground text-xs">
                       Received {item.receivedAt}
                     </p>
@@ -868,7 +1094,9 @@ export default function DocumentManagementAgentPage() {
                       <ShieldAlert className="h-4 w-4 text-amber-500" />
                     )}
                     <span className="text-sm capitalize">
-                      {item.status === "ready" ? "Ready to post" : "Needs review"}
+                      {item.status === "ready"
+                        ? "Ready to post"
+                        : "Needs review"}
                     </span>
                   </div>
                 </div>
@@ -883,25 +1111,37 @@ export default function DocumentManagementAgentPage() {
           <CardHeader className="space-y-1">
             <CardTitle className="text-lg">Extraction metrics</CardTitle>
             <p className="text-muted-foreground text-sm">
-              Monitor the quality of parsing engines, classification routing and human-in-the-loop
-              response times.
+              Monitor the quality of parsing engines, classification routing and
+              human-in-the-loop response times.
             </p>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-3">
             <div className="rounded-lg border bg-card p-4 shadow-sm">
-              <p className="text-muted-foreground text-xs uppercase">Turnaround</p>
+              <p className="text-muted-foreground text-xs uppercase">
+                Turnaround
+              </p>
               <p className="font-semibold text-2xl">14m</p>
-              <p className="text-muted-foreground text-xs">Average from upload to ledger</p>
+              <p className="text-muted-foreground text-xs">
+                Average from upload to ledger
+              </p>
             </div>
             <div className="rounded-lg border bg-card p-4 shadow-sm">
-              <p className="text-muted-foreground text-xs uppercase">Model version</p>
+              <p className="text-muted-foreground text-xs uppercase">
+                Model version
+              </p>
               <p className="font-semibold text-2xl">v1.8</p>
-              <p className="text-muted-foreground text-xs">Latest Claude Sonnet fine-tune</p>
+              <p className="text-muted-foreground text-xs">
+                Latest Claude Sonnet fine-tune
+              </p>
             </div>
             <div className="rounded-lg border bg-card p-4 shadow-sm">
-              <p className="text-muted-foreground text-xs uppercase">Data quality alerts</p>
+              <p className="text-muted-foreground text-xs uppercase">
+                Data quality alerts
+              </p>
               <p className="font-semibold text-2xl">3</p>
-              <p className="text-muted-foreground text-xs">Triggered past 24 hours</p>
+              <p className="text-muted-foreground text-xs">
+                Triggered past 24 hours
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -914,9 +1154,12 @@ export default function DocumentManagementAgentPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="rounded-md border bg-muted/40 p-4">
-              <p className="font-medium text-sm">Re-run OCR with enhanced vision</p>
+              <p className="font-medium text-sm">
+                Re-run OCR with enhanced vision
+              </p>
               <p className="text-muted-foreground text-xs">
-                Applies GPT-5 vision model to low-confidence receipts and merges the diff.
+                Applies GPT-5 vision model to low-confidence receipts and merges
+                the diff.
               </p>
               <Button className="mt-3" size="sm" variant="secondary">
                 Execute playbook
@@ -924,9 +1167,12 @@ export default function DocumentManagementAgentPage() {
               </Button>
             </div>
             <div className="rounded-md border bg-muted/40 p-4">
-              <p className="font-medium text-sm">Batch export for accountant review</p>
+              <p className="font-medium text-sm">
+                Batch export for accountant review
+              </p>
               <p className="text-muted-foreground text-xs">
-                Creates a CSV with extracted data, raw OCR text and document previews.
+                Creates a CSV with extracted data, raw OCR text and document
+                previews.
               </p>
               <Button className="mt-3" size="sm" variant="outline">
                 Generate export
