@@ -572,14 +572,13 @@ function PureAttachmentsButton({
   status: UseChatHelpers<ChatMessage>["status"];
   selectedModelId: string;
 }) {
-  const isReasoningModel = isReasoningModelId(selectedModelId);
   const isAwaitingResponse = status === "submitted" || status === "streaming";
 
   return (
     <Button
       className="aspect-square h-8 rounded-lg p-1 transition-colors hover:bg-accent"
       data-testid="attachments-button"
-      disabled={isAwaitingResponse || isReasoningModel}
+      disabled={isAwaitingResponse}
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();
