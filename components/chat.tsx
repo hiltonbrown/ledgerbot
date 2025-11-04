@@ -82,8 +82,10 @@ export function Chat({
       ? { [initialChatModel]: initialDefaultReasoning ?? true }
       : {}
   );
+  const [isDeepResearchEnabled, setIsDeepResearchEnabled] = useState(false);
   const currentModelIdRef = useRef(currentModelId);
   const selectedToolsRef = useRef(selectedTools);
+  const deepResearchRef = useRef(isDeepResearchEnabled);
 
   useEffect(() => {
     currentModelIdRef.current = currentModelId;
@@ -98,6 +100,10 @@ export function Chat({
   useEffect(() => {
     reasoningPreferencesRef.current = reasoningPreferences;
   }, [reasoningPreferences]);
+
+  useEffect(() => {
+    deepResearchRef.current = isDeepResearchEnabled;
+  }, [isDeepResearchEnabled]);
 
   const currentReasoningEnabled = useMemo(() => {
     if (!isReasoningModelId(currentModelId)) {
@@ -179,6 +185,7 @@ export function Chat({
             showReasoningPreference: getReasoningPreferenceForModel(
               currentModelIdRef.current
             ),
+            deepResearch: deepResearchRef.current,
             ...request.body,
           },
         };
@@ -280,9 +287,11 @@ export function Chat({
               clearError={clearError}
               input={input}
               isReasoningEnabled={currentReasoningEnabled}
+              isDeepResearchEnabled={isDeepResearchEnabled}
               messages={messages}
               onModelChange={handleModelChange}
               onReasoningChange={handleReasoningPreferenceChange}
+              onDeepResearchChange={setIsDeepResearchEnabled}
               onToolsChange={setSelectedTools}
               selectedModelId={currentModelId}
               selectedTools={selectedTools}
@@ -307,8 +316,10 @@ export function Chat({
         input={input}
         isReadonly={isReadonly}
         isReasoningEnabled={currentReasoningEnabled}
+        isDeepResearchEnabled={isDeepResearchEnabled}
         messages={messages}
         onReasoningChange={handleReasoningPreferenceChange}
+        onDeepResearchChange={setIsDeepResearchEnabled}
         regenerate={regenerate}
         selectedModelId={currentModelId}
         selectedVisibilityType={visibilityType}

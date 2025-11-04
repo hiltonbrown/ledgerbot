@@ -8,8 +8,19 @@ import { type ClassValue, clsx } from 'clsx';
 import { formatISO } from 'date-fns';
 import { twMerge } from 'tailwind-merge';
 import type { DBMessage, Document } from '@/lib/db/schema';
+import type {
+  DeepResearchAttachment,
+  DeepResearchReportAttachment,
+  DeepResearchSummaryAttachment,
+} from '@/lib/mastra/deep-research-types';
 import { ChatSDKError, type ErrorCode } from './errors';
-import type { ChatMessage, ChatTools, CustomUIDataTypes } from './types';
+import type {
+  ChatMessage,
+  ChatTools,
+  CustomUIDataTypes,
+  DeepResearchMessageMetadata,
+  MessageMetadata,
+} from './types';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -97,15 +108,131 @@ export function sanitizeText(text: string) {
   return text.replace('<has_function_call>', '');
 }
 
-export function convertToUIMessages(messages: DBMessage[]): ChatMessage[] {
-  return messages.map((message) => ({
-    id: message.id,
-    role: message.role as 'user' | 'assistant' | 'system',
-    parts: message.parts as UIMessagePart<CustomUIDataTypes, ChatTools>[],
-    metadata: {
-      createdAt: formatISO(message.createdAt),
-    },
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function getDeepResearchAttachments(
+  attachments: unknown,
+): DeepResearchAttachment[] {
+  if (!attachments) {
+    return [];
+  }
+
+  const raw = Array.isArray(attachments) ? attachments : [attachments];
+
+  return raw.filter((item): item is DeepResearchAttachment => {
+    if (!isRecord(item)) {
+      return false;
+    }
+
+    const type = (item as { type?: unknown }).type;
+    return (
+      type === 'deep-research-summary' ||
+      type === 'deep-research-report' ||
+      type === 'deep-research-session'
+    );
+  });
+}
+
+function toSourceMetadata(
+  sources:
+    | DeepResearchSummaryAttachment['sources']
+    | DeepResearchReportAttachment['sources'],
+): DeepResearchMessageMetadata['sources'] {
+  return sources.map((source) => ({
+    index: source.index,
+    title: source.title,
+    url: source.url || undefined,
+    reliability: source.reliability,
+    confidence: source.confidence,
   }));
+}
+
+function attachmentToMetadata(
+  attachment: DeepResearchAttachment,
+): DeepResearchMessageMetadata {
+  switch (attachment.type) {
+    case 'deep-research-summary':
+      return {
+        sessionId: attachment.sessionId,
+        status: 'awaiting-approval',
+        question: attachment.question,
+        plan: attachment.plan,
+        confidence: attachment.confidence,
+        sources: toSourceMetadata(attachment.sources),
+        parentSessionId: attachment.parentSessionId,
+      };
+    case 'deep-research-report':
+      return {
+        sessionId: attachment.sessionId,
+        status: 'report-generated',
+        question: attachment.question,
+        plan: attachment.plan,
+        confidence: attachment.confidence,
+        sources: toSourceMetadata(attachment.sources),
+        parentSessionId: attachment.parentSessionId,
+      };
+    case 'deep-research-session':
+      return {
+        sessionId: attachment.sessionId,
+        status: attachment.status,
+        question: attachment.question,
+        parentSessionId: attachment.parentSessionId,
+      };
+    default:
+      return {
+        sessionId: attachment.sessionId,
+        status: 'error',
+      };
+  }
+}
+
+function deriveDeepResearchMetadataFromAttachments(
+  attachments: unknown,
+): DeepResearchMessageMetadata | undefined {
+  const candidates = getDeepResearchAttachments(attachments);
+
+  if (candidates.length === 0) {
+    return undefined;
+  }
+
+  const priority: DeepResearchAttachment['type'][] = [
+    'deep-research-summary',
+    'deep-research-report',
+    'deep-research-session',
+  ];
+
+  for (const type of priority) {
+    const match = candidates.find((candidate) => candidate.type === type);
+    if (match) {
+      return attachmentToMetadata(match);
+    }
+  }
+
+  return undefined;
+}
+
+export function convertToUIMessages(messages: DBMessage[]): ChatMessage[] {
+  return messages.map((message) => {
+    const metadata: MessageMetadata = {
+      createdAt: formatISO(message.createdAt),
+    };
+
+    const deepResearchMetadata =
+      deriveDeepResearchMetadataFromAttachments(message.attachments);
+
+    if (deepResearchMetadata) {
+      metadata.deepResearch = deepResearchMetadata;
+    }
+
+    return {
+      id: message.id,
+      role: message.role as 'user' | 'assistant' | 'system',
+      parts: message.parts as UIMessagePart<CustomUIDataTypes, ChatTools>[],
+      metadata,
+    };
+  });
 }
 
 export function getTextFromMessage(message: ChatMessage): string {

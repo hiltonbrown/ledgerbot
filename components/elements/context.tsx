@@ -14,6 +14,8 @@ import { cn } from "@/lib/utils";
 export type ContextProps = ComponentProps<"button"> & {
   /** Optional full usage payload to enable breakdown view */
   usage?: AppUsage;
+  reasoningEnabled?: boolean;
+  deepResearchEnabled?: boolean;
 };
 
 const _THOUSAND = 1000;
@@ -99,7 +101,13 @@ function InfoRow({
   );
 }
 
-export const Context = ({ className, usage, ...props }: ContextProps) => {
+export const Context = ({
+  className,
+  usage,
+  reasoningEnabled,
+  deepResearchEnabled,
+  ...props
+}: ContextProps) => {
   const used = usage?.totalTokens ?? 0;
   const max =
     usage?.context?.totalMax ??
@@ -178,6 +186,28 @@ export const Context = ({ className, usage, ...props }: ContextProps) => {
                         : `$${Number.parseFloat(usage.costUSD.totalUSD.toString()).toFixed(6)}`}
                     </span>
                   </div>
+                </div>
+              </>
+            )}
+            {(reasoningEnabled !== undefined ||
+              deepResearchEnabled !== undefined) && (
+              <>
+                <Separator className="mt-2" />
+                <div className="space-y-1 pt-1 text-xs">
+                  {reasoningEnabled !== undefined && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Reasoning</span>
+                      <span>{reasoningEnabled ? "On" : "Off"}</span>
+                    </div>
+                  )}
+                  {deepResearchEnabled !== undefined && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">
+                        Deep Research
+                      </span>
+                      <span>{deepResearchEnabled ? "On" : "Off"}</span>
+                    </div>
+                  )}
                 </div>
               </>
             )}

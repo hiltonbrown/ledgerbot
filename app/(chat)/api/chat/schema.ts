@@ -41,6 +41,7 @@ export const postRequestBodySchema = z.object({
   selectedTools: z.array(z.enum(toolIds as [ToolId, ...ToolId[]])).optional(),
   streamReasoning: z.boolean().optional(),
   showReasoningPreference: z.boolean().optional(),
+  deepResearch: z.boolean().optional(),
 });
 
 export type PostRequestBody = z.infer<typeof postRequestBodySchema>;

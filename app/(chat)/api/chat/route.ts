@@ -6,6 +6,7 @@ import {
   smoothStream,
   stepCountIs,
   streamText,
+  type UIMessageStreamWriter,
 } from "ai";
 import { unstable_cache as cache } from "next/cache";
 import { after } from "next/server";
@@ -28,6 +29,18 @@ import { getWeather } from "@/lib/ai/tools/get-weather";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
 import { updateDocument } from "@/lib/ai/tools/update-document";
 import { createXeroTools, xeroToolNames } from "@/lib/ai/tools/xero-tools";
+import {
+  detectApprovalCommand,
+  detectDeeperRequest,
+  isLikelyDetailedQuestion,
+  runMastraDeepResearchReport,
+  runMastraDeepResearchSummary,
+} from "@/lib/mastra/deep-research";
+import type {
+  DeepResearchReportAttachment,
+  DeepResearchSessionAttachment,
+  DeepResearchSummaryAttachment,
+} from "@/lib/mastra/deep-research-types";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import { isProductionEnvironment } from "@/lib/constants";
 import {
@@ -48,10 +61,10 @@ import {
   getRedisClients,
   streamBufferTtlSeconds,
 } from "@/lib/redis/config";
-import type { ChatMessage } from "@/lib/types";
+import type { ChatMessage, MessageMetadata } from "@/lib/types";
 import type { UserType } from "@/lib/types/auth";
 import type { AppUsage } from "@/lib/usage";
-import { convertToUIMessages, generateUUID } from "@/lib/utils";
+import { convertToUIMessages, generateUUID, getTextFromMessage } from "@/lib/utils";
 import { generateTitleFromUserMessage } from "../../actions";
 import { type PostRequestBody, postRequestBodySchema } from "./schema";
 
@@ -175,6 +188,54 @@ function includeAttachmentText(messages: ChatMessage[]): ChatMessage[] {
   });
 }
 
+type DeepResearchAttachment =
+  | DeepResearchSummaryAttachment
+  | DeepResearchReportAttachment
+  | DeepResearchSessionAttachment;
+
+function toAttachmentArray(attachments: unknown): unknown[] {
+  if (Array.isArray(attachments)) {
+    return attachments;
+  }
+  return [];
+}
+
+function extractDeepResearchAttachment(
+  attachments: unknown
+): DeepResearchAttachment | null {
+  for (const attachment of toAttachmentArray(attachments)) {
+    if (
+      attachment &&
+      typeof attachment === "object" &&
+      "type" in attachment &&
+      typeof (attachment as { type?: unknown }).type === "string"
+    ) {
+      const type = (attachment as { type: string }).type;
+      if (type === "deep-research-summary") {
+        return attachment as DeepResearchSummaryAttachment;
+      }
+      if (type === "deep-research-report") {
+        return attachment as DeepResearchReportAttachment;
+      }
+    }
+  }
+
+  return null;
+}
+
+function findLatestDeepResearchSummaryAttachment(
+  messages: Array<{ attachments: unknown }>
+): { attachment: DeepResearchSummaryAttachment } | null {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const candidate = extractDeepResearchAttachment(messages[index]?.attachments);
+    if (candidate && candidate.type === "deep-research-summary") {
+      return { attachment: candidate };
+    }
+  }
+
+  return null;
+}
+
 export async function POST(request: Request) {
   let requestBody: PostRequestBody;
 
@@ -194,6 +255,7 @@ export async function POST(request: Request) {
       selectedTools,
       streamReasoning,
       showReasoningPreference,
+      deepResearch,
     }: {
       id: string;
       message: ChatMessage;
@@ -202,6 +264,7 @@ export async function POST(request: Request) {
       selectedTools?: string[];
       streamReasoning?: boolean;
       showReasoningPreference?: boolean;
+      deepResearch?: boolean;
     } = requestBody;
 
     const user = await getAuthUser();
@@ -242,6 +305,10 @@ export async function POST(request: Request) {
 
     const messagesFromDb = await getMessagesByChatId({ id });
     const uiMessages = [...convertToUIMessages(messagesFromDb), message];
+    const deepResearchEnabled = deepResearch ?? false;
+    const userText = getTextFromMessage(message).trim();
+    const latestDeepResearchSummary =
+      findLatestDeepResearchSummaryAttachment(messagesFromDb);
 
     const userContext = await buildUserContext(user.id);
 
@@ -281,6 +348,117 @@ export async function POST(request: Request) {
       : (streamReasoning ?? false);
     const preferenceForDisplay = showReasoningPreference ?? true;
 
+    const respondWithManualStream = async (
+      build: (
+        writer: UIMessageStreamWriter<ChatMessage>,
+        helpers: {
+          registerAttachments: (messageId: string, attachments: unknown[]) => void;
+        }
+      ) => Promise<void>
+    ) => {
+      const attachmentMap = new Map<string, unknown[]>();
+
+      const stream = createUIMessageStream<ChatMessage>({
+        execute: async ({ writer }) => {
+          try {
+            await build(writer, {
+              registerAttachments: (messageId, attachments) => {
+                if (attachments && attachments.length > 0) {
+                  attachmentMap.set(messageId, attachments);
+                }
+              },
+            });
+          } catch (error) {
+            console.error("[deep-research] Workflow failed", error);
+            const createdAt = new Date().toISOString();
+            const sessionId = generateUUID();
+            const fallbackMetadata: MessageMetadata = {
+              createdAt,
+              deepResearch: {
+                sessionId,
+                status: "error",
+              },
+            };
+            const messageId = generateUUID();
+            const textChunkId = generateUUID();
+            writer.write({
+              type: "start",
+              messageId,
+              messageMetadata: fallbackMetadata,
+            });
+            writer.write({ type: "text-start", id: textChunkId });
+            writer.write({
+              type: "text-delta",
+              id: textChunkId,
+              delta:
+                "Deep Research encountered an unexpected error. Please try again or adjust your request.",
+            });
+            writer.write({ type: "text-end", id: textChunkId });
+            writer.write({ type: "finish", messageMetadata: fallbackMetadata });
+            const attachment: DeepResearchSessionAttachment = {
+              type: "deep-research-session",
+              sessionId,
+              status: "error",
+              createdAt,
+            };
+            attachmentMap.set(messageId, [attachment]);
+          }
+        },
+        generateId: generateUUID,
+        onFinish: async ({ messages }) => {
+          await saveMessages({
+            messages: messages.map((currentMessage) => ({
+              id: currentMessage.id,
+              role: currentMessage.role,
+              parts: currentMessage.parts,
+              createdAt: new Date(),
+              attachments: attachmentMap.get(currentMessage.id) ?? [],
+              chatId: id,
+              confidence: null,
+              citations: null,
+              needsReview: null,
+            })),
+          });
+        },
+      });
+
+      const streamContext = await getStreamContext();
+      const sseStream = stream.pipeThrough(new JsonToSseTransformStream());
+
+      if (streamContext) {
+        const [resumableSource, fallbackSource] = sseStream.tee();
+
+        try {
+          const resumableStream = await streamContext.resumableStream(
+            streamId,
+            () => resumableSource
+          );
+
+          if (resumableStream) {
+            console.log("[debug] Returning resumable deep-research stream", {
+              streamId,
+            });
+            return new Response(resumableStream);
+          }
+
+          console.warn(
+            "[redis] Resumable deep-research stream returned null, falling back",
+            { streamId }
+          );
+          return new Response(fallbackSource);
+        } catch (redisError) {
+          console.error(
+            "[redis] Failed deep-research resumable stream, using fallback",
+            { streamId, error: redisError }
+          );
+          return new Response(fallbackSource);
+        }
+      }
+
+      console.log("[debug] Deep-research stream (non-resumable)", { streamId });
+      return new Response(sseStream);
+    };
+
     // Debug logging for API reasoning state
     if (!isProductionEnvironment) {
       console.log("API reasoning state:", {
@@ -289,6 +467,168 @@ export async function POST(request: Request) {
         streamReasoning,
         preferenceForDisplay,
         sendReasoning,
+      });
+    }
+
+    if (deepResearchEnabled) {
+      if (!latestDeepResearchSummary && !isLikelyDetailedQuestion(userText)) {
+        return respondWithManualStream(
+          async (writer, { registerAttachments }) => {
+            const createdAt = new Date().toISOString();
+            const sessionId = generateUUID();
+            const questionText =
+              userText.length > 0
+                ? userText
+                : "A detailed research question has not been provided.";
+            const metadata: MessageMetadata = {
+              createdAt,
+              deepResearch: {
+                sessionId,
+                status: "needs-details",
+                question: questionText,
+              },
+            };
+            const messageId = generateUUID();
+            const textChunkId = generateUUID();
+            const promptText =
+              "### Deep Research Setup Required\nDeep Research is enabled. Share a specific question so I can investigate. Please include:\n\n- Topic and context (industry, region, stakeholders)\n- Timeframe or regulatory window you care about\n- What decision or deliverable you need support for\n\nOnce you provide those details I'll run automated searches and summarise the findings.";
+
+            writer.write({
+              type: "start",
+              messageId,
+              messageMetadata: metadata,
+            });
+            writer.write({ type: "text-start", id: textChunkId });
+            writer.write({
+              type: "text-delta",
+              id: textChunkId,
+              delta: promptText,
+            });
+            writer.write({ type: "text-end", id: textChunkId });
+            writer.write({ type: "finish", messageMetadata: metadata });
+
+            const attachment: DeepResearchSessionAttachment = {
+              type: "deep-research-session",
+              sessionId,
+              status: "needs-details",
+              createdAt,
+              question: questionText,
+            };
+            registerAttachments(messageId, [attachment]);
+          }
+        );
+      }
+
+      if (latestDeepResearchSummary) {
+        const { attachment } = latestDeepResearchSummary;
+        const sessionId = attachment.sessionId;
+        const approval = detectApprovalCommand(userText, sessionId);
+
+        if (approval) {
+          return respondWithManualStream(async (writer, { registerAttachments }) => {
+            const { message: reportMessage, attachment: reportAttachment, metadata } =
+              await runMastraDeepResearchReport({
+                summaryAttachment: attachment,
+                modelId: selectedChatModel,
+              });
+
+            const messageId = generateUUID();
+            const textChunkId = generateUUID();
+            writer.write({ type: "start", messageId, messageMetadata: metadata });
+            writer.write({ type: "text-start", id: textChunkId });
+            writer.write({
+              type: "text-delta",
+              id: textChunkId,
+              delta: reportMessage,
+            });
+            writer.write({ type: "text-end", id: textChunkId });
+            writer.write({ type: "finish", messageMetadata: metadata });
+            registerAttachments(messageId, [reportAttachment]);
+          });
+        }
+
+        const hasFollowUpIntent =
+          detectDeeperRequest(userText) ||
+          isLikelyDetailedQuestion(userText) ||
+          userText.split(/\s+/).filter(Boolean).length >= 6;
+
+        if (!hasFollowUpIntent) {
+          return respondWithManualStream(async (writer) => {
+            const metadata: MessageMetadata = {
+              createdAt: new Date().toISOString(),
+              deepResearch: {
+                sessionId,
+                status: "awaiting-approval",
+                question: attachment.question,
+                plan: attachment.plan,
+                confidence: attachment.confidence,
+                sources: attachment.sources.map((source) => ({
+                  index: source.index,
+                  title: source.title,
+                  url: source.url,
+                  reliability: source.reliability,
+                  confidence: source.confidence,
+                })),
+                parentSessionId: attachment.parentSessionId,
+              },
+            };
+            const messageId = generateUUID();
+            const textChunkId = generateUUID();
+            const reminder = `### Awaiting Deep Research Direction\nSession ${sessionId} is ready. Reply \"approve ${sessionId}\" to generate the full report, or describe what to investigate further.`;
+
+            writer.write({ type: "start", messageId, messageMetadata: metadata });
+            writer.write({ type: "text-start", id: textChunkId });
+            writer.write({ type: "text-delta", id: textChunkId, delta: reminder });
+            writer.write({ type: "text-end", id: textChunkId });
+            writer.write({ type: "finish", messageMetadata: metadata });
+          });
+        }
+
+        const followUpQuestion = `${attachment.question}\n\nFollow-up request:\n${userText}`;
+        return respondWithManualStream(async (writer, { registerAttachments }) => {
+          const {
+            message: summaryMessage,
+            attachment: summaryAttachment,
+            metadata,
+          } = await runMastraDeepResearchSummary({
+            question: followUpQuestion,
+            followUp: userText,
+            parentSessionId: attachment.sessionId,
+            modelId: selectedChatModel,
+            requestHints,
+          });
+
+          const messageId = generateUUID();
+          const textChunkId = generateUUID();
+          writer.write({ type: "start", messageId, messageMetadata: metadata });
+          writer.write({ type: "text-start", id: textChunkId });
+          writer.write({
+            type: "text-delta",
+            id: textChunkId,
+            delta: summaryMessage,
+          });
+          writer.write({ type: "text-end", id: textChunkId });
+          writer.write({ type: "finish", messageMetadata: metadata });
+          registerAttachments(messageId, [summaryAttachment]);
+        });
+      }
+
+      return respondWithManualStream(async (writer, { registerAttachments }) => {
+        const { message: summaryMessage, attachment, metadata } =
+          await runMastraDeepResearchSummary({
+            question: userText,
+            modelId: selectedChatModel,
+            requestHints,
+          });
+
+        const messageId = generateUUID();
+        const textChunkId = generateUUID();
+        writer.write({ type: "start", messageId, messageMetadata: metadata });
+        writer.write({ type: "text-start", id: textChunkId });
+        writer.write({ type: "text-delta", id: textChunkId, delta: summaryMessage });
+        writer.write({ type: "text-end", id: textChunkId });
+        writer.write({ type: "finish", messageMetadata: metadata });
+        registerAttachments(messageId, [attachment]);
       });
     }
 

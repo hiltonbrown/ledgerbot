@@ -71,6 +71,8 @@ function PureArtifact({
   selectedModelId,
   isReasoningEnabled,
   onReasoningChange,
+  isDeepResearchEnabled,
+  onDeepResearchChange,
 }: {
   chatId: string;
   input: string;
@@ -90,6 +92,8 @@ function PureArtifact({
   selectedModelId: string;
   isReasoningEnabled: boolean;
   onReasoningChange?: (enabled: boolean) => void;
+  isDeepResearchEnabled: boolean;
+  onDeepResearchChange?: (enabled: boolean) => void;
 }) {
   const { artifact, setArtifact, metadata, setMetadata } = useArtifact();
 
@@ -341,13 +345,15 @@ function PureArtifact({
                     attachments={attachments}
                     chatId={chatId}
                     className="bg-background dark:bg-muted"
-                    clearError={clearError}
-                    input={input}
-                    isReasoningEnabled={isReasoningEnabled}
-                    messages={messages}
-                    onReasoningChange={onReasoningChange}
-                    selectedModelId={selectedModelId}
-                    selectedVisibilityType={selectedVisibilityType}
+                  clearError={clearError}
+                  input={input}
+                  isReasoningEnabled={isReasoningEnabled}
+                  isDeepResearchEnabled={isDeepResearchEnabled}
+                  messages={messages}
+                  onReasoningChange={onReasoningChange}
+                  onDeepResearchChange={onDeepResearchChange}
+                  selectedModelId={selectedModelId}
+                  selectedVisibilityType={selectedVisibilityType}
                     sendMessage={sendMessage}
                     setAttachments={setAttachments}
                     setInput={setInput}
