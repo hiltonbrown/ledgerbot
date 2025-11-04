@@ -143,7 +143,11 @@ export async function listUserConversations(
 
     // Scan for matching keys (avoids blocking KEYS command)
     for await (const key of clients.publisher.scanIterator({ MATCH: pattern })) {
-      keys.push(key);
+      if (Array.isArray(key)) {
+        keys.push(...key);
+      } else {
+        keys.push(key);
+      }
     }
 
     return keys;

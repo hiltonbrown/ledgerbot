@@ -34,7 +34,7 @@ const requestSchema = z.object({
     costDrivers: z.array(z.string()).default([]),
     notes: z.string().optional(),
     growthSignals: z.array(z.string()).default([]),
-    assumptionOverrides: z.record(z.string()).optional(),
+    assumptionOverrides: z.record(z.string(), z.string()).optional(),
   }),
 });
 
@@ -58,14 +58,17 @@ async function buildXeroContext({
 }) {
   try {
     const tools = createXeroTools(userId);
+
     const [pnlResult, balanceResult] = await Promise.allSettled([
-      tools.xero_get_profit_and_loss.execute({
+      // biome-ignore lint/suspicious/noExplicitAny: Type workaround for AI SDK tool execution
+      (tools.xero_get_profit_and_loss as any).execute({
         fromDate,
         toDate,
         periods: Math.min(periods, 12),
         timeframe: "MONTH",
       }),
-      tools.xero_get_balance_sheet.execute({ fromDate, toDate }),
+      // biome-ignore lint/suspicious/noExplicitAny: Type workaround for AI SDK tool execution
+      (tools.xero_get_balance_sheet as any).execute({ fromDate, toDate }),
     ]);
 
     const sections: string[] = [];

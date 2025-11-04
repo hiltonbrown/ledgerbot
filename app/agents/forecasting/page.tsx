@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { forecastModelLibrary } from "@/lib/agents/forecasting/config";
+import { forecastModelLibrary, type ForecastModelId } from "@/lib/agents/forecasting/config";
 
 const forecastSeries = [
   { month: "Nov", base: 280_000, best: 310_000, worst: 240_000 },
@@ -60,7 +60,7 @@ export default function ForecastingAgentPage() {
     () => new Date().toISOString().slice(0, 7),
     []
   );
-  const [modelId, setModelId] = useState(forecastModelLibrary[0].id);
+  const [modelId, setModelId] = useState<ForecastModelId>(forecastModelLibrary[0].id);
   const [startMonth, setStartMonth] = useState(currentMonth);
   const [horizonMonths, setHorizonMonths] = useState("12");
   const [currency, setCurrency] = useState("AUD");
@@ -199,7 +199,7 @@ export default function ForecastingAgentPage() {
                 <Label className="text-muted-foreground text-xs uppercase">
                   Financial model
                 </Label>
-                <Select value={modelId} onValueChange={setModelId}>
+                <Select value={modelId} onValueChange={(value) => setModelId(value as ForecastModelId)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select model" />
                   </SelectTrigger>

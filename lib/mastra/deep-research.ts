@@ -139,8 +139,8 @@ async function createResearchPlan({
     );
   }
 
-  if (hints?.userContext?.industry) {
-    contextHints.push(`Industry: ${hints.userContext.industry}`);
+  if (hints?.userContext) {
+    contextHints.push(`User context: ${hints.userContext}`);
   }
 
   const prompt = `Question: ${question}\n\nContext: ${

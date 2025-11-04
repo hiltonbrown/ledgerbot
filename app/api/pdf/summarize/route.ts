@@ -110,7 +110,7 @@ export async function POST(request: Request) {
       console.log(`[docmanagement] Using cached summary for ${contextFile.originalName}`);
 
       // Parse the existing markdown to extract structured data
-      const cachedContent = existingDocs[0].content;
+      const cachedContent = existingDocs[0].content || "";
       const summaryMatch = cachedContent.match(/# PDF summary:.*?\n(.*?)(?=\n## |$)/s);
       const summary = summaryMatch?.[1]?.trim() || "Cached summary available.";
 
@@ -132,7 +132,7 @@ export async function POST(request: Request) {
       (async () => {
         try {
           const summaryResult = await summarizePdfContent({
-            text: contextFile.extractedText,
+            text: contextFile.extractedText || "",
             fileName: contextFile.originalName ?? contextFile.name,
             onProgress: (event) => {
               sendEvent("progress", event);
