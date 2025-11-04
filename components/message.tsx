@@ -22,6 +22,7 @@ import { SparklesIcon } from "./icons";
 import { MessageActions } from "./message-actions";
 import { MessageEditor } from "./message-editor";
 import { MessageReasoning } from "./message-reasoning";
+import { DeepResearchStatus } from "./deep-research-status";
 import { PreviewAttachment } from "./preview-attachment";
 import { Weather } from "./weather";
 
@@ -49,6 +50,8 @@ const PurePreviewMessage = ({
   const attachmentsFromMessage = message.parts.filter(
     (part) => part.type === "file"
   );
+  const deepResearchMetadata =
+    message.role === "assistant" ? message.metadata?.deepResearch : undefined;
 
   useDataStream();
 
@@ -88,6 +91,10 @@ const PurePreviewMessage = ({
               message.role === "user" && mode !== "edit",
           })}
         >
+          {message.role === "assistant" && deepResearchMetadata ? (
+            <DeepResearchStatus metadata={deepResearchMetadata} />
+          ) : null}
+
           {attachmentsFromMessage.length > 0 && (
             <div
               className="flex flex-row justify-end gap-2"

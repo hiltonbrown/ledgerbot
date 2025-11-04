@@ -48,6 +48,7 @@ import {
   ArrowUpIcon,
   ChevronDownIcon,
   CpuIcon,
+  GlobeIcon,
   PaperclipIcon,
   SparklesIcon,
   StopIcon,
@@ -80,6 +81,8 @@ function PureMultimodalInput({
   usage,
   isReasoningEnabled,
   onReasoningChange,
+  isDeepResearchEnabled,
+  onDeepResearchChange,
   suggestions,
 }: {
   chatId: string;
@@ -102,6 +105,8 @@ function PureMultimodalInput({
   usage?: AppUsage;
   isReasoningEnabled: boolean;
   onReasoningChange?: (enabled: boolean) => void;
+  isDeepResearchEnabled: boolean;
+  onDeepResearchChange?: (enabled: boolean) => void;
   suggestions?: Array<{
     id: string;
     text: string;
@@ -254,8 +259,10 @@ function PureMultimodalInput({
   const contextProps = useMemo(
     () => ({
       usage,
+      reasoningEnabled: isReasoningEnabled,
+      deepResearchEnabled: isDeepResearchEnabled,
     }),
-    [usage]
+    [usage, isReasoningEnabled, isDeepResearchEnabled]
   );
 
   useEffect(() => {
@@ -510,6 +517,11 @@ function PureMultimodalInput({
               onToolsChange={onToolsChange}
               selectedTools={selectedTools}
             />
+            <DeepResearchToggle
+              disabled={isAwaitingResponse}
+              isEnabled={isDeepResearchEnabled}
+              onToggle={onDeepResearchChange}
+            />
             <ReasoningToggle
               disabled={!isReasoningModelId(selectedModelId)}
               isEnabled={isReasoningEnabled}
@@ -556,6 +568,11 @@ export const MultimodalInput = memo(
       return false;
     }
     if (prevProps.isReasoningEnabled !== nextProps.isReasoningEnabled) {
+      return false;
+    }
+    if (
+      prevProps.isDeepResearchEnabled !== nextProps.isDeepResearchEnabled
+    ) {
       return false;
     }
 
@@ -719,6 +736,52 @@ function PureToolSelectorCompact({
 }
 
 const ToolSelectorCompact = memo(PureToolSelectorCompact);
+
+function PureDeepResearchToggle({
+  isEnabled,
+  onToggle,
+  disabled,
+}: {
+  isEnabled: boolean;
+  onToggle?: (enabled: boolean) => void;
+  disabled: boolean;
+}) {
+  const switchId = useId();
+
+  return (
+    <div
+      className={cn(
+        "flex h-8 items-center gap-2 rounded-lg bg-background px-2 font-medium text-xs transition-colors",
+        disabled
+          ? "cursor-not-allowed text-muted-foreground opacity-60"
+          : "text-foreground hover:bg-accent"
+      )}
+      data-disabled={disabled ? "" : undefined}
+    >
+      <GlobeIcon size={14} />
+      <Label
+        className={cn(
+          "hidden font-medium text-xs sm:inline",
+          disabled ? "cursor-not-allowed" : "cursor-pointer"
+        )}
+        htmlFor={switchId}
+        suppressHydrationWarning
+      >
+        Deep Research
+      </Label>
+      <Switch
+        aria-label="Toggle deep research"
+        checked={isEnabled}
+        data-testid="deep-research-toggle"
+        disabled={disabled}
+        id={switchId}
+        onCheckedChange={(checked) => onToggle?.(checked)}
+      />
+    </div>
+  );
+}
+
+const DeepResearchToggle = memo(PureDeepResearchToggle);
 
 function PureReasoningToggle({
   isEnabled,

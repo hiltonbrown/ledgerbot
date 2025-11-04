@@ -10,11 +10,41 @@ import type { AppUsage } from "./usage";
 
 export type DataPart = { type: "append-message"; message: string };
 
+const deepResearchSourceMetadataSchema = z.object({
+  index: z.number(),
+  title: z.string(),
+  url: z.string().url().optional(),
+  reliability: z.enum(["high", "medium", "low"]),
+  confidence: z.number().min(0).max(1).optional(),
+});
+
+const deepResearchMetadataSchema = z.object({
+  sessionId: z.string(),
+  status: z.enum([
+    "needs-details",
+    "awaiting-approval",
+    "report-generated",
+    "error",
+  ]),
+  question: z.string().optional(),
+  plan: z.array(z.string()).optional(),
+  confidence: z.number().min(0).max(1).optional(),
+  sources: z.array(deepResearchSourceMetadataSchema).optional(),
+  parentSessionId: z.string().optional(),
+});
+
 export const messageMetadataSchema = z.object({
   createdAt: z.string(),
   showReasoningPreference: z.boolean().optional(),
+  deepResearch: deepResearchMetadataSchema.optional(),
 });
 
+export type DeepResearchSourceMetadata = z.infer<
+  typeof deepResearchSourceMetadataSchema
+>;
+export type DeepResearchMessageMetadata = z.infer<
+  typeof deepResearchMetadataSchema
+>;
 export type MessageMetadata = z.infer<typeof messageMetadataSchema>;
 
 type weatherTool = InferUITool<typeof getWeather>;
