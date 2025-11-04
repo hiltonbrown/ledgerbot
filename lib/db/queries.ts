@@ -276,6 +276,35 @@ export async function getContextFilesByUserId({
   }
 }
 
+export async function getContextFileById({
+  id,
+  userId,
+}: {
+  id: string;
+  userId: string;
+}): Promise<ContextFile | null> {
+  try {
+    const [file] = await db
+      .select()
+      .from(contextFile)
+      .where(and(eq(contextFile.id, id), eq(contextFile.userId, userId)))
+      .limit(1);
+
+    return file ?? null;
+  } catch (error) {
+    console.error("Database error in getContextFileById:", {
+      id,
+      userId,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to fetch context file by id"
+    );
+  }
+}
+
 export async function updateContextFileContent({
   id,
   extractedText,
