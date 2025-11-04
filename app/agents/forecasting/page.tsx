@@ -1,7 +1,9 @@
 "use client";
 
 import { CalendarRange, RefreshCw } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "@/components/toast";
 import {
   Area,
   AreaChart,
@@ -16,7 +18,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartLegend } from "@/components/ui/chart";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { forecastModelLibrary } from "@/lib/agents/forecasting/config";
 
 const forecastSeries = [
   { month: "Nov", base: 280_000, best: 310_000, worst: 240_000 },
@@ -44,15 +55,301 @@ const assumptionDefaults = {
 };
 
 export default function ForecastingAgentPage() {
+  const router = useRouter();
+  const currentMonth = useMemo(
+    () => new Date().toISOString().slice(0, 7),
+    []
+  );
+  const [modelId, setModelId] = useState(forecastModelLibrary[0].id);
+  const [startMonth, setStartMonth] = useState(currentMonth);
+  const [horizonMonths, setHorizonMonths] = useState("12");
+  const [currency, setCurrency] = useState("AUD");
+  const [openingCash, setOpeningCash] = useState("");
+  const [revenueNotes, setRevenueNotes] = useState("");
+  const [costNotes, setCostNotes] = useState("");
+  const [growthSignals, setGrowthSignals] = useState("");
+  const [additionalNotes, setAdditionalNotes] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [includeBestCase, setIncludeBestCase] = useState(true);
   const [includeWorstCase, setIncludeWorstCase] = useState(true);
   const [assumptions, setAssumptions] = useState(assumptionDefaults);
+
+  const selectedModel = useMemo(
+    () =>
+      forecastModelLibrary.find((model) => model.id === modelId) ??
+      forecastModelLibrary[0],
+    [modelId]
+  );
+
+  const parseList = (value: string) =>
+    value
+      .split(/\r?\n/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (isSubmitting) {
+      return;
+    }
+
+    const horizonValue = Number.parseInt(horizonMonths, 10);
+    if (!Number.isFinite(horizonValue) || horizonValue < 3) {
+      toast({
+        type: "error",
+        description: "Please provide a horizon between 3 and 36 months.",
+      });
+      return;
+    }
+
+    const openingCashValue = openingCash.trim()
+      ? Number.parseFloat(openingCash.replace(/[^0-9.-]/g, ""))
+      : null;
+
+    if (openingCash.trim() && !Number.isFinite(openingCashValue ?? undefined)) {
+      toast({
+        type: "error",
+        description: "Opening cash must be a valid number.",
+      });
+      return;
+    }
+
+    const assumptionOverrides = Object.fromEntries(
+      Object.entries(assumptions).filter(([, value]) => value.trim())
+    );
+
+    const payload = {
+      modelId,
+      includeOptimistic: includeBestCase,
+      includePessimistic: includeWorstCase,
+      variables: {
+        startMonth,
+        horizonMonths: horizonValue,
+        currency: currency.trim() || "AUD",
+        openingCash: openingCashValue,
+        revenueStreams: parseList(revenueNotes),
+        costDrivers: parseList(costNotes),
+        notes: additionalNotes.trim() || undefined,
+        growthSignals: parseList(growthSignals),
+        assumptionOverrides,
+      },
+    } as const;
+
+    try {
+      setIsSubmitting(true);
+      const response = await fetch("/api/agents/forecasting", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        let message = "Failed to start the forecasting agent.";
+        try {
+          const data = await response.json();
+          if (data?.error) {
+            message = JSON.stringify(data.error);
+          }
+        } catch (_) {
+          message = `${message} (unexpected response)`;
+        }
+        toast({ type: "error", description: message });
+        return;
+      }
+
+      const data = await response.json();
+      toast({
+        type: "success",
+        description: "Forecast workspace created. Redirecting to the chat…",
+      });
+      router.push(`/chat/${data.chatId}`);
+    } catch (error) {
+      const description =
+        error instanceof Error
+          ? error.message
+          : "Unable to launch the forecasting agent.";
+      toast({ type: "error", description });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const latestRun = useMemo(() => forecastSeries[0], []);
   const runSummary = `Latest run ${latestRun.month}: base $${latestRun.base.toLocaleString()} · upside $${latestRun.best.toLocaleString()} · downside $${latestRun.worst.toLocaleString()}`;
 
   return (
     <div className="space-y-10">
+      <Card>
+        <CardHeader className="flex flex-col gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <RefreshCw className="h-5 w-5 text-primary" />
+            Launch Mastra financial forecast
+          </CardTitle>
+          <p className="text-muted-foreground text-sm">
+            Provide the key drivers and we will spin up a dedicated forecasting
+            chat. The agent will pull Xero context when available and deliver a
+            spreadsheet artifact with scenarios.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <form className="space-y-6" onSubmit={handleSubmit}>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label className="text-muted-foreground text-xs uppercase">
+                  Financial model
+                </Label>
+                <Select value={modelId} onValueChange={setModelId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {forecastModelLibrary.map((model) => (
+                      <SelectItem key={model.id} value={model.id}>
+                        {model.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-muted-foreground text-xs leading-relaxed">
+                  {selectedModel.description}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-muted-foreground text-xs uppercase">
+                  Start month
+                </Label>
+                <Input
+                  required
+                  type="month"
+                  value={startMonth}
+                  onChange={(event) => setStartMonth(event.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-muted-foreground text-xs uppercase">
+                  Horizon (months)
+                </Label>
+                <Input
+                  required
+                  min={3}
+                  max={36}
+                  type="number"
+                  value={horizonMonths}
+                  onChange={(event) => setHorizonMonths(event.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-muted-foreground text-xs uppercase">
+                  Currency code
+                </Label>
+                <Input
+                  value={currency}
+                  onChange={(event) =>
+                    setCurrency(event.target.value.toUpperCase())
+                  }
+                  placeholder="AUD"
+                />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label className="text-muted-foreground text-xs uppercase">
+                  Opening cash balance
+                </Label>
+                <Input
+                  inputMode="decimal"
+                  placeholder="e.g. 250000"
+                  value={openingCash}
+                  onChange={(event) => setOpeningCash(event.target.value)}
+                />
+                <p className="text-muted-foreground text-xs">
+                  Leave blank to let the agent read the latest balance sheet
+                  figure from Xero.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label className="text-muted-foreground text-xs uppercase">
+                  Revenue streams & drivers
+                </Label>
+                <Textarea
+                  rows={4}
+                  value={revenueNotes}
+                  placeholder="One per line e.g. Enterprise ARR: $180k average deal"
+                  onChange={(event) => setRevenueNotes(event.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-muted-foreground text-xs uppercase">
+                  Cost structure & investments
+                </Label>
+                <Textarea
+                  rows={4}
+                  value={costNotes}
+                  placeholder="One per line e.g. Cloud infra: $48k/month"
+                  onChange={(event) => setCostNotes(event.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label className="text-muted-foreground text-xs uppercase">
+                  Growth signals or targets
+                </Label>
+                <Textarea
+                  rows={3}
+                  value={growthSignals}
+                  placeholder="One per line e.g. Net revenue retention 118%"
+                  onChange={(event) => setGrowthSignals(event.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-muted-foreground text-xs uppercase">
+                  Additional notes
+                </Label>
+                <Textarea
+                  rows={3}
+                  value={additionalNotes}
+                  placeholder="Board expectations, capital plans, or risk notes"
+                  onChange={(event) => setAdditionalNotes(event.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="rounded-md border border-primary/40 border-dashed bg-primary/5 p-3 text-xs">
+              <p className="font-semibold">Template guidance</p>
+              <p className="text-muted-foreground">{selectedModel.guidance}</p>
+            </div>
+
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <p className="text-muted-foreground text-xs">
+                Upside and downside toggles below will be honoured when the chat
+                starts.
+              </p>
+              <Button
+                className="md:w-auto"
+                disabled={isSubmitting}
+                type="submit"
+              >
+                {isSubmitting ? (
+                  <span className="flex items-center gap-2">
+                    Preparing
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    Launch forecasting chat
+                    <RefreshCw className="h-4 w-4" />
+                  </span>
+                )}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
         <Card>
           <CardHeader className="flex flex-col gap-2">
