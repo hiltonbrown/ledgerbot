@@ -135,7 +135,8 @@ function summariseScenario(
   const openingRevenue = normaliseNumber(first.revenue);
   const closingRevenue = normaliseNumber(last.revenue);
   const endingCash = normaliseNumber(last.endingCash ?? last.netCashFlow ?? 0);
-  const cagr = ((closingRevenue / Math.max(openingRevenue, 1)) ** (1 / Math.max(scenario.monthly.length - 1, 1)) - 1) * 100;
+  const numberOfMonths = Math.max(scenario.monthly.length, 1);
+  const cagr = ((closingRevenue / Math.max(openingRevenue, 1)) ** (12 / numberOfMonths) - 1) * 100;
 
   const highlightParts = [
     `${scenario.label}: ${formatNumberWithCurrency(closingRevenue, currency)} revenue by period end`,
