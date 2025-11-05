@@ -20,6 +20,10 @@ interface XeroConnection {
   isActive: boolean;
   createdAt: Date;
   expiresAt: Date;
+  connectionStatus: string | null;
+  lastError: string | null;
+  lastErrorType: string | null;
+  lastCorrelationId: string | null;
 }
 
 interface XeroIntegrationCardProps {
@@ -180,7 +184,66 @@ export function XeroIntegrationCard({
               Token expires:{" "}
               {new Date(activeConnection.expiresAt).toLocaleDateString("en-AU")}
             </p>
+            {activeConnection.connectionStatus === "error" && (
+              <div className="mt-2 flex items-center gap-1.5">
+                <span className="inline-block h-2 w-2 rounded-full bg-red-500" />
+                <span className="font-medium text-red-600">Connection Error</span>
+              </div>
+            )}
+            {activeConnection.connectionStatus === "connected" && (
+              <div className="mt-2 flex items-center gap-1.5">
+                <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
+                <span className="font-medium text-green-600">Connected</span>
+              </div>
+            )}
           </div>
+
+          {/* Error Details Section */}
+          {activeConnection.lastError && (
+            <div className="space-y-2 rounded-md border border-red-200 bg-red-50 p-3 dark:border-red-900 dark:bg-red-950/30">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 space-y-1">
+                  <p className="font-medium text-red-900 text-xs dark:text-red-200">
+                    Connection Error
+                  </p>
+                  <p className="text-red-800 text-xs dark:text-red-300">
+                    {activeConnection.lastError}
+                  </p>
+                  {activeConnection.lastErrorType && (
+                    <p className="text-red-700 text-xs dark:text-red-400">
+                      Error type: {activeConnection.lastErrorType}
+                    </p>
+                  )}
+                  {activeConnection.lastCorrelationId && (
+                    <details className="mt-2">
+                      <summary className="cursor-pointer text-red-700 text-xs hover:text-red-800 dark:text-red-400 dark:hover:text-red-300">
+                        Technical Details
+                      </summary>
+                      <div className="mt-1 rounded bg-red-100 p-2 font-mono text-red-900 text-[10px] dark:bg-red-900/20 dark:text-red-200">
+                        <p>Correlation ID: {activeConnection.lastCorrelationId}</p>
+                        <p className="mt-1 text-red-700 dark:text-red-400">
+                          Include this ID when contacting support
+                        </p>
+                      </div>
+                    </details>
+                  )}
+                </div>
+              </div>
+              {(activeConnection.lastErrorType === "authorization" ||
+                activeConnection.lastErrorType === "token") && (
+                <Button
+                  className="w-full"
+                  disabled={isConnecting}
+                  onClick={handleConnect}
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  {isConnecting ? "Reconnecting..." : "Reconnect to Xero"}
+                </Button>
+              )}
+            </div>
+          )}
 
           {connections.length > 1 && (
             <div className="space-y-2">

@@ -107,6 +107,7 @@ export async function GET(request: Request) {
           userId: user.id,
           tenantId: tenant.tenantId,
           tenantName: tenant.tenantName,
+          tenantType: tenant.tenantType,
           accessToken: encryptedAccessToken,
           refreshToken: encryptedRefreshToken,
           expiresAt,

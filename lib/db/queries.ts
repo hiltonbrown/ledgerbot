@@ -1000,6 +1000,7 @@ export async function createXeroConnection({
   userId,
   tenantId,
   tenantName,
+  tenantType,
   accessToken,
   refreshToken,
   expiresAt,
@@ -1009,6 +1010,7 @@ export async function createXeroConnection({
   userId: string;
   tenantId: string;
   tenantName?: string;
+  tenantType?: string;
   accessToken: string;
   refreshToken: string;
   expiresAt: Date;
@@ -1061,11 +1063,14 @@ export async function createXeroConnection({
               tenantNameValue !== null
                 ? tenantNameValue
                 : existingConnection.tenantName,
+            tenantType: tenantType || existingConnection.tenantType,
             accessToken,
             refreshToken,
             expiresAt,
             scopes,
             authenticationEventId,
+            connectionStatus: "connected",
+            lastError: null,
             isActive: true,
             updatedAt: now,
           })
@@ -1100,11 +1105,13 @@ export async function createXeroConnection({
             userId,
             tenantId,
             tenantName: tenantNameValue,
+            tenantType,
             accessToken,
             refreshToken,
             expiresAt,
             scopes,
             authenticationEventId,
+            connectionStatus: "connected",
             isActive: true,
             updatedAt: now,
           })
@@ -1439,5 +1446,115 @@ export async function getExpiringXeroConnections(
       "bad_request:database",
       "Failed to get expiring Xero connections"
     );
+  }
+}
+
+export async function getAllXeroConnectionsForUser(
+  userId: string
+): Promise<XeroConnection[]> {
+  try {
+    return await db
+      .select()
+      .from(xeroConnection)
+      .where(eq(xeroConnection.userId, userId))
+      .orderBy(desc(xeroConnection.updatedAt));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get Xero connections for user"
+    );
+  }
+}
+
+export async function syncXeroConnectionMetadata(
+  userId: string,
+  xeroConnInfo: {
+    id: string;
+    authEventId: string;
+    tenantId: string;
+    tenantType: string;
+    tenantName: string | null;
+    createdDateUtc: string;
+    updatedDateUtc: string;
+  }
+): Promise<void> {
+  try {
+    // Find existing connection by userId and tenantId
+    const [existingConnection] = await db
+      .select()
+      .from(xeroConnection)
+      .where(
+        and(
+          eq(xeroConnection.userId, userId),
+          eq(xeroConnection.tenantId, xeroConnInfo.tenantId)
+        )
+      )
+      .limit(1);
+
+    if (existingConnection) {
+      // Update metadata from Xero API
+      await db
+        .update(xeroConnection)
+        .set({
+          xeroConnectionId: xeroConnInfo.id,
+          tenantName: xeroConnInfo.tenantName || existingConnection.tenantName,
+          tenantType: xeroConnInfo.tenantType,
+          authenticationEventId: xeroConnInfo.authEventId,
+          xeroCreatedDateUtc: new Date(xeroConnInfo.createdDateUtc),
+          xeroUpdatedDateUtc: new Date(xeroConnInfo.updatedDateUtc),
+          connectionStatus: "connected",
+          lastError: null, // Clear any previous errors on successful sync
+          lastErrorType: null,
+          lastCorrelationId: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(xeroConnection.id, existingConnection.id));
+    }
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to sync Xero connection metadata"
+    );
+  }
+}
+
+export async function updateConnectionError(
+  connectionId: string,
+  error: string,
+  errorType?: string,
+  correlationId?: string
+): Promise<void> {
+  try {
+    await db
+      .update(xeroConnection)
+      .set({
+        connectionStatus: "error",
+        lastError: error,
+        lastErrorType: errorType || null,
+        lastCorrelationId: correlationId || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(xeroConnection.id, connectionId));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to update connection error"
+    );
+  }
+}
+
+export async function updateLastApiCall(connectionId: string): Promise<void> {
+  try {
+    await db
+      .update(xeroConnection)
+      .set({
+        lastApiCallAt: new Date(),
+        connectionStatus: "connected",
+        updatedAt: new Date(),
+      })
+      .where(eq(xeroConnection.id, connectionId));
+  } catch (_error) {
+    // Don't throw error - this is just tracking, shouldn't break API calls
+    console.error("Failed to update last API call timestamp:", _error);
   }
 }

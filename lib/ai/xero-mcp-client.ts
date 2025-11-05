@@ -7,10 +7,21 @@ import {
   type QuoteStatusCodes,
   XeroClient,
 } from "xero-node";
-import { updateXeroTokens } from "@/lib/db/queries";
+import {
+  updateXeroTokens,
+  updateLastApiCall,
+  updateConnectionError,
+} from "@/lib/db/queries";
 import { getDecryptedConnection } from "@/lib/xero/connection-manager";
 import { encryptToken } from "@/lib/xero/encryption";
 import type { DecryptedXeroConnection } from "@/lib/xero/types";
+import {
+  parseXeroError,
+  extractCorrelationId,
+  formatErrorForLogging,
+  requiresReconnection,
+} from "@/lib/xero/error-handler";
+import type { ParsedXeroError } from "@/lib/xero/error-handler";
 
 /**
  * Xero MCP Client
@@ -1020,10 +1031,98 @@ export async function executeXeroMCPTool(
   toolName: string,
   args: Record<string, unknown>
 ): Promise<XeroMCPToolResult> {
+  let connectionId: string | undefined;
+  let parsedError: ParsedXeroError | undefined;
+
   try {
     const { client, connection } = await getXeroClient(userId);
+    connectionId = connection.id;
+
     try {
-      switch (toolName) {
+      // Execute the Xero API operation
+      const result = await executeXeroToolOperation(
+        client,
+        connection,
+        toolName,
+        args
+      );
+
+      // Track successful API call for connection management
+      await updateLastApiCall(connection.id);
+
+      return result;
+    } catch (operationError) {
+      // Extract X-Correlation-Id if available from the error response
+      let correlationId: string | undefined;
+      if (
+        operationError &&
+        typeof operationError === "object" &&
+        "response" in operationError
+      ) {
+        const response = (operationError as any).response;
+        if (response?.headers) {
+          correlationId = extractCorrelationId(response.headers);
+        }
+      }
+
+      // Parse Xero API error with best practices
+      parsedError = parseXeroError(operationError, correlationId);
+
+      // Log detailed error information for debugging
+      console.error(
+        `Xero API operation ${toolName} failed:`,
+        formatErrorForLogging(parsedError)
+      );
+
+      // Update connection error status with all details
+      await updateConnectionError(
+        connection.id,
+        parsedError.userMessage,
+        parsedError.type,
+        parsedError.correlationId
+      );
+
+      // If error requires reconnection, update status to disconnected
+      if (requiresReconnection(parsedError)) {
+        console.warn(
+          `Xero connection ${connection.id} requires reconnection due to ${parsedError.type} error`
+        );
+      }
+
+      throw operationError;
+    }
+  } catch (error) {
+    // If we haven't parsed the error yet, parse it now
+    if (!parsedError) {
+      parsedError = parseXeroError(error);
+      console.error(`Xero MCP tool execution failed:`, formatErrorForLogging(parsedError));
+    }
+
+    // Return user-friendly error message
+    return {
+      content: [
+        {
+          type: "text",
+          text: parsedError.userMessage,
+        },
+      ],
+      isError: true,
+    };
+  }
+}
+
+/**
+ * Internal function to execute the actual Xero tool operation
+ * Separated for cleaner error handling and tracking
+ */
+async function executeXeroToolOperation(
+  client: XeroClient,
+  connection: DecryptedXeroConnection,
+  toolName: string,
+  args: Record<string, unknown>
+): Promise<XeroMCPToolResult> {
+  try {
+    switch (toolName) {
         case "xero_list_invoices": {
           const { status, dateFrom, dateTo, contactId, limit } = args;
 
@@ -2234,20 +2333,8 @@ export async function executeXeroMCPTool(
         default:
           throw new Error(`Unknown Xero tool: ${toolName}`);
       }
-    } finally {
-      await persistTokenSet(client, connection);
-    }
-  } catch (error) {
-    console.error(`Xero MCP tool error (${toolName}):`, error);
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Error executing Xero tool: ${error instanceof Error ? error.message : "Unknown error"}`,
-        },
-      ],
-      isError: true,
-    };
+  } finally {
+    await persistTokenSet(client, connection);
   }
 }
 

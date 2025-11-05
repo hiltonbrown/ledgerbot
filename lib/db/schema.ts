@@ -239,14 +239,23 @@ export const xeroConnection = pgTable("XeroConnection", {
   userId: uuid("userId")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
+  xeroConnectionId: varchar("xeroConnectionId", { length: 255 }), // Xero's connection ID from /connections endpoint
   tenantId: varchar("tenantId", { length: 255 }).notNull(),
   tenantName: varchar("tenantName", { length: 255 }),
+  tenantType: varchar("tenantType", { length: 50 }), // ORGANISATION, PRACTICEMANAGER, PRACTICE
   accessToken: text("accessToken").notNull(), // Encrypted
   refreshToken: text("refreshToken").notNull(), // Encrypted
   expiresAt: timestamp("expiresAt").notNull(),
   scopes: jsonb("scopes").$type<string[]>().notNull(),
   authenticationEventId: varchar("authenticationEventId", { length: 255 }), // Xero auth event ID for connection tracking
+  xeroCreatedDateUtc: timestamp("xeroCreatedDateUtc"), // When connection was first created in Xero
+  xeroUpdatedDateUtc: timestamp("xeroUpdatedDateUtc"), // Last time user re-authorized in Xero
   isActive: boolean("isActive").notNull().default(true),
+  connectionStatus: varchar("connectionStatus", { length: 50 }).default("connected"), // connected, disconnected, error
+  lastError: text("lastError"), // Last connection error message for user alerts
+  lastErrorType: varchar("lastErrorType", { length: 50 }), // validation, authorization, token, rate_limit, server, network
+  lastCorrelationId: varchar("lastCorrelationId", { length: 255 }), // X-Correlation-Id from Xero for support tickets
+  lastApiCallAt: timestamp("lastApiCallAt"), // Track last successful API call for cleanup
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });

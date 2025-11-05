@@ -408,3 +408,118 @@ export async function revokeXeroToken(connectionId: string): Promise<void> {
     throw error;
   }
 }
+
+/**
+ * Fetch all Xero connections for a user from the Xero API
+ * This calls the GET /connections endpoint and returns connection metadata
+ */
+export async function fetchXeroConnections(
+  userId: string,
+  authEventId?: string
+): Promise<XeroConnectionInfo[]> {
+  try {
+    const connection = await getActiveXeroConnection(userId);
+
+    if (!connection) {
+      return [];
+    }
+
+    const xeroClient = createXeroClient();
+    await xeroClient.initialize();
+
+    const decryptedAccessToken = decryptToken(connection.accessToken);
+    const decryptedRefreshToken = decryptToken(connection.refreshToken);
+
+    await xeroClient.setTokenSet({
+      access_token: decryptedAccessToken,
+      refresh_token: decryptedRefreshToken,
+      token_type: "Bearer",
+      expires_in: 1800,
+    });
+
+    // Build URL with optional authEventId filter
+    const baseUrl = "https://api.xero.com/connections";
+    const url = authEventId ? `${baseUrl}?authEventId=${authEventId}` : baseUrl;
+
+    // Make request to connections endpoint
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${decryptedAccessToken}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch Xero connections: ${response.statusText}`);
+    }
+
+    const connections = await response.json();
+    return connections as XeroConnectionInfo[];
+  } catch (error) {
+    console.error(`Failed to fetch Xero connections for user ${userId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Delete a specific Xero connection via the DELETE /connections endpoint
+ */
+export async function deleteXeroConnection(
+  userId: string,
+  xeroConnectionId: string
+): Promise<void> {
+  try {
+    const connection = await getActiveXeroConnection(userId);
+
+    if (!connection) {
+      throw new Error("No active Xero connection found");
+    }
+
+    const xeroClient = createXeroClient();
+    await xeroClient.initialize();
+
+    const decryptedAccessToken = decryptToken(connection.accessToken);
+    const decryptedRefreshToken = decryptToken(connection.refreshToken);
+
+    await xeroClient.setTokenSet({
+      access_token: decryptedAccessToken,
+      refresh_token: decryptedRefreshToken,
+      token_type: "Bearer",
+      expires_in: 1800,
+    });
+
+    // Make DELETE request to connections endpoint
+    const response = await fetch(
+      `https://api.xero.com/connections/${xeroConnectionId}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${decryptedAccessToken}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete Xero connection: ${response.statusText}`);
+    }
+
+    console.log(`Successfully deleted Xero connection ${xeroConnectionId}`);
+  } catch (error) {
+    console.error(`Failed to delete Xero connection ${xeroConnectionId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Type definition for Xero connection info from /connections endpoint
+ */
+export interface XeroConnectionInfo {
+  id: string;
+  authEventId: string;
+  tenantId: string;
+  tenantType: "ORGANISATION" | "PRACTICEMANAGER" | "PRACTICE";
+  tenantName: string | null;
+  createdDateUtc: string;
+  updatedDateUtc: string;
+}

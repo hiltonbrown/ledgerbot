@@ -19,3 +19,13 @@ export interface DecryptedXeroConnection
   accessToken: string;
   refreshToken: string;
 }
+
+export interface XeroConnectionInfo {
+  id: string;
+  authEventId: string;
+  tenantId: string;
+  tenantType: "ORGANISATION" | "PRACTICEMANAGER" | "PRACTICE";
+  tenantName: string | null;
+  createdDateUtc: string;
+  updatedDateUtc: string;
+}
