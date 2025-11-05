@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { chatModelIds } from "@/lib/ai/models";
-import { type ToolId, toolIds } from "@/lib/ai/tools";
 
 const textPartSchema = z.object({
   type: z.enum(["text"]),
@@ -40,7 +39,6 @@ export const postRequestBodySchema = z.object({
   selectedVisibilityType: z
     .enum(["public", "private"])
     .transform(() => "private" as const),
-  selectedTools: z.array(z.enum(toolIds as [ToolId, ...ToolId[]])).optional(),
   streamReasoning: z.boolean().optional(),
   showReasoningPreference: z.boolean().optional(),
   deepResearch: z.boolean().optional(),

@@ -60,7 +60,10 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    console.error("[docmanagement] Failed to retrieve cached conversation:", error);
+    console.error(
+      "[docmanagement] Failed to retrieve cached conversation:",
+      error
+    );
     return NextResponse.json(
       { error: "Failed to retrieve conversation." },
       { status: 500 }

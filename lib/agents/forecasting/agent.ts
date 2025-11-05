@@ -1,8 +1,8 @@
 import { generateText } from "ai";
 import { z } from "zod";
-import { myProvider } from "@/lib/ai/providers";
 import { formatNumberWithCurrency } from "@/lib/agents/forecasting/utils";
-import { getModelMeta, type ForecastModelId } from "./config";
+import { myProvider } from "@/lib/ai/providers";
+import { type ForecastModelId, getModelMeta } from "./config";
 
 const RESPONSE_SCHEMA = z.object({
   executiveSummary: z.string().min(1),
@@ -136,7 +136,10 @@ function summariseScenario(
   const closingRevenue = normaliseNumber(last.revenue);
   const endingCash = normaliseNumber(last.endingCash ?? last.netCashFlow ?? 0);
   const numberOfMonths = Math.max(scenario.monthly.length, 1);
-  const cagr = ((closingRevenue / Math.max(openingRevenue, 1)) ** (12 / numberOfMonths) - 1) * 100;
+  const cagr =
+    ((closingRevenue / Math.max(openingRevenue, 1)) ** (12 / numberOfMonths) -
+      1) *
+    100;
 
   const highlightParts = [
     `${scenario.label}: ${formatNumberWithCurrency(closingRevenue, currency)} revenue by period end`,
@@ -234,7 +237,13 @@ ${variables.notes ?? "-"}
 ${variables.growthSignals?.length ? variables.growthSignals.map((signal) => `- ${signal}`).join("\n") : "- None provided"}
 
 # Assumption overrides
-${variables.assumptionOverrides ? Object.entries(variables.assumptionOverrides).map(([key, value]) => `- ${key}: ${value}`).join("\n") : "- No overrides"}
+${
+  variables.assumptionOverrides
+    ? Object.entries(variables.assumptionOverrides)
+        .map(([key, value]) => `- ${key}: ${value}`)
+        .join("\n")
+    : "- No overrides"
+}
 
 # Scenario toggles
 Always return the base/likely scenario. Include an Upside scenario if includeOptimistic=${includeOptimistic}. Include a Downside scenario if includePessimistic=${includePessimistic}.

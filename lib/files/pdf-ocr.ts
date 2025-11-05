@@ -42,7 +42,7 @@ export async function extractPdfTextWithOCR(
         parsers: [
           {
             type: "pdf",
-            maxPages: 10000, // Support large documents
+            maxPages: 10_000, // Support large documents
           },
         ],
       }),
@@ -50,9 +50,7 @@ export async function extractPdfTextWithOCR(
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(
-        `Firecrawl API error (${response.status}): ${errorText}`
-      );
+      throw new Error(`Firecrawl API error (${response.status}): ${errorText}`);
     }
 
     const data = await response.json();

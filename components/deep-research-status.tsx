@@ -2,8 +2,8 @@
 
 import { memo, useMemo } from "react";
 import type { DeepResearchMessageMetadata } from "@/lib/types";
-import { Badge } from "./ui/badge";
 import { GlobeIcon } from "./icons";
+import { Badge } from "./ui/badge";
 
 const STATUS_COPY: Record<
   DeepResearchMessageMetadata["status"],
@@ -11,11 +11,13 @@ const STATUS_COPY: Record<
 > = {
   "needs-details": {
     label: "Needs detailed question",
-    helper: "Share a focused research question with context to begin the investigation.",
+    helper:
+      "Share a focused research question with context to begin the investigation.",
   },
   "awaiting-approval": {
     label: "Awaiting approval",
-    helper: "Review the findings and approve to generate the final report or request a deeper dive.",
+    helper:
+      "Review the findings and approve to generate the final report or request a deeper dive.",
   },
   "report-generated": {
     label: "Report delivered",
@@ -23,13 +25,14 @@ const STATUS_COPY: Record<
   },
   error: {
     label: "Workflow error",
-    helper: "The workflow encountered an error. Adjust the request or retry shortly.",
+    helper:
+      "The workflow encountered an error. Adjust the request or retry shortly.",
   },
 };
 
 function formatConfidence(confidence?: number) {
   if (typeof confidence !== "number" || Number.isNaN(confidence)) {
-    return undefined;
+    return;
   }
 
   const bounded = Math.max(0, Math.min(1, confidence));
@@ -45,24 +48,29 @@ function PureDeepResearchStatus({ metadata }: DeepResearchStatusProps) {
   const confidenceLabel = formatConfidence(metadata.confidence);
   const planCount = metadata.plan?.length ?? 0;
   const sourceCount = metadata.sources?.length ?? 0;
-  const sessionSnippet = useMemo(() => metadata.sessionId.slice(0, 8), [
-    metadata.sessionId,
-  ]);
+  const sessionSnippet = useMemo(
+    () => metadata.sessionId.slice(0, 8),
+    [metadata.sessionId]
+  );
   const parentSnippet = useMemo(
     () => metadata.parentSessionId?.slice(0, 8),
     [metadata.parentSessionId]
   );
 
   return (
-    <div className="mb-2 flex flex-col gap-1.5 rounded-lg border border-border/70 bg-muted/40 p-3 text-xs text-muted-foreground">
+    <div className="mb-2 flex flex-col gap-1.5 rounded-lg border border-border/70 bg-muted/40 p-3 text-muted-foreground text-xs">
       <div className="flex flex-wrap items-center gap-2 text-foreground">
-        <Badge variant="outline" className="gap-1 bg-background/80">
+        <Badge className="gap-1 bg-background/80" variant="outline">
           <GlobeIcon size={12} />
-          <span className="font-semibold uppercase tracking-wide">Deep Research</span>
+          <span className="font-semibold uppercase tracking-wide">
+            Deep Research
+          </span>
         </Badge>
         <span className="font-medium">{copy.label}</span>
         {confidenceLabel ? (
-          <span className="text-muted-foreground">Confidence {confidenceLabel}</span>
+          <span className="text-muted-foreground">
+            Confidence {confidenceLabel}
+          </span>
         ) : null}
         {planCount > 0 ? (
           <span className="text-muted-foreground">
@@ -74,11 +82,11 @@ function PureDeepResearchStatus({ metadata }: DeepResearchStatusProps) {
             {sourceCount} source{sourceCount === 1 ? "" : "s"}
           </span>
         ) : null}
-        <span className="ml-auto text-[11px] uppercase tracking-wide text-muted-foreground">
+        <span className="ml-auto text-[11px] text-muted-foreground uppercase tracking-wide">
           Session {sessionSnippet}…
         </span>
       </div>
-      <p className="leading-relaxed text-muted-foreground">{copy.helper}</p>
+      <p className="text-muted-foreground leading-relaxed">{copy.helper}</p>
       {metadata.parentSessionId && parentSnippet ? (
         <p className="text-muted-foreground/80">
           Follow-up to {parentSnippet}…

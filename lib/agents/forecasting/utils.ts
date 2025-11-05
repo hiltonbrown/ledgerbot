@@ -31,7 +31,10 @@ export function addMonths(date: Date, months: number) {
   return clone;
 }
 
-export function clampHorizon(months: number, { min, max }: { min: number; max: number }) {
+export function clampHorizon(
+  months: number,
+  { min, max }: { min: number; max: number }
+) {
   return Math.min(Math.max(months, min), max);
 }
 

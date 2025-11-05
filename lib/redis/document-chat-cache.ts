@@ -3,8 +3,8 @@
  * Enables resumable Q&A sessions with PDFs across page refreshes
  */
 
-import { getRedisClients } from "./config";
 import type { PdfChatMessage } from "@/lib/agents/docmanagement/types";
+import { getRedisClients } from "./config";
 
 // Cache TTL: 24 hours (conversations expire after 1 day of inactivity)
 const CONVERSATION_TTL_SECONDS = 24 * 60 * 60;
@@ -50,11 +50,9 @@ export async function saveConversationCache(
   };
 
   try {
-    await clients.publisher.set(
-      key,
-      JSON.stringify(cacheData),
-      { EX: CONVERSATION_TTL_SECONDS }
-    );
+    await clients.publisher.set(key, JSON.stringify(cacheData), {
+      EX: CONVERSATION_TTL_SECONDS,
+    });
 
     console.log(
       `[docmanagement] Cached conversation for ${contextFileId} (${state.messages.length} messages)`
@@ -97,7 +95,10 @@ export async function getConversationCache(
 
     return state;
   } catch (error) {
-    console.error("[docmanagement] Failed to retrieve cached conversation:", error);
+    console.error(
+      "[docmanagement] Failed to retrieve cached conversation:",
+      error
+    );
     return null;
   }
 }
@@ -119,7 +120,9 @@ export async function clearConversationCache(
 
   try {
     await clients.publisher.del(key);
-    console.log(`[docmanagement] Cleared conversation cache for ${contextFileId}`);
+    console.log(
+      `[docmanagement] Cleared conversation cache for ${contextFileId}`
+    );
   } catch (error) {
     console.error("[docmanagement] Failed to clear conversation cache:", error);
   }
@@ -128,9 +131,7 @@ export async function clearConversationCache(
 /**
  * List all active conversations for a user (for debugging/admin)
  */
-export async function listUserConversations(
-  userId: string
-): Promise<string[]> {
+export async function listUserConversations(userId: string): Promise<string[]> {
   const clients = await getRedisClients();
 
   if (!clients) {
@@ -142,7 +143,9 @@ export async function listUserConversations(
     const keys: string[] = [];
 
     // Scan for matching keys (avoids blocking KEYS command)
-    for await (const key of clients.publisher.scanIterator({ MATCH: pattern })) {
+    for await (const key of clients.publisher.scanIterator({
+      MATCH: pattern,
+    })) {
       if (Array.isArray(key)) {
         keys.push(...key);
       } else {

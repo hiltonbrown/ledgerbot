@@ -334,7 +334,9 @@ export async function updateContextFileContent({
     console.error("[db] Failed to update context file:", error);
     console.error("[db] Update params:", {
       id,
-      extractedText: extractedText ? `${extractedText.length} chars` : undefined,
+      extractedText: extractedText
+        ? `${extractedText.length} chars`
+        : undefined,
       tokenCount,
       status,
       errorMessage,
@@ -1399,6 +1401,36 @@ export async function getRecentScrapingJobs(
     throw new ChatSDKError(
       "bad_request:database",
       "Failed to get recent scraping jobs"
+    );
+  }
+}
+
+/**
+ * Gets Xero connections that are expiring within the specified number of days
+ * @param daysThreshold - Number of days from now to check for expiring tokens
+ * @returns Promise resolving to array of XeroConnection objects with expiring tokens
+ */
+export async function getExpiringXeroConnections(
+  daysThreshold: number
+): Promise<XeroConnection[]> {
+  try {
+    const thresholdDate = new Date();
+    thresholdDate.setDate(thresholdDate.getDate() + daysThreshold);
+
+    return await db
+      .select()
+      .from(xeroConnection)
+      .where(
+        and(
+          eq(xeroConnection.isActive, true),
+          lt(xeroConnection.expiresAt, thresholdDate)
+        )
+      )
+      .orderBy(asc(xeroConnection.expiresAt));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get expiring Xero connections"
     );
   }
 }

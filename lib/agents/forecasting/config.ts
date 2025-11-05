@@ -33,12 +33,12 @@ export const forecastModelLibrary = [
   },
 ] as const;
 
-export type ForecastModelId =
-  (typeof forecastModelLibrary)[number]["id"];
+export type ForecastModelId = (typeof forecastModelLibrary)[number]["id"];
 
-export const forecastModelIds = forecastModelLibrary.map(
-  (item) => item.id
-) as [ForecastModelId, ...ForecastModelId[]];
+export const forecastModelIds = forecastModelLibrary.map((item) => item.id) as [
+  ForecastModelId,
+  ...ForecastModelId[],
+];
 
 export function getModelMeta(modelId: ForecastModelId) {
   const model = forecastModelLibrary.find((item) => item.id === modelId);
@@ -46,8 +46,7 @@ export function getModelMeta(modelId: ForecastModelId) {
     const fallback = forecastModelLibrary[0];
     return {
       ...fallback,
-      note:
-        "Requested model not found. Defaulting to the three-statement driver template.",
+      note: "Requested model not found. Defaulting to the three-statement driver template.",
     };
   }
   return model;

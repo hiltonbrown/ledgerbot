@@ -82,9 +82,11 @@ export class ForecastingMemoryStore {
     return this.clientPromise;
   }
 
-  async append(message: Omit<MemoryMessage, "id" | "createdAt"> & {
-    createdAt?: Date;
-  }) {
+  async append(
+    message: Omit<MemoryMessage, "id" | "createdAt"> & {
+      createdAt?: Date;
+    }
+  ) {
     const record: MemoryMessage = {
       id: generateUUID(),
       createdAt: message.createdAt ?? new Date(),
@@ -146,11 +148,16 @@ export class ForecastingMemoryStore {
             userId: String(row.userId),
             role: (row.role as "user" | "assistant") ?? "assistant",
             content: String(row.content ?? ""),
-            createdAt: new Date(String(row.createdAt ?? new Date().toISOString())),
+            createdAt: new Date(
+              String(row.createdAt ?? new Date().toISOString())
+            ),
           }))
           .reverse();
       } catch (error) {
-        console.warn("[ForecastingMemory] Failed to query thread messages", error);
+        console.warn(
+          "[ForecastingMemory] Failed to query thread messages",
+          error
+        );
       }
     }
 
@@ -163,9 +170,9 @@ export class ForecastingMemoryStore {
       }
     }
 
-    return values.sort(
-      (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
-    ).slice(-limit);
+    return values
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+      .slice(-limit);
   }
 
   async searchRelevantMemories(
@@ -188,7 +195,11 @@ export class ForecastingMemoryStore {
         const likeClauses = trimmedKeywords
           .map((_, index) => `LOWER(content) LIKE ?${index + 2}`)
           .join(" OR ");
-        const params = [userId, ...trimmedKeywords.map((keyword) => `%${keyword}%`), limit];
+        const params = [
+          userId,
+          ...trimmedKeywords.map((keyword) => `%${keyword}%`),
+          limit,
+        ];
         const query = `SELECT id, chat_id as chatId, user_id as userId, role, content, created_at as createdAt
           FROM forecasting_memory
           WHERE user_id = ?1 AND (${likeClauses})
@@ -202,7 +213,9 @@ export class ForecastingMemoryStore {
           userId: String(row.userId),
           role: (row.role as "user" | "assistant") ?? "assistant",
           content: String(row.content ?? ""),
-          createdAt: new Date(String(row.createdAt ?? new Date().toISOString())),
+          createdAt: new Date(
+            String(row.createdAt ?? new Date().toISOString())
+          ),
         }));
       } catch (error) {
         console.warn("[ForecastingMemory] Failed to search memories", error);

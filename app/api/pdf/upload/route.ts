@@ -110,12 +110,16 @@ export async function POST(request: Request) {
     // If basic extraction failed or returned minimal text, try OCR with Firecrawl
     if (!extractedText || extractedText.trim().length < 20) {
       try {
-        console.log("[docmanagement] Basic extraction failed, attempting OCR with Firecrawl...");
+        console.log(
+          "[docmanagement] Basic extraction failed, attempting OCR with Firecrawl..."
+        );
         const ocrResult = await extractPdfTextWithOCR(blobResult.url);
         extractedText = ocrResult.text;
         usedOCR = true;
         extractionError = null; // Clear previous error since OCR succeeded
-        console.log(`[docmanagement] OCR successful, extracted ${extractedText.length} characters`);
+        console.log(
+          `[docmanagement] OCR successful, extracted ${extractedText.length} characters`
+        );
       } catch (ocrError) {
         console.error("[docmanagement] OCR extraction failed:", ocrError);
         extractionError =
@@ -151,19 +155,29 @@ export async function POST(request: Request) {
         status: "ready",
       });
     } catch (updateError) {
-      console.error("[docmanagement] Failed to update context file after upload:", {
-        contextRecordId: contextRecord.id,
-        extractedTextLength: extractedText.length,
-        tokenEstimate,
-        error: updateError instanceof Error ? updateError.message : String(updateError),
-        stack: updateError instanceof Error ? updateError.stack : undefined,
-      });
+      console.error(
+        "[docmanagement] Failed to update context file after upload:",
+        {
+          contextRecordId: contextRecord.id,
+          extractedTextLength: extractedText.length,
+          tokenEstimate,
+          error:
+            updateError instanceof Error
+              ? updateError.message
+              : String(updateError),
+          stack: updateError instanceof Error ? updateError.stack : undefined,
+        }
+      );
 
       // Still return error to user since the file won't be usable
       return NextResponse.json(
         {
-          error: "Failed to process the PDF content. Please try uploading again.",
-          details: updateError instanceof Error ? updateError.message : "Unknown error"
+          error:
+            "Failed to process the PDF content. Please try uploading again.",
+          details:
+            updateError instanceof Error
+              ? updateError.message
+              : "Unknown error",
         },
         { status: 500 }
       );

@@ -20,17 +20,11 @@ import {
 import { toast } from "sonner";
 import { useLocalStorage, useWindowSize } from "usehooks-ts";
 import { saveChatModelAsCookie } from "@/app/(chat)/actions";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { SelectItem } from "@/components/ui/select";
 import { initialArtifactData, useArtifact } from "@/hooks/use-artifact";
 import { chatModels, isReasoningModelId } from "@/lib/ai/models";
 import { myProvider } from "@/lib/ai/providers";
-import { availableTools, type ToolId } from "@/lib/ai/tools";
+import type { VisibilityType } from "@/lib/chat/visibility";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
 import { cn, generateUUID } from "@/lib/utils";
@@ -58,7 +52,6 @@ import { SuggestedActions } from "./suggested-actions";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
 import { Switch } from "./ui/switch";
-import type { VisibilityType } from "@/lib/chat/visibility";
 
 function PureMultimodalInput({
   chatId,
@@ -76,8 +69,6 @@ function PureMultimodalInput({
   selectedVisibilityType,
   selectedModelId,
   onModelChange,
-  selectedTools = [],
-  onToolsChange,
   usage,
   isReasoningEnabled,
   onReasoningChange,
@@ -100,8 +91,6 @@ function PureMultimodalInput({
   selectedVisibilityType: VisibilityType;
   selectedModelId: string;
   onModelChange?: (modelId: string) => void;
-  selectedTools?: ToolId[];
-  onToolsChange?: (tools: ToolId[]) => void;
   usage?: AppUsage;
   isReasoningEnabled: boolean;
   onReasoningChange?: (enabled: boolean) => void;
@@ -513,10 +502,6 @@ function PureMultimodalInput({
               onModelChange={onModelChange}
               selectedModelId={selectedModelId}
             />
-            <ToolSelectorCompact
-              onToolsChange={onToolsChange}
-              selectedTools={selectedTools}
-            />
             <DeepResearchToggle
               disabled={isAwaitingResponse}
               isEnabled={isDeepResearchEnabled}
@@ -564,15 +549,10 @@ export const MultimodalInput = memo(
     if (prevProps.selectedModelId !== nextProps.selectedModelId) {
       return false;
     }
-    if (!equal(prevProps.selectedTools, nextProps.selectedTools)) {
-      return false;
-    }
     if (prevProps.isReasoningEnabled !== nextProps.isReasoningEnabled) {
       return false;
     }
-    if (
-      prevProps.isDeepResearchEnabled !== nextProps.isDeepResearchEnabled
-    ) {
+    if (prevProps.isDeepResearchEnabled !== nextProps.isDeepResearchEnabled) {
       return false;
     }
 
@@ -670,72 +650,6 @@ function PureModelSelectorCompact({
 }
 
 const ModelSelectorCompact = memo(PureModelSelectorCompact);
-
-function PureToolSelectorCompact({
-  selectedTools = [],
-  onToolsChange,
-}: {
-  selectedTools?: ToolId[];
-  onToolsChange?: (tools: ToolId[]) => void;
-}) {
-  const handleToolToggle = (toolId: ToolId, checked: boolean) => {
-    if (checked) {
-      onToolsChange?.([...selectedTools, toolId]);
-    } else {
-      onToolsChange?.(selectedTools.filter((id) => id !== toolId));
-    }
-  };
-
-  const getDisplayText = () => {
-    if (selectedTools.length === 0) {
-      return "Tools";
-    }
-    if (selectedTools.length === 1) {
-      const tool = availableTools.find((t) => t.id === selectedTools[0]);
-      return tool?.name || "Tools";
-    }
-    return `${selectedTools.length} Tools`;
-  };
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        className="flex h-8 items-center gap-2 rounded-lg border-0 bg-background px-2 text-foreground shadow-none transition-colors hover:bg-accent focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-        suppressHydrationWarning
-        type="button"
-      >
-        <SparklesIcon size={16} />
-        <span className="hidden font-medium text-xs sm:block">
-          {getDisplayText()}
-        </span>
-        <ChevronDownIcon size={16} />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="min-w-[200px] p-0">
-        <div className="flex flex-col gap-px">
-          {availableTools.map((tool) => (
-            <DropdownMenuCheckboxItem
-              checked={selectedTools.includes(tool.id)}
-              className="cursor-pointer"
-              key={tool.id}
-              onCheckedChange={(checked) =>
-                handleToolToggle(tool.id, checked as boolean)
-              }
-            >
-              <div className="flex flex-col">
-                <div className="font-medium text-xs">{tool.name}</div>
-                <div className="text-[10px] text-muted-foreground leading-tight">
-                  {tool.description}
-                </div>
-              </div>
-            </DropdownMenuCheckboxItem>
-          ))}
-        </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-const ToolSelectorCompact = memo(PureToolSelectorCompact);
 
 function PureDeepResearchToggle({
   isEnabled,

@@ -21,7 +21,7 @@ import { useArtifactSelector } from "@/hooks/use-artifact";
 import { useAutoResume } from "@/hooks/use-auto-resume";
 import { useChatVisibility } from "@/hooks/use-chat-visibility";
 import { isReasoningModelId } from "@/lib/ai/models";
-import { defaultSelectedTools, type ToolId } from "@/lib/ai/tools";
+import type { VisibilityType } from "@/lib/chat/visibility";
 import type { Vote } from "@/lib/db/schema";
 import { ChatSDKError } from "@/lib/errors";
 import type { Attachment, ChatMessage } from "@/lib/types";
@@ -33,7 +33,6 @@ import { Messages } from "./messages";
 import { MultimodalInput } from "./multimodal-input";
 import { getChatHistoryPaginationKey } from "./sidebar-history";
 import { toast } from "./toast";
-import type { VisibilityType } from "@/lib/chat/visibility";
 
 export function Chat({
   id,
@@ -73,8 +72,6 @@ export function Chat({
   const [usage, setUsage] = useState<AppUsage | undefined>(initialLastContext);
   const [showCreditCardAlert, setShowCreditCardAlert] = useState(false);
   const [currentModelId, setCurrentModelId] = useState(initialChatModel);
-  const [selectedTools, setSelectedTools] =
-    useState<ToolId[]>(defaultSelectedTools);
   const [reasoningPreferences, setReasoningPreferences] = useState<
     Record<string, boolean>
   >(() =>
@@ -84,7 +81,6 @@ export function Chat({
   );
   const [isDeepResearchEnabled, setIsDeepResearchEnabled] = useState(false);
   const currentModelIdRef = useRef(currentModelId);
-  const selectedToolsRef = useRef(selectedTools);
   const deepResearchRef = useRef(isDeepResearchEnabled);
 
   useEffect(() => {
@@ -92,10 +88,6 @@ export function Chat({
   }, [currentModelId]);
 
   const reasoningPreferencesRef = useRef(reasoningPreferences);
-
-  useEffect(() => {
-    selectedToolsRef.current = selectedTools;
-  }, [selectedTools]);
 
   useEffect(() => {
     reasoningPreferencesRef.current = reasoningPreferences;
@@ -180,7 +172,6 @@ export function Chat({
             message: request.messages.at(-1),
             selectedChatModel: currentModelIdRef.current,
             selectedVisibilityType: visibilityType,
-            selectedTools: selectedToolsRef.current,
             streamReasoning: isReasoningModelId(currentModelIdRef.current),
             showReasoningPreference: getReasoningPreferenceForModel(
               currentModelIdRef.current
@@ -261,10 +252,7 @@ export function Chat({
   return (
     <>
       <div className="overscroll-behavior-contain flex h-dvh min-w-0 touch-pan-y flex-col bg-background">
-        <ChatHeader
-          chatId={id}
-          isReadonly={isReadonly}
-        />
+        <ChatHeader chatId={id} isReadonly={isReadonly} />
 
         <Messages
           chatId={id}
@@ -285,15 +273,13 @@ export function Chat({
               chatId={id}
               clearError={clearError}
               input={input}
-              isReasoningEnabled={currentReasoningEnabled}
               isDeepResearchEnabled={isDeepResearchEnabled}
+              isReasoningEnabled={currentReasoningEnabled}
               messages={messages}
+              onDeepResearchChange={setIsDeepResearchEnabled}
               onModelChange={handleModelChange}
               onReasoningChange={handleReasoningPreferenceChange}
-              onDeepResearchChange={setIsDeepResearchEnabled}
-              onToolsChange={setSelectedTools}
               selectedModelId={currentModelId}
-              selectedTools={selectedTools}
               selectedVisibilityType={visibilityType}
               sendMessage={sendMessage}
               setAttachments={setAttachments}
@@ -313,12 +299,12 @@ export function Chat({
         chatId={id}
         clearError={clearError}
         input={input}
+        isDeepResearchEnabled={isDeepResearchEnabled}
         isReadonly={isReadonly}
         isReasoningEnabled={currentReasoningEnabled}
-        isDeepResearchEnabled={isDeepResearchEnabled}
         messages={messages}
-        onReasoningChange={handleReasoningPreferenceChange}
         onDeepResearchChange={setIsDeepResearchEnabled}
+        onReasoningChange={handleReasoningPreferenceChange}
         regenerate={regenerate}
         selectedModelId={currentModelId}
         selectedVisibilityType={visibilityType}

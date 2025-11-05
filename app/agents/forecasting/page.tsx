@@ -1,9 +1,8 @@
 "use client";
 
 import { CalendarRange, RefreshCw } from "lucide-react";
-import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "@/components/toast";
+import { type FormEvent, useMemo, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -13,6 +12,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { toast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartLegend } from "@/components/ui/chart";
@@ -27,7 +27,10 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { forecastModelLibrary, type ForecastModelId } from "@/lib/agents/forecasting/config";
+import {
+  type ForecastModelId,
+  forecastModelLibrary,
+} from "@/lib/agents/forecasting/config";
 
 const forecastSeries = [
   { month: "Nov", base: 280_000, best: 310_000, worst: 240_000 },
@@ -56,11 +59,10 @@ const assumptionDefaults = {
 
 export default function ForecastingAgentPage() {
   const router = useRouter();
-  const currentMonth = useMemo(
-    () => new Date().toISOString().slice(0, 7),
-    []
+  const currentMonth = useMemo(() => new Date().toISOString().slice(0, 7), []);
+  const [modelId, setModelId] = useState<ForecastModelId>(
+    forecastModelLibrary[0].id
   );
-  const [modelId, setModelId] = useState<ForecastModelId>(forecastModelLibrary[0].id);
   const [startMonth, setStartMonth] = useState(currentMonth);
   const [horizonMonths, setHorizonMonths] = useState("12");
   const [currency, setCurrency] = useState("AUD");
@@ -199,7 +201,12 @@ export default function ForecastingAgentPage() {
                 <Label className="text-muted-foreground text-xs uppercase">
                   Financial model
                 </Label>
-                <Select value={modelId} onValueChange={(value) => setModelId(value as ForecastModelId)}>
+                <Select
+                  onValueChange={(value) =>
+                    setModelId(value as ForecastModelId)
+                  }
+                  value={modelId}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select model" />
                   </SelectTrigger>
@@ -220,10 +227,10 @@ export default function ForecastingAgentPage() {
                   Start month
                 </Label>
                 <Input
+                  onChange={(event) => setStartMonth(event.target.value)}
                   required
                   type="month"
                   value={startMonth}
-                  onChange={(event) => setStartMonth(event.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -231,12 +238,12 @@ export default function ForecastingAgentPage() {
                   Horizon (months)
                 </Label>
                 <Input
-                  required
-                  min={3}
                   max={36}
+                  min={3}
+                  onChange={(event) => setHorizonMonths(event.target.value)}
+                  required
                   type="number"
                   value={horizonMonths}
-                  onChange={(event) => setHorizonMonths(event.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -244,11 +251,11 @@ export default function ForecastingAgentPage() {
                   Currency code
                 </Label>
                 <Input
-                  value={currency}
                   onChange={(event) =>
                     setCurrency(event.target.value.toUpperCase())
                   }
                   placeholder="AUD"
+                  value={currency}
                 />
               </div>
               <div className="space-y-2 md:col-span-2">
@@ -257,9 +264,9 @@ export default function ForecastingAgentPage() {
                 </Label>
                 <Input
                   inputMode="decimal"
+                  onChange={(event) => setOpeningCash(event.target.value)}
                   placeholder="e.g. 250000"
                   value={openingCash}
-                  onChange={(event) => setOpeningCash(event.target.value)}
                 />
                 <p className="text-muted-foreground text-xs">
                   Leave blank to let the agent read the latest balance sheet
@@ -274,10 +281,10 @@ export default function ForecastingAgentPage() {
                   Revenue streams & drivers
                 </Label>
                 <Textarea
+                  onChange={(event) => setRevenueNotes(event.target.value)}
+                  placeholder="One per line e.g. Enterprise ARR: $180k average deal"
                   rows={4}
                   value={revenueNotes}
-                  placeholder="One per line e.g. Enterprise ARR: $180k average deal"
-                  onChange={(event) => setRevenueNotes(event.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -285,10 +292,10 @@ export default function ForecastingAgentPage() {
                   Cost structure & investments
                 </Label>
                 <Textarea
+                  onChange={(event) => setCostNotes(event.target.value)}
+                  placeholder="One per line e.g. Cloud infra: $48k/month"
                   rows={4}
                   value={costNotes}
-                  placeholder="One per line e.g. Cloud infra: $48k/month"
-                  onChange={(event) => setCostNotes(event.target.value)}
                 />
               </div>
             </div>
@@ -299,10 +306,10 @@ export default function ForecastingAgentPage() {
                   Growth signals or targets
                 </Label>
                 <Textarea
+                  onChange={(event) => setGrowthSignals(event.target.value)}
+                  placeholder="One per line e.g. Net revenue retention 118%"
                   rows={3}
                   value={growthSignals}
-                  placeholder="One per line e.g. Net revenue retention 118%"
-                  onChange={(event) => setGrowthSignals(event.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -310,10 +317,10 @@ export default function ForecastingAgentPage() {
                   Additional notes
                 </Label>
                 <Textarea
+                  onChange={(event) => setAdditionalNotes(event.target.value)}
+                  placeholder="Board expectations, capital plans, or risk notes"
                   rows={3}
                   value={additionalNotes}
-                  placeholder="Board expectations, capital plans, or risk notes"
-                  onChange={(event) => setAdditionalNotes(event.target.value)}
                 />
               </div>
             </div>

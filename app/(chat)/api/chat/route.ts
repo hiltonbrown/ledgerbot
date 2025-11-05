@@ -17,11 +17,6 @@ import {
 import type { ModelCatalog } from "tokenlens/core";
 import { fetchModels } from "tokenlens/fetch";
 import { getUsage } from "tokenlens/helpers";
-import {
-  DEFAULT_CHAT_VISIBILITY,
-  sanitizeVisibility,
-  type VisibilityType,
-} from "@/lib/chat/visibility";
 import { buildUserContext } from "@/lib/ai/context-manager";
 import { entitlementsByUserType } from "@/lib/ai/entitlements";
 import { type ChatModel, isReasoningModelId } from "@/lib/ai/models";
@@ -33,19 +28,12 @@ import { getWeather } from "@/lib/ai/tools/get-weather";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
 import { updateDocument } from "@/lib/ai/tools/update-document";
 import { createXeroTools, xeroToolNames } from "@/lib/ai/tools/xero-tools";
-import {
-  detectApprovalCommand,
-  detectDeeperRequest,
-  isLikelyDetailedQuestion,
-  runMastraDeepResearchReport,
-  runMastraDeepResearchSummary,
-} from "@/lib/mastra/deep-research";
-import type {
-  DeepResearchReportAttachment,
-  DeepResearchSessionAttachment,
-  DeepResearchSummaryAttachment,
-} from "@/lib/mastra/deep-research-types";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
+import {
+  DEFAULT_CHAT_VISIBILITY,
+  sanitizeVisibility,
+  type VisibilityType,
+} from "@/lib/chat/visibility";
 import { isProductionEnvironment } from "@/lib/constants";
 import {
   createStreamId,
@@ -61,6 +49,18 @@ import {
 } from "@/lib/db/queries";
 import { ChatSDKError } from "@/lib/errors";
 import {
+  detectApprovalCommand,
+  detectDeeperRequest,
+  isLikelyDetailedQuestion,
+  runMastraDeepResearchReport,
+  runMastraDeepResearchSummary,
+} from "@/lib/mastra/deep-research";
+import type {
+  DeepResearchReportAttachment,
+  DeepResearchSessionAttachment,
+  DeepResearchSummaryAttachment,
+} from "@/lib/mastra/deep-research-types";
+import {
   createPublisherWithTtl,
   createSubscriberWrapper,
   getRedisClients,
@@ -69,7 +69,11 @@ import {
 import type { ChatMessage, MessageMetadata } from "@/lib/types";
 import type { UserType } from "@/lib/types/auth";
 import type { AppUsage } from "@/lib/usage";
-import { convertToUIMessages, generateUUID, getTextFromMessage } from "@/lib/utils";
+import {
+  convertToUIMessages,
+  generateUUID,
+  getTextFromMessage,
+} from "@/lib/utils";
 import { generateTitleFromUserMessage } from "../../actions";
 import { type PostRequestBody, postRequestBodySchema } from "./schema";
 
@@ -232,7 +236,9 @@ function findLatestDeepResearchSummaryAttachment(
   messages: Array<{ attachments: unknown }>
 ): { attachment: DeepResearchSummaryAttachment } | null {
   for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const candidate = extractDeepResearchAttachment(messages[index]?.attachments);
+    const candidate = extractDeepResearchAttachment(
+      messages[index]?.attachments
+    );
     if (candidate && candidate.type === "deep-research-summary") {
       return { attachment: candidate };
     }
@@ -257,7 +263,6 @@ export async function POST(request: Request) {
       message,
       selectedChatModel,
       selectedVisibilityType,
-      selectedTools,
       streamReasoning,
       showReasoningPreference,
       deepResearch,
@@ -266,7 +271,6 @@ export async function POST(request: Request) {
       message: ChatMessage;
       selectedChatModel: ChatModel["id"];
       selectedVisibilityType: VisibilityType;
-      selectedTools?: string[];
       streamReasoning?: boolean;
       showReasoningPreference?: boolean;
       deepResearch?: boolean;
@@ -366,7 +370,10 @@ export async function POST(request: Request) {
       build: (
         writer: UIMessageStreamWriter<ChatMessage>,
         helpers: {
-          registerAttachments: (messageId: string, attachments: unknown[]) => void;
+          registerAttachments: (
+            messageId: string,
+            attachments: unknown[]
+          ) => void;
         }
       ) => Promise<void>
     ) => {
@@ -539,26 +546,35 @@ export async function POST(request: Request) {
         const approval = detectApprovalCommand(userText, sessionId);
 
         if (approval) {
-          return respondWithManualStream(async (writer, { registerAttachments }) => {
-            const { message: reportMessage, attachment: reportAttachment, metadata } =
-              await runMastraDeepResearchReport({
+          return respondWithManualStream(
+            async (writer, { registerAttachments }) => {
+              const {
+                message: reportMessage,
+                attachment: reportAttachment,
+                metadata,
+              } = await runMastraDeepResearchReport({
                 summaryAttachment: attachment,
                 modelId: selectedChatModel,
               });
 
-            const messageId = generateUUID();
-            const textChunkId = generateUUID();
-            writer.write({ type: "start", messageId, messageMetadata: metadata });
-            writer.write({ type: "text-start", id: textChunkId });
-            writer.write({
-              type: "text-delta",
-              id: textChunkId,
-              delta: reportMessage,
-            });
-            writer.write({ type: "text-end", id: textChunkId });
-            writer.write({ type: "finish", messageMetadata: metadata });
-            registerAttachments(messageId, [reportAttachment]);
-          });
+              const messageId = generateUUID();
+              const textChunkId = generateUUID();
+              writer.write({
+                type: "start",
+                messageId,
+                messageMetadata: metadata,
+              });
+              writer.write({ type: "text-start", id: textChunkId });
+              writer.write({
+                type: "text-delta",
+                id: textChunkId,
+                delta: reportMessage,
+              });
+              writer.write({ type: "text-end", id: textChunkId });
+              writer.write({ type: "finish", messageMetadata: metadata });
+              registerAttachments(messageId, [reportAttachment]);
+            }
+          );
         }
 
         const hasFollowUpIntent =
@@ -588,26 +604,67 @@ export async function POST(request: Request) {
             };
             const messageId = generateUUID();
             const textChunkId = generateUUID();
-            const reminder = `### Awaiting Deep Research Direction\nSession ${sessionId} is ready. Reply \"approve ${sessionId}\" to generate the full report, or describe what to investigate further.`;
+            const reminder = `### Awaiting Deep Research Direction\nSession ${sessionId} is ready. Reply "approve ${sessionId}" to generate the full report, or describe what to investigate further.`;
 
-            writer.write({ type: "start", messageId, messageMetadata: metadata });
+            writer.write({
+              type: "start",
+              messageId,
+              messageMetadata: metadata,
+            });
             writer.write({ type: "text-start", id: textChunkId });
-            writer.write({ type: "text-delta", id: textChunkId, delta: reminder });
+            writer.write({
+              type: "text-delta",
+              id: textChunkId,
+              delta: reminder,
+            });
             writer.write({ type: "text-end", id: textChunkId });
             writer.write({ type: "finish", messageMetadata: metadata });
           });
         }
 
         const followUpQuestion = `${attachment.question}\n\nFollow-up request:\n${userText}`;
-        return respondWithManualStream(async (writer, { registerAttachments }) => {
+        return respondWithManualStream(
+          async (writer, { registerAttachments }) => {
+            const {
+              message: summaryMessage,
+              attachment: summaryAttachment,
+              metadata,
+            } = await runMastraDeepResearchSummary({
+              question: followUpQuestion,
+              followUp: userText,
+              parentSessionId: attachment.sessionId,
+              modelId: selectedChatModel,
+              requestHints,
+            });
+
+            const messageId = generateUUID();
+            const textChunkId = generateUUID();
+            writer.write({
+              type: "start",
+              messageId,
+              messageMetadata: metadata,
+            });
+            writer.write({ type: "text-start", id: textChunkId });
+            writer.write({
+              type: "text-delta",
+              id: textChunkId,
+              delta: summaryMessage,
+            });
+            writer.write({ type: "text-end", id: textChunkId });
+            writer.write({ type: "finish", messageMetadata: metadata });
+            registerAttachments(messageId, [summaryAttachment]);
+          }
+        );
+      }
+
+      return respondWithManualStream(
+        async (writer, { registerAttachments }) => {
           const {
             message: summaryMessage,
-            attachment: summaryAttachment,
+            attachment,
             metadata,
           } = await runMastraDeepResearchSummary({
-            question: followUpQuestion,
-            followUp: userText,
-            parentSessionId: attachment.sessionId,
+            question: userText,
             modelId: selectedChatModel,
             requestHints,
           });
@@ -623,27 +680,9 @@ export async function POST(request: Request) {
           });
           writer.write({ type: "text-end", id: textChunkId });
           writer.write({ type: "finish", messageMetadata: metadata });
-          registerAttachments(messageId, [summaryAttachment]);
-        });
-      }
-
-      return respondWithManualStream(async (writer, { registerAttachments }) => {
-        const { message: summaryMessage, attachment, metadata } =
-          await runMastraDeepResearchSummary({
-            question: userText,
-            modelId: selectedChatModel,
-            requestHints,
-          });
-
-        const messageId = generateUUID();
-        const textChunkId = generateUUID();
-        writer.write({ type: "start", messageId, messageMetadata: metadata });
-        writer.write({ type: "text-start", id: textChunkId });
-        writer.write({ type: "text-delta", id: textChunkId, delta: summaryMessage });
-        writer.write({ type: "text-end", id: textChunkId });
-        writer.write({ type: "finish", messageMetadata: metadata });
-        registerAttachments(messageId, [attachment]);
-      });
+          registerAttachments(messageId, [attachment]);
+        }
+      );
     }
 
     // Check if user has Xero connection
@@ -652,10 +691,8 @@ export async function POST(request: Request) {
 
     const stream = createUIMessageStream({
       execute: ({ writer: dataStream }) => {
-        const activeTools: ToolId[] =
-          selectedTools && selectedTools.length > 0
-            ? (selectedTools as ToolId[])
-            : defaultSelectedTools;
+        // Always use all default tools
+        const activeTools: ToolId[] = defaultSelectedTools;
 
         // Add Xero tool names to active tools if connection exists
         // Cast to string[] since Xero tools are dynamically added

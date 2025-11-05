@@ -125,7 +125,7 @@ export async function getDecryptedConnection(
   };
 }
 
-async function refreshXeroToken(
+export async function refreshXeroToken(
   connectionId: string
 ): Promise<XeroConnection | null> {
   const connection = await getXeroConnectionById(connectionId);
@@ -207,6 +207,30 @@ async function refreshXeroToken(
     }
 
     throw error;
+  }
+}
+
+/**
+ * Refresh a Xero token by connection ID with additional error handling for cron jobs
+ * Returns success status and error message if failed
+ */
+export async function refreshXeroTokenById(
+  connectionId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const result = await refreshXeroToken(connectionId);
+    if (!result) {
+      return {
+        success: false,
+        error: "Failed to refresh token - connection not found or refresh failed",
+      };
+    }
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
   }
 }
 

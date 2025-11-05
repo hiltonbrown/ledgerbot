@@ -300,10 +300,12 @@ export async function summarizePdfContent({
   });
 
   // Extract sections and accumulate usage
-  const sectionSummaries = chunkResults.map(({ section, usage: chunkUsage }) => {
-    accumulateUsage(usage, chunkUsage);
-    return section;
-  });
+  const sectionSummaries = chunkResults.map(
+    ({ section, usage: chunkUsage }) => {
+      accumulateUsage(usage, chunkUsage);
+      return section;
+    }
+  );
 
   const structuredSections = sectionSummaries.map((section) => ({
     id: section.id,

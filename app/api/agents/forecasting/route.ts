@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { forecastModelIds, getModelMeta } from "@/lib/agents/forecasting/config";
 import { runFinancialModelingAgent } from "@/lib/agents/forecasting/agent";
+import {
+  forecastModelIds,
+  getModelMeta,
+} from "@/lib/agents/forecasting/config";
+import { forecastingMemory } from "@/lib/agents/forecasting/memory";
 import {
   addMonths,
   clampHorizon,
@@ -9,7 +13,6 @@ import {
   formatIsoDate,
   parseMonthToDate,
 } from "@/lib/agents/forecasting/utils";
-import { forecastingMemory } from "@/lib/agents/forecasting/memory";
 import { createXeroTools } from "@/lib/ai/tools/xero-tools";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import {
@@ -78,7 +81,9 @@ async function buildXeroContext({
     }
 
     if (balanceResult.status === "fulfilled" && balanceResult.value) {
-      sections.push(`# Balance sheet excerpt\n${truncate(balanceResult.value)}`);
+      sections.push(
+        `# Balance sheet excerpt\n${truncate(balanceResult.value)}`
+      );
     }
 
     if (sections.length === 0) {
@@ -198,8 +203,9 @@ export async function POST(request: Request) {
     const memorySnippets = await forecastingMemory
       .searchRelevantMemories(user.id, Array.from(memoryKeywords), 5)
       .then((results) =>
-        results.map((item) =>
-          `${item.role === "assistant" ? "Agent" : "User"}: ${truncate(item.content, 240)}`
+        results.map(
+          (item) =>
+            `${item.role === "assistant" ? "Agent" : "User"}: ${truncate(item.content, 240)}`
         )
       );
 

@@ -355,13 +355,19 @@ export default function DocumentManagementAgentPage() {
                     appendWarnings(summarizeData.warnings);
                     setError(null);
 
-                    await generateQuestionsForSummary(contextId, summarizeData.documentId, {
-                      summary: summarizeData.summary,
-                      highlights: summarizeData.highlights ?? [],
-                      sections: summarizeData.sections ?? [],
-                    });
+                    await generateQuestionsForSummary(
+                      contextId,
+                      summarizeData.documentId,
+                      {
+                        summary: summarizeData.summary,
+                        highlights: summarizeData.highlights ?? [],
+                        sections: summarizeData.sections ?? [],
+                      }
+                    );
                   } else if (event === "error") {
-                    throw new Error(data.message || "Failed to summarise the PDF.");
+                    throw new Error(
+                      data.message || "Failed to summarise the PDF."
+                    );
                   }
                 }
               }
@@ -386,11 +392,15 @@ export default function DocumentManagementAgentPage() {
           appendWarnings(summarizeData.warnings);
           setError(null);
 
-          await generateQuestionsForSummary(contextId, summarizeData.documentId, {
-            summary: summarizeData.summary,
-            highlights: summarizeData.highlights ?? [],
-            sections: summarizeData.sections ?? [],
-          });
+          await generateQuestionsForSummary(
+            contextId,
+            summarizeData.documentId,
+            {
+              summary: summarizeData.summary,
+              highlights: summarizeData.highlights ?? [],
+              sections: summarizeData.sections ?? [],
+            }
+          );
         }
       } catch (summarizeError) {
         const message =
@@ -445,7 +455,7 @@ export default function DocumentManagementAgentPage() {
         // Show OCR success message if OCR was used
         if (uploadData.usedOCR) {
           appendWarnings([
-            "This PDF was scanned or image-based. Text was successfully extracted using OCR."
+            "This PDF was scanned or image-based. Text was successfully extracted using OCR.",
           ]);
         } else {
           appendWarnings(uploadData.warnings);
@@ -682,10 +692,12 @@ export default function DocumentManagementAgentPage() {
                   {isSummarizing && summaryProgress > 0 && (
                     <div className="mt-3 space-y-2">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground">{summaryStage}</span>
+                        <span className="text-muted-foreground">
+                          {summaryStage}
+                        </span>
                         <span className="font-medium">{summaryProgress}%</span>
                       </div>
-                      <Progress value={summaryProgress} className="h-1.5" />
+                      <Progress className="h-1.5" value={summaryProgress} />
                     </div>
                   )}
 

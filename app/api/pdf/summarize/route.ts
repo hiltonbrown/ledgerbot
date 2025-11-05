@@ -1,19 +1,19 @@
+import { and, eq, like } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { and, eq, like } from "drizzle-orm";
 import type { PdfSectionSummary } from "@/lib/agents/docmanagement/types";
 import {
   buildSummaryDocument,
   summarizePdfContent,
 } from "@/lib/agents/docmanagement/workflow";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
-import { db } from "@/lib/db/queries";
-import { document } from "@/lib/db/schema";
 import {
+  db,
   getContextFileById,
   saveDocument,
   touchContextFile,
 } from "@/lib/db/queries";
+import { document } from "@/lib/db/schema";
 import { generateUUID } from "@/lib/utils";
 
 export const runtime = "nodejs";
@@ -99,7 +99,10 @@ export async function POST(request: Request) {
       .where(
         and(
           eq(document.userId, user.id),
-          like(document.title, `Summary: ${contextFile.originalName ?? contextFile.name}`)
+          like(
+            document.title,
+            `Summary: ${contextFile.originalName ?? contextFile.name}`
+          )
         )
       )
       .limit(1);
@@ -107,11 +110,15 @@ export async function POST(request: Request) {
     // If summary exists and was created recently (within 1 hour), return cached version
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
     if (existingDocs.length > 0 && existingDocs[0].createdAt > oneHourAgo) {
-      console.log(`[docmanagement] Using cached summary for ${contextFile.originalName}`);
+      console.log(
+        `[docmanagement] Using cached summary for ${contextFile.originalName}`
+      );
 
       // Parse the existing markdown to extract structured data
       const cachedContent = existingDocs[0].content || "";
-      const summaryMatch = cachedContent.match(/# PDF summary:.*?\n(.*?)(?=\n## |$)/s);
+      const summaryMatch = cachedContent.match(
+        /# PDF summary:.*?\n(.*?)(?=\n## |$)/s
+      );
       const summary = summaryMatch?.[1]?.trim() || "Cached summary available.";
 
       return NextResponse.json({

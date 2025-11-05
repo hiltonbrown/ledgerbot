@@ -17,6 +17,7 @@ import { imageArtifact } from "@/artifacts/image/client";
 import { sheetArtifact } from "@/artifacts/sheet/client";
 import { textArtifact } from "@/artifacts/text/client";
 import { useArtifact } from "@/hooks/use-artifact";
+import type { VisibilityType } from "@/lib/chat/visibility";
 import type { Document, Vote } from "@/lib/db/schema";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import { fetcher } from "@/lib/utils";
@@ -27,7 +28,6 @@ import { MultimodalInput } from "./multimodal-input";
 import { Toolbar } from "./toolbar";
 import { useSidebar } from "./ui/sidebar";
 import { VersionFooter } from "./version-footer";
-import type { VisibilityType } from "@/lib/chat/visibility";
 
 export const artifactDefinitions = [
   textArtifact,
@@ -345,15 +345,15 @@ function PureArtifact({
                     attachments={attachments}
                     chatId={chatId}
                     className="bg-background dark:bg-muted"
-                  clearError={clearError}
-                  input={input}
-                  isReasoningEnabled={isReasoningEnabled}
-                  isDeepResearchEnabled={isDeepResearchEnabled}
-                  messages={messages}
-                  onReasoningChange={onReasoningChange}
-                  onDeepResearchChange={onDeepResearchChange}
-                  selectedModelId={selectedModelId}
-                  selectedVisibilityType={selectedVisibilityType}
+                    clearError={clearError}
+                    input={input}
+                    isDeepResearchEnabled={isDeepResearchEnabled}
+                    isReasoningEnabled={isReasoningEnabled}
+                    messages={messages}
+                    onDeepResearchChange={onDeepResearchChange}
+                    onReasoningChange={onReasoningChange}
+                    selectedModelId={selectedModelId}
+                    selectedVisibilityType={selectedVisibilityType}
                     sendMessage={sendMessage}
                     setAttachments={setAttachments}
                     setInput={setInput}

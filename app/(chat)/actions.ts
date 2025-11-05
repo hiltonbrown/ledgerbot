@@ -2,11 +2,8 @@
 
 import { generateText, type UIMessage } from "ai";
 import { cookies } from "next/headers";
-import {
-  sanitizeVisibility,
-  type VisibilityType,
-} from "@/lib/chat/visibility";
 import { myProvider } from "@/lib/ai/providers";
+import { sanitizeVisibility, type VisibilityType } from "@/lib/chat/visibility";
 import {
   deleteMessagesByChatIdAfterTimestamp,
   getMessageById,

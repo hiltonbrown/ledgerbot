@@ -3,9 +3,9 @@
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { motion } from "framer-motion";
 import { memo } from "react";
+import type { VisibilityType } from "@/lib/chat/visibility";
 import type { ChatMessage } from "@/lib/types";
 import { Suggestion } from "./elements/suggestion";
-import type { VisibilityType } from "@/lib/chat/visibility";
 
 type SuggestedActionsProps = {
   chatId: string;

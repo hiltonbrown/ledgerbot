@@ -1,6 +1,6 @@
 import { generateText } from "ai";
-import { myProvider } from "@/lib/ai/providers";
 import type { RequestHints } from "@/lib/ai/prompts";
+import { myProvider } from "@/lib/ai/providers";
 import type {
   DeepResearchMessageMetadata,
   DeepResearchSourceMetadata,
@@ -117,7 +117,10 @@ function logHistory(
   history: DeepResearchHistoryEntry[],
   note: string
 ): DeepResearchHistoryEntry[] {
-  const entry = { timestamp: nowIso(), note } satisfies DeepResearchHistoryEntry;
+  const entry = {
+    timestamp: nowIso(),
+    note,
+  } satisfies DeepResearchHistoryEntry;
   history.push(entry);
   return history;
 }
@@ -301,7 +304,8 @@ async function buildSummary({
   followUp?: string;
 }): Promise<SummarySynthesis> {
   const combined = evaluations.map((evaluation) => {
-    const reference = hits[evaluation.index - 1] ?? hits[evaluation.index] ?? { title: "Unknown Source", url: "" };
+    const reference = hits[evaluation.index - 1] ??
+      hits[evaluation.index] ?? { title: "Unknown Source", url: "" };
 
     return {
       index: evaluation.index,
@@ -343,7 +347,7 @@ async function buildSummary({
       followUpQuestions: [],
       confidence:
         evaluations.reduce((acc, curr) => acc + (curr.confidence ?? 0), 0) /
-          Math.max(evaluations.length, 1),
+        Math.max(evaluations.length, 1),
       approvalMessage:
         "Respond with 'approve' to generate a formal report or ask for a deeper investigation.",
     } satisfies SummarySynthesis;
@@ -361,15 +365,14 @@ function buildMetadata({
   summaryAttachment: DeepResearchSummaryAttachment;
   status: DeepResearchMessageMetadata["status"];
 }): MessageMetadata {
-  const sourceMetadata: DeepResearchSourceMetadata[] = summaryAttachment.sources.map(
-    (source) => ({
+  const sourceMetadata: DeepResearchSourceMetadata[] =
+    summaryAttachment.sources.map((source) => ({
       index: source.index,
       title: source.title,
       url: source.url,
       reliability: source.reliability,
       confidence: source.confidence,
-    })
-  );
+    }));
 
   const deepResearchMetadata: DeepResearchMessageMetadata = {
     sessionId: summaryAttachment.sessionId,
@@ -549,10 +552,8 @@ export async function runMastraDeepResearchSummary({
   const confidencePct = Math.round(summary.confidence * 100);
 
   const message = `### Deep Research Summary\n**Research Question:** ${question}\n${
-    parentSessionId
-      ? `\n**Follow-up to Session:** ${parentSessionId}`
-      : ""
-  }\n**Session ID:** ${sessionId}\n**Status:** awaiting-approval\n**Overall Confidence:** ${confidencePct}%\n\n**Investigation Plan**\n${planSection}\n\n**Progress Log**\n${historySection}\n\n**Key Findings**\n${findingsSection}\n\n**Recommendations**\n${recommendationsSection}\n\n**Source Assessments**\n${sourceSection}\n\n${summary.approvalMessage}\n\nReply \"approve ${sessionId}\" or say \"generate the report\" to receive the full markdown deliverable. To continue researching, describe the areas that need deeper investigation.`;
+    parentSessionId ? `\n**Follow-up to Session:** ${parentSessionId}` : ""
+  }\n**Session ID:** ${sessionId}\n**Status:** awaiting-approval\n**Overall Confidence:** ${confidencePct}%\n\n**Investigation Plan**\n${planSection}\n\n**Progress Log**\n${historySection}\n\n**Key Findings**\n${findingsSection}\n\n**Recommendations**\n${recommendationsSection}\n\n**Source Assessments**\n${sourceSection}\n\n${summary.approvalMessage}\n\nReply "approve ${sessionId}" or say "generate the report" to receive the full markdown deliverable. To continue researching, describe the areas that need deeper investigation.`;
 
   return { message, attachment, metadata };
 }
@@ -569,9 +570,7 @@ export async function runMastraDeepResearchReport({
   metadata: MessageMetadata;
 }> {
   const createdAt = nowIso();
-  const history: DeepResearchHistoryEntry[] = [
-    ...summaryAttachment.history,
-  ];
+  const history: DeepResearchHistoryEntry[] = [...summaryAttachment.history];
 
   logHistory(history, "Generating final markdown report");
 
@@ -638,14 +637,18 @@ export function isLikelyDetailedQuestion(input: string): boolean {
   }
 
   const hasQuestionMark = text.includes("?");
-  const hasAnalyticalVerb = /\b(impact|analyse|analyze|assess|risk|forecast|trend|regulation|compliance|cost|benefit|scenario|compare|evaluate)\b/i.test(
-    text
-  );
-  const containsContext = /\b(202[0-9]|202[0-9]-202[0-9]|Q[1-4]|FY|financial|ledger|tax|ATO|IRS|SME|enterprise|startup)\b/i.test(
-    text
-  );
+  const hasAnalyticalVerb =
+    /\b(impact|analyse|analyze|assess|risk|forecast|trend|regulation|compliance|cost|benefit|scenario|compare|evaluate)\b/i.test(
+      text
+    );
+  const containsContext =
+    /\b(202[0-9]|202[0-9]-202[0-9]|Q[1-4]|FY|financial|ledger|tax|ATO|IRS|SME|enterprise|startup)\b/i.test(
+      text
+    );
 
-  return hasQuestionMark || (wordCount >= 12 && hasAnalyticalVerb && containsContext);
+  return (
+    hasQuestionMark || (wordCount >= 12 && hasAnalyticalVerb && containsContext)
+  );
 }
 
 export function detectApprovalCommand(
@@ -672,7 +675,11 @@ export function detectApprovalCommand(
     return true;
   }
 
-  if (sessionId && text.includes("approve") && text.includes(sessionId.toLowerCase())) {
+  if (
+    sessionId &&
+    text.includes("approve") &&
+    text.includes(sessionId.toLowerCase())
+  ) {
     return true;
   }
 
