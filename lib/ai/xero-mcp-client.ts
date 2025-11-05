@@ -36,6 +36,18 @@ import type { RateLimitInfo } from "@/lib/xero/rate-limit-handler";
  * Provides MCP-compatible tool interfaces for Xero API operations
  */
 
+/**
+ * Convert ISO 8601 date string (YYYY-MM-DD) to Xero DateTime format (YYYY,MM,DD)
+ * @param isoDate - Date string in ISO 8601 format (e.g., "2025-10-01")
+ * @returns Xero DateTime format (e.g., "2025,10,01")
+ */
+function formatXeroDate(isoDate: string): string {
+  // Remove any time component and trim
+  const datePart = isoDate.split('T')[0].trim();
+  // Replace hyphens with commas for Xero DateTime format
+  return datePart.replace(/-/g, ',');
+}
+
 export interface XeroMCPTool {
   name: string;
   description: string;
@@ -209,10 +221,15 @@ export const xeroMCPTools: XeroMCPTool[] = [
   {
     name: "xero_list_invoices",
     description:
-      "Get a list of invoices from Xero. Supports filtering by status, date range, and contact. Uses pagination for efficient data retrieval.",
+      "Get a list of invoices from Xero. Can retrieve SALES INVOICES (sent TO customers, Type=ACCREC) or BILLS (received FROM suppliers, Type=ACCPAY). IMPORTANT: When filtering by month/year, you MUST provide BOTH dateFrom and dateTo to define the complete date range. For example, for 'October 2025' use dateFrom='2025-10-01' and dateTo='2025-10-31'. Use invoiceType parameter to specify which type: 'ACCREC' for sales invoices (default), 'ACCPAY' for bills/supplier invoices. Uses pagination for efficient data retrieval.",
     inputSchema: {
       type: "object",
       properties: {
+        invoiceType: {
+          type: "string",
+          description: "Invoice type: ACCREC for sales invoices (default), ACCPAY for bills/supplier invoices",
+          enum: ["ACCREC", "ACCPAY"],
+        },
         status: {
           type: "string",
           description:
@@ -221,11 +238,11 @@ export const xeroMCPTools: XeroMCPTool[] = [
         },
         dateFrom: {
           type: "string",
-          description: "Filter invoices from this date (ISO 8601 format)",
+          description: "Start date for date range filter (ISO 8601 format YYYY-MM-DD, e.g., 2025-10-01). REQUIRED when filtering by month/year.",
         },
         dateTo: {
           type: "string",
-          description: "Filter invoices to this date (ISO 8601 format)",
+          description: "End date for date range filter (ISO 8601 format YYYY-MM-DD, e.g., 2025-10-31). REQUIRED when filtering by month/year.",
         },
         contactId: {
           type: "string",
@@ -407,10 +424,15 @@ export const xeroMCPTools: XeroMCPTool[] = [
   },
   {
     name: "xero_list_credit_notes",
-    description: "Get a list of credit notes from Xero. Supports pagination for efficient data retrieval.",
+    description: "Get a list of credit notes from Xero. Can retrieve SALES CREDIT NOTES (issued TO customers, Type=ACCRECCREDIT) or PURCHASE CREDIT NOTES (received FROM suppliers, Type=ACCPAYCREDIT). Use creditNoteType to specify which type: 'ACCRECCREDIT' for sales credit notes (default), 'ACCPAYCREDIT' for purchase credit notes. Supports pagination for efficient data retrieval.",
     inputSchema: {
       type: "object",
       properties: {
+        creditNoteType: {
+          type: "string",
+          description: "Credit note type: ACCRECCREDIT for sales credit notes (default), ACCPAYCREDIT for purchase credit notes",
+          enum: ["ACCRECCREDIT", "ACCPAYCREDIT"],
+        },
         status: {
           type: "string",
           description:
@@ -1199,18 +1221,28 @@ async function executeXeroToolOperation(
   try {
     switch (toolName) {
         case "xero_list_invoices": {
-          const { status, dateFrom, dateTo, contactId, limit, page, pageSize } = args;
+          const { invoiceType, status, dateFrom, dateTo, contactId, limit, page, pageSize } = args;
 
           // Build where clause
           const whereClauses: string[] = [];
+          // Filter by invoice type - default to ACCREC (sales invoices) if not specified
+          // ACCREC = Accounts Receivable (sales invoices to customers)
+          // ACCPAY = Accounts Payable (bills from suppliers)
+          const type = (invoiceType as string) || "ACCREC";
+          whereClauses.push(`Type=="${type}"`);
           if (status) whereClauses.push(`Status=="${status}"`);
           if (contactId)
             whereClauses.push(`Contact.ContactID==Guid("${contactId}")`);
-          if (dateFrom) whereClauses.push(`Date>=DateTime(${dateFrom})`);
-          if (dateTo) whereClauses.push(`Date<=DateTime(${dateTo})`);
+          // Xero API date filter format: Date>=DateTime(2025,10,01) - comma-separated
+          if (dateFrom) whereClauses.push(`Date>=DateTime(${formatXeroDate(dateFrom as string)})`);
+          if (dateTo) whereClauses.push(`Date<=DateTime(${formatXeroDate(dateTo as string)})`);
 
           const where =
             whereClauses.length > 0 ? whereClauses.join(" AND ") : undefined;
+
+          // Log the query for debugging
+          console.log(`[xero_list_invoices] Type: ${type}, WHERE clause: ${where || '(none)'}, limit: ${limit || 100}`);
+
 
           // If specific page requested, fetch that page only
           if (page !== undefined) {
@@ -1527,8 +1559,9 @@ async function executeXeroToolOperation(
             whereClauses.push(
               `BankAccount.AccountID==Guid("${bankAccountId}")`
             );
-          if (dateFrom) whereClauses.push(`Date>=DateTime(${dateFrom})`);
-          if (dateTo) whereClauses.push(`Date<=DateTime(${dateTo})`);
+          // Xero API date filter format: Date>=DateTime(2025,10,01) - comma-separated
+          if (dateFrom) whereClauses.push(`Date>=DateTime(${formatXeroDate(dateFrom as string)})`);
+          if (dateTo) whereClauses.push(`Date<=DateTime(${formatXeroDate(dateTo as string)})`);
 
           const where =
             whereClauses.length > 0 ? whereClauses.join(" AND ") : undefined;
@@ -1598,15 +1631,24 @@ async function executeXeroToolOperation(
         }
 
         case "xero_list_credit_notes": {
-          const { status, dateFrom, dateTo, limit, page, pageSize } = args;
+          const { creditNoteType, status, dateFrom, dateTo, limit, page, pageSize } = args;
 
           const whereClauses: string[] = [];
+          // Filter by credit note type - default to ACCRECCREDIT (sales credit notes) if not specified
+          // ACCRECCREDIT = Sales credit notes (issued to customers)
+          // ACCPAYCREDIT = Purchase credit notes (received from suppliers)
+          const type = (creditNoteType as string) || "ACCRECCREDIT";
+          whereClauses.push(`Type=="${type}"`);
           if (status) whereClauses.push(`Status=="${status}"`);
-          if (dateFrom) whereClauses.push(`Date>=DateTime(${dateFrom})`);
-          if (dateTo) whereClauses.push(`Date<=DateTime(${dateTo})`);
+          // Xero API date filter format: Date>=DateTime(2025,10,01) - comma-separated
+          if (dateFrom) whereClauses.push(`Date>=DateTime(${formatXeroDate(dateFrom as string)})`);
+          if (dateTo) whereClauses.push(`Date<=DateTime(${formatXeroDate(dateTo as string)})`);
 
           const where =
             whereClauses.length > 0 ? whereClauses.join(" AND ") : undefined;
+
+          // Log the query for debugging
+          console.log(`[xero_list_credit_notes] Type: ${type}, WHERE clause: ${where || '(none)'}, limit: ${limit || 100}`);
 
           // If specific page requested, fetch that page only
           if (page !== undefined) {
@@ -1676,8 +1718,9 @@ async function executeXeroToolOperation(
           const { dateFrom, dateTo, limit, page, pageSize } = args;
 
           const whereClauses: string[] = [];
-          if (dateFrom) whereClauses.push(`Date>=DateTime(${dateFrom})`);
-          if (dateTo) whereClauses.push(`Date<=DateTime(${dateTo})`);
+          // Xero API date filter format: Date>=DateTime(2025,10,01) - comma-separated
+          if (dateFrom) whereClauses.push(`Date>=DateTime(${formatXeroDate(dateFrom as string)})`);
+          if (dateTo) whereClauses.push(`Date<=DateTime(${formatXeroDate(dateTo as string)})`);
 
           const where =
             whereClauses.length > 0 ? whereClauses.join(" AND ") : undefined;

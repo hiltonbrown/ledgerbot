@@ -14,8 +14,12 @@ export function createXeroTools(userId: string) {
   return {
     xero_list_invoices: tool({
       description:
-        "Get a list of invoices from Xero. Supports filtering by status, date range, and contact. Use this to find invoices for accounting queries.",
+        "Get a list of invoices from Xero. Can retrieve SALES INVOICES (sent TO customers, Type=ACCREC) or BILLS (received FROM suppliers, Type=ACCPAY). IMPORTANT: When user asks for invoices in a specific month/year, you MUST provide BOTH dateFrom and dateTo parameters to define the complete date range. For example, for 'October 2025' use dateFrom='2025-10-01' and dateTo='2025-10-31'. Use invoiceType parameter to specify which type: 'ACCREC' for sales invoices (default), 'ACCPAY' for bills/supplier invoices.",
       inputSchema: z.object({
+        invoiceType: z
+          .enum(["ACCREC", "ACCPAY"])
+          .optional()
+          .describe("Invoice type: ACCREC for sales invoices (default), ACCPAY for bills/supplier invoices"),
         status: z
           .enum(["DRAFT", "SUBMITTED", "AUTHORISED", "PAID", "VOIDED"])
           .optional()
@@ -24,13 +28,13 @@ export function createXeroTools(userId: string) {
           .string()
           .optional()
           .describe(
-            "Filter invoices from this date (ISO 8601 format, e.g., 2024-01-01)"
+            "Start date for date range filter (ISO 8601 format YYYY-MM-DD, e.g., 2025-10-01). REQUIRED when filtering by month/year."
           ),
         dateTo: z
           .string()
           .optional()
           .describe(
-            "Filter invoices to this date (ISO 8601 format, e.g., 2024-12-31)"
+            "End date for date range filter (ISO 8601 format YYYY-MM-DD, e.g., 2025-10-31). REQUIRED when filtering by month/year."
           ),
         contactId: z.string().optional().describe("Filter by contact ID"),
         limit: z
@@ -209,8 +213,12 @@ export function createXeroTools(userId: string) {
     }),
 
     xero_list_credit_notes: tool({
-      description: "Get a list of credit notes from Xero.",
+      description: "Get a list of credit notes from Xero. Can retrieve SALES CREDIT NOTES (issued TO customers, Type=ACCRECCREDIT) or PURCHASE CREDIT NOTES (received FROM suppliers, Type=ACCPAYCREDIT). Use creditNoteType to specify which type: 'ACCRECCREDIT' for sales credit notes (default), 'ACCPAYCREDIT' for purchase credit notes.",
       inputSchema: z.object({
+        creditNoteType: z
+          .enum(["ACCRECCREDIT", "ACCPAYCREDIT"])
+          .optional()
+          .describe("Credit note type: ACCRECCREDIT for sales credit notes (default), ACCPAYCREDIT for purchase credit notes"),
         status: z
           .enum(["DRAFT", "SUBMITTED", "AUTHORISED", "PAID", "VOIDED"])
           .optional()
