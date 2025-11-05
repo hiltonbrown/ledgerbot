@@ -4,6 +4,7 @@ const enablePartialPrerendering = process.env.NEXT_EXPERIMENTAL_PPR === "true";
 
 const nextConfig: NextConfig = {
   ...(enablePartialPrerendering ? { experimental: { ppr: true } } : {}),
+  serverExternalPackages: ["@mastra/*"],
   images: {
     remotePatterns: [
       {
