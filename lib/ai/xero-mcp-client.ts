@@ -307,7 +307,7 @@ export const xeroMCPTools: XeroMCPTool[] = [
   },
   {
     name: "xero_list_journal_entries",
-    description: "Get journal entries (manual journals) from Xero.",
+    description: "Get journal entries (manual journals) from Xero. Supports pagination for efficient data retrieval.",
     inputSchema: {
       type: "object",
       properties: {
@@ -323,12 +323,20 @@ export const xeroMCPTools: XeroMCPTool[] = [
           type: "number",
           description: "Maximum number of journals to return (default: 100)",
         },
+        page: {
+          type: "number",
+          description: "Page number to retrieve (starts at 1). If specified, returns only this page.",
+        },
+        pageSize: {
+          type: "number",
+          description: "Number of records per page (default: 100, max: 1000)",
+        },
       },
     },
   },
   {
     name: "xero_get_bank_transactions",
-    description: "Get bank transactions from Xero.",
+    description: "Get bank transactions from Xero. Supports pagination for efficient data retrieval.",
     inputSchema: {
       type: "object",
       properties: {
@@ -349,6 +357,14 @@ export const xeroMCPTools: XeroMCPTool[] = [
           description:
             "Maximum number of transactions to return (default: 100)",
         },
+        page: {
+          type: "number",
+          description: "Page number to retrieve (starts at 1). If specified, returns only this page.",
+        },
+        pageSize: {
+          type: "number",
+          description: "Number of records per page (default: 100, max: 1000)",
+        },
       },
     },
   },
@@ -362,7 +378,7 @@ export const xeroMCPTools: XeroMCPTool[] = [
   },
   {
     name: "xero_list_payments",
-    description: "Get a list of payments from Xero",
+    description: "Get a list of payments from Xero. Supports pagination for efficient data retrieval.",
     inputSchema: {
       type: "object",
       properties: {
@@ -378,12 +394,20 @@ export const xeroMCPTools: XeroMCPTool[] = [
           type: "number",
           description: "Maximum number of payments to return (default: 100)",
         },
+        page: {
+          type: "number",
+          description: "Page number to retrieve (starts at 1). If specified, returns only this page.",
+        },
+        pageSize: {
+          type: "number",
+          description: "Number of records per page (default: 100, max: 1000)",
+        },
       },
     },
   },
   {
     name: "xero_list_credit_notes",
-    description: "Get a list of credit notes from Xero",
+    description: "Get a list of credit notes from Xero. Supports pagination for efficient data retrieval.",
     inputSchema: {
       type: "object",
       properties: {
@@ -405,6 +429,14 @@ export const xeroMCPTools: XeroMCPTool[] = [
           type: "number",
           description:
             "Maximum number of credit notes to return (default: 100)",
+        },
+        page: {
+          type: "number",
+          description: "Page number to retrieve (starts at 1). If specified, returns only this page.",
+        },
+        pageSize: {
+          type: "number",
+          description: "Number of records per page (default: 100, max: 1000)",
         },
       },
     },
@@ -502,7 +534,7 @@ export const xeroMCPTools: XeroMCPTool[] = [
   },
   {
     name: "xero_list_quotes",
-    description: "Get a list of sales quotes from Xero",
+    description: "Get a list of sales quotes from Xero. Supports pagination for efficient data retrieval. Note: Xero API uses fixed page size of 100 for quotes.",
     inputSchema: {
       type: "object",
       properties: {
@@ -522,6 +554,14 @@ export const xeroMCPTools: XeroMCPTool[] = [
         limit: {
           type: "number",
           description: "Maximum number of quotes to return (default: 100)",
+        },
+        page: {
+          type: "number",
+          description: "Page number to retrieve (starts at 1). If specified, returns only this page.",
+        },
+        pageSize: {
+          type: "number",
+          description: "Number of records per page. Note: Xero API does not support custom page sizes for quotes; fixed at 100.",
         },
       },
     },
@@ -1387,27 +1427,76 @@ async function executeXeroToolOperation(
         }
 
         case "xero_list_journal_entries": {
-          const { dateFrom, dateTo, limit } = args;
+          const { dateFrom, dateTo, limit, page, pageSize } = args;
 
-          // Paginate through all manual journals
+          // If specific page requested, fetch that page only
+          if (page !== undefined) {
+            const paginationParams = buildPaginationParams({
+              page: page as number,
+              pageSize: pageSize as number | undefined,
+            });
+
+            const response = await client.accountingApi.getManualJournals(
+              connection.tenantId,
+              undefined, // ifModifiedSince
+              undefined, // where - Xero doesn't support date filtering in WHERE clause
+              undefined, // order
+              paginationParams.page, // page number
+              paginationParams.pageSize // pageSize
+            );
+
+            // Track rate limits
+            const rateLimitInfo = extractRateLimitInfo(response.response.headers);
+            await updateRateLimitInfo(connection.id, rateLimitInfo);
+            logRateLimitStatus(connection.id, toolName, rateLimitInfo);
+
+            // Filter by date if provided (Xero doesn't support date filtering in API)
+            let journals = response.body.manualJournals || [];
+            if (dateFrom || dateTo) {
+              journals = journals.filter((journal) => {
+                if (!journal.date) return false;
+                const journalDate = new Date(journal.date);
+                if (dateFrom && journalDate < new Date(dateFrom as string))
+                  return false;
+                if (dateTo && journalDate > new Date(dateTo as string))
+                  return false;
+                return true;
+              });
+            }
+
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify(journals, null, 2),
+                },
+              ],
+            };
+          }
+
+          // Otherwise, paginate through all manual journals
           const allJournals = await paginateXeroAPI(
-            async (page) => {
+            async (currentPage, currentPageSize) => {
               const response = await client.accountingApi.getManualJournals(
                 connection.tenantId,
                 undefined, // ifModifiedSince
                 undefined, // where - Xero doesn't support date filtering in WHERE clause
                 undefined, // order
-                page, // page number for pagination (5th parameter)
-                undefined // pageSize
+                currentPage, // page number
+                currentPageSize // pageSize
               );
-              return response.body.manualJournals || [];
+              return {
+                results: response.body.manualJournals || [],
+                headers: response.response.headers,
+              };
             },
-            limit as number | undefined
+            limit as number | undefined,
+            (pageSize as number | undefined) || 100,
+            connection.id
           );
 
           // Filter by date if provided (Xero doesn't support date filtering in API)
           let journals = allJournals;
-
           if (dateFrom || dateTo) {
             journals = journals.filter((journal) => {
               if (!journal.date) return false;
@@ -1431,7 +1520,7 @@ async function executeXeroToolOperation(
         }
 
         case "xero_get_bank_transactions": {
-          const { bankAccountId, dateFrom, dateTo, limit } = args;
+          const { bankAccountId, dateFrom, dateTo, limit, page, pageSize } = args;
 
           const whereClauses: string[] = [];
           if (bankAccountId)
@@ -1444,21 +1533,58 @@ async function executeXeroToolOperation(
           const where =
             whereClauses.length > 0 ? whereClauses.join(" AND ") : undefined;
 
-          // Paginate through all bank transactions
+          // If specific page requested, fetch that page only
+          if (page !== undefined) {
+            const paginationParams = buildPaginationParams({
+              page: page as number,
+              pageSize: pageSize as number | undefined,
+            });
+
+            const response = await client.accountingApi.getBankTransactions(
+              connection.tenantId,
+              undefined, // ifModifiedSince
+              where, // where clause
+              undefined, // order
+              paginationParams.page, // page number
+              undefined, // unitdp
+              paginationParams.pageSize // pageSize
+            );
+
+            // Track rate limits
+            const rateLimitInfo = extractRateLimitInfo(response.response.headers);
+            await updateRateLimitInfo(connection.id, rateLimitInfo);
+            logRateLimitStatus(connection.id, toolName, rateLimitInfo);
+
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify(response.body.bankTransactions || [], null, 2),
+                },
+              ],
+            };
+          }
+
+          // Otherwise, paginate through all bank transactions
           const allTransactions = await paginateXeroAPI(
-            async (page) => {
+            async (currentPage, currentPageSize) => {
               const response = await client.accountingApi.getBankTransactions(
                 connection.tenantId,
                 undefined, // ifModifiedSince
                 where, // where clause
                 undefined, // order
-                page, // page number for pagination (5th parameter)
+                currentPage, // page number
                 undefined, // unitdp
-                undefined // pageSize
+                currentPageSize // pageSize
               );
-              return response.body.bankTransactions || [];
+              return {
+                results: response.body.bankTransactions || [],
+                headers: response.response.headers,
+              };
             },
-            limit as number | undefined
+            limit as number | undefined,
+            (pageSize as number | undefined) || 100,
+            connection.id
           );
 
           return {
@@ -1472,7 +1598,7 @@ async function executeXeroToolOperation(
         }
 
         case "xero_list_credit_notes": {
-          const { status, dateFrom, dateTo, limit } = args;
+          const { status, dateFrom, dateTo, limit, page, pageSize } = args;
 
           const whereClauses: string[] = [];
           if (status) whereClauses.push(`Status=="${status}"`);
@@ -1482,21 +1608,58 @@ async function executeXeroToolOperation(
           const where =
             whereClauses.length > 0 ? whereClauses.join(" AND ") : undefined;
 
-          // Paginate through all credit notes
+          // If specific page requested, fetch that page only
+          if (page !== undefined) {
+            const paginationParams = buildPaginationParams({
+              page: page as number,
+              pageSize: pageSize as number | undefined,
+            });
+
+            const response = await client.accountingApi.getCreditNotes(
+              connection.tenantId,
+              undefined, // ifModifiedSince
+              where, // where clause
+              undefined, // order
+              paginationParams.page, // page number
+              undefined, // unitdp
+              paginationParams.pageSize // pageSize
+            );
+
+            // Track rate limits
+            const rateLimitInfo = extractRateLimitInfo(response.response.headers);
+            await updateRateLimitInfo(connection.id, rateLimitInfo);
+            logRateLimitStatus(connection.id, toolName, rateLimitInfo);
+
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify(response.body.creditNotes || [], null, 2),
+                },
+              ],
+            };
+          }
+
+          // Otherwise, paginate through all credit notes
           const allCreditNotes = await paginateXeroAPI(
-            async (page) => {
+            async (currentPage, currentPageSize) => {
               const response = await client.accountingApi.getCreditNotes(
                 connection.tenantId,
                 undefined, // ifModifiedSince
                 where, // where clause
                 undefined, // order
-                page, // page number for pagination (5th parameter)
+                currentPage, // page number
                 undefined, // unitdp
-                undefined // pageSize
+                currentPageSize // pageSize
               );
-              return response.body.creditNotes || [];
+              return {
+                results: response.body.creditNotes || [],
+                headers: response.response.headers,
+              };
             },
-            limit as number | undefined
+            limit as number | undefined,
+            (pageSize as number | undefined) || 100,
+            connection.id
           );
 
           return {
@@ -1510,7 +1673,7 @@ async function executeXeroToolOperation(
         }
 
         case "xero_list_payments": {
-          const { dateFrom, dateTo, limit } = args;
+          const { dateFrom, dateTo, limit, page, pageSize } = args;
 
           const whereClauses: string[] = [];
           if (dateFrom) whereClauses.push(`Date>=DateTime(${dateFrom})`);
@@ -1519,20 +1682,56 @@ async function executeXeroToolOperation(
           const where =
             whereClauses.length > 0 ? whereClauses.join(" AND ") : undefined;
 
-          // Paginate through all payments
+          // If specific page requested, fetch that page only
+          if (page !== undefined) {
+            const paginationParams = buildPaginationParams({
+              page: page as number,
+              pageSize: pageSize as number | undefined,
+            });
+
+            const response = await client.accountingApi.getPayments(
+              connection.tenantId,
+              undefined, // ifModifiedSince
+              where, // where clause
+              undefined, // order
+              paginationParams.page, // page number
+              paginationParams.pageSize // pageSize
+            );
+
+            // Track rate limits
+            const rateLimitInfo = extractRateLimitInfo(response.response.headers);
+            await updateRateLimitInfo(connection.id, rateLimitInfo);
+            logRateLimitStatus(connection.id, toolName, rateLimitInfo);
+
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify(response.body.payments || [], null, 2),
+                },
+              ],
+            };
+          }
+
+          // Otherwise, paginate through all payments
           const allPayments = await paginateXeroAPI(
-            async (page) => {
+            async (currentPage, currentPageSize) => {
               const response = await client.accountingApi.getPayments(
                 connection.tenantId,
                 undefined, // ifModifiedSince
                 where, // where clause
                 undefined, // order
-                page, // page number for pagination (5th parameter)
-                undefined // pageSize
+                currentPage, // page number
+                currentPageSize // pageSize
               );
-              return response.body.payments || [];
+              return {
+                results: response.body.payments || [],
+                headers: response.response.headers,
+              };
             },
-            limit as number | undefined
+            limit as number | undefined,
+            (pageSize as number | undefined) || 100,
+            connection.id
           );
 
           return {
@@ -1669,11 +1868,49 @@ async function executeXeroToolOperation(
         }
 
         case "xero_list_quotes": {
-          const { status, dateFrom, dateTo, limit } = args;
+          const { status, dateFrom, dateTo, limit, page, pageSize } = args;
 
-          // Paginate through all quotes
+          // Note: Xero getQuotes API does not support pageSize parameter, only page
+          // If specific page requested, fetch that page only
+          if (page !== undefined) {
+            const paginationParams = buildPaginationParams({
+              page: page as number,
+              pageSize: pageSize as number | undefined,
+            });
+
+            const response = await client.accountingApi.getQuotes(
+              connection.tenantId,
+              undefined, // ifModifiedSince
+              dateFrom as string | undefined,
+              dateTo as string | undefined,
+              undefined, // expiryDateFrom
+              undefined, // expiryDateTo
+              undefined, // contactID
+              status as string | undefined,
+              paginationParams.page, // page number
+              undefined, // order
+              undefined // quoteNumber
+            );
+
+            // Track rate limits
+            const rateLimitInfo = extractRateLimitInfo(response.response.headers);
+            await updateRateLimitInfo(connection.id, rateLimitInfo);
+            logRateLimitStatus(connection.id, toolName, rateLimitInfo);
+
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify(response.body.quotes || [], null, 2),
+                },
+              ],
+            };
+          }
+
+          // Otherwise, paginate through all quotes (Note: Xero API uses fixed page size of 100)
           const allQuotes = await paginateXeroAPI(
-            async (page) => {
+            async (currentPage, _pageSize) => {
+              // Note: getQuotes doesn't support pageSize parameter, uses fixed 100
               const response = await client.accountingApi.getQuotes(
                 connection.tenantId,
                 undefined, // ifModifiedSince
@@ -1683,13 +1920,18 @@ async function executeXeroToolOperation(
                 undefined, // expiryDateTo
                 undefined, // contactID
                 status as string | undefined,
-                page, // page number for pagination
+                currentPage, // page number
                 undefined, // order
                 undefined // quoteNumber
               );
-              return response.body.quotes || [];
+              return {
+                results: response.body.quotes || [],
+                headers: response.response.headers,
+              };
             },
-            limit as number | undefined
+            limit as number | undefined,
+            100, // Fixed page size for quotes (API doesn't support custom pageSize)
+            connection.id
           );
 
           return {
