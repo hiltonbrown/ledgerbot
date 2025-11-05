@@ -11,6 +11,7 @@ import {
   updateXeroTokens,
   updateLastApiCall,
   updateConnectionError,
+  updateRateLimitInfo,
 } from "@/lib/db/queries";
 import { getDecryptedConnection } from "@/lib/xero/connection-manager";
 import { encryptToken } from "@/lib/xero/encryption";
@@ -22,6 +23,13 @@ import {
   requiresReconnection,
 } from "@/lib/xero/error-handler";
 import type { ParsedXeroError } from "@/lib/xero/error-handler";
+import {
+  extractRateLimitInfo,
+  buildPaginationParams,
+  logRateLimitStatus,
+  shouldWaitForRateLimit,
+} from "@/lib/xero/rate-limit-handler";
+import type { RateLimitInfo } from "@/lib/xero/rate-limit-handler";
 
 /**
  * Xero MCP Client
@@ -137,19 +145,38 @@ async function persistTokenSet(
 }
 
 /**
- * Generic pagination helper for Xero API calls
- * Fetches all pages up to the specified limit
+ * Generic pagination helper for Xero API calls with rate limit tracking
+ * Fetches pages up to the specified limit, handling pagination and rate limits
+ * @param fetchPage - Function to fetch a page of results
+ * @param limit - Maximum number of results to return
+ * @param pageSize - Number of records per page (default 100, max 1000)
+ * @param connectionId - Connection ID for rate limit tracking
  */
 async function paginateXeroAPI<T>(
-  fetchPage: (page: number) => Promise<T[]>,
-  limit?: number
+  fetchPage: (page: number, pageSize: number) => Promise<{
+    results: T[];
+    headers?: any;
+  }>,
+  limit?: number,
+  pageSize = 100,
+  connectionId?: string
 ): Promise<T[]> {
   const allResults: T[] = [];
   let currentPage = 1;
   const effectiveLimit = limit && limit > 0 ? limit : Number.POSITIVE_INFINITY;
+  const effectivePageSize = Math.min(Math.max(pageSize, 1), 1000); // Clamp between 1 and 1000
 
   while (allResults.length < effectiveLimit) {
-    const pageResults = await fetchPage(currentPage);
+    const { results: pageResults, headers } = await fetchPage(currentPage, effectivePageSize);
+
+    // Track rate limit info from response headers
+    if (headers && connectionId) {
+      const rateLimitInfo = extractRateLimitInfo(headers);
+      if (rateLimitInfo.minuteRemaining !== undefined || rateLimitInfo.dayRemaining !== undefined) {
+        await updateRateLimitInfo(connectionId, rateLimitInfo);
+        logRateLimitStatus(connectionId, "pagination", rateLimitInfo);
+      }
+    }
 
     if (!pageResults || pageResults.length === 0) {
       // No more results
@@ -158,8 +185,8 @@ async function paginateXeroAPI<T>(
 
     allResults.push(...pageResults);
 
-    // If we got fewer results than a full page (100), we're at the end
-    if (pageResults.length < 100) {
+    // If we got fewer results than the page size, we're at the end
+    if (pageResults.length < effectivePageSize) {
       break;
     }
 
@@ -182,7 +209,7 @@ export const xeroMCPTools: XeroMCPTool[] = [
   {
     name: "xero_list_invoices",
     description:
-      "Get a list of invoices from Xero. Supports filtering by status, date range, and contact.",
+      "Get a list of invoices from Xero. Supports filtering by status, date range, and contact. Uses pagination for efficient data retrieval.",
     inputSchema: {
       type: "object",
       properties: {
@@ -207,6 +234,14 @@ export const xeroMCPTools: XeroMCPTool[] = [
         limit: {
           type: "number",
           description: "Maximum number of invoices to return (default: 100)",
+        },
+        page: {
+          type: "number",
+          description: "Page number to retrieve (starts at 1). If specified, returns only this page.",
+        },
+        pageSize: {
+          type: "number",
+          description: "Number of records per page (default: 100, max: 1000)",
         },
       },
     },
@@ -1124,7 +1159,7 @@ async function executeXeroToolOperation(
   try {
     switch (toolName) {
         case "xero_list_invoices": {
-          const { status, dateFrom, dateTo, contactId, limit } = args;
+          const { status, dateFrom, dateTo, contactId, limit, page, pageSize } = args;
 
           // Build where clause
           const whereClauses: string[] = [];
@@ -1137,9 +1172,48 @@ async function executeXeroToolOperation(
           const where =
             whereClauses.length > 0 ? whereClauses.join(" AND ") : undefined;
 
-          // Paginate through all invoices
+          // If specific page requested, fetch that page only
+          if (page !== undefined) {
+            const paginationParams = buildPaginationParams({
+              page: page as number,
+              pageSize: pageSize as number | undefined,
+            });
+
+            const response = await client.accountingApi.getInvoices(
+              connection.tenantId,
+              undefined, // ifModifiedSince
+              where, // where clause
+              undefined, // order
+              undefined, // IDs
+              undefined, // invoiceNumbers
+              undefined, // contactIDs
+              undefined, // statuses
+              paginationParams.page, // page number
+              undefined, // includeArchived
+              undefined, // createdByMyApp
+              undefined, // unitdp
+              undefined, // summaryOnly
+              paginationParams.pageSize // pageSize
+            );
+
+            // Track rate limits
+            const rateLimitInfo = extractRateLimitInfo(response.response.headers);
+            await updateRateLimitInfo(connection.id, rateLimitInfo);
+            logRateLimitStatus(connection.id, toolName, rateLimitInfo);
+
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify(response.body.invoices || [], null, 2),
+                },
+              ],
+            };
+          }
+
+          // Otherwise, paginate through all invoices
           const allInvoices = await paginateXeroAPI(
-            async (page) => {
+            async (currentPage, currentPageSize) => {
               const response = await client.accountingApi.getInvoices(
                 connection.tenantId,
                 undefined, // ifModifiedSince
@@ -1149,17 +1223,21 @@ async function executeXeroToolOperation(
                 undefined, // invoiceNumbers
                 undefined, // contactIDs
                 undefined, // statuses
-                page, // page number for pagination (9th parameter)
+                currentPage, // page number
                 undefined, // includeArchived
                 undefined, // createdByMyApp
                 undefined, // unitdp
                 undefined, // summaryOnly
-                undefined, // pageSize
-                undefined // searchTerm
+                currentPageSize // pageSize
               );
-              return response.body.invoices || [];
+              return {
+                results: response.body.invoices || [],
+                headers: response.response.headers,
+              };
             },
-            limit as number | undefined
+            limit as number | undefined,
+            (pageSize as number | undefined) || 100,
+            connection.id
           );
 
           return {
@@ -1192,30 +1270,70 @@ async function executeXeroToolOperation(
         }
 
         case "xero_list_contacts": {
-          const { searchTerm, limit } = args;
+          const { searchTerm, limit, page, pageSize } = args;
 
           const where = searchTerm
             ? `Name.Contains("${searchTerm}") OR EmailAddress.Contains("${searchTerm}")`
             : undefined;
 
-          // Paginate through all contacts
+          // If specific page requested, fetch that page only
+          if (page !== undefined) {
+            const paginationParams = buildPaginationParams({
+              page: page as number,
+              pageSize: pageSize as number | undefined,
+            });
+
+            const response = await client.accountingApi.getContacts(
+              connection.tenantId,
+              undefined, // ifModifiedSince
+              where, // where clause
+              undefined, // order
+              undefined, // IDs
+              paginationParams.page, // page number
+              undefined, // includeArchived
+              undefined, // summaryOnly
+              undefined, // searchTerm
+              paginationParams.pageSize // pageSize
+            );
+
+            // Track rate limits
+            const rateLimitInfo = extractRateLimitInfo(response.response.headers);
+            await updateRateLimitInfo(connection.id, rateLimitInfo);
+            logRateLimitStatus(connection.id, toolName, rateLimitInfo);
+
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify(response.body.contacts || [], null, 2),
+                },
+              ],
+            };
+          }
+
+          // Otherwise, paginate through all contacts
           const allContacts = await paginateXeroAPI(
-            async (page) => {
+            async (currentPage, currentPageSize) => {
               const response = await client.accountingApi.getContacts(
                 connection.tenantId,
                 undefined, // ifModifiedSince
                 where, // where clause
                 undefined, // order
                 undefined, // IDs
-                page, // page number for pagination (6th parameter)
+                currentPage, // page number
                 undefined, // includeArchived
                 undefined, // summaryOnly
-                undefined, // searchTerm (separate parameter)
-                undefined // pageSize
+                undefined, // searchTerm
+                currentPageSize // pageSize
               );
-              return response.body.contacts || [];
+              return {
+                results: response.body.contacts || [],
+                headers: response.response.headers,
+              };
             },
-            limit as number | undefined
+            limit as number | undefined,
+            (pageSize as number | undefined) || 100,
+            connection.id
           );
 
           return {

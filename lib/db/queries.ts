@@ -1558,3 +1558,30 @@ export async function updateLastApiCall(connectionId: string): Promise<void> {
     console.error("Failed to update last API call timestamp:", _error);
   }
 }
+
+export async function updateRateLimitInfo(
+  connectionId: string,
+  rateLimitInfo: {
+    minuteRemaining?: number;
+    dayRemaining?: number;
+    retryAfter?: number;
+    problem?: string;
+    resetAt?: Date;
+  }
+): Promise<void> {
+  try {
+    await db
+      .update(xeroConnection)
+      .set({
+        rateLimitMinuteRemaining: rateLimitInfo.minuteRemaining || null,
+        rateLimitDayRemaining: rateLimitInfo.dayRemaining || null,
+        rateLimitResetAt: rateLimitInfo.resetAt || null,
+        rateLimitProblem: rateLimitInfo.problem || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(xeroConnection.id, connectionId));
+  } catch (_error) {
+    // Don't throw error - rate limit tracking shouldn't break API calls
+    console.error("Failed to update rate limit info:", _error);
+  }
+}

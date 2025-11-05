@@ -256,6 +256,10 @@ export const xeroConnection = pgTable("XeroConnection", {
   lastErrorType: varchar("lastErrorType", { length: 50 }), // validation, authorization, token, rate_limit, server, network
   lastCorrelationId: varchar("lastCorrelationId", { length: 255 }), // X-Correlation-Id from Xero for support tickets
   lastApiCallAt: timestamp("lastApiCallAt"), // Track last successful API call for cleanup
+  rateLimitMinuteRemaining: integer("rateLimitMinuteRemaining"), // X-MinLimit-Remaining header value
+  rateLimitDayRemaining: integer("rateLimitDayRemaining"), // X-DayLimit-Remaining header value
+  rateLimitResetAt: timestamp("rateLimitResetAt"), // When rate limit will reset (from Retry-After)
+  rateLimitProblem: varchar("rateLimitProblem", { length: 50 }), // X-Rate-Limit-Problem header (minute or day)
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });
