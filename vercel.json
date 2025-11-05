@@ -7,10 +7,6 @@
     {
       "path": "/api/cron/xero-connection-cleanup",
       "schedule": "0 3 * * *"
-    },
-    {
-      "path": "/api/cron/regulatory-sync",
-      "schedule": "0 15 * * *"
     }
   ]
 }
