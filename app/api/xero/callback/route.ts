@@ -79,6 +79,24 @@ export async function GET(request: Request) {
     // Calculate expiry time
     const expiresAt = new Date(Date.now() + tokenSet.expires_in * 1000);
 
+    // Extract authentication_event_id from access token JWT for better connection tracking
+    let authenticationEventId: string | undefined;
+    try {
+      // JWT is base64url encoded: header.payload.signature
+      const parts = tokenSet.access_token.split(".");
+      if (parts.length === 3) {
+        const payload = JSON.parse(
+          Buffer.from(parts[1], "base64url").toString("utf-8")
+        );
+        authenticationEventId = payload.authentication_event_id;
+      }
+    } catch (jwtError) {
+      console.warn(
+        "Could not extract authentication_event_id from access token:",
+        jwtError
+      );
+    }
+
     // Encrypt tokens once (same for all organizations)
     const encryptedAccessToken = encryptToken(tokenSet.access_token);
     const encryptedRefreshToken = encryptToken(tokenSet.refresh_token);
@@ -93,6 +111,7 @@ export async function GET(request: Request) {
           refreshToken: encryptedRefreshToken,
           expiresAt,
           scopes: getXeroScopes(),
+          authenticationEventId,
         })
       )
     );

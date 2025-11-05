@@ -1004,6 +1004,7 @@ export async function createXeroConnection({
   refreshToken,
   expiresAt,
   scopes,
+  authenticationEventId,
 }: {
   userId: string;
   tenantId: string;
@@ -1012,6 +1013,7 @@ export async function createXeroConnection({
   refreshToken: string;
   expiresAt: Date;
   scopes: string[];
+  authenticationEventId?: string;
 }): Promise<XeroConnection> {
   try {
     const now = new Date();
@@ -1063,6 +1065,7 @@ export async function createXeroConnection({
             refreshToken,
             expiresAt,
             scopes,
+            authenticationEventId,
             isActive: true,
             updatedAt: now,
           })
@@ -1101,6 +1104,7 @@ export async function createXeroConnection({
             refreshToken,
             expiresAt,
             scopes,
+            authenticationEventId,
             isActive: true,
             updatedAt: now,
           })
@@ -1157,11 +1161,13 @@ export async function updateXeroTokens({
   accessToken,
   refreshToken,
   expiresAt,
+  authenticationEventId,
 }: {
   id: string;
   accessToken: string;
   refreshToken: string;
   expiresAt: Date;
+  authenticationEventId?: string;
 }): Promise<XeroConnection> {
   try {
     const [connection] = await db
@@ -1170,6 +1176,7 @@ export async function updateXeroTokens({
         accessToken,
         refreshToken,
         expiresAt,
+        authenticationEventId,
         updatedAt: new Date(),
       })
       .where(eq(xeroConnection.id, id))

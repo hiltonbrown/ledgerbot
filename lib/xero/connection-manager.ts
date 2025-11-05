@@ -46,6 +46,7 @@ export function createXeroClient(state?: string): XeroClient {
     scopes: XERO_SCOPES,
     state,
     httpTimeout: 10_000, // 10 seconds - prevent timeout issues with token refresh
+    clockTolerance: 10, // 10 seconds - handle time sync issues between servers (Xero best practice)
   });
 }
 
@@ -64,57 +65,90 @@ export async function getDecryptedConnection(
     return null;
   }
 
-  // Check if token is expired or expiring soon (within 5 minutes)
+  // Check if refresh token might be expired (Xero refresh tokens last 60 days)
+  // We don't have the exact refresh token creation date, so we estimate based on updatedAt
+  const connectionAge = Date.now() - new Date(connection.updatedAt).getTime();
+  const FIFTY_FIVE_DAYS = 55 * 24 * 60 * 60 * 1000; // 55 days in milliseconds
+
+  if (connectionAge > FIFTY_FIVE_DAYS) {
+    console.warn(
+      `Xero connection for user ${userId} is older than 55 days (${Math.floor(connectionAge / (24 * 60 * 60 * 1000))} days). Refresh token may be expired. User should re-authenticate.`
+    );
+    // Don't deactivate yet - let the refresh attempt happen and handle the error
+  }
+
+  // Check if access token is expired or expiring soon (within 5 minutes)
+  // Note: We use manual calculation here because tokenSet.expired() requires the full XeroClient context
+  // This check happens before we initialize the client to avoid unnecessary API calls
   const expiresAt = new Date(connection.expiresAt);
   const now = new Date();
   const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
 
   if (expiresAt <= fiveMinutesFromNow) {
     console.log(
-      `Xero token for user ${userId} is expired or expiring soon, attempting refresh`
+      `Xero access token for user ${userId} is expired or expiring soon (expires: ${expiresAt.toISOString()}), attempting refresh`
     );
     // Token needs refresh
     try {
-      const refreshedConnection = await refreshXeroToken(connection.id);
-      if (refreshedConnection) {
+      const refreshResult = await refreshXeroToken(connection.id);
+
+      if (refreshResult.success && refreshResult.connection) {
         console.log(`Successfully refreshed Xero token for user ${userId}`);
         return {
-          ...refreshedConnection,
-          accessToken: decryptToken(refreshedConnection.accessToken),
-          refreshToken: decryptToken(refreshedConnection.refreshToken),
+          ...refreshResult.connection,
+          accessToken: decryptToken(refreshResult.connection.accessToken),
+          refreshToken: decryptToken(refreshResult.connection.refreshToken),
         };
       }
+
+      // Check if this is a permanent failure (expired refresh token)
+      if (refreshResult.isPermanentFailure) {
+        console.error(
+          `Permanent failure refreshing Xero token for user ${userId}: ${refreshResult.error}. User needs to re-authenticate.`
+        );
+        // Only deactivate on permanent failures
+        try {
+          await deactivateXeroConnection(connection.id);
+          console.log(
+            `Deactivated Xero connection ${connection.id} due to permanent refresh failure (likely expired refresh token)`
+          );
+        } catch (deactivateError) {
+          console.error(
+            `Failed to deactivate Xero connection ${connection.id}:`,
+            deactivateError
+          );
+        }
+        // Throw an error with clear message for user
+        throw new Error(
+          "Xero refresh token has expired. Please reconnect your Xero account in Settings > Integrations."
+        );
+      }
+
+      // Temporary failure - don't deactivate, return current tokens and let caller retry
       console.warn(
-        `Failed to refresh Xero token for user ${userId}, token may be expired`
+        `Temporary failure refreshing Xero token for user ${userId}: ${refreshResult.error}. Returning current tokens, connection remains active.`
       );
-      // Deactivate the connection since refresh failed
-      try {
-        await deactivateXeroConnection(connection.id);
-        console.log(
-          `Deactivated Xero connection ${connection.id} due to refresh failure`
-        );
-      } catch (deactivateError) {
-        console.error(
-          `Failed to deactivate Xero connection ${connection.id}:`,
-          deactivateError
-        );
-      }
-      return null;
+
+      // Return the existing (possibly expired) connection - let the API call fail with proper error
+      return {
+        ...connection,
+        accessToken: decryptToken(connection.accessToken),
+        refreshToken: decryptToken(connection.refreshToken),
+      };
     } catch (error) {
-      console.error(`Failed to refresh Xero token for user ${userId}:`, error);
-      // Deactivate the connection since refresh failed
-      try {
-        await deactivateXeroConnection(connection.id);
-        console.log(
-          `Deactivated Xero connection ${connection.id} due to refresh failure`
-        );
-      } catch (deactivateError) {
-        console.error(
-          `Failed to deactivate Xero connection ${connection.id}:`,
-          deactivateError
-        );
+      // If the error is our re-authentication message, rethrow it
+      if (error instanceof Error && error.message.includes("reconnect your Xero account")) {
+        throw error;
       }
-      return null;
+
+      console.error(`Unexpected error refreshing Xero token for user ${userId}:`, error);
+      // Don't deactivate on unexpected errors - connection might still be valid
+      // Return the connection and let the API call handle the error
+      return {
+        ...connection,
+        accessToken: decryptToken(connection.accessToken),
+        refreshToken: decryptToken(connection.refreshToken),
+      };
     }
   }
 
@@ -125,21 +159,33 @@ export async function getDecryptedConnection(
   };
 }
 
+export interface TokenRefreshResult {
+  success: boolean;
+  connection?: XeroConnection;
+  error?: string;
+  isPermanentFailure?: boolean; // True if refresh token is expired (needs re-auth)
+}
+
 export async function refreshXeroToken(
-  connectionId: string
-): Promise<XeroConnection | null> {
+  connectionId: string,
+  retryWithOldToken = false
+): Promise<TokenRefreshResult> {
   const connection = await getXeroConnectionById(connectionId);
 
   if (!connection) {
     console.warn(`Xero connection ${connectionId} not found for refresh`);
-    return null;
+    return {
+      success: false,
+      error: "Connection not found",
+      isPermanentFailure: true,
+    };
   }
 
   const xeroClient = createXeroClient();
 
   try {
     console.log(
-      `Attempting to refresh Xero token for connection ${connectionId}`
+      `Attempting to refresh Xero token for connection ${connectionId}${retryWithOldToken ? " (retry with old token)" : ""}`
     );
 
     const decryptedAccessToken = decryptToken(connection.accessToken);
@@ -164,15 +210,37 @@ export async function refreshXeroToken(
       console.error(
         "Invalid token response from Xero - missing access_token or refresh_token"
       );
-      throw new Error("Invalid token response from Xero");
+      return {
+        success: false,
+        error: "Invalid token response from Xero",
+        isPermanentFailure: false, // Might be temporary API issue
+      };
     }
 
     const expiresAt = new Date(
       Date.now() + (tokenSet.expires_in || 1800) * 1000
     );
 
+    // Extract authentication_event_id from access token JWT for better connection tracking
+    let authenticationEventId: string | undefined;
+    try {
+      // JWT is base64url encoded: header.payload.signature
+      const parts = tokenSet.access_token.split(".");
+      if (parts.length === 3) {
+        const payload = JSON.parse(
+          Buffer.from(parts[1], "base64url").toString("utf-8")
+        );
+        authenticationEventId = payload.authentication_event_id;
+      }
+    } catch (jwtError) {
+      console.warn(
+        `Could not extract authentication_event_id from access token:`,
+        jwtError
+      );
+    }
+
     console.log(
-      `Successfully refreshed Xero token for connection ${connectionId}, expires at ${expiresAt.toISOString()}`
+      `Successfully refreshed Xero token for connection ${connectionId}, expires at ${expiresAt.toISOString()}${authenticationEventId ? `, auth_event_id: ${authenticationEventId}` : ""}`
     );
 
     const updatedConnection = await updateXeroTokens({
@@ -180,9 +248,13 @@ export async function refreshXeroToken(
       accessToken: encryptToken(tokenSet.access_token),
       refreshToken: encryptToken(tokenSet.refresh_token),
       expiresAt,
+      authenticationEventId,
     });
 
-    return updatedConnection;
+    return {
+      success: true,
+      connection: updatedConnection,
+    };
   } catch (error) {
     console.error(
       `Failed to refresh Xero token for connection ${connectionId}:`,
@@ -192,21 +264,39 @@ export async function refreshXeroToken(
       }
     );
 
-    // Check if this is a refresh token expiry error
-    if (
+    // Check if this is a permanent failure (expired refresh token)
+    const isPermanent =
       error instanceof Error &&
       (error.message.includes("invalid_grant") ||
         error.message.includes("refresh_token") ||
-        error.message.includes("expired"))
-    ) {
+        error.message.toLowerCase().includes("expired"));
+
+    if (isPermanent) {
       console.warn(
         `Refresh token appears to be expired for connection ${connectionId}, user will need to re-authenticate`
       );
-      // Don't throw here - let the caller handle the null return and potentially deactivate the connection
-      return null;
     }
 
-    throw error;
+    // Xero provides 30-minute grace period: if refresh fails and token was updated < 30 min ago,
+    // we can retry with the old refresh token (in case the new token wasn't saved properly)
+    if (!retryWithOldToken && !isPermanent) {
+      const tokenAge = Date.now() - new Date(connection.updatedAt).getTime();
+      const THIRTY_MINUTES = 30 * 60 * 1000;
+
+      if (tokenAge < THIRTY_MINUTES) {
+        console.log(
+          `Token was updated ${Math.floor(tokenAge / 1000)} seconds ago (< 30 min grace period). Retrying with old token...`
+        );
+        // Retry once with the old token (within grace period)
+        return await refreshXeroToken(connectionId, true);
+      }
+    }
+
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+      isPermanentFailure: isPermanent,
+    };
   }
 }
 
@@ -217,21 +307,11 @@ export async function refreshXeroToken(
 export async function refreshXeroTokenById(
   connectionId: string
 ): Promise<{ success: boolean; error?: string }> {
-  try {
-    const result = await refreshXeroToken(connectionId);
-    if (!result) {
-      return {
-        success: false,
-        error: "Failed to refresh token - connection not found or refresh failed",
-      };
-    }
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
+  const result = await refreshXeroToken(connectionId);
+  return {
+    success: result.success,
+    error: result.error,
+  };
 }
 
 export async function getXeroTenants(

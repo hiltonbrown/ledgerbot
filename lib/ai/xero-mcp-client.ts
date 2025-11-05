@@ -49,6 +49,13 @@ async function getXeroClient(
     );
   }
 
+  // Validate tenant ID exists
+  if (!connection.tenantId) {
+    throw new Error(
+      "Xero connection is missing tenant ID. Please reconnect to Xero."
+    );
+  }
+
   const client = new XeroClient({
     clientId: process.env.XERO_CLIENT_ID || "",
     clientSecret: process.env.XERO_CLIENT_SECRET || "",
@@ -116,6 +123,45 @@ async function persistTokenSet(
   } catch (error) {
     console.error("Failed to persist Xero token set:", error);
   }
+}
+
+/**
+ * Generic pagination helper for Xero API calls
+ * Fetches all pages up to the specified limit
+ */
+async function paginateXeroAPI<T>(
+  fetchPage: (page: number) => Promise<T[]>,
+  limit?: number
+): Promise<T[]> {
+  const allResults: T[] = [];
+  let currentPage = 1;
+  const effectiveLimit = limit && limit > 0 ? limit : Number.POSITIVE_INFINITY;
+
+  while (allResults.length < effectiveLimit) {
+    const pageResults = await fetchPage(currentPage);
+
+    if (!pageResults || pageResults.length === 0) {
+      // No more results
+      break;
+    }
+
+    allResults.push(...pageResults);
+
+    // If we got fewer results than a full page (100), we're at the end
+    if (pageResults.length < 100) {
+      break;
+    }
+
+    // If we've hit the limit, stop
+    if (allResults.length >= effectiveLimit) {
+      break;
+    }
+
+    currentPage++;
+  }
+
+  // Return only up to the limit
+  return limit && limit > 0 ? allResults.slice(0, limit) : allResults;
 }
 
 /**
@@ -979,7 +1025,7 @@ export async function executeXeroMCPTool(
     try {
       switch (toolName) {
         case "xero_list_invoices": {
-          const { status, dateFrom, dateTo, contactId, limit = 100 } = args;
+          const { status, dateFrom, dateTo, contactId, limit } = args;
 
           // Build where clause
           const whereClauses: string[] = [];
@@ -992,27 +1038,34 @@ export async function executeXeroMCPTool(
           const where =
             whereClauses.length > 0 ? whereClauses.join(" AND ") : undefined;
 
-          const response = await client.accountingApi.getInvoices(
-            connection.tenantId,
-            undefined, // ifModifiedSince
-            where,
-            undefined, // order
-            undefined, // IDs
-            undefined, // invoiceNumbers
-            undefined, // contactIDs
-            undefined, // statuses
-            undefined, // page
-            undefined, // includeArchived
-            undefined, // createdByMyApp
-            undefined, // unitdp
-            undefined // summaryOnly
+          // Paginate through all invoices
+          const allInvoices = await paginateXeroAPI(
+            async (page) => {
+              const response = await client.accountingApi.getInvoices(
+                connection.tenantId,
+                undefined, // ifModifiedSince
+                where,
+                undefined, // order
+                undefined, // IDs
+                undefined, // invoiceNumbers
+                undefined, // contactIDs
+                undefined, // statuses
+                page, // page number for pagination
+                undefined, // includeArchived
+                undefined, // createdByMyApp
+                undefined, // unitdp
+                undefined // summaryOnly
+              );
+              return response.body.invoices || [];
+            },
+            limit as number | undefined
           );
 
           return {
             content: [
               {
                 type: "text",
-                text: JSON.stringify(response.body.invoices, null, 2),
+                text: JSON.stringify(allInvoices, null, 2),
               },
             ],
           };
@@ -1038,29 +1091,36 @@ export async function executeXeroMCPTool(
         }
 
         case "xero_list_contacts": {
-          const { searchTerm, limit = 100 } = args;
+          const { searchTerm, limit } = args;
 
           const where = searchTerm
             ? `Name.Contains("${searchTerm}") OR EmailAddress.Contains("${searchTerm}")`
             : undefined;
 
-          const response = await client.accountingApi.getContacts(
-            connection.tenantId,
-            undefined, // ifModifiedSince
-            where,
-            undefined, // order
-            undefined, // IDs
-            undefined, // page
-            undefined, // includeArchived
-            undefined, // summaryOnly
-            undefined // searchTerm (separate parameter)
+          // Paginate through all contacts
+          const allContacts = await paginateXeroAPI(
+            async (page) => {
+              const response = await client.accountingApi.getContacts(
+                connection.tenantId,
+                undefined, // ifModifiedSince
+                where,
+                undefined, // order
+                undefined, // IDs
+                page, // page number for pagination
+                undefined, // includeArchived
+                undefined, // summaryOnly
+                undefined // searchTerm (separate parameter)
+              );
+              return response.body.contacts || [];
+            },
+            limit as number | undefined
           );
 
           return {
             content: [
               {
                 type: "text",
-                text: JSON.stringify(response.body.contacts, null, 2),
+                text: JSON.stringify(allContacts, null, 2),
               },
             ],
           };
@@ -1107,19 +1167,26 @@ export async function executeXeroMCPTool(
         }
 
         case "xero_list_journal_entries": {
-          const { dateFrom, dateTo, limit = 100 } = args;
+          const { dateFrom, dateTo, limit } = args;
 
-          const response = await client.accountingApi.getManualJournals(
-            connection.tenantId,
-            undefined, // ifModifiedSince
-            undefined, // where
-            undefined, // order
-            undefined, // page
-            undefined // offset
+          // Paginate through all manual journals
+          const allJournals = await paginateXeroAPI(
+            async (page) => {
+              const response = await client.accountingApi.getManualJournals(
+                connection.tenantId,
+                undefined, // ifModifiedSince
+                undefined, // where - Xero doesn't support date filtering in WHERE clause
+                undefined, // order
+                page, // page number for pagination
+                undefined // offset
+              );
+              return response.body.manualJournals || [];
+            },
+            limit as number | undefined
           );
 
           // Filter by date if provided (Xero doesn't support date filtering in API)
-          let journals = response.body.manualJournals || [];
+          let journals = allJournals;
 
           if (dateFrom || dateTo) {
             journals = journals.filter((journal) => {
@@ -1144,7 +1211,7 @@ export async function executeXeroMCPTool(
         }
 
         case "xero_get_bank_transactions": {
-          const { bankAccountId, dateFrom, dateTo, limit = 100 } = args;
+          const { bankAccountId, dateFrom, dateTo, limit } = args;
 
           const whereClauses: string[] = [];
           if (bankAccountId)
@@ -1157,28 +1224,35 @@ export async function executeXeroMCPTool(
           const where =
             whereClauses.length > 0 ? whereClauses.join(" AND ") : undefined;
 
-          const response = await client.accountingApi.getBankTransactions(
-            connection.tenantId,
-            undefined, // ifModifiedSince
-            where,
-            undefined, // order
-            undefined, // page
-            undefined, // unitdp
-            undefined // pageSize
+          // Paginate through all bank transactions
+          const allTransactions = await paginateXeroAPI(
+            async (page) => {
+              const response = await client.accountingApi.getBankTransactions(
+                connection.tenantId,
+                undefined, // ifModifiedSince
+                where,
+                undefined, // order
+                page, // page number for pagination
+                undefined, // unitdp
+                undefined // pageSize
+              );
+              return response.body.bankTransactions || [];
+            },
+            limit as number | undefined
           );
 
           return {
             content: [
               {
                 type: "text",
-                text: JSON.stringify(response.body.bankTransactions, null, 2),
+                text: JSON.stringify(allTransactions, null, 2),
               },
             ],
           };
         }
 
         case "xero_list_credit_notes": {
-          const { status, dateFrom, dateTo, limit = 100 } = args;
+          const { status, dateFrom, dateTo, limit } = args;
 
           const whereClauses: string[] = [];
           if (status) whereClauses.push(`Status=="${status}"`);
@@ -1188,28 +1262,35 @@ export async function executeXeroMCPTool(
           const where =
             whereClauses.length > 0 ? whereClauses.join(" AND ") : undefined;
 
-          const response = await client.accountingApi.getCreditNotes(
-            connection.tenantId,
-            undefined, // ifModifiedSince
-            where,
-            undefined, // order
-            undefined, // page
-            undefined, // unitdp
-            limit as number | undefined // pageSize
+          // Paginate through all credit notes
+          const allCreditNotes = await paginateXeroAPI(
+            async (page) => {
+              const response = await client.accountingApi.getCreditNotes(
+                connection.tenantId,
+                undefined, // ifModifiedSince
+                where,
+                undefined, // order
+                page, // page number for pagination
+                undefined, // unitdp
+                undefined // pageSize
+              );
+              return response.body.creditNotes || [];
+            },
+            limit as number | undefined
           );
 
           return {
             content: [
               {
                 type: "text",
-                text: JSON.stringify(response.body.creditNotes, null, 2),
+                text: JSON.stringify(allCreditNotes, null, 2),
               },
             ],
           };
         }
 
         case "xero_list_payments": {
-          const { dateFrom, dateTo, limit = 100 } = args;
+          const { dateFrom, dateTo, limit } = args;
 
           const whereClauses: string[] = [];
           if (dateFrom) whereClauses.push(`Date>=DateTime(${dateFrom})`);
@@ -1218,20 +1299,27 @@ export async function executeXeroMCPTool(
           const where =
             whereClauses.length > 0 ? whereClauses.join(" AND ") : undefined;
 
-          const response = await client.accountingApi.getPayments(
-            connection.tenantId,
-            undefined, // ifModifiedSince
-            where,
-            undefined, // order
-            undefined, // page
-            limit as number | undefined // pageSize
+          // Paginate through all payments
+          const allPayments = await paginateXeroAPI(
+            async (page) => {
+              const response = await client.accountingApi.getPayments(
+                connection.tenantId,
+                undefined, // ifModifiedSince
+                where,
+                undefined, // order
+                page, // page number for pagination
+                undefined // pageSize
+              );
+              return response.body.payments || [];
+            },
+            limit as number | undefined
           );
 
           return {
             content: [
               {
                 type: "text",
-                text: JSON.stringify(response.body.payments, null, 2),
+                text: JSON.stringify(allPayments, null, 2),
               },
             ],
           };
@@ -1361,30 +1449,34 @@ export async function executeXeroMCPTool(
         }
 
         case "xero_list_quotes": {
-          const { status, dateFrom, dateTo, limit = 100 } = args;
+          const { status, dateFrom, dateTo, limit } = args;
 
-          const response = await client.accountingApi.getQuotes(
-            connection.tenantId,
-            undefined, // ifModifiedSince
-            dateFrom as string | undefined,
-            dateTo as string | undefined,
-            undefined, // expiryDateFrom
-            undefined, // expiryDateTo
-            undefined, // contactID
-            status as string | undefined,
-            undefined, // page
-            undefined, // order
-            undefined // quoteNumber
+          // Paginate through all quotes
+          const allQuotes = await paginateXeroAPI(
+            async (page) => {
+              const response = await client.accountingApi.getQuotes(
+                connection.tenantId,
+                undefined, // ifModifiedSince
+                dateFrom as string | undefined,
+                dateTo as string | undefined,
+                undefined, // expiryDateFrom
+                undefined, // expiryDateTo
+                undefined, // contactID
+                status as string | undefined,
+                page, // page number for pagination
+                undefined, // order
+                undefined // quoteNumber
+              );
+              return response.body.quotes || [];
+            },
+            limit as number | undefined
           );
-
-          const quotes = response.body.quotes ?? [];
-          const limitValue = typeof limit === "number" ? limit : 100;
 
           return {
             content: [
               {
                 type: "text",
-                text: JSON.stringify(quotes.slice(0, limitValue), null, 2),
+                text: JSON.stringify(allQuotes, null, 2),
               },
             ],
           };

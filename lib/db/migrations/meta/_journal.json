@@ -78,6 +78,13 @@
       "when": 1762065460906,
       "tag": "0010_pink_the_initiative",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1762343924736,
+      "tag": "0011_past_madame_masque",
+      "breakpoints": true
     }
   ]
 }

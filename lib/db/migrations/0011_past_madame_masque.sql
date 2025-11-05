@@ -1,0 +1,1 @@
+ALTER TABLE "XeroConnection" ADD COLUMN "authenticationEventId" varchar(255);

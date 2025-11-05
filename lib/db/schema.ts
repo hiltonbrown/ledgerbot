@@ -245,6 +245,7 @@ export const xeroConnection = pgTable("XeroConnection", {
   refreshToken: text("refreshToken").notNull(), // Encrypted
   expiresAt: timestamp("expiresAt").notNull(),
   scopes: jsonb("scopes").$type<string[]>().notNull(),
+  authenticationEventId: varchar("authenticationEventId", { length: 255 }), // Xero auth event ID for connection tracking
   isActive: boolean("isActive").notNull().default(true),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),

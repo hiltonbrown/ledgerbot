@@ -312,14 +312,14 @@ export function createXeroTools(userId: string) {
 
     xero_get_balance_sheet: tool({
       description:
-        "Get balance sheet report showing assets, liabilities, and equity. Use this to review financial position over a specified period.",
+        "Get balance sheet report showing assets, liabilities, and equity as of a specific date. Optionally compare multiple periods.",
       inputSchema: z.object({
-        fromDate: z
+        date: z
           .string()
-          .describe("Start date for the report (YYYY-MM-DD format)"),
-        toDate: z
-          .string()
-          .describe("End date for the report (YYYY-MM-DD format)"),
+          .optional()
+          .describe(
+            "Balance sheet date (YYYY-MM-DD format). Defaults to current date if not specified."
+          ),
         periods: z
           .number()
           .optional()
@@ -329,7 +329,7 @@ export function createXeroTools(userId: string) {
         timeframe: z
           .enum(["MONTH", "QUARTER", "YEAR"])
           .optional()
-          .describe("Reporting period frequency"),
+          .describe("Reporting period frequency (e.g., MONTH for monthly comparison)"),
       }),
       execute: async (args) => {
         const result = await executeXeroMCPTool(
