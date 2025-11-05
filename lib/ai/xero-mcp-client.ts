@@ -1044,17 +1044,19 @@ export async function executeXeroMCPTool(
               const response = await client.accountingApi.getInvoices(
                 connection.tenantId,
                 undefined, // ifModifiedSince
-                where,
+                where, // where clause
                 undefined, // order
                 undefined, // IDs
                 undefined, // invoiceNumbers
                 undefined, // contactIDs
                 undefined, // statuses
-                page, // page number for pagination
+                page, // page number for pagination (9th parameter)
                 undefined, // includeArchived
                 undefined, // createdByMyApp
                 undefined, // unitdp
-                undefined // summaryOnly
+                undefined, // summaryOnly
+                undefined, // pageSize
+                undefined // searchTerm
               );
               return response.body.invoices || [];
             },
@@ -1103,13 +1105,14 @@ export async function executeXeroMCPTool(
               const response = await client.accountingApi.getContacts(
                 connection.tenantId,
                 undefined, // ifModifiedSince
-                where,
+                where, // where clause
                 undefined, // order
                 undefined, // IDs
-                page, // page number for pagination
+                page, // page number for pagination (6th parameter)
                 undefined, // includeArchived
                 undefined, // summaryOnly
-                undefined // searchTerm (separate parameter)
+                undefined, // searchTerm (separate parameter)
+                undefined // pageSize
               );
               return response.body.contacts || [];
             },
@@ -1177,8 +1180,8 @@ export async function executeXeroMCPTool(
                 undefined, // ifModifiedSince
                 undefined, // where - Xero doesn't support date filtering in WHERE clause
                 undefined, // order
-                page, // page number for pagination
-                undefined // offset
+                page, // page number for pagination (5th parameter)
+                undefined // pageSize
               );
               return response.body.manualJournals || [];
             },
@@ -1230,9 +1233,9 @@ export async function executeXeroMCPTool(
               const response = await client.accountingApi.getBankTransactions(
                 connection.tenantId,
                 undefined, // ifModifiedSince
-                where,
+                where, // where clause
                 undefined, // order
-                page, // page number for pagination
+                page, // page number for pagination (5th parameter)
                 undefined, // unitdp
                 undefined // pageSize
               );
@@ -1268,9 +1271,9 @@ export async function executeXeroMCPTool(
               const response = await client.accountingApi.getCreditNotes(
                 connection.tenantId,
                 undefined, // ifModifiedSince
-                where,
+                where, // where clause
                 undefined, // order
-                page, // page number for pagination
+                page, // page number for pagination (5th parameter)
                 undefined, // unitdp
                 undefined // pageSize
               );
@@ -1305,9 +1308,9 @@ export async function executeXeroMCPTool(
               const response = await client.accountingApi.getPayments(
                 connection.tenantId,
                 undefined, // ifModifiedSince
-                where,
+                where, // where clause
                 undefined, // order
-                page, // page number for pagination
+                page, // page number for pagination (5th parameter)
                 undefined // pageSize
               );
               return response.body.payments || [];
