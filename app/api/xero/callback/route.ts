@@ -76,11 +76,12 @@ export async function GET(request: Request) {
       );
     }
 
-    // Calculate expiry time
-    const expiresAt = new Date(Date.now() + tokenSet.expires_in * 1000);
-
-    // Extract authentication_event_id from access token JWT for better connection tracking
+    // Extract expiry time and authentication_event_id from access token JWT
+    // CRITICAL: Use the actual 'exp' claim from JWT, not calculated from expires_in
+    // The JWT exp is the authoritative source of truth from Xero
+    let expiresAt = new Date(Date.now() + tokenSet.expires_in * 1000); // Fallback
     let authenticationEventId: string | undefined;
+
     try {
       // JWT is base64url encoded: header.payload.signature
       const parts = tokenSet.access_token.split(".");
@@ -89,10 +90,18 @@ export async function GET(request: Request) {
           Buffer.from(parts[1], "base64url").toString("utf-8")
         );
         authenticationEventId = payload.authentication_event_id;
+
+        // Use the actual exp claim from JWT (Unix timestamp in seconds)
+        if (payload.exp) {
+          expiresAt = new Date(payload.exp * 1000);
+          console.log(`[OAuth Callback] Token expiry from JWT: ${expiresAt.toISOString()} (${payload.exp})`);
+        } else {
+          console.warn("[OAuth Callback] JWT missing exp claim, using calculated expiry");
+        }
       }
     } catch (jwtError) {
       console.warn(
-        "Could not extract authentication_event_id from access token:",
+        "Could not extract data from access token JWT, using calculated expiry:",
         jwtError
       );
     }

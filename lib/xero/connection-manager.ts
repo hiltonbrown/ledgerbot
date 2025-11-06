@@ -240,12 +240,11 @@ export async function refreshXeroToken(
       };
     }
 
-    const expiresAt = new Date(
-      Date.now() + (tokenSet.expires_in || 1800) * 1000
-    );
-
-    // Extract authentication_event_id from access token JWT for better connection tracking
+    // Extract expiry and authentication_event_id from JWT
+    // CRITICAL: Use the actual 'exp' claim from JWT, not calculated from expires_in
+    let expiresAt = new Date(Date.now() + (tokenSet.expires_in || 1800) * 1000); // Fallback
     let authenticationEventId: string | undefined;
+
     try {
       // JWT is base64url encoded: header.payload.signature
       const parts = tokenSet.access_token.split(".");
@@ -254,16 +253,24 @@ export async function refreshXeroToken(
           Buffer.from(parts[1], "base64url").toString("utf-8")
         );
         authenticationEventId = payload.authentication_event_id;
+
+        // Use the actual exp claim from JWT (Unix timestamp in seconds)
+        if (payload.exp) {
+          expiresAt = new Date(payload.exp * 1000);
+          console.log(`  ✓ Token expiry from JWT: ${expiresAt.toISOString()} (${payload.exp})`);
+        } else {
+          console.warn(`  ⚠️ JWT missing exp claim, using calculated expiry: ${expiresAt.toISOString()}`);
+        }
       }
     } catch (jwtError) {
       console.warn(
-        `Could not extract authentication_event_id from access token:`,
+        `  ⚠️ Could not extract data from JWT, using calculated expiry:`,
         jwtError
       );
     }
 
     console.log(
-      `Successfully refreshed Xero token for connection ${connectionId}, expires at ${expiresAt.toISOString()}${authenticationEventId ? `, auth_event_id: ${authenticationEventId}` : ""}`
+      `✅ Successfully refreshed Xero token for connection ${connectionId}, expires at ${expiresAt.toISOString()}${authenticationEventId ? `, auth_event_id: ${authenticationEventId}` : ""}`
     );
 
     const updatedConnection = await updateXeroTokens({
