@@ -98,13 +98,23 @@ async function getXeroClient(
   // Initialize the client BEFORE setting token set
   await client.initialize();
 
-  // Use standard 30 minutes (1800 seconds) for expires_in
-  // The getDecryptedConnection already handles token refresh if expired
+  // Calculate actual remaining time for token expiry
+  // CRITICAL: We must use the ACTUAL expiry time from the database, not assume 30 minutes
+  // Otherwise the SDK won't know the token is expired and won't auto-refresh
+  const expiresAt = new Date(connection.expiresAt);
+  const now = new Date();
+  const secondsRemaining = Math.max(0, Math.floor((expiresAt.getTime() - now.getTime()) / 1000));
+
+  console.log(`[getXeroClient] Setting up client for user ${userId}`);
+  console.log(`  Token expires at: ${expiresAt.toISOString()}`);
+  console.log(`  Current time: ${now.toISOString()}`);
+  console.log(`  Seconds remaining: ${secondsRemaining} (${Math.floor(secondsRemaining / 60)} minutes)`);
+
   await client.setTokenSet({
     access_token: connection.accessToken,
     refresh_token: connection.refreshToken,
     token_type: "Bearer",
-    expires_in: 1800, // Standard 30 minutes
+    expires_in: secondsRemaining, // Use ACTUAL remaining time, not hardcoded 1800
   });
 
   return { client, connection };
