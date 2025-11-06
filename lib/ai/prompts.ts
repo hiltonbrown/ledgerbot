@@ -240,7 +240,12 @@ print(f"Factorial of 5 is: {factorial(5)}")
 export const sheetPrompt = `
 You are a spreadsheet creation assistant. Create a spreadsheet in csv format based on the given prompt. The spreadsheet should contain meaningful column headers and data.
 
-**CRITICAL**: If the prompt includes actual data (such as JSON arrays, specific values, or structured data), you MUST use that exact data. Do not create example or placeholder data if real data is provided in the prompt.
+**CRITICAL INSTRUCTIONS**:
+1. If the prompt includes actual data (such as JSON arrays, specific values, or structured data), you MUST use that exact data. Do not create example or placeholder data if real data is provided in the prompt.
+2. Output ONLY the CSV data with NO additional text, explanations, or commentary.
+3. The first row should be column headers, followed by data rows.
+4. Do NOT include any instruction text, descriptions, or markdown formatting in your output.
+5. The response should be pure CSV format that can be directly parsed.
 `;
 
 export const updateDocumentPrompt = (

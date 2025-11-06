@@ -19,6 +19,10 @@ type SheetEditorProps = {
 const MIN_ROWS = 50;
 const MIN_COLS = 26;
 
+// Pattern to detect instruction-like lines (not CSV data)
+const INSTRUCTION_PATTERN =
+  /^(create|here|this|the|you|i|use|format|based|with|following|data|prompt|csv)/i;
+
 const PureSpreadsheetEditor = ({ content, saveContent }: SheetEditorProps) => {
   const { resolvedTheme } = useTheme();
 
@@ -26,7 +30,41 @@ const PureSpreadsheetEditor = ({ content, saveContent }: SheetEditorProps) => {
     if (!content) {
       return new Array(MIN_ROWS).fill(new Array(MIN_COLS).fill(""));
     }
-    const result = parse<string[]>(content, { skipEmptyLines: true });
+
+    // Clean the content to remove any non-CSV text
+    // Look for CSV pattern: lines with commas that look like data
+    const lines = content.split("\n");
+    const csvLines: string[] = [];
+    let foundCsvStart = false;
+
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+
+      // Skip empty lines
+      if (!trimmedLine) {
+        continue;
+      }
+
+      // Skip lines that look like instructions or descriptions
+      // (lines without commas, or lines that start with common instruction words)
+      if (foundCsvStart) {
+        // Once we've found the CSV start, include all subsequent non-empty lines
+        csvLines.push(line);
+      } else {
+        const hasComma = trimmedLine.includes(",");
+
+        // Start CSV extraction when we find a line with commas
+        if (hasComma && !INSTRUCTION_PATTERN.test(trimmedLine)) {
+          foundCsvStart = true;
+          csvLines.push(line);
+        }
+      }
+    }
+
+    const cleanedContent = csvLines.join("\n");
+    const result = parse<string[]>(cleanedContent || content, {
+      skipEmptyLines: true,
+    });
 
     const paddedData = result.data.map((row) => {
       const paddedRow = [...row];
