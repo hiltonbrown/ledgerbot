@@ -51,7 +51,7 @@ export function XeroIntegrationCard({
       : activeConnection?.connectionStatus === "error"
       ? "Connection Error"
       : "Not Connected";
-  const isStatusConnected = connectionStatusLabel === "Connected";
+  const isStatusConnected = activeConnection?.connectionStatus === "connected";
 
   // Check for OAuth callback success/error/switch
   const router = useRouter();
