@@ -309,7 +309,7 @@ export function XeroIntegrationCard({
 
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <Button
-          disabled={isConnecting || isDisconnecting || isSwitching}
+          disabled={isConnected || isConnecting || isDisconnecting || isSwitching}
           onClick={handleConnect}
           type="button"
           variant="default"
