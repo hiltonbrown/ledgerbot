@@ -59,7 +59,7 @@ export function AppSidebar({
     }
 
     setSelectedConnectionId(activeConnection.id);
-  }, [activeConnection?.id]);
+  }, [activeConnection]);
 
   const handleSidebarCompanySelect = async (value: string) => {
     if (value === "add-new") {
