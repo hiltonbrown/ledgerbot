@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
-import { getActiveXeroConnection } from "@/lib/db/queries";
+import {
+  deleteXeroConnection as deleteXeroConnectionRecord,
+  getActiveXeroConnection,
+  getXeroConnectionsByUserId,
+} from "@/lib/db/queries";
 import { revokeXeroToken } from "@/lib/xero/connection-manager";
 
 export async function POST() {
@@ -30,6 +34,27 @@ export async function POST() {
         revokeError
       );
       // Continue with deactivation even if revocation fails
+    }
+
+    try {
+      const userConnections = await getXeroConnectionsByUserId(user.id);
+
+      for (const userConnection of userConnections) {
+        await deleteXeroConnectionRecord(userConnection.id);
+      }
+
+      console.log(
+        `Removed ${userConnections.length} Xero connection record(s) for user ${user.id}`
+      );
+    } catch (dbError) {
+      console.error(
+        `Failed to remove Xero authentication record for user ${user.id}:`,
+        dbError
+      );
+      return NextResponse.json(
+        { error: "Failed to remove Xero authentication record" },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({

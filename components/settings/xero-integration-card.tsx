@@ -111,7 +111,16 @@ export function XeroIntegrationCard({
       });
 
       if (!response.ok) {
-        throw new Error("Failed to disconnect Xero");
+        let errorMessage = "Failed to disconnect Xero";
+        try {
+          const errorData = await response.json();
+          if (errorData && typeof errorData.error === "string") {
+            errorMessage = errorData.error;
+          }
+        } catch (parseError) {
+          console.error("Failed to parse disconnect error:", parseError);
+        }
+        throw new Error(errorMessage);
       }
 
       setConnections([]);
