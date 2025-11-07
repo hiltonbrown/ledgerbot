@@ -69,11 +69,11 @@ const findCsvStartIndex = (lines: string[]) => {
 
       if (Math.abs(lookAheadCells.length - cells.length) <= 1) {
         consistentRows += 1;
-        break;
       }
     }
 
-    if (consistentRows > 0) {
+    // Require at least 2 consistent rows in the lookahead window to confirm CSV start
+    if (consistentRows >= 2) {
       return index;
     }
 
