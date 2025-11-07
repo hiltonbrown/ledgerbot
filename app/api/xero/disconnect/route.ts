@@ -39,9 +39,9 @@ export async function POST() {
     try {
       const userConnections = await getXeroConnectionsByUserId(user.id);
 
-      await Promise.all(
-        userConnections.map(conn => deleteXeroConnectionRecord(conn.id))
-      );
+      for (const userConnection of userConnections) {
+        await deleteXeroConnectionRecord(userConnection.id);
+      }
 
       console.log(
         `Removed ${userConnections.length} Xero connection record(s) for user ${user.id}`

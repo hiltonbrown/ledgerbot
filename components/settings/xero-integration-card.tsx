@@ -59,8 +59,10 @@ export function XeroIntegrationCard({
   const connectionStatusLabel =
     activeConnection?.connectionStatus === "connected"
       ? "Connected"
+      : activeConnection?.connectionStatus === "error"
+      ? "Connection Error"
       : "Not Connected";
-  const isStatusConnected = connectionStatusLabel === "Connected";
+  const isStatusConnected = activeConnection?.connectionStatus === "connected";
 
   // Check for OAuth callback success/error/switch
   const router = useRouter();
@@ -135,7 +137,6 @@ export function XeroIntegrationCard({
       }
 
       setConnections([]);
-      setSelectedCompanyId("");
       setSuccessMessage("Disconnected from Xero.");
       router.refresh();
     } catch (err) {
@@ -330,7 +331,7 @@ export function XeroIntegrationCard({
 
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <Button
-          disabled={isConnecting || isDisconnecting || isSwitching}
+          disabled={isConnected || isConnecting || isDisconnecting || isSwitching}
           onClick={handleConnect}
           type="button"
           variant="default"
