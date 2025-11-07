@@ -181,11 +181,7 @@ export function XeroIntegrationCard({
         throw new Error(errorMsg);
       }
       const refreshedData = await refreshed.json();
-      const refreshedConnections: XeroConnection[] = Array.isArray(refreshedData)
-        ? refreshedData
-        : Array.isArray(refreshedData?.connections)
-          ? refreshedData.connections
-          : [];
+      const refreshedConnections: XeroConnection[] = refreshedData?.connections ?? [];
 
       setConnections(refreshedConnections);
       const newActive =
