@@ -101,6 +101,12 @@ function PureDocumentToolCall({
 }: DocumentToolCallProps) {
   const { setArtifact } = useArtifact();
 
+  // Don't render anything for sheet artifacts while creating
+  // They open directly to full screen
+  if (type === "create" && "kind" in args && args.kind === "sheet") {
+    return null;
+  }
+
   return (
     <button
       className="cursor pointer flex w-fit flex-row items-start justify-between gap-3 rounded-xl border px-3 py-2"

@@ -261,6 +261,17 @@ const PurePreviewMessage = ({
                 );
               }
 
+              // For sheet artifacts, don't render the preview
+              // The artifact opens directly to full screen
+              if (
+                part.output &&
+                typeof part.output === "object" &&
+                "kind" in part.output &&
+                part.output.kind === "sheet"
+              ) {
+                return null;
+              }
+
               return (
                 <DocumentPreview
                   isReadonly={isReadonly}

@@ -437,27 +437,29 @@ function PureArtifact({
               <div className="flex flex-row items-start gap-4">
                 <ArtifactCloseButton />
 
-                <div className="flex flex-col">
-                  <div className="font-medium">{artifact.title}</div>
+                {artifact.kind !== "sheet" && (
+                  <div className="flex flex-col">
+                    <div className="font-medium">{artifact.title}</div>
 
-                  {isContentDirty ? (
-                    <div className="text-muted-foreground text-sm">
-                      Saving changes...
-                    </div>
-                  ) : document ? (
-                    <div className="text-muted-foreground text-sm">
-                      {`Updated ${formatDistance(
-                        new Date(document.createdAt),
-                        new Date(),
-                        {
-                          addSuffix: true,
-                        }
-                      )}`}
-                    </div>
-                  ) : (
-                    <div className="mt-2 h-3 w-32 animate-pulse rounded-md bg-muted-foreground/20" />
-                  )}
-                </div>
+                    {isContentDirty ? (
+                      <div className="text-muted-foreground text-sm">
+                        Saving changes...
+                      </div>
+                    ) : document ? (
+                      <div className="text-muted-foreground text-sm">
+                        {`Updated ${formatDistance(
+                          new Date(document.createdAt),
+                          new Date(),
+                          {
+                            addSuffix: true,
+                          }
+                        )}`}
+                      </div>
+                    ) : (
+                      <div className="mt-2 h-3 w-32 animate-pulse rounded-md bg-muted-foreground/20" />
+                    )}
+                  </div>
+                )}
               </div>
 
               <ArtifactActions
