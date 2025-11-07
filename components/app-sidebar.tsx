@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { UserButton } from "@clerk/nextjs";
 import { Home, Moon, Settings2, Sun, Users } from "lucide-react";
 import Link from "next/link";
@@ -12,6 +13,7 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -28,22 +30,75 @@ import type { AuthUser } from "@/lib/types/auth";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 type SidebarXeroConnection = {
+  id: string;
   tenantId: string;
   tenantName: string | null;
-} | null;
+  isActive: boolean;
+};
 
 export function AppSidebar({
   user,
-  xeroConnection,
+  xeroConnections,
 }: {
   user: AuthUser | null;
-  xeroConnection?: SidebarXeroConnection;
+  xeroConnections?: SidebarXeroConnection[];
 }) {
   const router = useRouter();
   const { setOpenMobile } = useSidebar();
   const { setTheme, resolvedTheme } = useTheme();
-  const xeroTenantName =
-    xeroConnection?.tenantName?.trim() || "Xero organisation";
+  const [isSwitching, setIsSwitching] = useState(false);
+  const [selectedConnectionId, setSelectedConnectionId] = useState<string>("");
+
+  const activeConnection =
+    xeroConnections?.find((connection) => connection.isActive) ?? null;
+
+  useEffect(() => {
+    if (!activeConnection) {
+      setSelectedConnectionId("");
+      return;
+    }
+
+    setSelectedConnectionId(activeConnection.id);
+  }, [activeConnection]);
+
+  const handleSidebarCompanySelect = async (value: string) => {
+    if (value === "add-new") {
+      setOpenMobile(false);
+      router.push("/settings/integrations");
+      return;
+    }
+
+    if (!value || value === selectedConnectionId) {
+      return;
+    }
+
+    setSelectedConnectionId(value);
+    setIsSwitching(true);
+
+    try {
+      const response = await fetch("/api/xero/switch", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ connectionId: value }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to switch Xero company");
+      }
+
+      router.refresh();
+    } catch (error) {
+      console.error("Failed to switch Xero company from sidebar", error);
+      setSelectedConnectionId(activeConnection?.id ?? "");
+    } finally {
+      setIsSwitching(false);
+    }
+  };
+
+  const hasConnections = (xeroConnections?.length ?? 0) > 0;
+  const selectValue = selectedConnectionId === "" ? undefined : selectedConnectionId;
 
   return (
     <Sidebar className="group-data-[side=left]:border-r-0">
@@ -81,18 +136,27 @@ export function AppSidebar({
               </TooltipContent>
             </Tooltip>
           </div>
-          {xeroConnection ? (
-            <Select defaultValue={xeroConnection.tenantId}>
+          {hasConnections ? (
+            <Select
+              disabled={isSwitching}
+              onValueChange={handleSidebarCompanySelect}
+              value={selectValue}
+            >
               <SelectTrigger
                 aria-label="Active Xero organisation"
                 className="mt-3 h-9 w-full border border-border/40 bg-muted/40 px-2 text-left font-medium text-sm shadow-none focus:ring-0 data-[disabled]:cursor-default data-[disabled]:opacity-100"
               >
-                <SelectValue placeholder="Xero organisation" />
+                <SelectValue placeholder="Select Xero organisation" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={xeroConnection.tenantId}>
-                  {xeroTenantName}
-                </SelectItem>
+                {xeroConnections?.map((connection) => (
+                  <SelectItem key={connection.id} value={connection.id}>
+                    {connection.tenantName || "Unnamed organisation"}
+                    {connection.isActive && " (Active)"}
+                  </SelectItem>
+                ))}
+                <SelectSeparator />
+                <SelectItem value="add-new">Add new...</SelectItem>
               </SelectContent>
             </Select>
           ) : (

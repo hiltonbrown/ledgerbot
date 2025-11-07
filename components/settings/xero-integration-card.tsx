@@ -42,6 +42,17 @@ export function XeroIntegrationCard({
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSwitching, setIsSwitching] = useState(false);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>(() => {
+    if (initialConnections.length === 0) {
+      return "";
+    }
+
+    const initialActive =
+      initialConnections.find((conn) => conn.isActive) ||
+      initialConnections[0];
+
+    return initialActive.id;
+  });
 
   const activeConnection = connections.find((conn) => conn.isActive);
   const isConnected = connections.length > 0;
@@ -169,9 +180,16 @@ export function XeroIntegrationCard({
         }
         throw new Error(errorMsg);
       }
-      const refreshedConnections: XeroConnection[] = await refreshed.json();
+      const refreshedData = await refreshed.json();
+      const refreshedConnections: XeroConnection[] = refreshedData?.connections ?? [];
+
       setConnections(refreshedConnections);
+      const newActive =
+        refreshedConnections.find((conn) => conn.isActive) ??
+        refreshedConnections[0];
+      setSelectedCompanyId(newActive?.id ?? "");
       setSuccessMessage("Successfully switched organization!");
+      router.refresh();
     } catch (err) {
       console.error("Organization switch error:", err);
       setError(
@@ -181,6 +199,39 @@ export function XeroIntegrationCard({
       setIsSwitching(false);
     }
   };
+
+  useEffect(() => {
+    if (connections.length === 0) {
+      setSelectedCompanyId("");
+      return;
+    }
+
+    const active = connections.find((conn) => conn.isActive);
+    if (active) {
+      setSelectedCompanyId(active.id);
+      return;
+    }
+
+    setSelectedCompanyId(connections[0].id);
+  }, [connections]);
+
+  const handleCompanySelect = async (value: string) => {
+    if (value === "add-new") {
+      // Do not update selectedCompanyId here; let OAuth callback flow handle it
+      void handleConnect();
+      return;
+    }
+
+    if (!value || value === selectedCompanyId) {
+      return;
+    }
+
+    setSelectedCompanyId(value);
+    await handleSwitch(value);
+  };
+
+  const selectValue = selectedCompanyId === "" ? undefined : selectedCompanyId;
+  const selectDisabled = isConnecting || isDisconnecting || isSwitching;
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border bg-muted/30 p-4">
@@ -259,39 +310,6 @@ export function XeroIntegrationCard({
             </div>
           )}
 
-          {connections.length > 1 && (
-            <div className="space-y-2">
-              <label
-                className="font-medium text-foreground text-xs"
-                htmlFor="org-select"
-              >
-                Switch Organization:
-              </label>
-              <Select
-                disabled={isSwitching}
-                onValueChange={handleSwitch}
-                value={activeConnection.id}
-              >
-                <SelectTrigger id="org-select">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {connections.map((conn) => (
-                    <SelectItem key={conn.id} value={conn.id}>
-                      {conn.tenantName || "Unknown Organization"}
-                      {conn.isActive && " (Active)"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Link
-                className="text-primary text-xs hover:underline"
-                href="/settings/integrations/xero/select-org"
-              >
-                View all organizations
-              </Link>
-            </div>
-          )}
         </div>
       )}
 
@@ -324,6 +342,35 @@ export function XeroIntegrationCard({
         >
           {isDisconnecting ? "Disconnecting..." : "Disconnect"}
         </Button>
+      </div>
+      <div className="space-y-2">
+        <label className="font-medium text-foreground text-xs" htmlFor="company-select">
+          Company
+        </label>
+        <Select
+          disabled={selectDisabled}
+          onValueChange={handleCompanySelect}
+          value={selectValue}
+        >
+          <SelectTrigger id="company-select" aria-label="Select Xero company">
+            <SelectValue placeholder="Add new..." />
+          </SelectTrigger>
+          <SelectContent>
+            {connections.map((conn) => (
+              <SelectItem key={conn.id} value={conn.id}>
+                {conn.tenantName || "Unknown Organization"}
+                {conn.isActive && " (Active)"}
+              </SelectItem>
+            ))}
+            <SelectItem value="add-new">Add new...</SelectItem>
+          </SelectContent>
+        </Select>
+        <Link
+          className="text-primary text-xs hover:underline"
+          href="/settings/integrations/xero/select-org"
+        >
+          View all organizations
+        </Link>
       </div>
     </div>
   );
