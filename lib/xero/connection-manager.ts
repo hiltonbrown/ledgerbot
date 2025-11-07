@@ -87,15 +87,21 @@ export async function getDecryptedConnection(
   const isExpired = expiresAt <= now;
   const isExpiringSoon = expiresAt <= fiveMinutesFromNow;
 
-  console.log(`[Xero Token Check] User: ${userId}, Connection: ${connection.id}`);
+  console.log(
+    `[Xero Token Check] User: ${userId}, Connection: ${connection.id}`
+  );
   console.log(`  Current time: ${now.toISOString()}`);
   console.log(`  Token expires: ${expiresAt.toISOString()}`);
-  console.log(`  Status: ${isExpired ? 'EXPIRED' : isExpiringSoon ? 'EXPIRING SOON' : 'VALID'}`);
-  console.log(`  Minutes until expiry: ${Math.floor((expiresAt.getTime() - now.getTime()) / (60 * 1000))}`);
+  console.log(
+    `  Status: ${isExpired ? "EXPIRED" : isExpiringSoon ? "EXPIRING SOON" : "VALID"}`
+  );
+  console.log(
+    `  Minutes until expiry: ${Math.floor((expiresAt.getTime() - now.getTime()) / (60 * 1000))}`
+  );
 
   if (expiresAt <= fiveMinutesFromNow) {
     console.log(
-      `🔄 [Xero Token Refresh] Initiating refresh for user ${userId} - token ${isExpired ? 'EXPIRED' : 'expiring soon'} (expires: ${expiresAt.toISOString()})`
+      `🔄 [Xero Token Refresh] Initiating refresh for user ${userId} - token ${isExpired ? "EXPIRED" : "expiring soon"} (expires: ${expiresAt.toISOString()})`
     );
     // Token needs refresh
     try {
@@ -105,7 +111,9 @@ export async function getDecryptedConnection(
         const newExpiresAt = new Date(refreshResult.connection.expiresAt);
         console.log(`✅ [Xero Token Refresh] SUCCESS for user ${userId}`);
         console.log(`  New expiry: ${newExpiresAt.toISOString()}`);
-        console.log(`  Minutes until new expiry: ${Math.floor((newExpiresAt.getTime() - Date.now()) / (60 * 1000))}`);
+        console.log(
+          `  Minutes until new expiry: ${Math.floor((newExpiresAt.getTime() - Date.now()) / (60 * 1000))}`
+        );
         return {
           ...refreshResult.connection,
           accessToken: decryptToken(refreshResult.connection.accessToken),
@@ -118,7 +126,7 @@ export async function getDecryptedConnection(
         console.error(
           `❌ [Xero Token Refresh] PERMANENT FAILURE for user ${userId}: ${refreshResult.error}`
         );
-        console.error(`  User must reconnect Xero in Settings > Integrations`);
+        console.error("  User must reconnect Xero in Settings > Integrations");
         // Only deactivate on permanent failures
         try {
           await deactivateXeroConnection(connection.id);
@@ -141,7 +149,9 @@ export async function getDecryptedConnection(
       console.warn(
         `⚠️ [Xero Token Refresh] TEMPORARY FAILURE for user ${userId}: ${refreshResult.error}`
       );
-      console.warn(`  Returning expired tokens, connection remains active for retry`);
+      console.warn(
+        "  Returning expired tokens, connection remains active for retry"
+      );
 
       // Return the existing (possibly expired) connection - let the API call fail with proper error
       return {
@@ -151,11 +161,17 @@ export async function getDecryptedConnection(
       };
     } catch (error) {
       // If the error is our re-authentication message, rethrow it
-      if (error instanceof Error && error.message.includes("reconnect your Xero account")) {
+      if (
+        error instanceof Error &&
+        error.message.includes("reconnect your Xero account")
+      ) {
         throw error;
       }
 
-      console.error(`Unexpected error refreshing Xero token for user ${userId}:`, error);
+      console.error(
+        `Unexpected error refreshing Xero token for user ${userId}:`,
+        error
+      );
       // Don't deactivate on unexpected errors - connection might still be valid
       // Return the connection and let the API call handle the error
       return {
@@ -201,8 +217,12 @@ export async function refreshXeroToken(
     console.log(
       `🔄 [refreshXeroToken] Starting refresh for connection ${connectionId}${retryWithOldToken ? " (RETRY with old token)" : ""}`
     );
-    console.log(`  Connection age: ${Math.floor((Date.now() - new Date(connection.updatedAt).getTime()) / (24 * 60 * 60 * 1000))} days`);
-    console.log(`  Token expires: ${new Date(connection.expiresAt).toISOString()}`);
+    console.log(
+      `  Connection age: ${Math.floor((Date.now() - new Date(connection.updatedAt).getTime()) / (24 * 60 * 60 * 1000))} days`
+    );
+    console.log(
+      `  Token expires: ${new Date(connection.expiresAt).toISOString()}`
+    );
 
     const decryptedAccessToken = decryptToken(connection.accessToken);
     const decryptedRefreshToken = decryptToken(connection.refreshToken);
@@ -212,7 +232,7 @@ export async function refreshXeroToken(
 
     // Initialize the client BEFORE setting token set and refreshing
     await xeroClient.initialize();
-    console.log(`  ✓ Xero client initialized`);
+    console.log("  ✓ Xero client initialized");
 
     // Set the current token set before refreshing
     // Use standard 30 minutes (1800 seconds) for expires_in instead of calculating from expired token
@@ -222,12 +242,12 @@ export async function refreshXeroToken(
       token_type: "Bearer",
       expires_in: 1800, // Standard 30 minutes - don't use expired token's remaining time
     });
-    console.log(`  ✓ Token set configured`);
+    console.log("  ✓ Token set configured");
 
     // Refresh the token (no arguments needed)
-    console.log(`  🔄 Calling Xero API to refresh token...`);
+    console.log("  🔄 Calling Xero API to refresh token...");
     const tokenSet = await xeroClient.refreshToken();
-    console.log(`  ✓ Received new token set from Xero`);
+    console.log("  ✓ Received new token set from Xero");
 
     if (!tokenSet.access_token || !tokenSet.refresh_token) {
       console.error(
@@ -257,14 +277,18 @@ export async function refreshXeroToken(
         // Use the actual exp claim from JWT (Unix timestamp in seconds)
         if (payload.exp) {
           expiresAt = new Date(payload.exp * 1000);
-          console.log(`  ✓ Token expiry from JWT: ${expiresAt.toISOString()} (${payload.exp})`);
+          console.log(
+            `  ✓ Token expiry from JWT: ${expiresAt.toISOString()} (${payload.exp})`
+          );
         } else {
-          console.warn(`  ⚠️ JWT missing exp claim, using calculated expiry: ${expiresAt.toISOString()}`);
+          console.warn(
+            `  ⚠️ JWT missing exp claim, using calculated expiry: ${expiresAt.toISOString()}`
+          );
         }
       }
     } catch (jwtError) {
       console.warn(
-        `  ⚠️ Could not extract data from JWT, using calculated expiry:`,
+        "  ⚠️ Could not extract data from JWT, using calculated expiry:",
         jwtError
       );
     }
@@ -292,7 +316,9 @@ export async function refreshXeroToken(
     );
     console.error(`  Error: ${errorMessage}`);
     if (error instanceof Error && error.stack) {
-      console.error(`  Stack: ${error.stack.split('\n').slice(0, 3).join('\n')}`);
+      console.error(
+        `  Stack: ${error.stack.split("\n").slice(0, 3).join("\n")}`
+      );
     }
 
     // Check if this is a permanent failure (expired refresh token)
@@ -306,7 +332,9 @@ export async function refreshXeroToken(
       console.warn(
         `❌ [refreshXeroToken] PERMANENT FAILURE - Refresh token expired for connection ${connectionId}`
       );
-      console.warn(`  User will need to re-authenticate in Settings > Integrations`);
+      console.warn(
+        "  User will need to re-authenticate in Settings > Integrations"
+      );
     } else {
       console.warn(
         `⚠️ [refreshXeroToken] TEMPORARY FAILURE for connection ${connectionId} - will retry`
@@ -486,13 +514,18 @@ export async function fetchXeroConnections(
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch Xero connections: ${response.statusText}`);
+      throw new Error(
+        `Failed to fetch Xero connections: ${response.statusText}`
+      );
     }
 
     const connections = await response.json();
     return connections as XeroConnectionInfo[];
   } catch (error) {
-    console.error(`Failed to fetch Xero connections for user ${userId}:`, error);
+    console.error(
+      `Failed to fetch Xero connections for user ${userId}:`,
+      error
+    );
     throw error;
   }
 }
@@ -537,12 +570,17 @@ export async function deleteXeroConnection(
     );
 
     if (!response.ok) {
-      throw new Error(`Failed to delete Xero connection: ${response.statusText}`);
+      throw new Error(
+        `Failed to delete Xero connection: ${response.statusText}`
+      );
     }
 
     console.log(`Successfully deleted Xero connection ${xeroConnectionId}`);
   } catch (error) {
-    console.error(`Failed to delete Xero connection ${xeroConnectionId}:`, error);
+    console.error(
+      `Failed to delete Xero connection ${xeroConnectionId}:`,
+      error
+    );
     throw error;
   }
 }

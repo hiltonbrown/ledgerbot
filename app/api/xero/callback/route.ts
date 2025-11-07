@@ -94,9 +94,13 @@ export async function GET(request: Request) {
         // Use the actual exp claim from JWT (Unix timestamp in seconds)
         if (payload.exp) {
           expiresAt = new Date(payload.exp * 1000);
-          console.log(`[OAuth Callback] Token expiry from JWT: ${expiresAt.toISOString()} (${payload.exp})`);
+          console.log(
+            `[OAuth Callback] Token expiry from JWT: ${expiresAt.toISOString()} (${payload.exp})`
+          );
         } else {
-          console.warn("[OAuth Callback] JWT missing exp claim, using calculated expiry");
+          console.warn(
+            "[OAuth Callback] JWT missing exp claim, using calculated expiry"
+          );
         }
       }
     } catch (jwtError) {

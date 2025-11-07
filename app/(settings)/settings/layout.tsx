@@ -14,9 +14,7 @@ export default async function SettingsLayout({
   children: React.ReactNode;
 }) {
   const [user, cookieStore] = await Promise.all([getAuthUser(), cookies()]);
-  const xeroConnections = user
-    ? await getXeroConnectionsByUserId(user.id)
-    : [];
+  const xeroConnections = user ? await getXeroConnectionsByUserId(user.id) : [];
   const sidebarXeroConnections = xeroConnections.map((connection) => ({
     id: connection.id,
     tenantId: connection.tenantId,

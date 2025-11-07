@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
-import { deactivateXeroConnection } from "@/lib/db/queries";
-import { getExpiringXeroConnections } from "@/lib/db/queries";
+import {
+  deactivateXeroConnection,
+  getExpiringXeroConnections,
+} from "@/lib/db/queries";
 import { refreshXeroTokenById } from "@/lib/xero/connection-manager";
 
 // Configure route for Vercel cron jobs

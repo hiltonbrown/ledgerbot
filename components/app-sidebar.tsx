@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { UserButton } from "@clerk/nextjs";
 import { Home, Moon, Settings2, Sun, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
 import { PlusIcon } from "@/components/icons";
 import { SidebarHistory } from "@/components/sidebar-history";
 import { Button } from "@/components/ui/button";
@@ -98,7 +98,8 @@ export function AppSidebar({
   };
 
   const hasConnections = (xeroConnections?.length ?? 0) > 0;
-  const selectValue = selectedConnectionId === "" ? undefined : selectedConnectionId;
+  const selectValue =
+    selectedConnectionId === "" ? undefined : selectedConnectionId;
 
   return (
     <Sidebar className="group-data-[side=left]:border-r-0">

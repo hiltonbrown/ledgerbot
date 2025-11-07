@@ -238,14 +238,22 @@ print(f"Factorial of 5 is: {factorial(5)}")
 `;
 
 export const sheetPrompt = `
-You are a spreadsheet creation assistant. Create a spreadsheet in csv format based on the given prompt. The spreadsheet should contain meaningful column headers and data.
+You are a spreadsheet creation assistant. You MUST return data in the exact JSON schema format requested.
 
 **CRITICAL INSTRUCTIONS**:
 1. If the prompt includes actual data (such as JSON arrays, specific values, or structured data), you MUST use that exact data. Do not create example or placeholder data if real data is provided in the prompt.
-2. Output ONLY the CSV data with NO additional text, explanations, or commentary.
-3. The first row should be column headers, followed by data rows.
-4. Do NOT include any instruction text, descriptions, or markdown formatting in your output.
-5. The response should be pure CSV format that can be directly parsed.
+2. Return ONLY valid CSV data in the 'csv' field - NO markdown code blocks, NO explanations, NO additional formatting.
+3. The CSV must start with column headers in the first row, followed by data rows.
+4. Do NOT wrap the CSV in backticks, quotes, or any other delimiters.
+5. Do NOT include any text before or after the CSV data.
+6. The CSV should be properly formatted with commas as separators and proper escaping for values containing commas or quotes.
+
+Example of correct output in the csv field:
+Name,Age,City
+John Doe,30,New York
+Jane Smith,25,Los Angeles
+
+NOT like this: \`\`\`csv\\nName,Age,City\\n...\`\`\`
 `;
 
 export const updateDocumentPrompt = (

@@ -49,11 +49,19 @@ export interface ParsedXeroError {
  * Extract X-Correlation-Id from response headers
  * This ID is crucial for support tickets and debugging
  */
-export function extractCorrelationId(headers: Headers | Record<string, string>): string | undefined {
+export function extractCorrelationId(
+  headers: Headers | Record<string, string>
+): string | undefined {
   if (headers instanceof Headers) {
-    return headers.get("X-Correlation-Id") || headers.get("x-correlation-id") || undefined;
+    return (
+      headers.get("X-Correlation-Id") ||
+      headers.get("x-correlation-id") ||
+      undefined
+    );
   }
-  return headers["X-Correlation-Id"] || headers["x-correlation-id"] || undefined;
+  return (
+    headers["X-Correlation-Id"] || headers["x-correlation-id"] || undefined
+  );
 }
 
 /**
@@ -65,12 +73,18 @@ export function categorizeXeroError(
   originalError?: unknown
 ): XeroErrorType {
   // Network errors
-  if (originalError instanceof TypeError && originalError.message.includes("fetch")) {
+  if (
+    originalError instanceof TypeError &&
+    originalError.message.includes("fetch")
+  ) {
     return "network";
   }
 
   // Rate limiting
-  if (statusCode === 429 || errorResponse?.Type === "TooManyRequestsException") {
+  if (
+    statusCode === 429 ||
+    errorResponse?.Type === "TooManyRequestsException"
+  ) {
     return "rate_limit";
   }
 
@@ -109,7 +123,9 @@ export function categorizeXeroError(
 /**
  * Extract validation error messages from Xero error response
  */
-export function extractValidationErrors(errorResponse: XeroErrorResponse): string[] {
+export function extractValidationErrors(
+  errorResponse: XeroErrorResponse
+): string[] {
   const errors: string[] = [];
 
   // Direct validation errors
@@ -146,7 +162,10 @@ export function generateUserMessage(
       if (validationErrors.length > 0) {
         return `Validation error: ${validationErrors.join("; ")}`;
       }
-      return errorResponse?.Detail || "The request contained invalid data. Please check your input.";
+      return (
+        errorResponse?.Detail ||
+        "The request contained invalid data. Please check your input."
+      );
 
     case "authorization":
       return "Your Xero connection has expired or lacks the required permissions. Please reconnect your Xero account in Settings > Integrations.";
@@ -170,7 +189,11 @@ export function generateUserMessage(
       return "Unable to connect to Xero. Please check your internet connection and try again.";
 
     default:
-      return errorResponse?.Detail || errorResponse?.Title || "An unexpected error occurred with Xero.";
+      return (
+        errorResponse?.Detail ||
+        errorResponse?.Title ||
+        "An unexpected error occurred with Xero."
+      );
   }
 }
 
@@ -178,13 +201,17 @@ export function generateUserMessage(
  * Parse Xero API error into structured format
  * Implements Xero best practices for error handling
  */
-export function parseXeroError(error: unknown, correlationId?: string): ParsedXeroError {
+export function parseXeroError(
+  error: unknown,
+  correlationId?: string
+): ParsedXeroError {
   // Network/fetch errors
   if (error instanceof TypeError) {
     return {
       type: "network",
       message: error.message,
-      userMessage: "Unable to connect to Xero. Please check your internet connection.",
+      userMessage:
+        "Unable to connect to Xero. Please check your internet connection.",
       correlationId,
       originalError: error,
     };
@@ -194,11 +221,16 @@ export function parseXeroError(error: unknown, correlationId?: string): ParsedXe
   if (error && typeof error === "object" && "response" in error) {
     const response = (error as any).response;
     const statusCode = response?.status;
-    const errorResponse: XeroErrorResponse = response?.body || response?.data || {};
+    const errorResponse: XeroErrorResponse =
+      response?.body || response?.data || {};
 
     const type = categorizeXeroError(statusCode, errorResponse, error);
     const validationErrors = extractValidationErrors(errorResponse);
-    const userMessage = generateUserMessage(type, validationErrors, errorResponse);
+    const userMessage = generateUserMessage(
+      type,
+      validationErrors,
+      errorResponse
+    );
 
     // Extract message from error object safely
     const errorMessage =
@@ -232,10 +264,7 @@ export function parseXeroError(error: unknown, correlationId?: string): ParsedXe
  * Format error for logging with all relevant details
  */
 export function formatErrorForLogging(parsedError: ParsedXeroError): string {
-  const parts = [
-    `[${parsedError.type.toUpperCase()}]`,
-    parsedError.message,
-  ];
+  const parts = [`[${parsedError.type.toUpperCase()}]`, parsedError.message];
 
   if (parsedError.statusCode) {
     parts.push(`(Status: ${parsedError.statusCode})`);
@@ -259,6 +288,7 @@ export function requiresReconnection(parsedError: ParsedXeroError): boolean {
   return (
     parsedError.type === "authorization" ||
     parsedError.type === "token" ||
-    (parsedError.statusCode === 401 || parsedError.statusCode === 403)
+    parsedError.statusCode === 401 ||
+    parsedError.statusCode === 403
   );
 }

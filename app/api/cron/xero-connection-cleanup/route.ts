@@ -1,7 +1,7 @@
+import { and, eq, isNull, lt, or } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db, deactivateXeroConnection } from "@/lib/db/queries";
 import { xeroConnection } from "@/lib/db/schema";
-import { and, eq, lt, isNull, or } from "drizzle-orm";
 import { deleteXeroConnection } from "@/lib/xero/connection-manager";
 
 // Configure route for Vercel cron jobs
@@ -108,7 +108,7 @@ export async function GET(request: Request) {
             );
           } catch (xeroError) {
             console.error(
-              `Failed to delete from Xero API (continuing with DB cleanup):`,
+              "Failed to delete from Xero API (continuing with DB cleanup):",
               xeroError
             );
             // Continue with database cleanup even if Xero API call fails

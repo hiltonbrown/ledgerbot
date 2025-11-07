@@ -19,7 +19,9 @@ export function createXeroTools(userId: string) {
         invoiceType: z
           .enum(["ACCREC", "ACCPAY"])
           .optional()
-          .describe("Invoice type: ACCREC for sales invoices (default), ACCPAY for bills/supplier invoices"),
+          .describe(
+            "Invoice type: ACCREC for sales invoices (default), ACCPAY for bills/supplier invoices"
+          ),
         status: z
           .enum(["DRAFT", "SUBMITTED", "AUTHORISED", "PAID", "VOIDED"])
           .optional()
@@ -213,12 +215,15 @@ export function createXeroTools(userId: string) {
     }),
 
     xero_list_credit_notes: tool({
-      description: "Get a list of credit notes from Xero. Can retrieve SALES CREDIT NOTES (issued TO customers, Type=ACCRECCREDIT) or PURCHASE CREDIT NOTES (received FROM suppliers, Type=ACCPAYCREDIT). Use creditNoteType to specify which type: 'ACCRECCREDIT' for sales credit notes (default), 'ACCPAYCREDIT' for purchase credit notes.",
+      description:
+        "Get a list of credit notes from Xero. Can retrieve SALES CREDIT NOTES (issued TO customers, Type=ACCRECCREDIT) or PURCHASE CREDIT NOTES (received FROM suppliers, Type=ACCPAYCREDIT). Use creditNoteType to specify which type: 'ACCRECCREDIT' for sales credit notes (default), 'ACCPAYCREDIT' for purchase credit notes.",
       inputSchema: z.object({
         creditNoteType: z
           .enum(["ACCRECCREDIT", "ACCPAYCREDIT"])
           .optional()
-          .describe("Credit note type: ACCRECCREDIT for sales credit notes (default), ACCPAYCREDIT for purchase credit notes"),
+          .describe(
+            "Credit note type: ACCRECCREDIT for sales credit notes (default), ACCPAYCREDIT for purchase credit notes"
+          ),
         status: z
           .enum(["DRAFT", "SUBMITTED", "AUTHORISED", "PAID", "VOIDED"])
           .optional()
@@ -337,7 +342,9 @@ export function createXeroTools(userId: string) {
         timeframe: z
           .enum(["MONTH", "QUARTER", "YEAR"])
           .optional()
-          .describe("Reporting period frequency (e.g., MONTH for monthly comparison)"),
+          .describe(
+            "Reporting period frequency (e.g., MONTH for monthly comparison)"
+          ),
       }),
       execute: async (args) => {
         const result = await executeXeroMCPTool(

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
-import { fetchXeroConnections } from "@/lib/xero/connection-manager";
 import {
   getAllXeroConnectionsForUser,
   syncXeroConnectionMetadata,
 } from "@/lib/db/queries";
+import { fetchXeroConnections } from "@/lib/xero/connection-manager";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -102,8 +102,7 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         success: false,
-        error:
-          error instanceof Error ? error.message : "Internal server error",
+        error: error instanceof Error ? error.message : "Internal server error",
       },
       { status: 500 }
     );

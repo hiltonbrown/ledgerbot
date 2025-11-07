@@ -14,9 +14,7 @@ export default async function Layout({
   children: React.ReactNode;
 }) {
   const [user, cookieStore] = await Promise.all([getAuthUser(), cookies()]);
-  const xeroConnections = user
-    ? await getXeroConnectionsByUserId(user.id)
-    : [];
+  const xeroConnections = user ? await getXeroConnectionsByUserId(user.id) : [];
   const sidebarXeroConnections = xeroConnections.map((connection) => ({
     id: connection.id,
     tenantId: connection.tenantId,
@@ -33,10 +31,7 @@ export default async function Layout({
       />
       <DataStreamProvider>
         <SidebarProvider defaultOpen={!isCollapsed}>
-          <AppSidebar
-            user={user}
-            xeroConnections={sidebarXeroConnections}
-          />
+          <AppSidebar user={user} xeroConnections={sidebarXeroConnections} />
           <SidebarInset>{children}</SidebarInset>
         </SidebarProvider>
       </DataStreamProvider>

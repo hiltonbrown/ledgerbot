@@ -8,28 +8,28 @@ import {
   XeroClient,
 } from "xero-node";
 import {
-  updateXeroTokens,
-  updateLastApiCall,
   updateConnectionError,
+  updateLastApiCall,
   updateRateLimitInfo,
+  updateXeroTokens,
 } from "@/lib/db/queries";
 import { getDecryptedConnection } from "@/lib/xero/connection-manager";
 import { encryptToken } from "@/lib/xero/encryption";
-import type { DecryptedXeroConnection } from "@/lib/xero/types";
-import {
-  parseXeroError,
-  extractCorrelationId,
-  formatErrorForLogging,
-  requiresReconnection,
-} from "@/lib/xero/error-handler";
 import type { ParsedXeroError } from "@/lib/xero/error-handler";
 import {
-  extractRateLimitInfo,
+  extractCorrelationId,
+  formatErrorForLogging,
+  parseXeroError,
+  requiresReconnection,
+} from "@/lib/xero/error-handler";
+import type { RateLimitInfo } from "@/lib/xero/rate-limit-handler";
+import {
   buildPaginationParams,
+  extractRateLimitInfo,
   logRateLimitStatus,
   shouldWaitForRateLimit,
 } from "@/lib/xero/rate-limit-handler";
-import type { RateLimitInfo } from "@/lib/xero/rate-limit-handler";
+import type { DecryptedXeroConnection } from "@/lib/xero/types";
 
 /**
  * Xero MCP Client
@@ -43,9 +43,9 @@ import type { RateLimitInfo } from "@/lib/xero/rate-limit-handler";
  */
 function formatXeroDate(isoDate: string): string {
   // Remove any time component and trim
-  const datePart = isoDate.split('T')[0].trim();
+  const datePart = isoDate.split("T")[0].trim();
   // Replace hyphens with commas for Xero DateTime format
-  return datePart.replace(/-/g, ',');
+  return datePart.replace(/-/g, ",");
 }
 
 export interface XeroMCPTool {
@@ -103,12 +103,17 @@ async function getXeroClient(
   // Otherwise the SDK won't know the token is expired and won't auto-refresh
   const expiresAt = new Date(connection.expiresAt);
   const now = new Date();
-  const secondsRemaining = Math.max(0, Math.floor((expiresAt.getTime() - now.getTime()) / 1000));
+  const secondsRemaining = Math.max(
+    0,
+    Math.floor((expiresAt.getTime() - now.getTime()) / 1000)
+  );
 
   console.log(`[getXeroClient] Setting up client for user ${userId}`);
   console.log(`  Token expires at: ${expiresAt.toISOString()}`);
   console.log(`  Current time: ${now.toISOString()}`);
-  console.log(`  Seconds remaining: ${secondsRemaining} (${Math.floor(secondsRemaining / 60)} minutes)`);
+  console.log(
+    `  Seconds remaining: ${secondsRemaining} (${Math.floor(secondsRemaining / 60)} minutes)`
+  );
 
   await client.setTokenSet({
     access_token: connection.accessToken,
@@ -175,7 +180,10 @@ async function persistTokenSet(
  * @param connectionId - Connection ID for rate limit tracking
  */
 async function paginateXeroAPI<T>(
-  fetchPage: (page: number, pageSize: number) => Promise<{
+  fetchPage: (
+    page: number,
+    pageSize: number
+  ) => Promise<{
     results: T[];
     headers?: any;
   }>,
@@ -189,12 +197,18 @@ async function paginateXeroAPI<T>(
   const effectivePageSize = Math.min(Math.max(pageSize, 1), 1000); // Clamp between 1 and 1000
 
   while (allResults.length < effectiveLimit) {
-    const { results: pageResults, headers } = await fetchPage(currentPage, effectivePageSize);
+    const { results: pageResults, headers } = await fetchPage(
+      currentPage,
+      effectivePageSize
+    );
 
     // Track rate limit info from response headers
     if (headers && connectionId) {
       const rateLimitInfo = extractRateLimitInfo(headers);
-      if (rateLimitInfo.minuteRemaining !== undefined || rateLimitInfo.dayRemaining !== undefined) {
+      if (
+        rateLimitInfo.minuteRemaining !== undefined ||
+        rateLimitInfo.dayRemaining !== undefined
+      ) {
         await updateRateLimitInfo(connectionId, rateLimitInfo);
         logRateLimitStatus(connectionId, "pagination", rateLimitInfo);
       }
@@ -237,7 +251,8 @@ export const xeroMCPTools: XeroMCPTool[] = [
       properties: {
         invoiceType: {
           type: "string",
-          description: "Invoice type: ACCREC for sales invoices (default), ACCPAY for bills/supplier invoices",
+          description:
+            "Invoice type: ACCREC for sales invoices (default), ACCPAY for bills/supplier invoices",
           enum: ["ACCREC", "ACCPAY"],
         },
         status: {
@@ -248,11 +263,13 @@ export const xeroMCPTools: XeroMCPTool[] = [
         },
         dateFrom: {
           type: "string",
-          description: "Start date for date range filter (ISO 8601 format YYYY-MM-DD, e.g., 2025-10-01). REQUIRED when filtering by month/year.",
+          description:
+            "Start date for date range filter (ISO 8601 format YYYY-MM-DD, e.g., 2025-10-01). REQUIRED when filtering by month/year.",
         },
         dateTo: {
           type: "string",
-          description: "End date for date range filter (ISO 8601 format YYYY-MM-DD, e.g., 2025-10-31). REQUIRED when filtering by month/year.",
+          description:
+            "End date for date range filter (ISO 8601 format YYYY-MM-DD, e.g., 2025-10-31). REQUIRED when filtering by month/year.",
         },
         contactId: {
           type: "string",
@@ -264,7 +281,8 @@ export const xeroMCPTools: XeroMCPTool[] = [
         },
         page: {
           type: "number",
-          description: "Page number to retrieve (starts at 1). If specified, returns only this page.",
+          description:
+            "Page number to retrieve (starts at 1). If specified, returns only this page.",
         },
         pageSize: {
           type: "number",
@@ -334,7 +352,8 @@ export const xeroMCPTools: XeroMCPTool[] = [
   },
   {
     name: "xero_list_journal_entries",
-    description: "Get journal entries (manual journals) from Xero. Supports pagination for efficient data retrieval.",
+    description:
+      "Get journal entries (manual journals) from Xero. Supports pagination for efficient data retrieval.",
     inputSchema: {
       type: "object",
       properties: {
@@ -352,7 +371,8 @@ export const xeroMCPTools: XeroMCPTool[] = [
         },
         page: {
           type: "number",
-          description: "Page number to retrieve (starts at 1). If specified, returns only this page.",
+          description:
+            "Page number to retrieve (starts at 1). If specified, returns only this page.",
         },
         pageSize: {
           type: "number",
@@ -363,7 +383,8 @@ export const xeroMCPTools: XeroMCPTool[] = [
   },
   {
     name: "xero_get_bank_transactions",
-    description: "Get bank transactions from Xero. Supports pagination for efficient data retrieval.",
+    description:
+      "Get bank transactions from Xero. Supports pagination for efficient data retrieval.",
     inputSchema: {
       type: "object",
       properties: {
@@ -386,7 +407,8 @@ export const xeroMCPTools: XeroMCPTool[] = [
         },
         page: {
           type: "number",
-          description: "Page number to retrieve (starts at 1). If specified, returns only this page.",
+          description:
+            "Page number to retrieve (starts at 1). If specified, returns only this page.",
         },
         pageSize: {
           type: "number",
@@ -405,7 +427,8 @@ export const xeroMCPTools: XeroMCPTool[] = [
   },
   {
     name: "xero_list_payments",
-    description: "Get a list of payments from Xero. Supports pagination for efficient data retrieval.",
+    description:
+      "Get a list of payments from Xero. Supports pagination for efficient data retrieval.",
     inputSchema: {
       type: "object",
       properties: {
@@ -423,7 +446,8 @@ export const xeroMCPTools: XeroMCPTool[] = [
         },
         page: {
           type: "number",
-          description: "Page number to retrieve (starts at 1). If specified, returns only this page.",
+          description:
+            "Page number to retrieve (starts at 1). If specified, returns only this page.",
         },
         pageSize: {
           type: "number",
@@ -434,13 +458,15 @@ export const xeroMCPTools: XeroMCPTool[] = [
   },
   {
     name: "xero_list_credit_notes",
-    description: "Get a list of credit notes from Xero. Can retrieve SALES CREDIT NOTES (issued TO customers, Type=ACCRECCREDIT) or PURCHASE CREDIT NOTES (received FROM suppliers, Type=ACCPAYCREDIT). Use creditNoteType to specify which type: 'ACCRECCREDIT' for sales credit notes (default), 'ACCPAYCREDIT' for purchase credit notes. Supports pagination for efficient data retrieval.",
+    description:
+      "Get a list of credit notes from Xero. Can retrieve SALES CREDIT NOTES (issued TO customers, Type=ACCRECCREDIT) or PURCHASE CREDIT NOTES (received FROM suppliers, Type=ACCPAYCREDIT). Use creditNoteType to specify which type: 'ACCRECCREDIT' for sales credit notes (default), 'ACCPAYCREDIT' for purchase credit notes. Supports pagination for efficient data retrieval.",
     inputSchema: {
       type: "object",
       properties: {
         creditNoteType: {
           type: "string",
-          description: "Credit note type: ACCRECCREDIT for sales credit notes (default), ACCPAYCREDIT for purchase credit notes",
+          description:
+            "Credit note type: ACCRECCREDIT for sales credit notes (default), ACCPAYCREDIT for purchase credit notes",
           enum: ["ACCRECCREDIT", "ACCPAYCREDIT"],
         },
         status: {
@@ -464,7 +490,8 @@ export const xeroMCPTools: XeroMCPTool[] = [
         },
         page: {
           type: "number",
-          description: "Page number to retrieve (starts at 1). If specified, returns only this page.",
+          description:
+            "Page number to retrieve (starts at 1). If specified, returns only this page.",
         },
         pageSize: {
           type: "number",
@@ -566,7 +593,8 @@ export const xeroMCPTools: XeroMCPTool[] = [
   },
   {
     name: "xero_list_quotes",
-    description: "Get a list of sales quotes from Xero. Supports pagination for efficient data retrieval. Note: Xero API uses fixed page size of 100 for quotes.",
+    description:
+      "Get a list of sales quotes from Xero. Supports pagination for efficient data retrieval. Note: Xero API uses fixed page size of 100 for quotes.",
     inputSchema: {
       type: "object",
       properties: {
@@ -589,11 +617,13 @@ export const xeroMCPTools: XeroMCPTool[] = [
         },
         page: {
           type: "number",
-          description: "Page number to retrieve (starts at 1). If specified, returns only this page.",
+          description:
+            "Page number to retrieve (starts at 1). If specified, returns only this page.",
         },
         pageSize: {
           type: "number",
-          description: "Number of records per page. Note: Xero API does not support custom page sizes for quotes; fixed at 100.",
+          description:
+            "Number of records per page. Note: Xero API does not support custom page sizes for quotes; fixed at 100.",
         },
       },
     },
@@ -1202,7 +1232,10 @@ export async function executeXeroMCPTool(
     // If we haven't parsed the error yet, parse it now
     if (!parsedError) {
       parsedError = parseXeroError(error);
-      console.error(`Xero MCP tool execution failed:`, formatErrorForLogging(parsedError));
+      console.error(
+        "Xero MCP tool execution failed:",
+        formatErrorForLogging(parsedError)
+      );
     }
 
     // Return user-friendly error message
@@ -1230,37 +1263,88 @@ async function executeXeroToolOperation(
 ): Promise<XeroMCPToolResult> {
   try {
     switch (toolName) {
-        case "xero_list_invoices": {
-          const { invoiceType, status, dateFrom, dateTo, contactId, limit, page, pageSize } = args;
+      case "xero_list_invoices": {
+        const {
+          invoiceType,
+          status,
+          dateFrom,
+          dateTo,
+          contactId,
+          limit,
+          page,
+          pageSize,
+        } = args;
 
-          // Build where clause
-          const whereClauses: string[] = [];
-          // Filter by invoice type - default to ACCREC (sales invoices) if not specified
-          // ACCREC = Accounts Receivable (sales invoices to customers)
-          // ACCPAY = Accounts Payable (bills from suppliers)
-          const type = (invoiceType as string) || "ACCREC";
-          whereClauses.push(`Type=="${type}"`);
-          if (status) whereClauses.push(`Status=="${status}"`);
-          if (contactId)
-            whereClauses.push(`Contact.ContactID==Guid("${contactId}")`);
-          // Xero API date filter format: Date>=DateTime(2025,10,01) - comma-separated
-          if (dateFrom) whereClauses.push(`Date>=DateTime(${formatXeroDate(dateFrom as string)})`);
-          if (dateTo) whereClauses.push(`Date<=DateTime(${formatXeroDate(dateTo as string)})`);
+        // Build where clause
+        const whereClauses: string[] = [];
+        // Filter by invoice type - default to ACCREC (sales invoices) if not specified
+        // ACCREC = Accounts Receivable (sales invoices to customers)
+        // ACCPAY = Accounts Payable (bills from suppliers)
+        const type = (invoiceType as string) || "ACCREC";
+        whereClauses.push(`Type=="${type}"`);
+        if (status) whereClauses.push(`Status=="${status}"`);
+        if (contactId)
+          whereClauses.push(`Contact.ContactID==Guid("${contactId}")`);
+        // Xero API date filter format: Date>=DateTime(2025,10,01) - comma-separated
+        if (dateFrom)
+          whereClauses.push(
+            `Date>=DateTime(${formatXeroDate(dateFrom as string)})`
+          );
+        if (dateTo)
+          whereClauses.push(
+            `Date<=DateTime(${formatXeroDate(dateTo as string)})`
+          );
 
-          const where =
-            whereClauses.length > 0 ? whereClauses.join(" AND ") : undefined;
+        const where =
+          whereClauses.length > 0 ? whereClauses.join(" AND ") : undefined;
 
-          // Log the query for debugging
-          console.log(`[xero_list_invoices] Type: ${type}, WHERE clause: ${where || '(none)'}, limit: ${limit || 100}`);
+        // Log the query for debugging
+        console.log(
+          `[xero_list_invoices] Type: ${type}, WHERE clause: ${where || "(none)"}, limit: ${limit || 100}`
+        );
 
+        // If specific page requested, fetch that page only
+        if (page !== undefined) {
+          const paginationParams = buildPaginationParams({
+            page: page as number,
+            pageSize: pageSize as number | undefined,
+          });
 
-          // If specific page requested, fetch that page only
-          if (page !== undefined) {
-            const paginationParams = buildPaginationParams({
-              page: page as number,
-              pageSize: pageSize as number | undefined,
-            });
+          const response = await client.accountingApi.getInvoices(
+            connection.tenantId,
+            undefined, // ifModifiedSince
+            where, // where clause
+            undefined, // order
+            undefined, // IDs
+            undefined, // invoiceNumbers
+            undefined, // contactIDs
+            undefined, // statuses
+            paginationParams.page, // page number
+            undefined, // includeArchived
+            undefined, // createdByMyApp
+            undefined, // unitdp
+            undefined, // summaryOnly
+            paginationParams.pageSize // pageSize
+          );
 
+          // Track rate limits
+          const rateLimitInfo = extractRateLimitInfo(response.response.headers);
+          await updateRateLimitInfo(connection.id, rateLimitInfo);
+          logRateLimitStatus(connection.id, toolName, rateLimitInfo);
+
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(response.body.invoices || [], null, 2),
+              },
+            ],
+          };
+        }
+
+        // Otherwise, paginate through all invoices
+        const allInvoices = await paginateXeroAPI(
+          async (currentPage, currentPageSize) => {
             const response = await client.accountingApi.getInvoices(
               connection.tenantId,
               undefined, // ifModifiedSince
@@ -1270,275 +1354,195 @@ async function executeXeroToolOperation(
               undefined, // invoiceNumbers
               undefined, // contactIDs
               undefined, // statuses
-              paginationParams.page, // page number
+              currentPage, // page number
               undefined, // includeArchived
               undefined, // createdByMyApp
               undefined, // unitdp
               undefined, // summaryOnly
-              paginationParams.pageSize // pageSize
+              currentPageSize // pageSize
             );
-
-            // Track rate limits
-            const rateLimitInfo = extractRateLimitInfo(response.response.headers);
-            await updateRateLimitInfo(connection.id, rateLimitInfo);
-            logRateLimitStatus(connection.id, toolName, rateLimitInfo);
-
             return {
-              content: [
-                {
-                  type: "text",
-                  text: JSON.stringify(response.body.invoices || [], null, 2),
-                },
-              ],
+              results: response.body.invoices || [],
+              headers: response.response.headers,
             };
-          }
+          },
+          limit as number | undefined,
+          (pageSize as number | undefined) || 100,
+          connection.id
+        );
 
-          // Otherwise, paginate through all invoices
-          const allInvoices = await paginateXeroAPI(
-            async (currentPage, currentPageSize) => {
-              const response = await client.accountingApi.getInvoices(
-                connection.tenantId,
-                undefined, // ifModifiedSince
-                where, // where clause
-                undefined, // order
-                undefined, // IDs
-                undefined, // invoiceNumbers
-                undefined, // contactIDs
-                undefined, // statuses
-                currentPage, // page number
-                undefined, // includeArchived
-                undefined, // createdByMyApp
-                undefined, // unitdp
-                undefined, // summaryOnly
-                currentPageSize // pageSize
-              );
-              return {
-                results: response.body.invoices || [],
-                headers: response.response.headers,
-              };
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(allInvoices, null, 2),
             },
-            limit as number | undefined,
-            (pageSize as number | undefined) || 100,
-            connection.id
-          );
+          ],
+        };
+      }
 
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(allInvoices, null, 2),
-              },
-            ],
-          };
-        }
+      case "xero_get_invoice": {
+        const { invoiceId } = args;
+        if (!invoiceId) throw new Error("invoiceId is required");
 
-        case "xero_get_invoice": {
-          const { invoiceId } = args;
-          if (!invoiceId) throw new Error("invoiceId is required");
+        const response = await client.accountingApi.getInvoice(
+          connection.tenantId,
+          invoiceId as string
+        );
 
-          const response = await client.accountingApi.getInvoice(
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(response.body.invoices?.[0], null, 2),
+            },
+          ],
+        };
+      }
+
+      case "xero_list_contacts": {
+        const { searchTerm, limit, page, pageSize } = args;
+
+        const where = searchTerm
+          ? `Name.Contains("${searchTerm}") OR EmailAddress.Contains("${searchTerm}")`
+          : undefined;
+
+        // If specific page requested, fetch that page only
+        if (page !== undefined) {
+          const paginationParams = buildPaginationParams({
+            page: page as number,
+            pageSize: pageSize as number | undefined,
+          });
+
+          const response = await client.accountingApi.getContacts(
             connection.tenantId,
-            invoiceId as string
+            undefined, // ifModifiedSince
+            where, // where clause
+            undefined, // order
+            undefined, // IDs
+            paginationParams.page, // page number
+            undefined, // includeArchived
+            undefined, // summaryOnly
+            undefined, // searchTerm
+            paginationParams.pageSize // pageSize
           );
+
+          // Track rate limits
+          const rateLimitInfo = extractRateLimitInfo(response.response.headers);
+          await updateRateLimitInfo(connection.id, rateLimitInfo);
+          logRateLimitStatus(connection.id, toolName, rateLimitInfo);
 
           return {
             content: [
               {
                 type: "text",
-                text: JSON.stringify(response.body.invoices?.[0], null, 2),
+                text: JSON.stringify(response.body.contacts || [], null, 2),
               },
             ],
           };
         }
 
-        case "xero_list_contacts": {
-          const { searchTerm, limit, page, pageSize } = args;
-
-          const where = searchTerm
-            ? `Name.Contains("${searchTerm}") OR EmailAddress.Contains("${searchTerm}")`
-            : undefined;
-
-          // If specific page requested, fetch that page only
-          if (page !== undefined) {
-            const paginationParams = buildPaginationParams({
-              page: page as number,
-              pageSize: pageSize as number | undefined,
-            });
-
+        // Otherwise, paginate through all contacts
+        const allContacts = await paginateXeroAPI(
+          async (currentPage, currentPageSize) => {
             const response = await client.accountingApi.getContacts(
               connection.tenantId,
               undefined, // ifModifiedSince
               where, // where clause
               undefined, // order
               undefined, // IDs
-              paginationParams.page, // page number
+              currentPage, // page number
               undefined, // includeArchived
               undefined, // summaryOnly
               undefined, // searchTerm
-              paginationParams.pageSize // pageSize
+              currentPageSize // pageSize
             );
-
-            // Track rate limits
-            const rateLimitInfo = extractRateLimitInfo(response.response.headers);
-            await updateRateLimitInfo(connection.id, rateLimitInfo);
-            logRateLimitStatus(connection.id, toolName, rateLimitInfo);
-
             return {
-              content: [
-                {
-                  type: "text",
-                  text: JSON.stringify(response.body.contacts || [], null, 2),
-                },
-              ],
+              results: response.body.contacts || [],
+              headers: response.response.headers,
             };
-          }
+          },
+          limit as number | undefined,
+          (pageSize as number | undefined) || 100,
+          connection.id
+        );
 
-          // Otherwise, paginate through all contacts
-          const allContacts = await paginateXeroAPI(
-            async (currentPage, currentPageSize) => {
-              const response = await client.accountingApi.getContacts(
-                connection.tenantId,
-                undefined, // ifModifiedSince
-                where, // where clause
-                undefined, // order
-                undefined, // IDs
-                currentPage, // page number
-                undefined, // includeArchived
-                undefined, // summaryOnly
-                undefined, // searchTerm
-                currentPageSize // pageSize
-              );
-              return {
-                results: response.body.contacts || [],
-                headers: response.response.headers,
-              };
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(allContacts, null, 2),
             },
-            limit as number | undefined,
-            (pageSize as number | undefined) || 100,
-            connection.id
-          );
+          ],
+        };
+      }
 
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(allContacts, null, 2),
-              },
-            ],
-          };
-        }
+      case "xero_get_contact": {
+        const { contactId } = args;
+        if (!contactId) throw new Error("contactId is required");
 
-        case "xero_get_contact": {
-          const { contactId } = args;
-          if (!contactId) throw new Error("contactId is required");
+        const response = await client.accountingApi.getContact(
+          connection.tenantId,
+          contactId as string
+        );
 
-          const response = await client.accountingApi.getContact(
-            connection.tenantId,
-            contactId as string
-          );
-
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(response.body.contacts?.[0], null, 2),
-              },
-            ],
-          };
-        }
-
-        case "xero_list_accounts": {
-          const { type } = args;
-
-          const where = type ? `Type=="${type}"` : undefined;
-
-          const response = await client.accountingApi.getAccounts(
-            connection.tenantId,
-            undefined,
-            where
-          );
-
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(response.body.accounts, null, 2),
-              },
-            ],
-          };
-        }
-
-        case "xero_list_journal_entries": {
-          const { dateFrom, dateTo, limit, page, pageSize } = args;
-
-          // If specific page requested, fetch that page only
-          if (page !== undefined) {
-            const paginationParams = buildPaginationParams({
-              page: page as number,
-              pageSize: pageSize as number | undefined,
-            });
-
-            const response = await client.accountingApi.getManualJournals(
-              connection.tenantId,
-              undefined, // ifModifiedSince
-              undefined, // where - Xero doesn't support date filtering in WHERE clause
-              undefined, // order
-              paginationParams.page, // page number
-              paginationParams.pageSize // pageSize
-            );
-
-            // Track rate limits
-            const rateLimitInfo = extractRateLimitInfo(response.response.headers);
-            await updateRateLimitInfo(connection.id, rateLimitInfo);
-            logRateLimitStatus(connection.id, toolName, rateLimitInfo);
-
-            // Filter by date if provided (Xero doesn't support date filtering in API)
-            let journals = response.body.manualJournals || [];
-            if (dateFrom || dateTo) {
-              journals = journals.filter((journal) => {
-                if (!journal.date) return false;
-                const journalDate = new Date(journal.date);
-                if (dateFrom && journalDate < new Date(dateFrom as string))
-                  return false;
-                if (dateTo && journalDate > new Date(dateTo as string))
-                  return false;
-                return true;
-              });
-            }
-
-            return {
-              content: [
-                {
-                  type: "text",
-                  text: JSON.stringify(journals, null, 2),
-                },
-              ],
-            };
-          }
-
-          // Otherwise, paginate through all manual journals
-          const allJournals = await paginateXeroAPI(
-            async (currentPage, currentPageSize) => {
-              const response = await client.accountingApi.getManualJournals(
-                connection.tenantId,
-                undefined, // ifModifiedSince
-                undefined, // where - Xero doesn't support date filtering in WHERE clause
-                undefined, // order
-                currentPage, // page number
-                currentPageSize // pageSize
-              );
-              return {
-                results: response.body.manualJournals || [],
-                headers: response.response.headers,
-              };
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(response.body.contacts?.[0], null, 2),
             },
-            limit as number | undefined,
-            (pageSize as number | undefined) || 100,
-            connection.id
+          ],
+        };
+      }
+
+      case "xero_list_accounts": {
+        const { type } = args;
+
+        const where = type ? `Type=="${type}"` : undefined;
+
+        const response = await client.accountingApi.getAccounts(
+          connection.tenantId,
+          undefined,
+          where
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(response.body.accounts, null, 2),
+            },
+          ],
+        };
+      }
+
+      case "xero_list_journal_entries": {
+        const { dateFrom, dateTo, limit, page, pageSize } = args;
+
+        // If specific page requested, fetch that page only
+        if (page !== undefined) {
+          const paginationParams = buildPaginationParams({
+            page: page as number,
+            pageSize: pageSize as number | undefined,
+          });
+
+          const response = await client.accountingApi.getManualJournals(
+            connection.tenantId,
+            undefined, // ifModifiedSince
+            undefined, // where - Xero doesn't support date filtering in WHERE clause
+            undefined, // order
+            paginationParams.page, // page number
+            paginationParams.pageSize // pageSize
           );
+
+          // Track rate limits
+          const rateLimitInfo = extractRateLimitInfo(response.response.headers);
+          await updateRateLimitInfo(connection.id, rateLimitInfo);
+          logRateLimitStatus(connection.id, toolName, rateLimitInfo);
 
           // Filter by date if provided (Xero doesn't support date filtering in API)
-          let journals = allJournals;
+          let journals = response.body.manualJournals || [];
           if (dateFrom || dateTo) {
             journals = journals.filter((journal) => {
               if (!journal.date) return false;
@@ -1561,376 +1565,484 @@ async function executeXeroToolOperation(
           };
         }
 
-        case "xero_get_bank_transactions": {
-          const { bankAccountId, dateFrom, dateTo, limit, page, pageSize } = args;
-
-          const whereClauses: string[] = [];
-          if (bankAccountId)
-            whereClauses.push(
-              `BankAccount.AccountID==Guid("${bankAccountId}")`
+        // Otherwise, paginate through all manual journals
+        const allJournals = await paginateXeroAPI(
+          async (currentPage, currentPageSize) => {
+            const response = await client.accountingApi.getManualJournals(
+              connection.tenantId,
+              undefined, // ifModifiedSince
+              undefined, // where - Xero doesn't support date filtering in WHERE clause
+              undefined, // order
+              currentPage, // page number
+              currentPageSize // pageSize
             );
-          // Xero API date filter format: Date>=DateTime(2025,10,01) - comma-separated
-          if (dateFrom) whereClauses.push(`Date>=DateTime(${formatXeroDate(dateFrom as string)})`);
-          if (dateTo) whereClauses.push(`Date<=DateTime(${formatXeroDate(dateTo as string)})`);
+            return {
+              results: response.body.manualJournals || [],
+              headers: response.response.headers,
+            };
+          },
+          limit as number | undefined,
+          (pageSize as number | undefined) || 100,
+          connection.id
+        );
 
-          const where =
-            whereClauses.length > 0 ? whereClauses.join(" AND ") : undefined;
+        // Filter by date if provided (Xero doesn't support date filtering in API)
+        let journals = allJournals;
+        if (dateFrom || dateTo) {
+          journals = journals.filter((journal) => {
+            if (!journal.date) return false;
+            const journalDate = new Date(journal.date);
+            if (dateFrom && journalDate < new Date(dateFrom as string))
+              return false;
+            if (dateTo && journalDate > new Date(dateTo as string))
+              return false;
+            return true;
+          });
+        }
 
-          // If specific page requested, fetch that page only
-          if (page !== undefined) {
-            const paginationParams = buildPaginationParams({
-              page: page as number,
-              pageSize: pageSize as number | undefined,
-            });
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(journals, null, 2),
+            },
+          ],
+        };
+      }
 
+      case "xero_get_bank_transactions": {
+        const { bankAccountId, dateFrom, dateTo, limit, page, pageSize } = args;
+
+        const whereClauses: string[] = [];
+        if (bankAccountId)
+          whereClauses.push(`BankAccount.AccountID==Guid("${bankAccountId}")`);
+        // Xero API date filter format: Date>=DateTime(2025,10,01) - comma-separated
+        if (dateFrom)
+          whereClauses.push(
+            `Date>=DateTime(${formatXeroDate(dateFrom as string)})`
+          );
+        if (dateTo)
+          whereClauses.push(
+            `Date<=DateTime(${formatXeroDate(dateTo as string)})`
+          );
+
+        const where =
+          whereClauses.length > 0 ? whereClauses.join(" AND ") : undefined;
+
+        // If specific page requested, fetch that page only
+        if (page !== undefined) {
+          const paginationParams = buildPaginationParams({
+            page: page as number,
+            pageSize: pageSize as number | undefined,
+          });
+
+          const response = await client.accountingApi.getBankTransactions(
+            connection.tenantId,
+            undefined, // ifModifiedSince
+            where, // where clause
+            undefined, // order
+            paginationParams.page, // page number
+            undefined, // unitdp
+            paginationParams.pageSize // pageSize
+          );
+
+          // Track rate limits
+          const rateLimitInfo = extractRateLimitInfo(response.response.headers);
+          await updateRateLimitInfo(connection.id, rateLimitInfo);
+          logRateLimitStatus(connection.id, toolName, rateLimitInfo);
+
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(
+                  response.body.bankTransactions || [],
+                  null,
+                  2
+                ),
+              },
+            ],
+          };
+        }
+
+        // Otherwise, paginate through all bank transactions
+        const allTransactions = await paginateXeroAPI(
+          async (currentPage, currentPageSize) => {
             const response = await client.accountingApi.getBankTransactions(
               connection.tenantId,
               undefined, // ifModifiedSince
               where, // where clause
               undefined, // order
-              paginationParams.page, // page number
+              currentPage, // page number
               undefined, // unitdp
-              paginationParams.pageSize // pageSize
+              currentPageSize // pageSize
             );
-
-            // Track rate limits
-            const rateLimitInfo = extractRateLimitInfo(response.response.headers);
-            await updateRateLimitInfo(connection.id, rateLimitInfo);
-            logRateLimitStatus(connection.id, toolName, rateLimitInfo);
-
             return {
-              content: [
-                {
-                  type: "text",
-                  text: JSON.stringify(response.body.bankTransactions || [], null, 2),
-                },
-              ],
+              results: response.body.bankTransactions || [],
+              headers: response.response.headers,
             };
-          }
+          },
+          limit as number | undefined,
+          (pageSize as number | undefined) || 100,
+          connection.id
+        );
 
-          // Otherwise, paginate through all bank transactions
-          const allTransactions = await paginateXeroAPI(
-            async (currentPage, currentPageSize) => {
-              const response = await client.accountingApi.getBankTransactions(
-                connection.tenantId,
-                undefined, // ifModifiedSince
-                where, // where clause
-                undefined, // order
-                currentPage, // page number
-                undefined, // unitdp
-                currentPageSize // pageSize
-              );
-              return {
-                results: response.body.bankTransactions || [],
-                headers: response.response.headers,
-              };
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(allTransactions, null, 2),
             },
-            limit as number | undefined,
-            (pageSize as number | undefined) || 100,
-            connection.id
+          ],
+        };
+      }
+
+      case "xero_list_credit_notes": {
+        const {
+          creditNoteType,
+          status,
+          dateFrom,
+          dateTo,
+          limit,
+          page,
+          pageSize,
+        } = args;
+
+        const whereClauses: string[] = [];
+        // Filter by credit note type - default to ACCRECCREDIT (sales credit notes) if not specified
+        // ACCRECCREDIT = Sales credit notes (issued to customers)
+        // ACCPAYCREDIT = Purchase credit notes (received from suppliers)
+        const type = (creditNoteType as string) || "ACCRECCREDIT";
+        whereClauses.push(`Type=="${type}"`);
+        if (status) whereClauses.push(`Status=="${status}"`);
+        // Xero API date filter format: Date>=DateTime(2025,10,01) - comma-separated
+        if (dateFrom)
+          whereClauses.push(
+            `Date>=DateTime(${formatXeroDate(dateFrom as string)})`
           );
+        if (dateTo)
+          whereClauses.push(
+            `Date<=DateTime(${formatXeroDate(dateTo as string)})`
+          );
+
+        const where =
+          whereClauses.length > 0 ? whereClauses.join(" AND ") : undefined;
+
+        // Log the query for debugging
+        console.log(
+          `[xero_list_credit_notes] Type: ${type}, WHERE clause: ${where || "(none)"}, limit: ${limit || 100}`
+        );
+
+        // If specific page requested, fetch that page only
+        if (page !== undefined) {
+          const paginationParams = buildPaginationParams({
+            page: page as number,
+            pageSize: pageSize as number | undefined,
+          });
+
+          const response = await client.accountingApi.getCreditNotes(
+            connection.tenantId,
+            undefined, // ifModifiedSince
+            where, // where clause
+            undefined, // order
+            paginationParams.page, // page number
+            undefined, // unitdp
+            paginationParams.pageSize // pageSize
+          );
+
+          // Track rate limits
+          const rateLimitInfo = extractRateLimitInfo(response.response.headers);
+          await updateRateLimitInfo(connection.id, rateLimitInfo);
+          logRateLimitStatus(connection.id, toolName, rateLimitInfo);
 
           return {
             content: [
               {
                 type: "text",
-                text: JSON.stringify(allTransactions, null, 2),
+                text: JSON.stringify(response.body.creditNotes || [], null, 2),
               },
             ],
           };
         }
 
-        case "xero_list_credit_notes": {
-          const { creditNoteType, status, dateFrom, dateTo, limit, page, pageSize } = args;
-
-          const whereClauses: string[] = [];
-          // Filter by credit note type - default to ACCRECCREDIT (sales credit notes) if not specified
-          // ACCRECCREDIT = Sales credit notes (issued to customers)
-          // ACCPAYCREDIT = Purchase credit notes (received from suppliers)
-          const type = (creditNoteType as string) || "ACCRECCREDIT";
-          whereClauses.push(`Type=="${type}"`);
-          if (status) whereClauses.push(`Status=="${status}"`);
-          // Xero API date filter format: Date>=DateTime(2025,10,01) - comma-separated
-          if (dateFrom) whereClauses.push(`Date>=DateTime(${formatXeroDate(dateFrom as string)})`);
-          if (dateTo) whereClauses.push(`Date<=DateTime(${formatXeroDate(dateTo as string)})`);
-
-          const where =
-            whereClauses.length > 0 ? whereClauses.join(" AND ") : undefined;
-
-          // Log the query for debugging
-          console.log(`[xero_list_credit_notes] Type: ${type}, WHERE clause: ${where || '(none)'}, limit: ${limit || 100}`);
-
-          // If specific page requested, fetch that page only
-          if (page !== undefined) {
-            const paginationParams = buildPaginationParams({
-              page: page as number,
-              pageSize: pageSize as number | undefined,
-            });
-
+        // Otherwise, paginate through all credit notes
+        const allCreditNotes = await paginateXeroAPI(
+          async (currentPage, currentPageSize) => {
             const response = await client.accountingApi.getCreditNotes(
               connection.tenantId,
               undefined, // ifModifiedSince
               where, // where clause
               undefined, // order
-              paginationParams.page, // page number
+              currentPage, // page number
               undefined, // unitdp
-              paginationParams.pageSize // pageSize
+              currentPageSize // pageSize
             );
-
-            // Track rate limits
-            const rateLimitInfo = extractRateLimitInfo(response.response.headers);
-            await updateRateLimitInfo(connection.id, rateLimitInfo);
-            logRateLimitStatus(connection.id, toolName, rateLimitInfo);
-
             return {
-              content: [
-                {
-                  type: "text",
-                  text: JSON.stringify(response.body.creditNotes || [], null, 2),
-                },
-              ],
+              results: response.body.creditNotes || [],
+              headers: response.response.headers,
             };
-          }
+          },
+          limit as number | undefined,
+          (pageSize as number | undefined) || 100,
+          connection.id
+        );
 
-          // Otherwise, paginate through all credit notes
-          const allCreditNotes = await paginateXeroAPI(
-            async (currentPage, currentPageSize) => {
-              const response = await client.accountingApi.getCreditNotes(
-                connection.tenantId,
-                undefined, // ifModifiedSince
-                where, // where clause
-                undefined, // order
-                currentPage, // page number
-                undefined, // unitdp
-                currentPageSize // pageSize
-              );
-              return {
-                results: response.body.creditNotes || [],
-                headers: response.response.headers,
-              };
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(allCreditNotes, null, 2),
             },
-            limit as number | undefined,
-            (pageSize as number | undefined) || 100,
-            connection.id
+          ],
+        };
+      }
+
+      case "xero_list_payments": {
+        const { dateFrom, dateTo, limit, page, pageSize } = args;
+
+        const whereClauses: string[] = [];
+        // Xero API date filter format: Date>=DateTime(2025,10,01) - comma-separated
+        if (dateFrom)
+          whereClauses.push(
+            `Date>=DateTime(${formatXeroDate(dateFrom as string)})`
           );
+        if (dateTo)
+          whereClauses.push(
+            `Date<=DateTime(${formatXeroDate(dateTo as string)})`
+          );
+
+        const where =
+          whereClauses.length > 0 ? whereClauses.join(" AND ") : undefined;
+
+        // If specific page requested, fetch that page only
+        if (page !== undefined) {
+          const paginationParams = buildPaginationParams({
+            page: page as number,
+            pageSize: pageSize as number | undefined,
+          });
+
+          const response = await client.accountingApi.getPayments(
+            connection.tenantId,
+            undefined, // ifModifiedSince
+            where, // where clause
+            undefined, // order
+            paginationParams.page, // page number
+            paginationParams.pageSize // pageSize
+          );
+
+          // Track rate limits
+          const rateLimitInfo = extractRateLimitInfo(response.response.headers);
+          await updateRateLimitInfo(connection.id, rateLimitInfo);
+          logRateLimitStatus(connection.id, toolName, rateLimitInfo);
 
           return {
             content: [
               {
                 type: "text",
-                text: JSON.stringify(allCreditNotes, null, 2),
+                text: JSON.stringify(response.body.payments || [], null, 2),
               },
             ],
           };
         }
 
-        case "xero_list_payments": {
-          const { dateFrom, dateTo, limit, page, pageSize } = args;
-
-          const whereClauses: string[] = [];
-          // Xero API date filter format: Date>=DateTime(2025,10,01) - comma-separated
-          if (dateFrom) whereClauses.push(`Date>=DateTime(${formatXeroDate(dateFrom as string)})`);
-          if (dateTo) whereClauses.push(`Date<=DateTime(${formatXeroDate(dateTo as string)})`);
-
-          const where =
-            whereClauses.length > 0 ? whereClauses.join(" AND ") : undefined;
-
-          // If specific page requested, fetch that page only
-          if (page !== undefined) {
-            const paginationParams = buildPaginationParams({
-              page: page as number,
-              pageSize: pageSize as number | undefined,
-            });
-
+        // Otherwise, paginate through all payments
+        const allPayments = await paginateXeroAPI(
+          async (currentPage, currentPageSize) => {
             const response = await client.accountingApi.getPayments(
               connection.tenantId,
               undefined, // ifModifiedSince
               where, // where clause
               undefined, // order
-              paginationParams.page, // page number
-              paginationParams.pageSize // pageSize
+              currentPage, // page number
+              currentPageSize // pageSize
             );
-
-            // Track rate limits
-            const rateLimitInfo = extractRateLimitInfo(response.response.headers);
-            await updateRateLimitInfo(connection.id, rateLimitInfo);
-            logRateLimitStatus(connection.id, toolName, rateLimitInfo);
-
             return {
-              content: [
-                {
-                  type: "text",
-                  text: JSON.stringify(response.body.payments || [], null, 2),
-                },
-              ],
+              results: response.body.payments || [],
+              headers: response.response.headers,
             };
-          }
+          },
+          limit as number | undefined,
+          (pageSize as number | undefined) || 100,
+          connection.id
+        );
 
-          // Otherwise, paginate through all payments
-          const allPayments = await paginateXeroAPI(
-            async (currentPage, currentPageSize) => {
-              const response = await client.accountingApi.getPayments(
-                connection.tenantId,
-                undefined, // ifModifiedSince
-                where, // where clause
-                undefined, // order
-                currentPage, // page number
-                currentPageSize // pageSize
-              );
-              return {
-                results: response.body.payments || [],
-                headers: response.response.headers,
-              };
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(allPayments, null, 2),
             },
-            limit as number | undefined,
-            (pageSize as number | undefined) || 100,
-            connection.id
-          );
+          ],
+        };
+      }
 
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(allPayments, null, 2),
-              },
-            ],
-          };
+      case "xero_list_tax_rates": {
+        const response = await client.accountingApi.getTaxRates(
+          connection.tenantId
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(response.body.taxRates, null, 2),
+            },
+          ],
+        };
+      }
+
+      case "xero_get_organisation": {
+        const response = await client.accountingApi.getOrganisations(
+          connection.tenantId
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(response.body.organisations?.[0], null, 2),
+            },
+          ],
+        };
+      }
+
+      case "xero_get_profit_and_loss": {
+        const { fromDate, toDate, periods, timeframe } = args;
+
+        if (!fromDate || !toDate) {
+          throw new Error("fromDate and toDate are required");
         }
 
-        case "xero_list_tax_rates": {
-          const response = await client.accountingApi.getTaxRates(
-            connection.tenantId
-          );
+        const response = await client.accountingApi.getReportProfitAndLoss(
+          connection.tenantId,
+          fromDate as string,
+          toDate as string,
+          periods as number | undefined,
+          timeframe as "MONTH" | "QUARTER" | "YEAR" | undefined
+        );
 
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(response.body.taxRates, null, 2),
-              },
-            ],
-          };
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(response.body, null, 2),
+            },
+          ],
+        };
+      }
+
+      case "xero_get_balance_sheet": {
+        const { date, periods, timeframe } = args;
+
+        const response = await client.accountingApi.getReportBalanceSheet(
+          connection.tenantId,
+          date as string | undefined,
+          periods as number | undefined,
+          timeframe as "MONTH" | "QUARTER" | "YEAR" | undefined
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(response.body, null, 2),
+            },
+          ],
+        };
+      }
+
+      case "xero_get_trial_balance": {
+        const { date } = args;
+
+        if (!date) {
+          throw new Error("date is required");
         }
 
-        case "xero_get_organisation": {
-          const response = await client.accountingApi.getOrganisations(
-            connection.tenantId
-          );
+        const response = await client.accountingApi.getReportTrialBalance(
+          connection.tenantId,
+          date as string
+        );
 
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(response.body.organisations?.[0], null, 2),
-              },
-            ],
-          };
-        }
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(response.body, null, 2),
+            },
+          ],
+        };
+      }
 
-        case "xero_get_profit_and_loss": {
-          const { fromDate, toDate, periods, timeframe } = args;
+      case "xero_list_items": {
+        const { code, limit = 100 } = args;
 
-          if (!fromDate || !toDate) {
-            throw new Error("fromDate and toDate are required");
-          }
+        const where = code ? `Code=="${code as string}"` : undefined;
 
-          const response = await client.accountingApi.getReportProfitAndLoss(
-            connection.tenantId,
-            fromDate as string,
-            toDate as string,
-            periods as number | undefined,
-            timeframe as "MONTH" | "QUARTER" | "YEAR" | undefined
-          );
+        const response = await client.accountingApi.getItems(
+          connection.tenantId,
+          undefined, // ifModifiedSince
+          where,
+          undefined, // order
+          undefined // unitdp
+        );
 
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(response.body, null, 2),
-              },
-            ],
-          };
-        }
+        const items = response.body.items ?? [];
+        const limitValue = typeof limit === "number" ? limit : 100;
 
-        case "xero_get_balance_sheet": {
-          const { date, periods, timeframe } = args;
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(items.slice(0, limitValue), null, 2),
+            },
+          ],
+        };
+      }
 
-          const response = await client.accountingApi.getReportBalanceSheet(
-            connection.tenantId,
-            date as string | undefined,
-            periods as number | undefined,
-            timeframe as "MONTH" | "QUARTER" | "YEAR" | undefined
-          );
+      case "xero_list_quotes": {
+        const { status, dateFrom, dateTo, limit, page, pageSize } = args;
 
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(response.body, null, 2),
-              },
-            ],
-          };
-        }
+        // Note: Xero getQuotes API does not support pageSize parameter, only page
+        // If specific page requested, fetch that page only
+        if (page !== undefined) {
+          const paginationParams = buildPaginationParams({
+            page: page as number,
+            pageSize: pageSize as number | undefined,
+          });
 
-        case "xero_get_trial_balance": {
-          const { date } = args;
-
-          if (!date) {
-            throw new Error("date is required");
-          }
-
-          const response = await client.accountingApi.getReportTrialBalance(
-            connection.tenantId,
-            date as string
-          );
-
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(response.body, null, 2),
-              },
-            ],
-          };
-        }
-
-        case "xero_list_items": {
-          const { code, limit = 100 } = args;
-
-          const where = code ? `Code=="${code as string}"` : undefined;
-
-          const response = await client.accountingApi.getItems(
+          const response = await client.accountingApi.getQuotes(
             connection.tenantId,
             undefined, // ifModifiedSince
-            where,
+            dateFrom as string | undefined,
+            dateTo as string | undefined,
+            undefined, // expiryDateFrom
+            undefined, // expiryDateTo
+            undefined, // contactID
+            status as string | undefined,
+            paginationParams.page, // page number
             undefined, // order
-            undefined // unitdp
+            undefined // quoteNumber
           );
 
-          const items = response.body.items ?? [];
-          const limitValue = typeof limit === "number" ? limit : 100;
+          // Track rate limits
+          const rateLimitInfo = extractRateLimitInfo(response.response.headers);
+          await updateRateLimitInfo(connection.id, rateLimitInfo);
+          logRateLimitStatus(connection.id, toolName, rateLimitInfo);
 
           return {
             content: [
               {
                 type: "text",
-                text: JSON.stringify(items.slice(0, limitValue), null, 2),
+                text: JSON.stringify(response.body.quotes || [], null, 2),
               },
             ],
           };
         }
 
-        case "xero_list_quotes": {
-          const { status, dateFrom, dateTo, limit, page, pageSize } = args;
-
-          // Note: Xero getQuotes API does not support pageSize parameter, only page
-          // If specific page requested, fetch that page only
-          if (page !== undefined) {
-            const paginationParams = buildPaginationParams({
-              page: page as number,
-              pageSize: pageSize as number | undefined,
-            });
-
+        // Otherwise, paginate through all quotes (Note: Xero API uses fixed page size of 100)
+        const allQuotes = await paginateXeroAPI(
+          async (currentPage, _pageSize) => {
+            // Note: getQuotes doesn't support pageSize parameter, uses fixed 100
             const response = await client.accountingApi.getQuotes(
               connection.tenantId,
               undefined, // ifModifiedSince
@@ -1940,812 +2052,765 @@ async function executeXeroToolOperation(
               undefined, // expiryDateTo
               undefined, // contactID
               status as string | undefined,
-              paginationParams.page, // page number
+              currentPage, // page number
               undefined, // order
               undefined // quoteNumber
             );
-
-            // Track rate limits
-            const rateLimitInfo = extractRateLimitInfo(response.response.headers);
-            await updateRateLimitInfo(connection.id, rateLimitInfo);
-            logRateLimitStatus(connection.id, toolName, rateLimitInfo);
-
             return {
-              content: [
-                {
-                  type: "text",
-                  text: JSON.stringify(response.body.quotes || [], null, 2),
-                },
-              ],
+              results: response.body.quotes || [],
+              headers: response.response.headers,
             };
-          }
+          },
+          limit as number | undefined,
+          100, // Fixed page size for quotes (API doesn't support custom pageSize)
+          connection.id
+        );
 
-          // Otherwise, paginate through all quotes (Note: Xero API uses fixed page size of 100)
-          const allQuotes = await paginateXeroAPI(
-            async (currentPage, _pageSize) => {
-              // Note: getQuotes doesn't support pageSize parameter, uses fixed 100
-              const response = await client.accountingApi.getQuotes(
-                connection.tenantId,
-                undefined, // ifModifiedSince
-                dateFrom as string | undefined,
-                dateTo as string | undefined,
-                undefined, // expiryDateFrom
-                undefined, // expiryDateTo
-                undefined, // contactID
-                status as string | undefined,
-                currentPage, // page number
-                undefined, // order
-                undefined // quoteNumber
-              );
-              return {
-                results: response.body.quotes || [],
-                headers: response.response.headers,
-              };
-            },
-            limit as number | undefined,
-            100, // Fixed page size for quotes (API doesn't support custom pageSize)
-            connection.id
-          );
-
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(allQuotes, null, 2),
-              },
-            ],
-          };
-        }
-
-        case "xero_list_contact_groups": {
-          const response = await client.accountingApi.getContactGroups(
-            connection.tenantId
-          );
-
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(response.body.contactGroups, null, 2),
-              },
-            ],
-          };
-        }
-
-        case "xero_get_aged_receivables": {
-          const { contactId, date, fromDate, toDate } = args;
-
-          if (!contactId) {
-            throw new Error("contactId is required");
-          }
-
-          const response =
-            await client.accountingApi.getReportAgedReceivablesByContact(
-              connection.tenantId,
-              contactId as string,
-              date as string | undefined,
-              fromDate as string | undefined,
-              toDate as string | undefined
-            );
-
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(response.body, null, 2),
-              },
-            ],
-          };
-        }
-
-        case "xero_get_aged_payables": {
-          const { contactId, date, fromDate, toDate } = args;
-
-          if (!contactId) {
-            throw new Error("contactId is required");
-          }
-
-          const response =
-            await client.accountingApi.getReportAgedPayablesByContact(
-              connection.tenantId,
-              contactId as string,
-              date as string | undefined,
-              fromDate as string | undefined,
-              toDate as string | undefined
-            );
-
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(response.body, null, 2),
-              },
-            ],
-          };
-        }
-
-        case "xero_create_invoice": {
-          const { contactId, date, dueDate, lineItems, reference, status } =
-            args;
-
-          // Validate required fields
-          if (!contactId || !date || !dueDate || !lineItems) {
-            throw new Error(
-              "contactId, date, dueDate, and lineItems are required"
-            );
-          }
-
-          // Validate line items array
-          if (!Array.isArray(lineItems) || lineItems.length === 0) {
-            throw new Error("lineItems must be a non-empty array");
-          }
-
-          // Validate each line item
-          for (const item of lineItems) {
-            if (
-              !item.description ||
-              typeof item.quantity !== "number" ||
-              typeof item.unitAmount !== "number" ||
-              !item.accountCode
-            ) {
-              throw new Error(
-                "All line items must have description, quantity, unitAmount, and accountCode"
-              );
-            }
-          }
-
-          // Validate status if provided
-          if (status && !["DRAFT", "AUTHORISED"].includes(status as string)) {
-            throw new Error("Status must be either DRAFT or AUTHORISED");
-          }
-
-          // Construct invoice object
-          const invoice: Invoice = {
-            type: Invoice.TypeEnum.ACCREC, // Accounts Receivable
-            contact: {
-              contactID: contactId as string,
-            },
-            date: date as string,
-            dueDate: dueDate as string,
-            lineItems: (lineItems as any[]).map((item) => ({
-              description: item.description,
-              quantity: item.quantity,
-              unitAmount: item.unitAmount,
-              accountCode: item.accountCode,
-              taxType: item.taxType || "NONE",
-            })),
-            status:
-              (status as string) === "AUTHORISED"
-                ? Invoice.StatusEnum.AUTHORISED
-                : Invoice.StatusEnum.DRAFT,
-            reference: reference as string | undefined,
-          };
-
-          const response = await client.accountingApi.createInvoices(
-            connection.tenantId,
+        return {
+          content: [
             {
-              invoices: [invoice],
-            }
-          );
+              type: "text",
+              text: JSON.stringify(allQuotes, null, 2),
+            },
+          ],
+        };
+      }
 
-          // Check for validation errors from Xero API
-          if (response.body.invoices?.[0]?.hasErrors) {
-            const errors = response.body.invoices[0].validationErrors;
-            throw new Error(
-              `Invoice validation failed: ${JSON.stringify(errors)}`
-            );
-          }
+      case "xero_list_contact_groups": {
+        const response = await client.accountingApi.getContactGroups(
+          connection.tenantId
+        );
 
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(
-                  {
-                    success: true,
-                    invoice: response.body.invoices?.[0],
-                    message: "Invoice created successfully",
-                  },
-                  null,
-                  2
-                ),
-              },
-            ],
-          };
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(response.body.contactGroups, null, 2),
+            },
+          ],
+        };
+      }
+
+      case "xero_get_aged_receivables": {
+        const { contactId, date, fromDate, toDate } = args;
+
+        if (!contactId) {
+          throw new Error("contactId is required");
         }
 
-        case "xero_update_invoice": {
-          const {
-            invoiceId,
-            contactId,
-            date,
-            dueDate,
-            lineItems,
-            reference,
-            status,
-          } = args;
-
-          // Validate required fields
-          if (!invoiceId) {
-            throw new Error("invoiceId is required");
-          }
-
-          // Validate line items if provided
-          if (lineItems) {
-            if (!Array.isArray(lineItems) || lineItems.length === 0) {
-              throw new Error("lineItems must be a non-empty array");
-            }
-            for (const item of lineItems) {
-              if (
-                !item.description ||
-                typeof item.quantity !== "number" ||
-                typeof item.unitAmount !== "number" ||
-                !item.accountCode
-              ) {
-                throw new Error(
-                  "All line items must have description, quantity, unitAmount, and accountCode"
-                );
-              }
-            }
-          }
-
-          // Validate status if provided
-          if (status && !["DRAFT", "AUTHORISED"].includes(status as string)) {
-            throw new Error("Status must be either DRAFT or AUTHORISED");
-          }
-
-          // Construct invoice object with only provided fields
-          const invoice: Partial<Invoice> = {
-            invoiceID: invoiceId as string,
-          };
-
-          if (contactId) invoice.contact = { contactID: contactId as string };
-          if (date) invoice.date = date as string;
-          if (dueDate) invoice.dueDate = dueDate as string;
-          if (reference) invoice.reference = reference as string;
-          if (status) {
-            invoice.status =
-              status === "AUTHORISED"
-                ? Invoice.StatusEnum.AUTHORISED
-                : Invoice.StatusEnum.DRAFT;
-          }
-          if (lineItems) {
-            invoice.lineItems = (lineItems as any[]).map((item) => ({
-              description: item.description,
-              quantity: item.quantity,
-              unitAmount: item.unitAmount,
-              accountCode: item.accountCode,
-              taxType: item.taxType || "NONE",
-            }));
-          }
-
-          const response = await client.accountingApi.updateInvoice(
-            connection.tenantId,
-            invoiceId as string,
-            { invoices: [invoice as Invoice] }
-          );
-
-          // Check for validation errors from Xero API
-          if (response.body.invoices?.[0]?.hasErrors) {
-            const errors = response.body.invoices[0].validationErrors;
-            throw new Error(
-              `Invoice update validation failed: ${JSON.stringify(errors)}`
-            );
-          }
-
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(
-                  {
-                    success: true,
-                    invoice: response.body.invoices?.[0],
-                    message: "Invoice updated successfully",
-                  },
-                  null,
-                  2
-                ),
-              },
-            ],
-          };
-        }
-
-        case "xero_create_contact": {
-          const { name, email, phone, addresses } = args;
-
-          // Validate required fields
-          if (!name) {
-            throw new Error("name is required");
-          }
-
-          // Validate addresses if provided
-          if (addresses) {
-            if (!Array.isArray(addresses)) {
-              throw new Error("addresses must be an array");
-            }
-            for (const addr of addresses) {
-              if (
-                !addr.addressType ||
-                !["POBOX", "STREET", "DELIVERY"].includes(addr.addressType)
-              ) {
-                throw new Error(
-                  "Address type must be POBOX, STREET, or DELIVERY"
-                );
-              }
-            }
-          }
-
-          // Construct contact object
-          const contact = {
-            name: name as string,
-            emailAddress: email as string | undefined,
-            phones: phone
-              ? [
-                  {
-                    phoneType: Phone.PhoneTypeEnum.DEFAULT,
-                    phoneNumber: phone as string,
-                  },
-                ]
-              : undefined,
-            addresses: addresses
-              ? (addresses as any[]).map((addr) => ({
-                  addressType: addr.addressType,
-                  addressLine1: addr.addressLine1,
-                  addressLine2: addr.addressLine2,
-                  city: addr.city,
-                  region: addr.region,
-                  postalCode: addr.postalCode,
-                  country: addr.country,
-                }))
-              : undefined,
-          };
-
-          const response = await client.accountingApi.createContacts(
-            connection.tenantId,
-            { contacts: [contact] }
-          );
-
-          // Check for validation errors from Xero API
-          if (response.body.contacts?.[0]?.hasValidationErrors) {
-            const errors = response.body.contacts[0].validationErrors;
-            throw new Error(
-              `Contact validation failed: ${JSON.stringify(errors)}`
-            );
-          }
-
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(
-                  {
-                    success: true,
-                    contact: response.body.contacts?.[0],
-                    message: "Contact created successfully",
-                  },
-                  null,
-                  2
-                ),
-              },
-            ],
-          };
-        }
-
-        case "xero_update_contact": {
-          const { contactId, name, email, phone, addresses } = args;
-
-          // Validate required fields
-          if (!contactId) {
-            throw new Error("contactId is required");
-          }
-
-          // Validate addresses if provided
-          if (addresses) {
-            if (!Array.isArray(addresses)) {
-              throw new Error("addresses must be an array");
-            }
-            for (const addr of addresses) {
-              if (
-                !addr.addressType ||
-                !["POBOX", "STREET", "DELIVERY"].includes(addr.addressType)
-              ) {
-                throw new Error(
-                  "Address type must be POBOX, STREET, or DELIVERY"
-                );
-              }
-            }
-          }
-
-          // Construct contact object with only provided fields
-          const contact: any = {
-            contactID: contactId as string,
-          };
-
-          if (name) contact.name = name as string;
-          if (email) contact.emailAddress = email as string;
-          if (phone) {
-            contact.phones = [
-              {
-                phoneType: "DEFAULT",
-                phoneNumber: phone as string,
-              },
-            ];
-          }
-          if (addresses) {
-            contact.addresses = (addresses as any[]).map((addr) => ({
-              addressType: addr.addressType,
-              addressLine1: addr.addressLine1,
-              addressLine2: addr.addressLine2,
-              city: addr.city,
-              region: addr.region,
-              postalCode: addr.postalCode,
-              country: addr.country,
-            }));
-          }
-
-          const response = await client.accountingApi.updateContact(
+        const response =
+          await client.accountingApi.getReportAgedReceivablesByContact(
             connection.tenantId,
             contactId as string,
-            { contacts: [contact] }
+            date as string | undefined,
+            fromDate as string | undefined,
+            toDate as string | undefined
           );
 
-          // Check for validation errors from Xero API
-          if (response.body.contacts?.[0]?.hasValidationErrors) {
-            const errors = response.body.contacts[0].validationErrors;
-            throw new Error(
-              `Contact update validation failed: ${JSON.stringify(errors)}`
-            );
-          }
-
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(
-                  {
-                    success: true,
-                    contact: response.body.contacts?.[0],
-                    message: "Contact updated successfully",
-                  },
-                  null,
-                  2
-                ),
-              },
-            ],
-          };
-        }
-
-        case "xero_create_payment": {
-          const { invoiceId, accountId, amount, date, reference } = args;
-
-          // Validate required fields
-          if (!invoiceId || !accountId || typeof amount !== "number" || !date) {
-            throw new Error(
-              "invoiceId, accountId, amount, and date are required"
-            );
-          }
-
-          // Construct payment object
-          const payment = {
-            invoice: { invoiceID: invoiceId as string },
-            account: { accountID: accountId as string },
-            amount: amount as number,
-            date: date as string,
-            reference: reference as string | undefined,
-          };
-
-          const response = await client.accountingApi.createPayments(
-            connection.tenantId,
-            { payments: [payment] }
-          );
-
-          // Check for validation errors from Xero API
-          if (response.body.payments?.[0]?.hasValidationErrors) {
-            const errors = response.body.payments[0].validationErrors;
-            throw new Error(
-              `Payment validation failed: ${JSON.stringify(errors)}`
-            );
-          }
-
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(
-                  {
-                    success: true,
-                    payment: response.body.payments?.[0],
-                    message: "Payment created successfully",
-                  },
-                  null,
-                  2
-                ),
-              },
-            ],
-          };
-        }
-
-        case "xero_create_quote": {
-          const { contactId, date, expiryDate, lineItems, reference, status } =
-            args;
-
-          // Validate required fields
-          if (!contactId || !date || !expiryDate || !lineItems) {
-            throw new Error(
-              "contactId, date, expiryDate, and lineItems are required"
-            );
-          }
-
-          // Validate line items array
-          if (!Array.isArray(lineItems) || lineItems.length === 0) {
-            throw new Error("lineItems must be a non-empty array");
-          }
-
-          // Validate each line item
-          for (const item of lineItems) {
-            if (
-              !item.description ||
-              typeof item.quantity !== "number" ||
-              typeof item.unitAmount !== "number" ||
-              !item.accountCode
-            ) {
-              throw new Error(
-                "All line items must have description, quantity, unitAmount, and accountCode"
-              );
-            }
-          }
-
-          // Validate status if provided
-          if (
-            status &&
-            !["DRAFT", "SENT", "ACCEPTED", "DECLINED"].includes(
-              status as string
-            )
-          ) {
-            throw new Error(
-              "Status must be DRAFT, SENT, ACCEPTED, or DECLINED"
-            );
-          }
-
-          // Construct quote object
-          const quote = {
-            contact: {
-              contactID: contactId as string,
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(response.body, null, 2),
             },
-            date: date as string,
-            expiryDate: expiryDate as string,
-            lineItems: (lineItems as any[]).map((item) => ({
-              description: item.description,
-              quantity: item.quantity,
-              unitAmount: item.unitAmount,
-              accountCode: item.accountCode,
-              taxType: item.taxType || "NONE",
-            })),
-            reference: reference as string | undefined,
-            status: status as QuoteStatusCodes | undefined,
-          };
-
-          const response = await client.accountingApi.createQuotes(
-            connection.tenantId,
-            { quotes: [quote] }
-          );
-
-          // Check for validation errors from Xero API
-          if (response.body.quotes?.[0]?.validationErrors?.length) {
-            const errors = response.body.quotes[0].validationErrors;
-            throw new Error(
-              `Quote validation failed: ${JSON.stringify(errors)}`
-            );
-          }
-
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(
-                  {
-                    success: true,
-                    quote: response.body.quotes?.[0],
-                    message: "Quote created successfully",
-                  },
-                  null,
-                  2
-                ),
-              },
-            ],
-          };
-        }
-
-        case "xero_create_credit_note": {
-          const { contactId, date, lineItems, reference, status } = args;
-
-          // Validate required fields
-          if (!contactId || !date || !lineItems) {
-            throw new Error("contactId, date, and lineItems are required");
-          }
-
-          // Validate line items array
-          if (!Array.isArray(lineItems) || lineItems.length === 0) {
-            throw new Error("lineItems must be a non-empty array");
-          }
-
-          // Validate each line item
-          for (const item of lineItems) {
-            if (
-              !item.description ||
-              typeof item.quantity !== "number" ||
-              typeof item.unitAmount !== "number" ||
-              !item.accountCode
-            ) {
-              throw new Error(
-                "All line items must have description, quantity, unitAmount, and accountCode"
-              );
-            }
-          }
-
-          // Validate status if provided
-          if (
-            status &&
-            !["DRAFT", "SUBMITTED", "AUTHORISED", "PAID", "VOIDED"].includes(
-              status as string
-            )
-          ) {
-            throw new Error(
-              "Status must be DRAFT, SUBMITTED, AUTHORISED, PAID, or VOIDED"
-            );
-          }
-
-          // Construct credit note object
-          const creditNote = {
-            type: CreditNote.TypeEnum.ACCRECCREDIT, // Accounts Receivable Credit Note
-            contact: {
-              contactID: contactId as string,
-            },
-            date: date as string,
-            lineItems: (lineItems as any[]).map((item) => ({
-              description: item.description,
-              quantity: item.quantity,
-              unitAmount: item.unitAmount,
-              accountCode: item.accountCode,
-              taxType: item.taxType || "NONE",
-            })),
-            reference: reference as string | undefined,
-            status: status as CreditNote.StatusEnum | undefined,
-          };
-
-          const response = await client.accountingApi.createCreditNotes(
-            connection.tenantId,
-            { creditNotes: [creditNote] }
-          );
-
-          // Check for validation errors from Xero API
-          if (response.body.creditNotes?.[0]?.hasErrors) {
-            const errors = response.body.creditNotes[0].validationErrors;
-            throw new Error(
-              `Credit note validation failed: ${JSON.stringify(errors)}`
-            );
-          }
-
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(
-                  {
-                    success: true,
-                    creditNote: response.body.creditNotes?.[0],
-                    message: "Credit note created successfully",
-                  },
-                  null,
-                  2
-                ),
-              },
-            ],
-          };
-        }
-
-        case "xero_update_credit_note": {
-          const {
-            creditNoteId,
-            contactId,
-            date,
-            lineItems,
-            reference,
-            status,
-          } = args;
-
-          // Validate required fields
-          if (!creditNoteId) {
-            throw new Error("creditNoteId is required");
-          }
-
-          // Validate line items if provided
-          if (lineItems) {
-            if (!Array.isArray(lineItems) || lineItems.length === 0) {
-              throw new Error("lineItems must be a non-empty array");
-            }
-            for (const item of lineItems) {
-              if (
-                !item.description ||
-                typeof item.quantity !== "number" ||
-                typeof item.unitAmount !== "number" ||
-                !item.accountCode
-              ) {
-                throw new Error(
-                  "All line items must have description, quantity, unitAmount, and accountCode"
-                );
-              }
-            }
-          }
-
-          // Validate status if provided
-          if (
-            status &&
-            !["DRAFT", "SUBMITTED", "AUTHORISED", "PAID", "VOIDED"].includes(
-              status as string
-            )
-          ) {
-            throw new Error(
-              "Status must be DRAFT, SUBMITTED, AUTHORISED, PAID, or VOIDED"
-            );
-          }
-
-          // Construct credit note object with only provided fields
-          const creditNote: any = {
-            creditNoteID: creditNoteId as string,
-          };
-
-          if (contactId)
-            creditNote.contact = { contactID: contactId as string };
-          if (date) creditNote.date = date as string;
-          if (reference) creditNote.reference = reference as string;
-          if (status) creditNote.status = status as CreditNote.StatusEnum;
-          if (lineItems) {
-            creditNote.lineItems = (lineItems as any[]).map((item) => ({
-              description: item.description,
-              quantity: item.quantity,
-              unitAmount: item.unitAmount,
-              accountCode: item.accountCode,
-              taxType: item.taxType || "NONE",
-            }));
-          }
-
-          const response = await client.accountingApi.updateCreditNote(
-            connection.tenantId,
-            creditNoteId as string,
-            { creditNotes: [creditNote] }
-          );
-
-          // Check for validation errors from Xero API
-          if (response.body.creditNotes?.[0]?.hasErrors) {
-            const errors = response.body.creditNotes[0].validationErrors;
-            throw new Error(
-              `Credit note update validation failed: ${JSON.stringify(errors)}`
-            );
-          }
-
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(
-                  {
-                    success: true,
-                    creditNote: response.body.creditNotes?.[0],
-                    message: "Credit note updated successfully",
-                  },
-                  null,
-                  2
-                ),
-              },
-            ],
-          };
-        }
-
-        default:
-          throw new Error(`Unknown Xero tool: ${toolName}`);
+          ],
+        };
       }
+
+      case "xero_get_aged_payables": {
+        const { contactId, date, fromDate, toDate } = args;
+
+        if (!contactId) {
+          throw new Error("contactId is required");
+        }
+
+        const response =
+          await client.accountingApi.getReportAgedPayablesByContact(
+            connection.tenantId,
+            contactId as string,
+            date as string | undefined,
+            fromDate as string | undefined,
+            toDate as string | undefined
+          );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(response.body, null, 2),
+            },
+          ],
+        };
+      }
+
+      case "xero_create_invoice": {
+        const { contactId, date, dueDate, lineItems, reference, status } = args;
+
+        // Validate required fields
+        if (!contactId || !date || !dueDate || !lineItems) {
+          throw new Error(
+            "contactId, date, dueDate, and lineItems are required"
+          );
+        }
+
+        // Validate line items array
+        if (!Array.isArray(lineItems) || lineItems.length === 0) {
+          throw new Error("lineItems must be a non-empty array");
+        }
+
+        // Validate each line item
+        for (const item of lineItems) {
+          if (
+            !item.description ||
+            typeof item.quantity !== "number" ||
+            typeof item.unitAmount !== "number" ||
+            !item.accountCode
+          ) {
+            throw new Error(
+              "All line items must have description, quantity, unitAmount, and accountCode"
+            );
+          }
+        }
+
+        // Validate status if provided
+        if (status && !["DRAFT", "AUTHORISED"].includes(status as string)) {
+          throw new Error("Status must be either DRAFT or AUTHORISED");
+        }
+
+        // Construct invoice object
+        const invoice: Invoice = {
+          type: Invoice.TypeEnum.ACCREC, // Accounts Receivable
+          contact: {
+            contactID: contactId as string,
+          },
+          date: date as string,
+          dueDate: dueDate as string,
+          lineItems: (lineItems as any[]).map((item) => ({
+            description: item.description,
+            quantity: item.quantity,
+            unitAmount: item.unitAmount,
+            accountCode: item.accountCode,
+            taxType: item.taxType || "NONE",
+          })),
+          status:
+            (status as string) === "AUTHORISED"
+              ? Invoice.StatusEnum.AUTHORISED
+              : Invoice.StatusEnum.DRAFT,
+          reference: reference as string | undefined,
+        };
+
+        const response = await client.accountingApi.createInvoices(
+          connection.tenantId,
+          {
+            invoices: [invoice],
+          }
+        );
+
+        // Check for validation errors from Xero API
+        if (response.body.invoices?.[0]?.hasErrors) {
+          const errors = response.body.invoices[0].validationErrors;
+          throw new Error(
+            `Invoice validation failed: ${JSON.stringify(errors)}`
+          );
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  success: true,
+                  invoice: response.body.invoices?.[0],
+                  message: "Invoice created successfully",
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
+
+      case "xero_update_invoice": {
+        const {
+          invoiceId,
+          contactId,
+          date,
+          dueDate,
+          lineItems,
+          reference,
+          status,
+        } = args;
+
+        // Validate required fields
+        if (!invoiceId) {
+          throw new Error("invoiceId is required");
+        }
+
+        // Validate line items if provided
+        if (lineItems) {
+          if (!Array.isArray(lineItems) || lineItems.length === 0) {
+            throw new Error("lineItems must be a non-empty array");
+          }
+          for (const item of lineItems) {
+            if (
+              !item.description ||
+              typeof item.quantity !== "number" ||
+              typeof item.unitAmount !== "number" ||
+              !item.accountCode
+            ) {
+              throw new Error(
+                "All line items must have description, quantity, unitAmount, and accountCode"
+              );
+            }
+          }
+        }
+
+        // Validate status if provided
+        if (status && !["DRAFT", "AUTHORISED"].includes(status as string)) {
+          throw new Error("Status must be either DRAFT or AUTHORISED");
+        }
+
+        // Construct invoice object with only provided fields
+        const invoice: Partial<Invoice> = {
+          invoiceID: invoiceId as string,
+        };
+
+        if (contactId) invoice.contact = { contactID: contactId as string };
+        if (date) invoice.date = date as string;
+        if (dueDate) invoice.dueDate = dueDate as string;
+        if (reference) invoice.reference = reference as string;
+        if (status) {
+          invoice.status =
+            status === "AUTHORISED"
+              ? Invoice.StatusEnum.AUTHORISED
+              : Invoice.StatusEnum.DRAFT;
+        }
+        if (lineItems) {
+          invoice.lineItems = (lineItems as any[]).map((item) => ({
+            description: item.description,
+            quantity: item.quantity,
+            unitAmount: item.unitAmount,
+            accountCode: item.accountCode,
+            taxType: item.taxType || "NONE",
+          }));
+        }
+
+        const response = await client.accountingApi.updateInvoice(
+          connection.tenantId,
+          invoiceId as string,
+          { invoices: [invoice as Invoice] }
+        );
+
+        // Check for validation errors from Xero API
+        if (response.body.invoices?.[0]?.hasErrors) {
+          const errors = response.body.invoices[0].validationErrors;
+          throw new Error(
+            `Invoice update validation failed: ${JSON.stringify(errors)}`
+          );
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  success: true,
+                  invoice: response.body.invoices?.[0],
+                  message: "Invoice updated successfully",
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
+
+      case "xero_create_contact": {
+        const { name, email, phone, addresses } = args;
+
+        // Validate required fields
+        if (!name) {
+          throw new Error("name is required");
+        }
+
+        // Validate addresses if provided
+        if (addresses) {
+          if (!Array.isArray(addresses)) {
+            throw new Error("addresses must be an array");
+          }
+          for (const addr of addresses) {
+            if (
+              !addr.addressType ||
+              !["POBOX", "STREET", "DELIVERY"].includes(addr.addressType)
+            ) {
+              throw new Error(
+                "Address type must be POBOX, STREET, or DELIVERY"
+              );
+            }
+          }
+        }
+
+        // Construct contact object
+        const contact = {
+          name: name as string,
+          emailAddress: email as string | undefined,
+          phones: phone
+            ? [
+                {
+                  phoneType: Phone.PhoneTypeEnum.DEFAULT,
+                  phoneNumber: phone as string,
+                },
+              ]
+            : undefined,
+          addresses: addresses
+            ? (addresses as any[]).map((addr) => ({
+                addressType: addr.addressType,
+                addressLine1: addr.addressLine1,
+                addressLine2: addr.addressLine2,
+                city: addr.city,
+                region: addr.region,
+                postalCode: addr.postalCode,
+                country: addr.country,
+              }))
+            : undefined,
+        };
+
+        const response = await client.accountingApi.createContacts(
+          connection.tenantId,
+          { contacts: [contact] }
+        );
+
+        // Check for validation errors from Xero API
+        if (response.body.contacts?.[0]?.hasValidationErrors) {
+          const errors = response.body.contacts[0].validationErrors;
+          throw new Error(
+            `Contact validation failed: ${JSON.stringify(errors)}`
+          );
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  success: true,
+                  contact: response.body.contacts?.[0],
+                  message: "Contact created successfully",
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
+
+      case "xero_update_contact": {
+        const { contactId, name, email, phone, addresses } = args;
+
+        // Validate required fields
+        if (!contactId) {
+          throw new Error("contactId is required");
+        }
+
+        // Validate addresses if provided
+        if (addresses) {
+          if (!Array.isArray(addresses)) {
+            throw new Error("addresses must be an array");
+          }
+          for (const addr of addresses) {
+            if (
+              !addr.addressType ||
+              !["POBOX", "STREET", "DELIVERY"].includes(addr.addressType)
+            ) {
+              throw new Error(
+                "Address type must be POBOX, STREET, or DELIVERY"
+              );
+            }
+          }
+        }
+
+        // Construct contact object with only provided fields
+        const contact: any = {
+          contactID: contactId as string,
+        };
+
+        if (name) contact.name = name as string;
+        if (email) contact.emailAddress = email as string;
+        if (phone) {
+          contact.phones = [
+            {
+              phoneType: "DEFAULT",
+              phoneNumber: phone as string,
+            },
+          ];
+        }
+        if (addresses) {
+          contact.addresses = (addresses as any[]).map((addr) => ({
+            addressType: addr.addressType,
+            addressLine1: addr.addressLine1,
+            addressLine2: addr.addressLine2,
+            city: addr.city,
+            region: addr.region,
+            postalCode: addr.postalCode,
+            country: addr.country,
+          }));
+        }
+
+        const response = await client.accountingApi.updateContact(
+          connection.tenantId,
+          contactId as string,
+          { contacts: [contact] }
+        );
+
+        // Check for validation errors from Xero API
+        if (response.body.contacts?.[0]?.hasValidationErrors) {
+          const errors = response.body.contacts[0].validationErrors;
+          throw new Error(
+            `Contact update validation failed: ${JSON.stringify(errors)}`
+          );
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  success: true,
+                  contact: response.body.contacts?.[0],
+                  message: "Contact updated successfully",
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
+
+      case "xero_create_payment": {
+        const { invoiceId, accountId, amount, date, reference } = args;
+
+        // Validate required fields
+        if (!invoiceId || !accountId || typeof amount !== "number" || !date) {
+          throw new Error(
+            "invoiceId, accountId, amount, and date are required"
+          );
+        }
+
+        // Construct payment object
+        const payment = {
+          invoice: { invoiceID: invoiceId as string },
+          account: { accountID: accountId as string },
+          amount: amount as number,
+          date: date as string,
+          reference: reference as string | undefined,
+        };
+
+        const response = await client.accountingApi.createPayments(
+          connection.tenantId,
+          { payments: [payment] }
+        );
+
+        // Check for validation errors from Xero API
+        if (response.body.payments?.[0]?.hasValidationErrors) {
+          const errors = response.body.payments[0].validationErrors;
+          throw new Error(
+            `Payment validation failed: ${JSON.stringify(errors)}`
+          );
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  success: true,
+                  payment: response.body.payments?.[0],
+                  message: "Payment created successfully",
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
+
+      case "xero_create_quote": {
+        const { contactId, date, expiryDate, lineItems, reference, status } =
+          args;
+
+        // Validate required fields
+        if (!contactId || !date || !expiryDate || !lineItems) {
+          throw new Error(
+            "contactId, date, expiryDate, and lineItems are required"
+          );
+        }
+
+        // Validate line items array
+        if (!Array.isArray(lineItems) || lineItems.length === 0) {
+          throw new Error("lineItems must be a non-empty array");
+        }
+
+        // Validate each line item
+        for (const item of lineItems) {
+          if (
+            !item.description ||
+            typeof item.quantity !== "number" ||
+            typeof item.unitAmount !== "number" ||
+            !item.accountCode
+          ) {
+            throw new Error(
+              "All line items must have description, quantity, unitAmount, and accountCode"
+            );
+          }
+        }
+
+        // Validate status if provided
+        if (
+          status &&
+          !["DRAFT", "SENT", "ACCEPTED", "DECLINED"].includes(status as string)
+        ) {
+          throw new Error("Status must be DRAFT, SENT, ACCEPTED, or DECLINED");
+        }
+
+        // Construct quote object
+        const quote = {
+          contact: {
+            contactID: contactId as string,
+          },
+          date: date as string,
+          expiryDate: expiryDate as string,
+          lineItems: (lineItems as any[]).map((item) => ({
+            description: item.description,
+            quantity: item.quantity,
+            unitAmount: item.unitAmount,
+            accountCode: item.accountCode,
+            taxType: item.taxType || "NONE",
+          })),
+          reference: reference as string | undefined,
+          status: status as QuoteStatusCodes | undefined,
+        };
+
+        const response = await client.accountingApi.createQuotes(
+          connection.tenantId,
+          { quotes: [quote] }
+        );
+
+        // Check for validation errors from Xero API
+        if (response.body.quotes?.[0]?.validationErrors?.length) {
+          const errors = response.body.quotes[0].validationErrors;
+          throw new Error(`Quote validation failed: ${JSON.stringify(errors)}`);
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  success: true,
+                  quote: response.body.quotes?.[0],
+                  message: "Quote created successfully",
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
+
+      case "xero_create_credit_note": {
+        const { contactId, date, lineItems, reference, status } = args;
+
+        // Validate required fields
+        if (!contactId || !date || !lineItems) {
+          throw new Error("contactId, date, and lineItems are required");
+        }
+
+        // Validate line items array
+        if (!Array.isArray(lineItems) || lineItems.length === 0) {
+          throw new Error("lineItems must be a non-empty array");
+        }
+
+        // Validate each line item
+        for (const item of lineItems) {
+          if (
+            !item.description ||
+            typeof item.quantity !== "number" ||
+            typeof item.unitAmount !== "number" ||
+            !item.accountCode
+          ) {
+            throw new Error(
+              "All line items must have description, quantity, unitAmount, and accountCode"
+            );
+          }
+        }
+
+        // Validate status if provided
+        if (
+          status &&
+          !["DRAFT", "SUBMITTED", "AUTHORISED", "PAID", "VOIDED"].includes(
+            status as string
+          )
+        ) {
+          throw new Error(
+            "Status must be DRAFT, SUBMITTED, AUTHORISED, PAID, or VOIDED"
+          );
+        }
+
+        // Construct credit note object
+        const creditNote = {
+          type: CreditNote.TypeEnum.ACCRECCREDIT, // Accounts Receivable Credit Note
+          contact: {
+            contactID: contactId as string,
+          },
+          date: date as string,
+          lineItems: (lineItems as any[]).map((item) => ({
+            description: item.description,
+            quantity: item.quantity,
+            unitAmount: item.unitAmount,
+            accountCode: item.accountCode,
+            taxType: item.taxType || "NONE",
+          })),
+          reference: reference as string | undefined,
+          status: status as CreditNote.StatusEnum | undefined,
+        };
+
+        const response = await client.accountingApi.createCreditNotes(
+          connection.tenantId,
+          { creditNotes: [creditNote] }
+        );
+
+        // Check for validation errors from Xero API
+        if (response.body.creditNotes?.[0]?.hasErrors) {
+          const errors = response.body.creditNotes[0].validationErrors;
+          throw new Error(
+            `Credit note validation failed: ${JSON.stringify(errors)}`
+          );
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  success: true,
+                  creditNote: response.body.creditNotes?.[0],
+                  message: "Credit note created successfully",
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
+
+      case "xero_update_credit_note": {
+        const { creditNoteId, contactId, date, lineItems, reference, status } =
+          args;
+
+        // Validate required fields
+        if (!creditNoteId) {
+          throw new Error("creditNoteId is required");
+        }
+
+        // Validate line items if provided
+        if (lineItems) {
+          if (!Array.isArray(lineItems) || lineItems.length === 0) {
+            throw new Error("lineItems must be a non-empty array");
+          }
+          for (const item of lineItems) {
+            if (
+              !item.description ||
+              typeof item.quantity !== "number" ||
+              typeof item.unitAmount !== "number" ||
+              !item.accountCode
+            ) {
+              throw new Error(
+                "All line items must have description, quantity, unitAmount, and accountCode"
+              );
+            }
+          }
+        }
+
+        // Validate status if provided
+        if (
+          status &&
+          !["DRAFT", "SUBMITTED", "AUTHORISED", "PAID", "VOIDED"].includes(
+            status as string
+          )
+        ) {
+          throw new Error(
+            "Status must be DRAFT, SUBMITTED, AUTHORISED, PAID, or VOIDED"
+          );
+        }
+
+        // Construct credit note object with only provided fields
+        const creditNote: any = {
+          creditNoteID: creditNoteId as string,
+        };
+
+        if (contactId) creditNote.contact = { contactID: contactId as string };
+        if (date) creditNote.date = date as string;
+        if (reference) creditNote.reference = reference as string;
+        if (status) creditNote.status = status as CreditNote.StatusEnum;
+        if (lineItems) {
+          creditNote.lineItems = (lineItems as any[]).map((item) => ({
+            description: item.description,
+            quantity: item.quantity,
+            unitAmount: item.unitAmount,
+            accountCode: item.accountCode,
+            taxType: item.taxType || "NONE",
+          }));
+        }
+
+        const response = await client.accountingApi.updateCreditNote(
+          connection.tenantId,
+          creditNoteId as string,
+          { creditNotes: [creditNote] }
+        );
+
+        // Check for validation errors from Xero API
+        if (response.body.creditNotes?.[0]?.hasErrors) {
+          const errors = response.body.creditNotes[0].validationErrors;
+          throw new Error(
+            `Credit note update validation failed: ${JSON.stringify(errors)}`
+          );
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  success: true,
+                  creditNote: response.body.creditNotes?.[0],
+                  message: "Credit note updated successfully",
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
+
+      default:
+        throw new Error(`Unknown Xero tool: ${toolName}`);
+    }
   } finally {
     await persistTokenSet(client, connection);
   }

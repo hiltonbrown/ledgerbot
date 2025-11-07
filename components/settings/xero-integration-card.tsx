@@ -48,8 +48,7 @@ export function XeroIntegrationCard({
     }
 
     const initialActive =
-      initialConnections.find((conn) => conn.isActive) ||
-      initialConnections[0];
+      initialConnections.find((conn) => conn.isActive) || initialConnections[0];
 
     return initialActive.id;
   });
@@ -64,8 +63,8 @@ export function XeroIntegrationCard({
     activeConnection?.connectionStatus === "connected"
       ? "Connected"
       : activeConnection?.connectionStatus === "error"
-      ? "Connection Error"
-      : "Not Connected";
+        ? "Connection Error"
+        : "Not Connected";
   const isStatusConnected = activeConnection?.connectionStatus === "connected";
 
   // Check for OAuth callback success/error/switch
@@ -185,7 +184,8 @@ export function XeroIntegrationCard({
         throw new Error(errorMsg);
       }
       const refreshedData = await refreshed.json();
-      const refreshedConnections: XeroConnection[] = refreshedData?.connections ?? [];
+      const refreshedConnections: XeroConnection[] =
+        refreshedData?.connections ?? [];
 
       setConnections(refreshedConnections);
       const newActive =
@@ -292,8 +292,10 @@ export function XeroIntegrationCard({
                       <summary className="cursor-pointer text-red-700 text-xs hover:text-red-800 dark:text-red-400 dark:hover:text-red-300">
                         Technical Details
                       </summary>
-                      <div className="mt-1 rounded bg-red-100 p-2 font-mono text-red-900 text-[10px] dark:bg-red-900/20 dark:text-red-200">
-                        <p>Correlation ID: {activeConnection.lastCorrelationId}</p>
+                      <div className="mt-1 rounded bg-red-100 p-2 font-mono text-[10px] text-red-900 dark:bg-red-900/20 dark:text-red-200">
+                        <p>
+                          Correlation ID: {activeConnection.lastCorrelationId}
+                        </p>
                         <p className="mt-1 text-red-700 dark:text-red-400">
                           Include this ID when contacting support
                         </p>
@@ -317,7 +319,6 @@ export function XeroIntegrationCard({
               )}
             </div>
           )}
-
         </div>
       )}
 
@@ -354,7 +355,10 @@ export function XeroIntegrationCard({
         </Button>
       </div>
       <div className="space-y-2">
-        <label className="font-medium text-foreground text-xs" htmlFor="company-select">
+        <label
+          className="font-medium text-foreground text-xs"
+          htmlFor="company-select"
+        >
           Company
         </label>
         <Select
@@ -362,7 +366,7 @@ export function XeroIntegrationCard({
           onValueChange={handleCompanySelect}
           value={selectValue}
         >
-          <SelectTrigger id="company-select" aria-label="Select Xero company">
+          <SelectTrigger aria-label="Select Xero company" id="company-select">
             <SelectValue placeholder="Add new..." />
           </SelectTrigger>
           <SelectContent>

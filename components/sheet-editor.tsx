@@ -89,7 +89,8 @@ const findCsvStartIndex = (lines: string[]) => {
 
     for (
       let lookAheadIndex = index + 1;
-      lookAheadIndex < lines.length && lookAheadIndex <= index + CSV_LOOKAHEAD_WINDOW;
+      lookAheadIndex < lines.length &&
+      lookAheadIndex <= index + CSV_LOOKAHEAD_WINDOW;
       lookAheadIndex += 1
     ) {
       const lookAheadLine = lines[lookAheadIndex].trim();
@@ -135,7 +136,19 @@ const sanitizeCsvContent = (rawContent: string) => {
     return rawContent;
   }
 
-  const lines = rawContent.split("\n");
+  let content = rawContent;
+
+  // Remove markdown code blocks if present (```csv ... ``` or ``` ... ```)
+  const codeBlockRegex = /^```(?:csv)?\s*\n([\s\S]*?)\n```$/m;
+  const codeBlockMatch = content.match(codeBlockRegex);
+  if (codeBlockMatch) {
+    content = codeBlockMatch[1];
+  }
+
+  // Remove single-line code blocks
+  content = content.replace(/^```(?:csv)?\s*/gm, "").replace(/```$/gm, "");
+
+  const lines = content.split("\n");
 
   const csvStartIndex = findCsvStartIndex(lines);
 

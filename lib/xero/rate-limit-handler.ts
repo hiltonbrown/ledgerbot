@@ -114,25 +114,27 @@ export function shouldWaitForRateLimit(rateLimitInfo: {
   }
 
   // Check if we're close to limits (proactive throttling)
-  if (rateLimitInfo.rateLimitMinuteRemaining !== null) {
-    if (rateLimitInfo.rateLimitMinuteRemaining <= 2) {
-      return {
-        wait: true,
-        waitMs: 60_000, // Wait 1 minute
-        reason: "Approaching minute rate limit (2 or fewer calls remaining)",
-      };
-    }
+  if (
+    rateLimitInfo.rateLimitMinuteRemaining !== null &&
+    rateLimitInfo.rateLimitMinuteRemaining <= 2
+  ) {
+    return {
+      wait: true,
+      waitMs: 60_000, // Wait 1 minute
+      reason: "Approaching minute rate limit (2 or fewer calls remaining)",
+    };
   }
 
-  if (rateLimitInfo.rateLimitDayRemaining !== null) {
-    if (rateLimitInfo.rateLimitDayRemaining <= 50) {
-      // Reserve last 50 calls for critical operations
-      return {
-        wait: true,
-        waitMs: 300_000, // Wait 5 minutes
-        reason: "Approaching daily rate limit (50 or fewer calls remaining)",
-      };
-    }
+  if (
+    rateLimitInfo.rateLimitDayRemaining !== null &&
+    rateLimitInfo.rateLimitDayRemaining <= 50
+  ) {
+    // Reserve last 50 calls for critical operations
+    return {
+      wait: true,
+      waitMs: 300_000, // Wait 5 minutes
+      reason: "Approaching daily rate limit (50 or fewer calls remaining)",
+    };
   }
 
   return { wait: false };
@@ -219,10 +221,7 @@ export function supportsPagination(toolName: string): boolean {
  * Check if response indicates more pages are available
  * Xero returns fewer records than pageSize when you've reached the last page
  */
-export function hasMorePages(
-  recordCount: number,
-  pageSize: number
-): boolean {
+export function hasMorePages(recordCount: number, pageSize: number): boolean {
   return recordCount >= pageSize;
 }
 

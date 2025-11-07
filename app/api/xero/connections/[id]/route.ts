@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
+import {
+  deactivateXeroConnection,
+  getXeroConnectionById,
+} from "@/lib/db/queries";
 import { deleteXeroConnection } from "@/lib/xero/connection-manager";
-import { getXeroConnectionById, deactivateXeroConnection } from "@/lib/db/queries";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,10 +53,7 @@ export async function DELETE(
           `Successfully deleted Xero connection ${connection.xeroConnectionId} from Xero API`
         );
       } catch (error) {
-        console.error(
-          "Failed to delete connection from Xero API:",
-          error
-        );
+        console.error("Failed to delete connection from Xero API:", error);
         // Continue with database deletion even if Xero API call fails
       }
     }

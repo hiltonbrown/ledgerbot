@@ -251,7 +251,9 @@ export const xeroConnection = pgTable("XeroConnection", {
   xeroCreatedDateUtc: timestamp("xeroCreatedDateUtc"), // When connection was first created in Xero
   xeroUpdatedDateUtc: timestamp("xeroUpdatedDateUtc"), // Last time user re-authorized in Xero
   isActive: boolean("isActive").notNull().default(true),
-  connectionStatus: varchar("connectionStatus", { length: 50 }).default("connected"), // connected, disconnected, error
+  connectionStatus: varchar("connectionStatus", { length: 50 }).default(
+    "connected"
+  ), // connected, disconnected, error
   lastError: text("lastError"), // Last connection error message for user alerts
   lastErrorType: varchar("lastErrorType", { length: 50 }), // validation, authorization, token, rate_limit, server, network
   lastCorrelationId: varchar("lastCorrelationId", { length: 255 }), // X-Correlation-Id from Xero for support tickets
