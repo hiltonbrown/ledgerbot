@@ -54,8 +54,12 @@ export function XeroIntegrationCard({
     return initialActive.id;
   });
 
+  useEffect(() => {
+    setConnections(initialConnections);
+  }, [initialConnections]);
+
   const activeConnection = connections.find((conn) => conn.isActive);
-  const isConnected = connections.length > 0;
+  const hasConnections = connections.length > 0;
   const connectionStatusLabel =
     activeConnection?.connectionStatus === "connected"
       ? "Connected"
@@ -230,7 +234,11 @@ export function XeroIntegrationCard({
     await handleSwitch(value);
   };
 
-  const selectValue = selectedCompanyId === "" ? undefined : selectedCompanyId;
+  const selectValue = hasConnections
+    ? selectedCompanyId === ""
+      ? undefined
+      : selectedCompanyId
+    : "add-new";
   const selectDisabled = isConnecting || isDisconnecting || isSwitching;
 
   return (
@@ -240,12 +248,12 @@ export function XeroIntegrationCard({
           {integration.name}
         </h3>
         <span className="rounded-full border px-2 py-1 font-medium text-muted-foreground text-xs capitalize">
-          {isConnected ? "connected" : "available"}
+          {hasConnections ? "connected" : "available"}
         </span>
       </div>
       <p className="text-muted-foreground text-sm">{integration.description}</p>
 
-      {isConnected && activeConnection && (
+      {hasConnections && activeConnection && (
         <div className="space-y-3">
           <div className="rounded-md bg-muted/50 p-3 text-xs">
             <p className="font-medium text-foreground">
@@ -327,7 +335,9 @@ export function XeroIntegrationCard({
 
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <Button
-          disabled={isConnected || isConnecting || isDisconnecting || isSwitching}
+          disabled={
+            hasConnections || isConnecting || isDisconnecting || isSwitching
+          }
           onClick={handleConnect}
           type="button"
           variant="default"
@@ -335,7 +345,7 @@ export function XeroIntegrationCard({
           {isConnecting ? "Connecting..." : "Connect"}
         </Button>
         <Button
-          disabled={!isConnected || isDisconnecting || isConnecting}
+          disabled={!hasConnections || isDisconnecting || isConnecting}
           onClick={handleDisconnect}
           type="button"
           variant="destructive"
