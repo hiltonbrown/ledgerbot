@@ -131,7 +131,6 @@ const sanitizeCsvContent = (rawContent: string) => {
   }
 
   return normalizedLines.join("\n");
-
 };
 
 const PureSpreadsheetEditor = ({ content, saveContent }: SheetEditorProps) => {
