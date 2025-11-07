@@ -134,6 +134,29 @@ const PurePreviewMessage = ({
             }
 
             if (type === "text") {
+              // Check if this message has a sheet creation tool call
+              const hasSheetTool = message.parts.some(
+                (p) =>
+                  p.type === "tool-createDocument" &&
+                  p.input &&
+                  typeof p.input === "object" &&
+                  "kind" in p.input &&
+                  p.input.kind === "sheet"
+              );
+
+              // If there's a sheet tool, skip rendering text that looks like CSV
+              if (hasSheetTool && part.text) {
+                const trimmedText = part.text.trim();
+                // Check if text contains CSV-like content (has commas and multiple lines)
+                const looksLikeCSV =
+                  trimmedText.includes(",") &&
+                  trimmedText.split("\n").length > 2;
+
+                if (looksLikeCSV) {
+                  return null; // Don't render CSV text when sheet artifact is present
+                }
+              }
+
               if (mode === "view") {
                 return (
                   <div key={key}>
