@@ -48,6 +48,8 @@ export function XeroIntegrationCard({
   const connectionStatusLabel =
     activeConnection?.connectionStatus === "connected"
       ? "Connected"
+      : activeConnection?.connectionStatus === "error"
+      ? "Connection Error"
       : "Not Connected";
   const isStatusConnected = connectionStatusLabel === "Connected";
 
