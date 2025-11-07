@@ -42,9 +42,31 @@ export function XeroIntegrationCard({
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSwitching, setIsSwitching] = useState(false);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>(() => {
+    if (initialConnections.length === 0) {
+      return "";
+    }
+
+    const initialActive =
+      initialConnections.find((conn) => conn.isActive) ||
+      initialConnections[0];
+
+    return initialActive.id;
+  });
+
+  useEffect(() => {
+    setConnections(initialConnections);
+  }, [initialConnections]);
 
   const activeConnection = connections.find((conn) => conn.isActive);
-  const isConnected = connections.length > 0;
+  const hasConnections = connections.length > 0;
+  const connectionStatusLabel =
+    activeConnection?.connectionStatus === "connected"
+      ? "Connected"
+      : activeConnection?.connectionStatus === "error"
+      ? "Connection Error"
+      : "Not Connected";
+  const isStatusConnected = activeConnection?.connectionStatus === "connected";
 
   // Check for OAuth callback success/error/switch
   const router = useRouter();
@@ -73,6 +95,7 @@ export function XeroIntegrationCard({
   const handleConnect = async () => {
     setIsConnecting(true);
     setError(null);
+    setSuccessMessage(null);
 
     try {
       const response = await fetch("/api/xero/auth");
@@ -97,6 +120,7 @@ export function XeroIntegrationCard({
   const handleDisconnect = async () => {
     setIsDisconnecting(true);
     setError(null);
+    setSuccessMessage(null);
 
     try {
       const response = await fetch("/api/xero/disconnect", {
@@ -104,10 +128,21 @@ export function XeroIntegrationCard({
       });
 
       if (!response.ok) {
-        throw new Error("Failed to disconnect Xero");
+        let errorMessage = "Failed to disconnect Xero";
+        try {
+          const errorData = await response.json();
+          if (errorData && typeof errorData.error === "string") {
+            errorMessage = errorData.error;
+          }
+        } catch (parseError) {
+          console.error("Failed to parse disconnect error:", parseError);
+        }
+        throw new Error(errorMessage);
       }
 
       setConnections([]);
+      setSuccessMessage("Disconnected from Xero.");
+      router.refresh();
     } catch (err) {
       console.error("Xero disconnection error:", err);
       setError(
@@ -149,9 +184,16 @@ export function XeroIntegrationCard({
         }
         throw new Error(errorMsg);
       }
-      const refreshedConnections: XeroConnection[] = await refreshed.json();
+      const refreshedData = await refreshed.json();
+      const refreshedConnections: XeroConnection[] = refreshedData?.connections ?? [];
+
       setConnections(refreshedConnections);
+      const newActive =
+        refreshedConnections.find((conn) => conn.isActive) ??
+        refreshedConnections[0];
+      setSelectedCompanyId(newActive?.id ?? "");
       setSuccessMessage("Successfully switched organization!");
+      router.refresh();
     } catch (err) {
       console.error("Organization switch error:", err);
       setError(
@@ -162,6 +204,43 @@ export function XeroIntegrationCard({
     }
   };
 
+  useEffect(() => {
+    if (connections.length === 0) {
+      setSelectedCompanyId("");
+      return;
+    }
+
+    const active = connections.find((conn) => conn.isActive);
+    if (active) {
+      setSelectedCompanyId(active.id);
+      return;
+    }
+
+    setSelectedCompanyId(connections[0].id);
+  }, [connections]);
+
+  const handleCompanySelect = async (value: string) => {
+    if (value === "add-new") {
+      // Do not update selectedCompanyId here; let OAuth callback flow handle it
+      void handleConnect();
+      return;
+    }
+
+    if (!value || value === selectedCompanyId) {
+      return;
+    }
+
+    setSelectedCompanyId(value);
+    await handleSwitch(value);
+  };
+
+  const selectValue = hasConnections
+    ? selectedCompanyId === ""
+      ? undefined
+      : selectedCompanyId
+    : "add-new";
+  const selectDisabled = isConnecting || isDisconnecting || isSwitching;
+
   return (
     <div className="flex flex-col gap-3 rounded-lg border bg-muted/30 p-4">
       <div className="flex items-center justify-between gap-3">
@@ -169,33 +248,27 @@ export function XeroIntegrationCard({
           {integration.name}
         </h3>
         <span className="rounded-full border px-2 py-1 font-medium text-muted-foreground text-xs capitalize">
-          {isConnected ? "connected" : "available"}
+          {hasConnections ? "connected" : "available"}
         </span>
       </div>
       <p className="text-muted-foreground text-sm">{integration.description}</p>
 
-      {isConnected && activeConnection && (
+      {hasConnections && activeConnection && (
         <div className="space-y-3">
           <div className="rounded-md bg-muted/50 p-3 text-xs">
             <p className="font-medium text-foreground">
               Organisation: {activeConnection.tenantName || "Unknown"}
             </p>
-            <p className="text-muted-foreground">
-              Token expires:{" "}
-              {new Date(activeConnection.expiresAt).toLocaleDateString("en-AU")}
-            </p>
-            {activeConnection.connectionStatus === "error" && (
-              <div className="mt-2 flex items-center gap-1.5">
-                <span className="inline-block h-2 w-2 rounded-full bg-red-500" />
-                <span className="font-medium text-red-600">Connection Error</span>
-              </div>
-            )}
-            {activeConnection.connectionStatus === "connected" && (
-              <div className="mt-2 flex items-center gap-1.5">
-                <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
-                <span className="font-medium text-green-600">Connected</span>
-              </div>
-            )}
+            <div className="mt-2 flex items-center gap-1.5">
+              <span
+                className={`inline-block h-2 w-2 rounded-full ${isStatusConnected ? "bg-green-500" : "bg-red-500"}`}
+              />
+              <span
+                className={`font-medium ${isStatusConnected ? "text-green-600" : "text-red-600"}`}
+              >
+                {connectionStatusLabel}
+              </span>
+            </div>
           </div>
 
           {/* Error Details Section */}
@@ -245,39 +318,6 @@ export function XeroIntegrationCard({
             </div>
           )}
 
-          {connections.length > 1 && (
-            <div className="space-y-2">
-              <label
-                className="font-medium text-foreground text-xs"
-                htmlFor="org-select"
-              >
-                Switch Organization:
-              </label>
-              <Select
-                disabled={isSwitching}
-                onValueChange={handleSwitch}
-                value={activeConnection.id}
-              >
-                <SelectTrigger id="org-select">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {connections.map((conn) => (
-                    <SelectItem key={conn.id} value={conn.id}>
-                      {conn.tenantName || "Unknown Organization"}
-                      {conn.isActive && " (Active)"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Link
-                className="text-primary text-xs hover:underline"
-                href="/settings/integrations/xero/select-org"
-              >
-                View all organizations
-              </Link>
-            </div>
-          )}
         </div>
       )}
 
@@ -294,25 +334,53 @@ export function XeroIntegrationCard({
       )}
 
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <Button asChild type="button" variant="ghost">
-          <a href={integration.docsUrl} rel="noreferrer" target="_blank">
-            View docs
-          </a>
+        <Button
+          disabled={
+            hasConnections || isConnecting || isDisconnecting || isSwitching
+          }
+          onClick={handleConnect}
+          type="button"
+          variant="default"
+        >
+          {isConnecting ? "Connecting..." : "Connect"}
         </Button>
         <Button
-          disabled={isConnecting || isDisconnecting}
-          onClick={isConnected ? handleDisconnect : handleConnect}
+          disabled={!hasConnections || isDisconnecting || isConnecting}
+          onClick={handleDisconnect}
           type="button"
-          variant={isConnected ? "destructive" : "default"}
+          variant="destructive"
         >
-          {isConnecting
-            ? "Connecting..."
-            : isDisconnecting
-              ? "Disconnecting..."
-              : isConnected
-                ? "Disconnect"
-                : "Connect"}
+          {isDisconnecting ? "Disconnecting..." : "Disconnect"}
         </Button>
+      </div>
+      <div className="space-y-2">
+        <label className="font-medium text-foreground text-xs" htmlFor="company-select">
+          Company
+        </label>
+        <Select
+          disabled={selectDisabled}
+          onValueChange={handleCompanySelect}
+          value={selectValue}
+        >
+          <SelectTrigger id="company-select" aria-label="Select Xero company">
+            <SelectValue placeholder="Add new..." />
+          </SelectTrigger>
+          <SelectContent>
+            {connections.map((conn) => (
+              <SelectItem key={conn.id} value={conn.id}>
+                {conn.tenantName || "Unknown Organization"}
+                {conn.isActive && " (Active)"}
+              </SelectItem>
+            ))}
+            <SelectItem value="add-new">Add new...</SelectItem>
+          </SelectContent>
+        </Select>
+        <Link
+          className="text-primary text-xs hover:underline"
+          href="/settings/integrations/xero/select-org"
+        >
+          View all organizations
+        </Link>
       </div>
     </div>
   );

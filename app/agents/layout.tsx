@@ -3,7 +3,7 @@ import { AgentsHeader } from "@/components/agents/agents-header";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
-import { getActiveXeroConnection } from "@/lib/db/queries";
+import { getXeroConnectionsByUserId } from "@/lib/db/queries";
 
 export const dynamic = "force-dynamic";
 export const experimental_ppr = true;
@@ -14,18 +14,20 @@ export default async function AgentsLayout({
   children: React.ReactNode;
 }) {
   const [user, cookieStore] = await Promise.all([getAuthUser(), cookies()]);
-  const xeroConnection = user ? await getActiveXeroConnection(user.id) : null;
-  const sidebarXeroConnection = xeroConnection
-    ? {
-        tenantId: xeroConnection.tenantId,
-        tenantName: xeroConnection.tenantName ?? null,
-      }
-    : null;
+  const xeroConnections = user
+    ? await getXeroConnectionsByUserId(user.id)
+    : [];
+  const sidebarXeroConnections = xeroConnections.map((connection) => ({
+    id: connection.id,
+    tenantId: connection.tenantId,
+    tenantName: connection.tenantName ?? null,
+    isActive: connection.isActive,
+  }));
   const isCollapsed = cookieStore.get("sidebar_state")?.value !== "true";
 
   return (
     <SidebarProvider defaultOpen={!isCollapsed}>
-      <AppSidebar user={user} xeroConnection={sidebarXeroConnection} />
+      <AppSidebar user={user} xeroConnections={sidebarXeroConnections} />
       <SidebarInset>
         <div className="flex min-h-svh flex-col">
           <header className="border-b bg-background">
