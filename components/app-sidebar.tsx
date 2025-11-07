@@ -90,7 +90,7 @@ export function AppSidebar({
 
       router.refresh();
     } catch (error) {
-      console.error("Failed to switch Xero company from sidebar", error);
+      console.error("Failed to switch Xero company from sidebar:", error);
       setSelectedConnectionId(activeConnection?.id ?? "");
     } finally {
       setIsSwitching(false);
