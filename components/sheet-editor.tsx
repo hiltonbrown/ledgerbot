@@ -18,10 +18,121 @@ type SheetEditorProps = {
 
 const MIN_ROWS = 50;
 const MIN_COLS = 26;
+const CSV_LOOKAHEAD_WINDOW = 6;
 
-// Pattern to detect instruction-like lines (not CSV data)
-const INSTRUCTION_PATTERN =
-  /^(create|here|this|the|you|i|use|format|based|with|following|data|prompt|csv)/i;
+const hasSentenceLikeSegments = (line: string) => {
+  const cells = line.split(",");
+
+  return cells.some((cell) => cell.trim().split(/\s+/).length > 8);
+};
+
+const findCsvStartIndex = (lines: string[]) => {
+  let fallbackIndex = -1;
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const trimmedLine = lines[index].trim();
+
+    if (!trimmedLine || !trimmedLine.includes(",")) {
+      continue;
+    }
+
+    const cells = trimmedLine.split(",");
+    const nonEmptyCells = cells.filter((cell) => cell.trim().length > 0);
+
+    if (nonEmptyCells.length < 2) {
+      continue;
+    }
+
+    if (hasSentenceLikeSegments(trimmedLine)) {
+      continue;
+    }
+
+    let consistentRows = 0;
+
+    for (
+      let lookAheadIndex = index + 1;
+      lookAheadIndex < lines.length && lookAheadIndex <= index + CSV_LOOKAHEAD_WINDOW;
+      lookAheadIndex += 1
+    ) {
+      const lookAheadLine = lines[lookAheadIndex].trim();
+
+      if (!lookAheadLine || !lookAheadLine.includes(",")) {
+        continue;
+      }
+
+      const lookAheadCells = lookAheadLine.split(",");
+      const lookAheadNonEmptyCells = lookAheadCells.filter((cell) => cell.trim().length > 0);
+
+      if (lookAheadNonEmptyCells.length < 2) {
+        continue;
+      }
+
+      if (Math.abs(lookAheadCells.length - cells.length) <= 1) {
+        consistentRows += 1;
+        break;
+      }
+    }
+
+    if (consistentRows > 0) {
+      return index;
+    }
+
+    if (fallbackIndex === -1) {
+      fallbackIndex = index;
+    }
+  }
+
+  return fallbackIndex;
+};
+
+const sanitizeCsvContent = (rawContent: string) => {
+  if (!rawContent) {
+    return rawContent;
+  }
+
+  const lines = rawContent.split("\n");
+
+  const csvStartIndex = findCsvStartIndex(lines);
+
+  if (csvStartIndex === -1) {
+    return rawContent;
+  }
+
+  const trimmedLines = lines
+    .slice(csvStartIndex)
+    .map((line) => line.trimEnd())
+    .filter((line) => line.trim().length > 0);
+
+  if (trimmedLines.length === 0) {
+    return rawContent;
+  }
+
+  const expectedColumns = trimmedLines[0].split(",").length;
+
+  const normalizedLines = trimmedLines.filter((line) => {
+    const trimmed = line.trim();
+
+    if (!trimmed.includes(",")) {
+      return false;
+    }
+
+    const cells = trimmed.split(",");
+    const nonEmptyCells = cells.filter((cell) => cell.trim().length > 0);
+
+    if (nonEmptyCells.length === 0) {
+      return false;
+    }
+
+    return Math.abs(cells.length - expectedColumns) <= 1;
+  });
+
+  if (normalizedLines.length === 0) {
+    return rawContent;
+  }
+
+  return normalizedLines.join("\n");
+
+};
 
 const PureSpreadsheetEditor = ({ content, saveContent }: SheetEditorProps) => {
   const { resolvedTheme } = useTheme();
@@ -31,37 +142,7 @@ const PureSpreadsheetEditor = ({ content, saveContent }: SheetEditorProps) => {
       return new Array(MIN_ROWS).fill(new Array(MIN_COLS).fill(""));
     }
 
-    // Clean the content to remove any non-CSV text
-    // Look for CSV pattern: lines with commas that look like data
-    const lines = content.split("\n");
-    const csvLines: string[] = [];
-    let foundCsvStart = false;
-
-    for (const line of lines) {
-      const trimmedLine = line.trim();
-
-      // Skip empty lines
-      if (!trimmedLine) {
-        continue;
-      }
-
-      // Skip lines that look like instructions or descriptions
-      // (lines without commas, or lines that start with common instruction words)
-      if (foundCsvStart) {
-        // Once we've found the CSV start, include all subsequent non-empty lines
-        csvLines.push(line);
-      } else {
-        const hasComma = trimmedLine.includes(",");
-
-        // Start CSV extraction when we find a line with commas
-        if (hasComma && !INSTRUCTION_PATTERN.test(trimmedLine)) {
-          foundCsvStart = true;
-          csvLines.push(line);
-        }
-      }
-    }
-
-    const cleanedContent = csvLines.join("\n");
+    const cleanedContent = sanitizeCsvContent(content);
     const result = parse<string[]>(cleanedContent || content, {
       skipEmptyLines: true,
     });
