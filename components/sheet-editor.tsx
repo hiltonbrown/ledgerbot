@@ -20,9 +20,42 @@ const MIN_ROWS = 50;
 const MIN_COLS = 26;
 const CSV_LOOKAHEAD_WINDOW = 6;
 
-const hasSentenceLikeSegments = (line: string) => {
-  const cells = line.split(",");
+const parseCsvLine = (line: string): string[] | null => {
+  const trimmedLine = line.trim();
 
+  if (!trimmedLine) {
+    return null;
+  }
+
+  const parsed = parse<string[]>(trimmedLine, {
+    delimiter: ",",
+    skipEmptyLines: true,
+  });
+
+  if (parsed.errors.length > 0 || parsed.data.length === 0) {
+    return null;
+  }
+
+  const [row] = parsed.data;
+
+  if (!row) {
+    return null;
+  }
+
+  return row.map((cell) => {
+    if (typeof cell === "string") {
+      return cell;
+    }
+
+    if (cell === null || cell === undefined) {
+      return "";
+    }
+
+    return String(cell);
+  });
+};
+
+const hasSentenceLikeSegments = (cells: string[]) => {
   return cells.some((cell) => cell.trim().split(/\s+/).length > 8);
 };
 
@@ -36,14 +69,19 @@ const findCsvStartIndex = (lines: string[]) => {
       continue;
     }
 
-    const cells = trimmedLine.split(",");
+    const cells = parseCsvLine(trimmedLine);
+
+    if (!cells) {
+      continue;
+    }
+
     const nonEmptyCells = cells.filter((cell) => cell.trim().length > 0);
 
     if (nonEmptyCells.length < 2) {
       continue;
     }
 
-    if (hasSentenceLikeSegments(trimmedLine)) {
+    if (hasSentenceLikeSegments(cells)) {
       continue;
     }
 
@@ -60,8 +98,15 @@ const findCsvStartIndex = (lines: string[]) => {
         continue;
       }
 
-      const lookAheadCells = lookAheadLine.split(",");
-      const lookAheadNonEmptyCells = lookAheadCells.filter((cell) => cell.trim().length > 0);
+      const lookAheadCells = parseCsvLine(lookAheadLine);
+
+      if (!lookAheadCells) {
+        continue;
+      }
+
+      const lookAheadNonEmptyCells = lookAheadCells.filter(
+        (cell) => cell.trim().length > 0
+      );
 
       if (lookAheadNonEmptyCells.length < 2) {
         continue;
@@ -107,7 +152,13 @@ const sanitizeCsvContent = (rawContent: string) => {
     return rawContent;
   }
 
-  const expectedColumns = trimmedLines[0].split(",").length;
+  const headerCells = parseCsvLine(trimmedLines[0]);
+
+  if (!headerCells) {
+    return rawContent;
+  }
+
+  const expectedColumns = headerCells.length;
 
   const normalizedLines = trimmedLines.filter((line) => {
     const trimmed = line.trim();
@@ -116,7 +167,12 @@ const sanitizeCsvContent = (rawContent: string) => {
       return false;
     }
 
-    const cells = trimmed.split(",");
+    const cells = parseCsvLine(trimmed);
+
+    if (!cells) {
+      return false;
+    }
+
     const nonEmptyCells = cells.filter((cell) => cell.trim().length > 0);
 
     if (nonEmptyCells.length === 0) {

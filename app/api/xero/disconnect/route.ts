@@ -24,22 +24,23 @@ export async function POST() {
       );
     }
 
-    // Revoke the refresh token with Xero before deactivating
-    try {
-      await revokeXeroToken(connection.id);
-      console.log(`Successfully revoked Xero token for user ${user.id}`);
-    } catch (revokeError) {
-      console.error(
-        `Failed to revoke Xero token for user ${user.id}:`,
-        revokeError
-      );
-      // Continue with deactivation even if revocation fails
-    }
-
     try {
       const userConnections = await getXeroConnectionsByUserId(user.id);
 
       for (const userConnection of userConnections) {
+        try {
+          await revokeXeroToken(userConnection.id);
+          console.log(
+            `Successfully revoked Xero token for connection ${userConnection.id} (user ${user.id})`
+          );
+        } catch (revokeError) {
+          console.error(
+            `Failed to revoke Xero token for connection ${userConnection.id} (user ${user.id}):`,
+            revokeError
+          );
+          // Continue with revocation attempts for other connections even if one fails
+        }
+
         await deleteXeroConnectionRecord(userConnection.id);
       }
 
