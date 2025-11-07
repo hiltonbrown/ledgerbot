@@ -105,7 +105,6 @@ const sanitizeDocumentContent = (value: string) => {
   }
 
   return lines.slice(startIndex).join("\n").trimStart();
-
 };
 
 export const textArtifact = new Artifact<"text", TextArtifactMetadata>({
