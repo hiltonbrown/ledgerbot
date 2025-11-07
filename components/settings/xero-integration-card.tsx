@@ -220,7 +220,7 @@ export function XeroIntegrationCard({
 
   const handleCompanySelect = async (value: string) => {
     if (value === "add-new") {
-      setSelectedCompanyId(activeConnection?.id ?? "");
+      // Do not update selectedCompanyId here; let OAuth callback flow handle it
       void handleConnect();
       return;
     }
