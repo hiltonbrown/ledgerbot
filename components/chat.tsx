@@ -44,6 +44,7 @@ export function Chat({
   initialLastContext,
   suggestions,
   initialDefaultReasoning,
+  firstName,
 }: {
   id: string;
   initialMessages: ChatMessage[];
@@ -59,6 +60,7 @@ export function Chat({
     order: number;
   }>;
   initialDefaultReasoning?: boolean;
+  firstName?: string;
 }) {
   const { visibilityType } = useChatVisibility({
     chatId: id,
@@ -256,6 +258,7 @@ export function Chat({
 
         <Messages
           chatId={id}
+          firstName={firstName}
           isArtifactVisible={isArtifactVisible}
           isReadonly={isReadonly}
           messages={messages}

@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 /**
  * End-to-end test for regulatory scraping pipeline
- * Tests: Firecrawl API → Scraper → Database
+ * Tests: Mastra scraper → Database
  * Usage: tsx --env-file=.env.local scripts/test-regulatory-scraper-e2e.ts
  */
 
@@ -40,11 +40,6 @@ async function runTests() {
   console.log("=".repeat(60));
 
   // Check environment
-  if (!process.env.FIRECRAWL_API_KEY) {
-    console.error("❌ FIRECRAWL_API_KEY not set");
-    process.exit(1);
-  }
-
   if (!process.env.POSTGRES_URL) {
     console.error("❌ POSTGRES_URL not set");
     process.exit(1);
@@ -53,12 +48,12 @@ async function runTests() {
   console.log("✅ Environment variables configured\n");
 
   try {
-    // TEST 1: Scrape document (Firecrawl API call)
+    // TEST 1: Scrape document (Mastra summarisation)
     console.log("=".repeat(60));
-    console.log("TEST 1: Scraping document from Firecrawl API");
+    console.log("TEST 1: Scraping document via Mastra agent");
     console.log("=".repeat(60));
     console.log(`📄 URL: ${testSource.url}`);
-    console.log("⏳ Calling Firecrawl v2 API...\n");
+    console.log("⏳ Running Mastra extraction...\n");
 
     const documentData = await scrapeRegulatoryDocument(testSource);
 
@@ -209,7 +204,7 @@ async function runTests() {
     console.log("🎉 ALL TESTS PASSED!");
     console.log("=".repeat(60));
     console.log("\n✅ End-to-End Pipeline Verified:");
-    console.log("   1. ✅ Firecrawl v2 API scraping");
+    console.log("   1. ✅ Mastra ingestion");
     console.log("   2. ✅ Document data transformation");
     console.log("   3. ✅ Database insertion (CREATE)");
     console.log("   4. ✅ Duplicate detection (UNCHANGED)");

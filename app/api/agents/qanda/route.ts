@@ -20,6 +20,7 @@ import {
   extractCitations,
   requiresHumanReview,
 } from "../../../../lib/regulatory/confidence";
+import { refreshSourcesForCategories } from "../../../../lib/regulatory/scraper";
 import { generateUUID } from "../../../../lib/utils";
 
 export const maxDuration = 60;
@@ -53,6 +54,26 @@ export async function POST(req: Request) {
     }
 
     const { messages, settings } = await req.json();
+
+    if (settings?.refreshSources) {
+      const requestedCategories = Array.isArray(settings?.categories)
+        ? settings.categories
+        : ["award", "tax_ruling", "payroll_tax"];
+
+      const uniqueCategories = Array.from(new Set(requestedCategories));
+      try {
+        console.log(
+          "[Q&A Agent] Refreshing regulatory sources via Mastra",
+          uniqueCategories
+        );
+        await refreshSourcesForCategories({
+          categories: uniqueCategories,
+          limitPerCategory: settings?.refreshLimit ?? 1,
+        });
+      } catch (error) {
+        console.warn("[Q&A Agent] Failed to refresh sources", error);
+      }
+    }
 
     // Get or create chat for Q&A agent
     const chatId = "qanda-agent";

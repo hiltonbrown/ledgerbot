@@ -37,6 +37,7 @@ export default async function Page() {
     <>
       <Chat
         autoResume={false}
+        firstName={userSettings.personalisation.firstName}
         id={id}
         initialChatModel={selectedModel}
         initialDefaultReasoning={defaultReasoning}

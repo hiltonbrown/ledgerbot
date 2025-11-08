@@ -17,6 +17,7 @@ import {
 import type { ModelCatalog } from "tokenlens/core";
 import { fetchModels } from "tokenlens/fetch";
 import { getUsage } from "tokenlens/helpers";
+import { getUserSettings } from "@/app/(settings)/api/user/data";
 import { buildUserContext } from "@/lib/ai/context-manager";
 import { entitlementsByUserType } from "@/lib/ai/entitlements";
 import { type ChatModel, isReasoningModelId } from "@/lib/ai/models";
@@ -283,6 +284,9 @@ export async function POST(request: Request) {
     if (!user) {
       return new ChatSDKError("unauthorized:chat").toResponse();
     }
+
+    // Fetch user settings for custom system prompt with template substitution
+    const userSettings = await getUserSettings();
 
     const userType: UserType = user.type;
 
@@ -711,6 +715,7 @@ export async function POST(request: Request) {
           system: systemPrompt({
             requestHints,
             activeTools: finalActiveTools,
+            userSystemPrompt: userSettings.prompts.systemPrompt,
           }),
           messages: convertToModelMessages(includeAttachmentText(uiMessages)),
           stopWhen: stepCountIs(5),

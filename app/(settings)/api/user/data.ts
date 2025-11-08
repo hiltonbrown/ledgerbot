@@ -2,6 +2,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { currentUser } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
+import {
+  substituteTemplateVariables,
+  type TemplateVariables,
+} from "@/lib/ai/template-engine";
 import { requireAuth } from "@/lib/auth/clerk-helpers";
 import { db } from "@/lib/db/queries";
 import { userSettings } from "@/lib/db/schema";
@@ -65,6 +69,15 @@ export type UserSettings = {
     state: string;
     defaultModel: string;
     defaultReasoning: boolean;
+    // Template variables
+    companyName?: string;
+    industryContext?: string;
+    chartOfAccounts?: string;
+    customVariables?: Record<string, string>;
+    // Custom instructions
+    customSystemInstructions?: string;
+    customCodeInstructions?: string;
+    customSheetInstructions?: string;
   };
   notifications: {
     productUpdates: boolean;
@@ -85,20 +98,19 @@ export type UserSettings = {
 };
 
 const USER_SETTINGS: UserSettings = {
-  name: "Alex Rivers",
-  email: "alex.rivers@example.com",
-  jobTitle: "Operations Lead",
+  name: "",
+  email: "",
+  jobTitle: "",
   language: "en",
-  timezone: "America/Los_Angeles",
-  about:
-    "Alex oversees customer accounts and ensures the team has the right visibility into project performance.",
+  timezone: "Australia/Sydney",
+  about: "",
   personalisation: {
     isLocked: false,
-    firstName: "Alex",
-    lastName: "Rivers",
-    country: "us",
-    state: "ca",
-    defaultModel: "anthropic-claude-sonnet-4-5",
+    firstName: "",
+    lastName: "",
+    country: "au",
+    state: "qld",
+    defaultModel: "anthropic-claude-haiku-4-5",
     defaultReasoning: false,
   },
   notifications: {
@@ -114,25 +126,25 @@ const USER_SETTINGS: UserSettings = {
   suggestions: [
     {
       id: "1",
-      text: "How do I resolve duplicate credit card transactions in Xero?",
+      text: "",
       enabled: true,
       order: 0,
     },
     {
       id: "2",
-      text: "How do I properly record GST on imported supplier invoices?",
+      text: "",
       enabled: true,
       order: 1,
     },
     {
       id: "3",
-      text: "Help me plan a healthy meal preparation for the week.",
+      text: "",
       enabled: true,
       order: 2,
     },
     {
       id: "4",
-      text: "Draft a professional email to clients about overdue invoices.",
+      text: "",
       enabled: true,
       order: 3,
     },
@@ -156,6 +168,36 @@ export async function getUserSettings(): Promise<UserSettings> {
   const lastName =
     clerkUser?.lastName || USER_SETTINGS.personalisation.lastName;
 
+  // Build template variables for substitution
+  const templateVars: TemplateVariables = {
+    FIRST_NAME: firstName,
+    LAST_NAME: lastName,
+    COMPANY_NAME: dbSettings?.companyName || "",
+    INDUSTRY_CONTEXT: dbSettings?.industryContext || "",
+    CHART_OF_ACCOUNTS: dbSettings?.chartOfAccounts || "",
+    // Custom instructions (user-editable additions to locked base prompts)
+    CUSTOM_SYSTEM_INSTRUCTIONS: dbSettings?.customSystemInstructions || "",
+    CUSTOM_CODE_INSTRUCTIONS: dbSettings?.customCodeInstructions || "",
+    CUSTOM_SHEET_INSTRUCTIONS: dbSettings?.customSheetInstructions || "",
+    // Spread custom variables if they exist
+    ...(dbSettings?.customVariables || {}),
+  };
+
+  // Always load base prompts from files (ignore database systemPrompt/codePrompt/sheetPrompt)
+  // This ensures users get the latest base prompt with their custom instructions added
+  const systemPrompt = substituteTemplateVariables(
+    USER_SETTINGS.prompts.systemPrompt,
+    templateVars
+  );
+  const codePrompt = substituteTemplateVariables(
+    USER_SETTINGS.prompts.codePrompt,
+    templateVars
+  );
+  const sheetPrompt = substituteTemplateVariables(
+    USER_SETTINGS.prompts.sheetPrompt,
+    templateVars
+  );
+
   // Merge database settings with defaults
   return {
     name: `${firstName} ${lastName}`,
@@ -175,13 +217,22 @@ export async function getUserSettings(): Promise<UserSettings> {
       defaultReasoning:
         dbSettings?.defaultReasoning ??
         USER_SETTINGS.personalisation.defaultReasoning,
+      // Template variables
+      companyName: dbSettings?.companyName || undefined,
+      industryContext: dbSettings?.industryContext || undefined,
+      chartOfAccounts: dbSettings?.chartOfAccounts || undefined,
+      customVariables: dbSettings?.customVariables || undefined,
+      // Custom instructions
+      customSystemInstructions:
+        dbSettings?.customSystemInstructions || undefined,
+      customCodeInstructions: dbSettings?.customCodeInstructions || undefined,
+      customSheetInstructions: dbSettings?.customSheetInstructions || undefined,
     },
     notifications: USER_SETTINGS.notifications,
     prompts: {
-      systemPrompt:
-        dbSettings?.systemPrompt || USER_SETTINGS.prompts.systemPrompt,
-      codePrompt: dbSettings?.codePrompt || USER_SETTINGS.prompts.codePrompt,
-      sheetPrompt: dbSettings?.sheetPrompt || USER_SETTINGS.prompts.sheetPrompt,
+      systemPrompt, // Already substituted
+      codePrompt, // Already substituted
+      sheetPrompt, // Already substituted
     },
     suggestions: dbSettings?.suggestions || USER_SETTINGS.suggestions,
   };

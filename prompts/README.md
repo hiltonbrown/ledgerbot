@@ -22,9 +22,48 @@ This file is automatically loaded by `/app/(settings)/api/user/data.ts` and used
 Users can override this default prompt in their personalisation settings at `/settings/personalisation`.
 
 **Template Variables:**
-The prompt includes template placeholders that can be populated with business-specific information:
+The prompt includes template placeholders that are automatically substituted with user-specific information:
+
+**Standard Variables** (automatically populated):
+- `{{FIRST_NAME}}` - User's first name from Clerk authentication
+- `{{LAST_NAME}}` - User's last name from Clerk authentication
+- `{{COMPANY_NAME}}` - Company name from user settings
 - `{{INDUSTRY_CONTEXT}}` - Industry-specific requirements and terminology
 - `{{CHART_OF_ACCOUNTS}}` - Business-specific chart of accounts
+
+**Custom Variables:**
+Users can define their own custom template variables in `/settings/personalisation`. Custom variable names must be uppercase (e.g., `{{MY_VARIABLE}}`).
+
+**How Template Substitution Works:**
+1. Users define template variables in the personalisation settings
+2. When a user starts a chat, `getUserSettings()` fetches their settings
+3. The template engine (`lib/ai/template-engine.ts`) replaces all `{{VARIABLE}}` placeholders with actual values
+4. The substituted prompt is passed to the AI model
+5. If a variable has no value, the placeholder is removed (replaced with empty string)
+
+**Example Usage:**
+```markdown
+You are assisting {{FIRST_NAME}} {{LAST_NAME}} with {{COMPANY_NAME}}.
+
+Industry Context:
+{{INDUSTRY_CONTEXT}}
+
+Chart of Accounts:
+{{CHART_OF_ACCOUNTS}}
+```
+
+When variables are populated, this becomes:
+```markdown
+You are assisting John Smith with Acme Pty Ltd.
+
+Industry Context:
+Retail business selling office supplies with 3 locations across NSW.
+
+Chart of Accounts:
+1000 - Cash at Bank
+1100 - Accounts Receivable
+...
+```
 
 **Maintenance:**
 To update the default system prompt:

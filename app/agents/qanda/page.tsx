@@ -1,6 +1,7 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 import {
   BookOpen,
   ExternalLink,
@@ -9,7 +10,7 @@ import {
   ThumbsDown,
   ThumbsUp,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import useSWR from "swr";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -75,10 +76,27 @@ function getConfidenceBadge(confidence: number) {
 export default function QandAAgentPage() {
   const [streamResponses, setStreamResponses] = useState(true);
   const [showCitations, setShowCitations] = useState(true);
+  const [refreshSources, setRefreshSources] = useState(false);
+  const [categoryFilters, setCategoryFilters] = useState({
+    award: true,
+    tax_ruling: true,
+    payroll_tax: true,
+  });
   const [input, setInput] = useState("");
   const [messageMetadata, _setMessageMetadata] = useState<
     Map<string, MessageMetadata>
   >(new Map());
+  const [isRefreshingSources, setIsRefreshingSources] = useState(false);
+  const [refreshStatus, setRefreshStatus] = useState<string | null>(null);
+
+  const activeCategories = useMemo(() => {
+    const enabled = Object.entries(categoryFilters)
+      .filter(([, value]) => value)
+      .map(([key]) => key);
+    return enabled.length > 0
+      ? enabled
+      : ["award", "tax_ruling", "payroll_tax"];
+  }, [categoryFilters]);
 
   // Fetch regulatory knowledge base stats
   const { data: kbStats } = useSWR<RegulatoryStats>(
@@ -98,7 +116,7 @@ export default function QandAAgentPage() {
   // Use real chat API
   const chat = useChat({
     id: "qanda-agent",
-    transport: new (require("ai").DefaultChatTransport)({
+    transport: new DefaultChatTransport({
       api: "/api/agents/qanda",
       fetch,
       prepareSendMessagesRequest(request: any) {
@@ -108,6 +126,9 @@ export default function QandAAgentPage() {
             settings: {
               model: "anthropic-claude-sonnet-4-5",
               confidenceThreshold: 0.6,
+              refreshSources,
+              categories: activeCategories,
+              streamResponses,
             },
           },
         };
@@ -130,6 +151,31 @@ export default function QandAAgentPage() {
 
   const handleSuggestedQuestion = (question: string) => {
     setInput(question);
+  };
+
+  const handleManualRefresh = async () => {
+    setIsRefreshingSources(true);
+    setRefreshStatus("Triggering Mastra scraping job...");
+    try {
+      const response = await fetch("/api/regulatory/scrape", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ country: "AU", priority: "high" }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData?.error ?? "Failed to start scraping job");
+      }
+
+      setRefreshStatus("Scrape job started. Fresh data will appear shortly.");
+    } catch (error) {
+      setRefreshStatus(
+        error instanceof Error ? error.message : "Unable to refresh sources."
+      );
+    } finally {
+      setIsRefreshingSources(false);
+    }
   };
 
   const handleVote = async (messageId: string, isUpvoted: boolean) => {
@@ -208,6 +254,19 @@ export default function QandAAgentPage() {
               <p className="mt-1 text-muted-foreground">
                 Knowledge base not yet initialized
               </p>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              disabled={isRefreshingSources}
+              onClick={handleManualRefresh}
+              size="sm"
+              variant="outline"
+            >
+              {isRefreshingSources ? "Refreshing..." : "Refresh with Mastra"}
+            </Button>
+            {refreshStatus && (
+              <p className="text-muted-foreground text-xs">{refreshStatus}</p>
             )}
           </div>
         </CardContent>
@@ -453,6 +512,52 @@ export default function QandAAgentPage() {
                     </p>
                   </div>
                   <Badge variant="outline">60%</Badge>
+                </div>
+              </div>
+              <div className="rounded-md border bg-muted/40 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-medium text-sm">
+                      Refresh before answering
+                    </p>
+                    <p className="text-muted-foreground text-xs">
+                      Trigger Mastra to re-scrape selected sources in-line
+                    </p>
+                  </div>
+                  <Switch
+                    checked={refreshSources}
+                    onCheckedChange={setRefreshSources}
+                  />
+                </div>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs uppercase">
+                  Categories
+                </p>
+                <div className="mt-2 space-y-2">
+                  {(
+                    [
+                      ["award", "Fair Work awards"],
+                      ["tax_ruling", "ATO tax rulings"],
+                      ["payroll_tax", "State payroll tax"],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <label
+                      className="flex items-center justify-between rounded-md border bg-muted/30 p-2 text-sm"
+                      key={key}
+                    >
+                      <span>{label}</span>
+                      <Switch
+                        checked={categoryFilters[key]}
+                        onCheckedChange={(value) =>
+                          setCategoryFilters((prev) => ({
+                            ...prev,
+                            [key]: value,
+                          }))
+                        }
+                      />
+                    </label>
+                  ))}
                 </div>
               </div>
               <Separator />

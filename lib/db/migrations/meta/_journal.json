@@ -106,6 +106,20 @@
       "when": 1762346438910,
       "tag": "0014_uneven_serpent_society",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1762570184511,
+      "tag": "0015_wealthy_sleepwalker",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1762572014870,
+      "tag": "0016_mature_wildside",
+      "breakpoints": true
     }
   ]
 }

@@ -66,10 +66,21 @@ type QuestionsResponse = {
   warnings: string[];
 };
 
-type AnswerResponse = {
-  answer: string;
-  sources: string[];
-  warnings: string[];
+type AgentChatResponse = {
+  text: string;
+  error?: string;
+  message?: string;
+};
+
+type AgentLoadSuccess = {
+  docId: string;
+  pageCount: number;
+  meta?: {
+    contextFileId?: string;
+    tokenEstimate?: number;
+    fileName?: string;
+    warnings?: string[];
+  };
 };
 
 const validationQueue = [
@@ -134,6 +145,11 @@ export default function DocumentManagementAgentPage() {
   const [questionInput, setQuestionInput] = useState("");
   const [warnings, setWarnings] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [agentReady, setAgentReady] = useState(false);
+  const [isPreparingAgent, setIsPreparingAgent] = useState(false);
+  const [agentStatus, setAgentStatus] = useState("Idle");
+  const [agentContextMeta, setAgentContextMeta] =
+    useState<AgentLoadSuccess | null>(null);
   const [uploadMetadata, setUploadMetadata] = useState<{
     fileName: string;
     size: number;
@@ -207,13 +223,17 @@ export default function DocumentManagementAgentPage() {
           );
           setChatMessages(restoredMessages);
         }
+
+        if (contextFileId && data.data?.documentId) {
+          void prepareDocAgent(contextFileId, data.data.documentId);
+        }
       } catch (error) {
         console.error("[docmanagement] Failed to restore conversation:", error);
       }
     }
 
     restoreConversation();
-  }, [contextFileId]);
+  }, [contextFileId, prepareDocAgent]);
 
   const resetWorkflow = useCallback(() => {
     setContextFileId(null);
@@ -228,7 +248,60 @@ export default function DocumentManagementAgentPage() {
     setUploadMetadata(null);
     setSummaryUsage(null);
     setError(null);
+    setAgentReady(false);
+    setAgentContextMeta(null);
+    setAgentStatus("Idle");
+    setIsPreparingAgent(false);
   }, []);
+
+  const prepareDocAgent = useCallback(
+    async (contextId: string, docIdValue?: string) => {
+      setIsPreparingAgent(true);
+      setAgentReady(false);
+      setAgentStatus("Syncing PDF context...");
+
+      try {
+        const response = await fetch("/api/agents/docmanagement", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            mode: "load",
+            contextFileId: contextId,
+            docId: docIdValue,
+          }),
+        });
+
+        const data: { doc?: AgentLoadSuccess; error?: string } =
+          await response.json();
+
+        if (!response.ok || !data.doc) {
+          throw new Error(
+            data.error ?? "Failed to prepare the document agent."
+          );
+        }
+
+        setAgentContextMeta(data.doc);
+        setAgentReady(true);
+        const pageLabel = data.doc.pageCount === 1 ? "page" : "pages";
+        setAgentStatus(`Indexed ${data.doc.pageCount} ${pageLabel}`);
+        const warningList =
+          (data.doc.meta?.warnings as string[] | undefined) ?? [];
+        appendWarnings(warningList);
+      } catch (prepError) {
+        const message =
+          prepError instanceof Error
+            ? prepError.message
+            : "Unable to prepare the document agent.";
+        setAgentStatus(message);
+        setError(message);
+      } finally {
+        setIsPreparingAgent(false);
+      }
+    },
+    [appendWarnings]
+  );
   const generateQuestionsForSummary = useCallback(
     async (
       contextId: string,
@@ -364,6 +437,8 @@ export default function DocumentManagementAgentPage() {
                         sections: summarizeData.sections ?? [],
                       }
                     );
+
+                    void prepareDocAgent(contextId, summarizeData.documentId);
                   } else if (event === "error") {
                     throw new Error(
                       data.message || "Failed to summarise the PDF."
@@ -401,6 +476,8 @@ export default function DocumentManagementAgentPage() {
               sections: summarizeData.sections ?? [],
             }
           );
+
+          void prepareDocAgent(contextId, summarizeData.documentId);
         }
       } catch (summarizeError) {
         const message =
@@ -414,7 +491,7 @@ export default function DocumentManagementAgentPage() {
         setSummaryStage("");
       }
     },
-    [appendWarnings, generateQuestionsForSummary]
+    [appendWarnings, generateQuestionsForSummary, prepareDocAgent]
   );
 
   const handleFileChange = useCallback(
@@ -463,6 +540,9 @@ export default function DocumentManagementAgentPage() {
 
         if (uploadData.status === "ready") {
           setContextFileId(uploadData.contextFileId);
+          setAgentReady(false);
+          setAgentContextMeta(null);
+          setAgentStatus("Waiting for summary...");
           await runSummarization(uploadData.contextFileId);
         } else {
           setError(
@@ -521,81 +601,142 @@ export default function DocumentManagementAgentPage() {
 
       setError(null);
 
+      const historyPayload: PdfChatMessage[] = chatMessages.map(
+        ({ role, content, sources }) => ({
+          role,
+          content,
+          sources,
+        })
+      );
+
       const userMessage: ChatMessage = {
         id: generateUUID(),
         role: "user",
         content: trimmed,
       };
-      const historyPayload: PdfChatMessage[] = [
-        ...chatMessages,
-        userMessage,
-      ].map(({ role, content, sources }) => ({ role, content, sources }));
 
-      setChatMessages((current) => [...current, userMessage]);
+      const assistantMessageId = generateUUID();
+
+      setChatMessages((current) => [
+        ...current,
+        userMessage,
+        {
+          id: assistantMessageId,
+          role: "assistant",
+          content: "",
+        },
+      ]);
       setQuestionInput("");
       setIsAnswering(true);
 
       try {
-        const response = await fetch("/api/pdf/question", {
+        const response = await fetch("/api/agents/docmanagement", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
+            mode: "chat",
             contextFileId,
-            documentId,
-            question: trimmed,
-            summary,
-            sections,
+            docId: documentId,
+            message: trimmed,
             history: historyPayload,
+            stream: true,
           }),
         });
 
-        const data: AnswerResponse | { error?: string } = await response.json();
+        const contentType = response.headers.get("content-type") ?? "";
 
-        if (!response.ok) {
-          const errorData = data as { error?: string };
-          throw new Error(errorData.error ?? "Unable to answer the question.");
-        }
-
-        // Type narrowing: at this point, data must be AnswerResponse
-        const answerData = data as AnswerResponse;
-
-        if ("warnings" in answerData) {
-          appendWarnings(answerData.warnings);
-        }
-
-        const assistantMessage: ChatMessage = {
-          id: generateUUID(),
-          role: "assistant",
-          content: answerData.answer,
-          sources: answerData.sources,
+        const updateAssistantMessage = (updater: (prev: string) => string) => {
+          setChatMessages((current) =>
+            current.map((message) =>
+              message.id === assistantMessageId
+                ? {
+                    ...message,
+                    content: updater(message.content ?? ""),
+                  }
+                : message
+            )
+          );
         };
 
-        setChatMessages((current) => [...current, assistantMessage]);
+        if (contentType.includes("text/event-stream")) {
+          const reader = response.body?.getReader();
+          if (!reader) {
+            throw new Error("Streaming is not supported in this environment.");
+          }
+
+          const decoder = new TextDecoder();
+          let buffer = "";
+
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) {
+              break;
+            }
+
+            buffer += decoder.decode(value, { stream: true });
+            const events = buffer.split("\n\n");
+            buffer = events.pop() ?? "";
+
+            for (const rawEvent of events) {
+              const lines = rawEvent.split("\n");
+              const eventLine = lines.find((line) =>
+                line.startsWith("event: ")
+              );
+              const dataLine = lines.find((line) => line.startsWith("data: "));
+              const eventName = eventLine?.slice(7) ?? "";
+              if (!dataLine) {
+                continue;
+              }
+              const payload = JSON.parse(
+                dataLine.slice(6)
+              ) as AgentChatResponse;
+
+              if (eventName === "delta" && typeof payload.text === "string") {
+                updateAssistantMessage((prev) => `${prev}${payload.text}`);
+              } else if (eventName === "final") {
+                updateAssistantMessage(() => payload.text ?? "");
+              } else if (eventName === "error") {
+                const fallback =
+                  payload.error ??
+                  "I wasn't able to answer that question. Please try again.";
+                updateAssistantMessage(() => fallback);
+              }
+            }
+          }
+
+          setIsAnswering(false);
+          return;
+        }
+
+        const data: AgentChatResponse = await response.json();
+
+        if (!response.ok || typeof data.text !== "string") {
+          throw new Error(data.error ?? "Unable to answer the question.");
+        }
+
+        updateAssistantMessage(() => data.text);
       } catch (answerError) {
         const message =
           answerError instanceof Error
             ? answerError.message
             : "Please try again in a few moments.";
-        const assistantMessage: ChatMessage = {
-          id: generateUUID(),
-          role: "assistant",
-          content: `I wasn't able to answer that question. ${message}`,
-        };
-        setChatMessages((current) => [...current, assistantMessage]);
+        setChatMessages((current) =>
+          current.map((chatMessage) =>
+            chatMessage.id === assistantMessageId
+              ? {
+                  ...chatMessage,
+                  content: `I wasn't able to answer that question. ${message}`,
+                }
+              : chatMessage
+          )
+        );
       } finally {
         setIsAnswering(false);
       }
     },
-    [
-      appendWarnings,
-      chatMessages,
-      contextFileId,
-      questionInput,
-      sections,
-      summary,
-    ]
+    [chatMessages, documentId, contextFileId, questionInput, sections, summary]
   );
 
   const sectionLookup = useMemo(() => {
@@ -606,7 +747,9 @@ export default function DocumentManagementAgentPage() {
     return map;
   }, [sections]);
 
-  const canChat = Boolean(contextFileId && summary && sections.length > 0);
+  const canChat = Boolean(
+    contextFileId && summary && sections.length > 0 && agentReady
+  );
   const disableUpload = isUploading || isSummarizing;
   return (
     <div className="space-y-10">
@@ -869,10 +1012,51 @@ export default function DocumentManagementAgentPage() {
               </div>
 
               <div className="rounded-md border bg-background p-4 shadow-sm">
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4 text-primary" />
-                  <h3 className="font-semibold text-sm">Chat with this PDF</h3>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-primary" />
+                    <h3 className="font-semibold text-sm">
+                      Chat with this PDF
+                    </h3>
+                    <Badge>
+                      {agentReady ? "Agent ready" : "Sync required"}
+                    </Badge>
+                  </div>
+                  <Button
+                    disabled={
+                      !contextFileId ||
+                      isPreparingAgent ||
+                      !summary ||
+                      sections.length === 0
+                    }
+                    onClick={() => {
+                      if (!contextFileId) {
+                        return;
+                      }
+                      void prepareDocAgent(
+                        contextFileId,
+                        documentId ?? undefined
+                      );
+                    }}
+                    size="sm"
+                    variant="outline"
+                  >
+                    {isPreparingAgent ? (
+                      <>
+                        <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                        Syncing
+                      </>
+                    ) : (
+                      "Sync PDF"
+                    )}
+                  </Button>
                 </div>
+                <p className="mt-2 text-muted-foreground text-xs">
+                  {agentReady ? agentStatus : `Agent status: ${agentStatus}`}
+                  {agentContextMeta?.meta?.tokenEstimate
+                    ? ` · est. ${agentContextMeta.meta.tokenEstimate} tokens`
+                    : ""}
+                </p>
                 <ScrollArea className="mt-3 h-72 rounded-md border bg-muted/20 p-3">
                   {chatMessages.length === 0 ? (
                     <p className="text-muted-foreground text-xs">
@@ -922,6 +1106,12 @@ export default function DocumentManagementAgentPage() {
                   )}
                 </ScrollArea>
                 <form className="mt-3 space-y-2" onSubmit={handleAskQuestion}>
+                  {!agentReady && (
+                    <p className="text-muted-foreground text-xs">
+                      Sync the PDF to activate LedgerBot before asking a
+                      question.
+                    </p>
+                  )}
                   <Textarea
                     disabled={!canChat || isAnswering}
                     onChange={(event) => setQuestionInput(event.target.value)}

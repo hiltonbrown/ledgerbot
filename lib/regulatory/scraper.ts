@@ -12,11 +12,8 @@ import {
   parseRegulatoryConfig,
   type RegulatorySource,
 } from "./config-parser";
-import {
-  countTokens,
-  extractTextFromHtml,
-  scrapeUrl,
-} from "./firecrawl-client";
+import { runMastraRegulatorySummary } from "./mastra-scraper";
+import { countTokens, extractTextFromHtml } from "./text-utils";
 
 /**
  * Represents the result of scraping and saving a single document.
@@ -32,35 +29,88 @@ export interface ScrapeDocumentResult {
  * @param source The regulatory source to scrape.
  * @returns A promise that resolves to a RegulatoryDocumentInsert object or null on failure.
  */
+const REQUEST_TIMEOUT_MS = 45_000;
+const DEFAULT_USER_AGENT =
+  "LedgerBotRegulatoryScraper/1.0 (+https://ledgerbot.ai/regulatory)";
+
+async function fetchSourceHtml(url: string) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": DEFAULT_USER_AGENT,
+        Accept: "text/html,application/xhtml+xml",
+      },
+      signal: controller.signal,
+    });
+
+    const html = await response.text();
+    const contentType = response.headers.get("content-type") ?? "unknown";
+    const titleMatch = html.match(/<title>(.*?)<\/title>/i);
+
+    return {
+      html,
+      finalUrl: response.url,
+      status: response.status,
+      contentType,
+      title: titleMatch ? titleMatch[1]?.trim() : undefined,
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function parseOptionalDate(value?: string | null) {
+  if (!value) {
+    return;
+  }
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+}
+
 export async function scrapeRegulatoryDocument(
   source: RegulatorySource
 ): Promise<RegulatoryDocumentInsert | null> {
-  console.log(`[Scraper]  Scraping source: ${source.url}`);
+  console.log(`[Scraper]  Scraping source via Mastra: ${source.url}`);
   try {
-    const scrapeResult = await scrapeUrl(source.url);
+    const { html, title: fallbackTitle } = await fetchSourceHtml(source.url);
 
-    if (!scrapeResult.success || !scrapeResult.html) {
-      console.error(
-        `❌ Failed to scrape ${source.url}: ${scrapeResult.error || "No content"}`
-      );
+    if (!html || html.trim().length < 40) {
+      console.error(`❌ Empty response while scraping ${source.url}`);
       return null;
     }
 
-    const extractedText = extractTextFromHtml(scrapeResult.html);
+    const extractedText = extractTextFromHtml(html);
     const tokenCount = countTokens(extractedText);
+    const mastraSummary = await runMastraRegulatorySummary({
+      source,
+      extractedText,
+    });
+
+    const effectiveDate = parseOptionalDate(mastraSummary?.effectiveDate);
 
     const documentData: RegulatoryDocumentInsert = {
       country: source.country,
       category: source.category,
-      title: scrapeResult.title || source.subsection,
+      title: mastraSummary?.title || fallbackTitle || source.subsection,
       sourceUrl: source.url,
-      content: scrapeResult.html, // Raw HTML/markdown
+      content: html,
       extractedText,
       tokenCount,
       status: "active",
-      scrapedAt: scrapeResult.scrapedAt,
+      scrapedAt: new Date(),
       lastCheckedAt: new Date(),
-      // effectiveDate and expiryDate would need more advanced parsing
+      effectiveDate,
+      metadata: mastraSummary
+        ? {
+            summary: mastraSummary.summary,
+            obligations: mastraSummary.obligations,
+            citations: mastraSummary.citations,
+            mastraVersion: "v1",
+          }
+        : undefined,
     };
 
     return documentData;
@@ -136,6 +186,55 @@ export async function scrapeAndSaveDocument(
       error: error instanceof Error ? error.message : String(error),
     };
   }
+}
+
+export async function refreshSourcesForCategories({
+  categories,
+  limitPerCategory = 2,
+}: {
+  categories: string[];
+  limitPerCategory?: number;
+}) {
+  const catalogue = await parseRegulatoryConfig();
+  const normalized = categories.length
+    ? catalogue.filter((source) => categories.includes(source.category))
+    : catalogue;
+
+  const queue: RegulatorySource[] = [];
+  for (const category of categories) {
+    const matches = normalized.filter((source) => source.category === category);
+    queue.push(...matches.slice(0, limitPerCategory));
+  }
+
+  if (queue.length === 0) {
+    console.warn("[regulatory] No sources available for refresh", categories);
+    return { processed: 0, created: 0, updated: 0, unchanged: 0, failed: 0 };
+  }
+
+  let created = 0;
+  let updated = 0;
+  let unchanged = 0;
+  let failed = 0;
+
+  for (const source of queue) {
+    const result = await scrapeAndSaveDocument(source);
+    switch (result.action) {
+      case "created":
+        created++;
+        break;
+      case "updated":
+        updated++;
+        break;
+      case "unchanged":
+        unchanged++;
+        break;
+      case "failed":
+        failed++;
+        break;
+    }
+  }
+
+  return { processed: queue.length, created, updated, unchanged, failed };
 }
 
 /**

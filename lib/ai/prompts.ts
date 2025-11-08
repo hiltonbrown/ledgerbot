@@ -191,18 +191,21 @@ When users refer to "the document", "it", or "this", they most likely mean the m
 export const systemPrompt = ({
   requestHints,
   activeTools = [],
+  userSystemPrompt,
 }: {
   requestHints: RequestHints;
   activeTools?: readonly string[];
+  userSystemPrompt?: string;
 }) => {
   const requestPrompt = getRequestPromptFromHints(requestHints);
   const contextPrompt = requestHints.userContext
     ? `\n\n${requestHints.userContext}`
     : "";
 
-  const promptSections = [
-    `${regularPrompt}\n\n${requestPrompt}${contextPrompt}`,
-  ];
+  // Use user's custom prompt if provided, otherwise use default regularPrompt
+  const basePrompt = userSystemPrompt || regularPrompt;
+
+  const promptSections = [`${basePrompt}\n\n${requestPrompt}${contextPrompt}`];
 
   const hasArtifactTools = activeTools.some((tool) =>
     ["createDocument", "updateDocument"].includes(tool)

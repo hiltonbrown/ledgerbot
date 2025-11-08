@@ -20,6 +20,7 @@ type MessagesProps = {
   isReadonly: boolean;
   isArtifactVisible: boolean;
   selectedModelId: string;
+  firstName?: string;
 };
 
 function PureMessages({
@@ -30,6 +31,7 @@ function PureMessages({
   setMessages,
   regenerate,
   isReadonly,
+  firstName,
 }: MessagesProps) {
   const {
     containerRef: messagesContainerRef,
@@ -65,7 +67,7 @@ function PureMessages({
     >
       <Conversation className="mx-auto flex min-w-0 max-w-4xl flex-col gap-4 md:gap-6">
         <ConversationContent className="flex flex-col gap-4 px-2 py-4 md:gap-6 md:px-4">
-          {messages.length === 0 && <Greeting />}
+          {messages.length === 0 && <Greeting firstName={firstName} />}
 
           {messages.map((message, index) => (
             <PreviewMessage

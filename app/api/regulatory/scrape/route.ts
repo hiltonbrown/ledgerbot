@@ -41,7 +41,12 @@ export async function POST(req: Request) {
     await getAuthUser(); // Authentication check
     console.log("[API] Received request to trigger scraping job.");
 
-    const filters = await req.json();
+    let filters = {};
+    try {
+      filters = await req.json();
+    } catch {
+      filters = {};
+    }
     console.log("[API] Job filters:", filters);
 
     // Do not await this, run in background

@@ -18,7 +18,7 @@ LedgerBot (officially "intellisync-chatbot" in package.json) is an AI-powered ac
 - **Testing**: Playwright
 - **Monitoring**: TokenLens for token usage tracking with cached model catalog
 - **Integration**: Model Context Protocol (MCP) SDK for third-party service integrations
-- **Web Scraping**: Firecrawl API for regulatory document scraping
+- **Web Scraping**: Mastra ingestion pipeline for regulatory document scraping
 
 ## Setup & Maintenance Notes
 ⚠️ Avoid editing node_modules or dependency source files.
@@ -278,7 +278,7 @@ The Q&A agent provides regulatory-aware assistance for Australian tax law, emplo
 **Backend Implementation** (completed):
 - **Database schema**: `regulatoryDocument`, `regulatoryScrapeJob`, and `qaReviewRequest` tables with full-text search
 - **Configuration system**: Markdown-based source management (`config/regulatory-sources.md`) with 10 Australian sources
-- **Scraping infrastructure**: Firecrawl integration with rate limiting (1 req/2s) and job orchestration
+- **Scraping infrastructure**: Mastra ingestion agents with rate limiting, summarisation, and job orchestration
 - **Full-text search**: PostgreSQL tsvector with GIN indexes, relevance ranking, and context excerpts
 - **AI tool**: `regulatorySearch` tool for RAG retrieval with category filtering
 - **Confidence scoring**: Multi-factor algorithm analyzing citations, relevance, hedging language, and Xero integration

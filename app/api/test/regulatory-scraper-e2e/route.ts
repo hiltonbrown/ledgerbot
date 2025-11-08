@@ -41,10 +41,10 @@ export async function GET(request: Request) {
     const results: any[] = [];
     results.push({ step: "START", message: "Starting end-to-end test" });
 
-    // TEST 1: Scrape document (Firecrawl API call)
+    // TEST 1: Scrape document with Mastra agent
     results.push({
       step: "TEST_1",
-      message: "Scraping document from Firecrawl API",
+      message: "Scraping document via Mastra ingestion agent",
     });
 
     const documentData = await scrapeRegulatoryDocument(testSource);

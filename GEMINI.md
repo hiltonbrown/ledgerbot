@@ -285,7 +285,7 @@ The Q&A agent provides regulatory-aware assistance for Australian tax law, emplo
 **Planned Backend Integration**:
 The regulatory RAG system will include:
 - Database schema for `regulatoryDocument` and `regulatoryScrapeJob` tables
-- Automated web scraping via Firecrawl MCP for Fair Work awards, ATO rulings, and state payroll tax guidance
+- Automated regulatory scraping via Mastra ingestion workflows for Fair Work awards, ATO rulings, and state payroll tax guidance
 - Markdown-based configuration system (`/config/regulatory-sources.md`) for maintainable source management
 - PostgreSQL full-text search for regulatory document retrieval
 - Vercel Cron jobs for scheduled content updates

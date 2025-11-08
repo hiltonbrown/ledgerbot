@@ -23,10 +23,19 @@ export async function POST(request: Request) {
       isLocked,
       defaultModel,
       defaultReasoning,
-      systemPrompt,
-      codePrompt,
-      sheetPrompt,
+      systemPrompt, // Legacy: kept for migration, not used
+      codePrompt, // Legacy: kept for migration, not used
+      sheetPrompt, // Legacy: kept for migration, not used
       suggestions,
+      // Template variables
+      companyName,
+      industryContext,
+      chartOfAccounts,
+      customVariables,
+      // Custom instructions
+      customSystemInstructions,
+      customCodeInstructions,
+      customSheetInstructions,
     } = body;
 
     // Check if settings already exist
@@ -49,6 +58,15 @@ export async function POST(request: Request) {
           codePrompt,
           sheetPrompt,
           suggestions,
+          // Template variables
+          companyName,
+          industryContext,
+          chartOfAccounts,
+          customVariables,
+          // Custom instructions
+          customSystemInstructions,
+          customCodeInstructions,
+          customSheetInstructions,
           updatedAt: new Date(),
         })
         .where(eq(userSettings.userId, user.id));
@@ -65,6 +83,15 @@ export async function POST(request: Request) {
         codePrompt,
         sheetPrompt,
         suggestions,
+        // Template variables
+        companyName,
+        industryContext,
+        chartOfAccounts,
+        customVariables,
+        // Custom instructions
+        customSystemInstructions,
+        customCodeInstructions,
+        customSheetInstructions,
       });
     }
 

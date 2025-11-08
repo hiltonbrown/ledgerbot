@@ -1,8 +1,14 @@
 "use client";
 
+import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import type { UserSettings } from "@/app/(settings)/api/user/data";
 import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -138,14 +144,18 @@ const STATE_PROVINCE_OPTIONS: Record<
 
 export function PromptSettingsForm({ data }: { data: UserSettings }) {
   const [personalState, setPersonalState] = useState(data.personalisation);
-  const [promptState, setPromptState] = useState(data.prompts);
+  const [customInstructionsState, setCustomInstructionsState] = useState({
+    systemInstructions: data.personalisation.customSystemInstructions || "",
+    codeInstructions: data.personalisation.customCodeInstructions || "",
+    sheetInstructions: data.personalisation.customSheetInstructions || "",
+  });
   const [suggestionsState, setSuggestionsState] = useState(data.suggestions);
   const [isSaving, setIsSaving] = useState(false);
 
-  const handlePromptChange =
-    (field: keyof UserSettings["prompts"]) =>
+  const handleCustomInstructionsChange =
+    (field: "systemInstructions" | "codeInstructions" | "sheetInstructions") =>
     (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-      setPromptState((state) => ({
+      setCustomInstructionsState((state) => ({
         ...state,
         [field]: event.target.value,
       }));
@@ -202,9 +212,9 @@ export function PromptSettingsForm({ data }: { data: UserSettings }) {
           isLocked: personalState.isLocked,
           defaultModel: personalState.defaultModel,
           defaultReasoning: personalState.defaultReasoning,
-          systemPrompt: promptState.systemPrompt,
-          codePrompt: promptState.codePrompt,
-          sheetPrompt: promptState.sheetPrompt,
+          customSystemInstructions: customInstructionsState.systemInstructions,
+          customCodeInstructions: customInstructionsState.codeInstructions,
+          customSheetInstructions: customInstructionsState.sheetInstructions,
           suggestions: suggestionsState,
         }),
       });
@@ -215,7 +225,7 @@ export function PromptSettingsForm({ data }: { data: UserSettings }) {
 
       toast({
         type: "success",
-        description: "Your prompt settings have been saved.",
+        description: "Your personalisation settings have been saved.",
       });
     } catch (error) {
       toast({
@@ -339,49 +349,105 @@ export function PromptSettingsForm({ data }: { data: UserSettings }) {
           </div>
         </div>
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="systemPrompt">System Prompt</Label>
-        <Textarea
-          disabled={personalState.isLocked}
-          id="systemPrompt"
-          onChange={handlePromptChange("systemPrompt")}
-          placeholder="Enter your custom system prompt..."
-          rows={4}
-          value={promptState.systemPrompt}
-        />
-        <p className="text-muted-foreground text-xs">
-          This prompt defines the AI assistant's general behavior and
-          personality.
-        </p>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="codePrompt">Code Generation Prompt</Label>
-        <Textarea
-          disabled={personalState.isLocked}
-          id="codePrompt"
-          onChange={handlePromptChange("codePrompt")}
-          placeholder="Enter your custom code generation prompt..."
-          rows={8}
-          value={promptState.codePrompt}
-        />
-        <p className="text-muted-foreground text-xs">
-          This prompt is used when generating code snippets and programming
-          assistance.
-        </p>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="sheetPrompt">Spreadsheet Prompt</Label>
-        <Textarea
-          disabled={personalState.isLocked}
-          id="sheetPrompt"
-          onChange={handlePromptChange("sheetPrompt")}
-          placeholder="Enter your custom spreadsheet prompt..."
-          rows={4}
-          value={promptState.sheetPrompt}
-        />
-        <p className="text-muted-foreground text-xs">
-          This prompt is used when creating spreadsheets and data analysis.
-        </p>
+
+      <div className="space-y-4">
+        <div>
+          <h3 className="font-medium text-base">Custom Instructions</h3>
+          <p className="text-muted-foreground text-sm">
+            Add your own instructions to customize how the AI responds. These
+            will be combined with LedgerBot's base prompts.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="customSystemInstructions">
+            Custom System Instructions
+          </Label>
+          <Collapsible>
+            <CollapsibleTrigger className="mb-2 flex items-center gap-2 text-muted-foreground text-xs hover:text-foreground">
+              <ChevronDown className="h-3 w-3" />
+              About the base system prompt
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mb-2 rounded-md border bg-muted/30 p-3 text-muted-foreground text-xs">
+              The base system prompt defines LedgerBot as an expert accounting
+              assistant for Australian businesses. It includes comprehensive
+              accounting capabilities, GST/BAS compliance knowledge, Australian
+              terminology, and best practices for bookkeeping and tax
+              compliance.
+            </CollapsibleContent>
+          </Collapsible>
+          <Textarea
+            disabled={personalState.isLocked}
+            id="customSystemInstructions"
+            onChange={handleCustomInstructionsChange("systemInstructions")}
+            placeholder="Add your custom instructions here (optional)..."
+            rows={4}
+            value={customInstructionsState.systemInstructions}
+          />
+          <p className="text-muted-foreground text-xs">
+            Add specific instructions for your business context. These will be
+            combined with the base LedgerBot system prompt.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="customCodeInstructions">
+            Custom Code Instructions
+          </Label>
+          <Collapsible>
+            <CollapsibleTrigger className="mb-2 flex items-center gap-2 text-muted-foreground text-xs hover:text-foreground">
+              <ChevronDown className="h-3 w-3" />
+              About the base code prompt
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mb-2 rounded-md border bg-muted/30 p-3 text-muted-foreground text-xs">
+              The base code prompt defines LedgerBot as a Python code generator
+              that creates self-contained, executable code snippets. It includes
+              guidelines for clean code, proper error handling, and meaningful
+              outputs without external dependencies.
+            </CollapsibleContent>
+          </Collapsible>
+          <Textarea
+            disabled={personalState.isLocked}
+            id="customCodeInstructions"
+            onChange={handleCustomInstructionsChange("codeInstructions")}
+            placeholder="Add your custom code instructions here (optional)..."
+            rows={4}
+            value={customInstructionsState.codeInstructions}
+          />
+          <p className="text-muted-foreground text-xs">
+            Add specific coding preferences or requirements. These will be
+            combined with the base code generation prompt.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="customSheetInstructions">
+            Custom Spreadsheet Instructions
+          </Label>
+          <Collapsible>
+            <CollapsibleTrigger className="mb-2 flex items-center gap-2 text-muted-foreground text-xs hover:text-foreground">
+              <ChevronDown className="h-3 w-3" />
+              About the base spreadsheet prompt
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mb-2 rounded-md border bg-muted/30 p-3 text-muted-foreground text-xs">
+              The base spreadsheet prompt defines how LedgerBot creates CSV
+              spreadsheets with meaningful column headers, realistic data, and
+              proper formatting for business and accounting use cases.
+            </CollapsibleContent>
+          </Collapsible>
+          <Textarea
+            disabled={personalState.isLocked}
+            id="customSheetInstructions"
+            onChange={handleCustomInstructionsChange("sheetInstructions")}
+            placeholder="Add your custom spreadsheet instructions here (optional)..."
+            rows={4}
+            value={customInstructionsState.sheetInstructions}
+          />
+          <p className="text-muted-foreground text-xs">
+            Add specific spreadsheet formatting or data preferences. These will
+            be combined with the base spreadsheet prompt.
+          </p>
+        </div>
       </div>
       <div className="space-y-4">
         <div>

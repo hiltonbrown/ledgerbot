@@ -216,9 +216,18 @@ export const userSettings = pgTable("UserSettings", {
   isLocked: boolean("isLocked").default(false),
   defaultModel: varchar("defaultModel", { length: 100 }),
   defaultReasoning: boolean("defaultReasoning").default(false),
-  systemPrompt: text("systemPrompt"),
-  codePrompt: text("codePrompt"),
-  sheetPrompt: text("sheetPrompt"),
+  systemPrompt: text("systemPrompt"), // Legacy: kept for migration, not used
+  codePrompt: text("codePrompt"), // Legacy: kept for migration, not used
+  sheetPrompt: text("sheetPrompt"), // Legacy: kept for migration, not used
+  // Custom instructions (combined with locked base prompts)
+  customSystemInstructions: text("customSystemInstructions"),
+  customCodeInstructions: text("customCodeInstructions"),
+  customSheetInstructions: text("customSheetInstructions"),
+  // Template variables for system prompt
+  companyName: varchar("companyName", { length: 255 }),
+  industryContext: text("industryContext"),
+  chartOfAccounts: text("chartOfAccounts"),
+  customVariables: jsonb("customVariables").$type<Record<string, string>>(),
   suggestions:
     jsonb("suggestions").$type<
       Array<{

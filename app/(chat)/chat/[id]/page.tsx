@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
+import { getUserSettings } from "@/app/(settings)/api/user/data";
 import { Chat } from "@/components/chat";
 import { DataStreamHandler } from "@/components/data-stream-handler";
 import { chatModelIds, DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
@@ -21,6 +22,8 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   if (!user) {
     redirect("/login");
   }
+
+  const userSettings = await getUserSettings();
 
   if (chat.visibility === "private") {
     if (!user) {
@@ -49,6 +52,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
       <>
         <Chat
           autoResume={true}
+          firstName={userSettings.personalisation.firstName}
           id={chat.id}
           initialChatModel={DEFAULT_CHAT_MODEL}
           initialLastContext={chat.lastContext ?? undefined}
@@ -65,6 +69,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     <>
       <Chat
         autoResume={true}
+        firstName={userSettings.personalisation.firstName}
         id={chat.id}
         initialChatModel={initialModelId}
         initialLastContext={chat.lastContext ?? undefined}
