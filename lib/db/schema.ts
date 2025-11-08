@@ -263,7 +263,8 @@ export const xeroConnection = pgTable("XeroConnection", {
   connectionStatus: varchar("connectionStatus", { length: 50 }).default(
     "connected"
   ), // connected, disconnected, error
-  lastError: text("lastError"), // Last connection error message for user alerts
+  lastError: text("lastError"), // User-friendly error message for display
+  lastErrorDetails: text("lastErrorDetails"), // Technical error details for debugging (JSON string)
   lastErrorType: varchar("lastErrorType", { length: 50 }), // validation, authorization, token, rate_limit, server, network
   lastCorrelationId: varchar("lastCorrelationId", { length: 255 }), // X-Correlation-Id from Xero for support tickets
   lastApiCallAt: timestamp("lastApiCallAt"), // Track last successful API call for cleanup

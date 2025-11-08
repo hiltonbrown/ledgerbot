@@ -127,6 +127,13 @@
       "when": 1762573535774,
       "tag": "0017_lethal_warlock",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1762580390907,
+      "tag": "0018_romantic_mindworm",
+      "breakpoints": true
     }
   ]
 }

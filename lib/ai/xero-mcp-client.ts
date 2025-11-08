@@ -1214,9 +1214,10 @@ export async function executeXeroMCPTool(
       // Update connection error status with all details
       await updateConnectionError(
         connection.id,
-        parsedError.userMessage,
+        parsedError.userMessage, // User-friendly message for display
         parsedError.type,
-        parsedError.correlationId
+        parsedError.correlationId,
+        JSON.stringify(parsedError) // Technical details for debugging
       );
 
       // If error requires reconnection, update status to disconnected

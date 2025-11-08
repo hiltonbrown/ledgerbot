@@ -1,8 +1,10 @@
 "use client";
 
+import { AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -273,51 +275,26 @@ export function XeroIntegrationCard({
 
           {/* Error Details Section */}
           {activeConnection.lastError && (
-            <div className="space-y-2 rounded-md border border-red-200 bg-red-50 p-3 dark:border-red-900 dark:bg-red-950/30">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 space-y-1">
-                  <p className="font-medium text-red-900 text-xs dark:text-red-200">
-                    Connection Error
-                  </p>
-                  <p className="text-red-800 text-xs dark:text-red-300">
-                    {activeConnection.lastError}
-                  </p>
-                  {activeConnection.lastErrorType && (
-                    <p className="text-red-700 text-xs dark:text-red-400">
-                      Error type: {activeConnection.lastErrorType}
-                    </p>
-                  )}
-                  {activeConnection.lastCorrelationId && (
-                    <details className="mt-2">
-                      <summary className="cursor-pointer text-red-700 text-xs hover:text-red-800 dark:text-red-400 dark:hover:text-red-300">
-                        Technical Details
-                      </summary>
-                      <div className="mt-1 rounded bg-red-100 p-2 font-mono text-[10px] text-red-900 dark:bg-red-900/20 dark:text-red-200">
-                        <p>
-                          Correlation ID: {activeConnection.lastCorrelationId}
-                        </p>
-                        <p className="mt-1 text-red-700 dark:text-red-400">
-                          Include this ID when contacting support
-                        </p>
-                      </div>
-                    </details>
-                  )}
-                </div>
-              </div>
-              {(activeConnection.lastErrorType === "authorization" ||
-                activeConnection.lastErrorType === "token") && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="space-y-3">
+                <p className="text-sm">{activeConnection.lastError}</p>
                 <Button
                   className="w-full"
                   disabled={isConnecting}
                   onClick={handleConnect}
                   size="sm"
                   type="button"
-                  variant="outline"
+                  variant="default"
                 >
                   {isConnecting ? "Reconnecting..." : "Reconnect to Xero"}
                 </Button>
-              )}
-            </div>
+                <p className="text-muted-foreground text-xs">
+                  This will open Xero in a new window to re-authorize the
+                  connection.
+                </p>
+              </AlertDescription>
+            </Alert>
           )}
         </div>
       )}

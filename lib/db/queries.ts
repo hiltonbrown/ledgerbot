@@ -1070,7 +1070,10 @@ export async function createXeroConnection({
             scopes,
             authenticationEventId,
             connectionStatus: "connected",
-            lastError: null,
+            lastError: null, // Clear user-friendly error message
+            lastErrorDetails: null, // Clear technical error details
+            lastErrorType: null, // Clear error type
+            lastCorrelationId: null, // Clear correlation ID
             isActive: true,
             updatedAt: now,
           })
@@ -1522,14 +1525,16 @@ export async function updateConnectionError(
   connectionId: string,
   error: string,
   errorType?: string,
-  correlationId?: string
+  correlationId?: string,
+  technicalDetails?: string
 ): Promise<void> {
   try {
     await db
       .update(xeroConnection)
       .set({
         connectionStatus: "error",
-        lastError: error,
+        lastError: error, // User-friendly message
+        lastErrorDetails: technicalDetails || null, // Technical details for debugging
         lastErrorType: errorType || null,
         lastCorrelationId: correlationId || null,
         updatedAt: new Date(),

@@ -145,40 +145,62 @@ export async function getDecryptedConnection(
         );
       }
 
-      // Temporary failure - don't deactivate, return current tokens and let caller retry
+      // Temporary failure - deactivate connection to prevent repeated failures
       console.warn(
         `⚠️ [Xero Token Refresh] TEMPORARY FAILURE for user ${userId}: ${refreshResult.error}`
       );
-      console.warn(
-        "  Returning expired tokens, connection remains active for retry"
-      );
+      console.warn("  Deactivating connection to prevent further errors");
 
-      // Return the existing (possibly expired) connection - let the API call fail with proper error
-      return {
-        ...connection,
-        accessToken: decryptToken(connection.accessToken),
-        refreshToken: decryptToken(connection.refreshToken),
-      };
+      // Deactivate the connection - user must reconnect
+      try {
+        await deactivateXeroConnection(connection.id);
+        console.log(
+          `Deactivated Xero connection ${connection.id} due to refresh failure`
+        );
+      } catch (deactivateError) {
+        console.error(
+          `Failed to deactivate Xero connection ${connection.id}:`,
+          deactivateError
+        );
+      }
+
+      // Throw error instead of returning expired tokens
+      throw new Error(
+        "Unable to refresh Xero connection. Please reconnect your Xero account in Settings > Integrations."
+      );
     } catch (error) {
-      // If the error is our re-authentication message, rethrow it
+      // If the error is one of our re-authentication messages, rethrow it
       if (
         error instanceof Error &&
-        error.message.includes("reconnect your Xero account")
+        (error.message.includes("reconnect your Xero account") ||
+          error.message.includes("Unable to refresh Xero connection"))
       ) {
         throw error;
       }
 
+      // Unexpected error - log and deactivate to be safe
       console.error(
         `Unexpected error refreshing Xero token for user ${userId}:`,
         error
       );
-      // Don't deactivate on unexpected errors - connection might still be valid
-      // Return the connection and let the API call handle the error
-      return {
-        ...connection,
-        accessToken: decryptToken(connection.accessToken),
-        refreshToken: decryptToken(connection.refreshToken),
-      };
+
+      // Deactivate connection on unexpected errors to prevent further issues
+      try {
+        await deactivateXeroConnection(connection.id);
+        console.log(
+          `Deactivated Xero connection ${connection.id} due to unexpected refresh error`
+        );
+      } catch (deactivateError) {
+        console.error(
+          `Failed to deactivate Xero connection ${connection.id}:`,
+          deactivateError
+        );
+      }
+
+      // Throw error requiring reconnection
+      throw new Error(
+        "An unexpected error occurred with your Xero connection. Please reconnect your Xero account in Settings > Integrations."
+      );
     }
   }
 
