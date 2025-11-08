@@ -439,7 +439,11 @@ function PureArtifact({
 
                 {artifact.kind !== "sheet" && (
                   <div className="flex flex-col">
-                    <div className="font-medium">{artifact.title}</div>
+                    <div className="font-medium">
+                      {artifact.title.includes("|")
+                        ? artifact.title.split("|")[0].trim()
+                        : artifact.title}
+                    </div>
 
                     {isContentDirty ? (
                       <div className="text-muted-foreground text-sm">

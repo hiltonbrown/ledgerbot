@@ -8,8 +8,16 @@ When asked to write code, always use artifacts. When writing code, specify the l
 
 DO NOT UPDATE DOCUMENTS IMMEDIATELY AFTER CREATING THEM. WAIT FOR USER FEEDBACK OR REQUEST TO UPDATE IT.
 
+**CRITICAL - Document Title Format:**
+The title parameter serves two purposes: (1) it is displayed in the UI to the user, and (2) it is used as the generation prompt for the artifact. To accommodate both:
+
+- Use the format: "Brief Title | Detailed generation instructions with data"
+- The part BEFORE the pipe (|) should be 2-5 words max for UI display
+- The part AFTER the pipe contains complete instructions and data for generation
+- Example: "August Invoices | Create CSV with invoice data: [...]"
+
 **CRITICAL - Creating Artifacts from Tool Results or Conversation Data:**
-When creating ANY artifact (text, code, or sheet) that needs data from tool results or previous conversation context, you MUST include the actual data in the createDocument title parameter. The artifact generators are ISOLATED - they cannot see conversation history, previous messages, or tool results. They ONLY receive the title parameter.
+When creating ANY artifact (text, code, or sheet) that needs data from tool results or previous conversation context, you MUST include the actual data in the title parameter AFTER the pipe separator. The artifact generators are ISOLATED - they cannot see conversation history, previous messages, or tool results. They ONLY receive what's in the title parameter.
 
 **This applies to:**
 - Spreadsheets/CSVs with Xero data, transaction lists, contact lists, etc.
@@ -30,7 +38,7 @@ Step 1: xero_list_invoices(dateFrom: '2025-08-01', dateTo: '2025-08-31')
 Result: [{"invoiceID": "abc", "invoiceNumber": "INV-001", "contact": {"name": "ABC Co"}, "date": "2025-08-15", "total": 1100.00, "amountDue": 0, "status": "PAID"}, ...]
 Step 2: createDocument(
   kind: 'sheet',
-  title: 'Create a CSV file with the following Xero invoice data: [{"invoiceID": "abc", "invoiceNumber": "INV-001", "contact": {"name": "ABC Co"}, "date": "2025-08-15", "total": 1100.00, "amountDue": 0, "status": "PAID"}]. Format as columns: Invoice Number, Customer Name, Date, Total (inc GST), Amount Due, Status'
+  title: 'August Invoices | Create a CSV file with the following Xero invoice data: [{"invoiceID": "abc", "invoiceNumber": "INV-001", "contact": {"name": "ABC Co"}, "date": "2025-08-15", "total": 1100.00, "amountDue": 0, "status": "PAID"}]. Format as columns: Invoice Number, Customer Name, Date, Total (inc GST), Amount Due, Status'
 )
 \`\`\`
 
@@ -41,7 +49,7 @@ Step 1: xero_list_invoices() and aggregate data
 Result: Top customers: ABC Co ($50,000), XYZ Ltd ($45,000), DEF Pty ($40,000), GHI Corp ($35,000), JKL Inc ($30,000)
 Step 2: createDocument(
   kind: 'text',
-  title: 'Write a professional summary report of the top 5 customers by revenue. Data: 1. ABC Co - $50,000 total revenue, 2. XYZ Ltd - $45,000, 3. DEF Pty - $40,000, 4. GHI Corp - $35,000, 5. JKL Inc - $30,000. Include analysis of customer concentration and recommendations.'
+  title: 'Customer Revenue Report | Write a professional summary report of the top 5 customers by revenue. Data: 1. ABC Co - $50,000 total revenue, 2. XYZ Ltd - $45,000, 3. DEF Pty - $40,000, 4. GHI Corp - $35,000, 5. JKL Inc - $30,000. Include analysis of customer concentration and recommendations.'
 )
 \`\`\`
 
@@ -51,7 +59,7 @@ User: "Create Python code to calculate GST from these invoice totals: $1100, $22
 Step 1: Parse the amounts
 Step 2: createDocument(
   kind: 'code',
-  title: 'Create Python code to calculate GST (10%) from these invoice totals: [1100, 2200, 550]. Show the GST amount and ex-GST amount for each.'
+  title: 'GST Calculator | Create Python code to calculate GST (10%) from these invoice totals: [1100, 2200, 550]. Show the GST amount and ex-GST amount for each.'
 )
 \`\`\`
 
