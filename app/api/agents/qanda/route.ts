@@ -56,8 +56,8 @@ export async function POST(req: Request) {
     const { messages, settings } = await req.json();
 
     if (settings?.refreshSources) {
-      const requestedCategories = Array.isArray(settings?.categories)
-        ? settings.categories
+      const requestedCategories: string[] = Array.isArray(settings?.categories)
+        ? (settings.categories as string[])
         : ["award", "tax_ruling", "payroll_tax"];
 
       const uniqueCategories = Array.from(new Set(requestedCategories));

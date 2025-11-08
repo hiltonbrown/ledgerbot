@@ -120,6 +120,13 @@
       "when": 1762572014870,
       "tag": "0016_mature_wildside",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1762573535774,
+      "tag": "0017_lethal_warlock",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import { createXeroConnection } from "@/lib/db/queries";
+import { syncActiveConnectionChartOfAccounts } from "@/lib/xero/chart-of-accounts-sync";
 import {
   createXeroClient,
   getXeroScopes,
@@ -129,6 +130,22 @@ export async function GET(request: Request) {
         })
       )
     );
+
+    // Auto-sync chart of accounts for the active connection (non-blocking)
+    after(async () => {
+      try {
+        const result = await syncActiveConnectionChartOfAccounts(user.id);
+        if (result.success) {
+          console.log(
+            `✅ Auto-synced chart of accounts: ${result.accountCount} accounts`
+          );
+        } else {
+          console.error("Failed to auto-sync chart of accounts:", result.error);
+        }
+      } catch (error) {
+        console.error("Error in auto-sync chart of accounts:", error);
+      }
+    });
 
     // Redirect to settings page with success
     // Note: createXeroConnection already sets the connection as active

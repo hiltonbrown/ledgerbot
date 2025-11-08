@@ -9,6 +9,11 @@ import {
 import { requireAuth } from "@/lib/auth/clerk-helpers";
 import { db } from "@/lib/db/queries";
 import { userSettings } from "@/lib/db/schema";
+import {
+  formatChartOfAccountsForPrompt,
+  getChartOfAccounts,
+} from "@/lib/xero/chart-of-accounts-sync";
+import { getDecryptedConnection } from "@/lib/xero/connection-manager";
 
 // Load default system prompt from markdown file
 const loadDefaultSystemPrompt = () => {
@@ -168,13 +173,40 @@ export async function getUserSettings(): Promise<UserSettings> {
   const lastName =
     clerkUser?.lastName || USER_SETTINGS.personalisation.lastName;
 
+  // Fetch chart of accounts from active Xero connection
+  let chartOfAccountsText = "";
+  try {
+    const xeroConnection = await getDecryptedConnection(user.id);
+    if (xeroConnection) {
+      const chartData = await getChartOfAccounts(xeroConnection.id);
+      if (chartData && chartData.accounts.length > 0) {
+        // Format chart for AI prompt (grouped by type, active accounts only)
+        chartOfAccountsText = formatChartOfAccountsForPrompt(
+          chartData.accounts,
+          {
+            includeArchived: false,
+            groupByType: true,
+            includeDescriptions: false,
+          }
+        );
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching chart of accounts from Xero:", error);
+  }
+
+  // Fallback to manual chart of accounts if no Xero data available
+  if (!chartOfAccountsText && dbSettings?.chartOfAccounts) {
+    chartOfAccountsText = dbSettings.chartOfAccounts;
+  }
+
   // Build template variables for substitution
   const templateVars: TemplateVariables = {
     FIRST_NAME: firstName,
     LAST_NAME: lastName,
     COMPANY_NAME: dbSettings?.companyName || "",
     INDUSTRY_CONTEXT: dbSettings?.industryContext || "",
-    CHART_OF_ACCOUNTS: dbSettings?.chartOfAccounts || "",
+    CHART_OF_ACCOUNTS: chartOfAccountsText,
     // Custom instructions (user-editable additions to locked base prompts)
     CUSTOM_SYSTEM_INSTRUCTIONS: dbSettings?.customSystemInstructions || "",
     CUSTOM_CODE_INSTRUCTIONS: dbSettings?.customCodeInstructions || "",

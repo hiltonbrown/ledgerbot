@@ -1,15 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { AlertCircle, ExternalLink } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useRef, useState } from "react";
 import type { UserSettings } from "@/app/(settings)/api/user/data";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "../toast";
 import { CustomVariablesEditor } from "./custom-variables-editor";
+import { VariableBrowser } from "./variable-browser";
 
-export function TemplateVariableForm({ data }: { data: UserSettings }) {
+type XeroConnection = {
+  id: string;
+  tenantName: string | null;
+  accountCount?: number;
+  chartOfAccountsSyncedAt: Date | null;
+};
+
+export function TemplateVariableForm({
+  data,
+  xeroConnection,
+}: {
+  data: UserSettings;
+  xeroConnection?: XeroConnection;
+}) {
   const [formState, setFormState] = useState({
     companyName: data.personalisation.companyName || "",
     industryContext: data.personalisation.industryContext || "",
@@ -17,6 +36,10 @@ export function TemplateVariableForm({ data }: { data: UserSettings }) {
     customVariables: data.personalisation.customVariables || {},
   });
   const [isSaving, setIsSaving] = useState(false);
+  const router = useRouter();
+
+  const industryContextRef = useRef<HTMLTextAreaElement>(null);
+  const chartOfAccountsRef = useRef<HTMLTextAreaElement>(null);
 
   const handleInputChange =
     (field: keyof typeof formState) =>
@@ -33,6 +56,39 @@ export function TemplateVariableForm({ data }: { data: UserSettings }) {
       customVariables: variables,
     }));
   };
+
+  const handleInsertVariable =
+    (
+      field: "industryContext" | "chartOfAccounts",
+      ref: React.RefObject<HTMLTextAreaElement>
+    ) =>
+    (variableName: string) => {
+      const textarea = ref.current;
+      if (!textarea) return;
+
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const currentValue = formState[field];
+      const variablePlaceholder = `{{${variableName}}}`;
+
+      // Insert at cursor position or replace selection
+      const newValue =
+        currentValue.substring(0, start) +
+        variablePlaceholder +
+        currentValue.substring(end);
+
+      setFormState((state) => ({
+        ...state,
+        [field]: newValue,
+      }));
+
+      // Move cursor after inserted variable
+      setTimeout(() => {
+        textarea.focus();
+        const newCursorPos = start + variablePlaceholder.length;
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+      }, 0);
+    };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -69,11 +125,11 @@ export function TemplateVariableForm({ data }: { data: UserSettings }) {
 
       toast({
         type: "success",
-        description: "Template variables have been saved successfully.",
+        description: "Template variables saved successfully.",
       });
 
-      // Reload the page to apply the new template variables
-      window.location.reload();
+      // Refresh the router to get updated data without full page reload
+      router.refresh();
     } catch (error) {
       console.error("Error saving template variables:", error);
       toast({
@@ -107,12 +163,25 @@ export function TemplateVariableForm({ data }: { data: UserSettings }) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="industryContext">Industry / Business Information</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="industryContext">
+            Industry / Business Information
+          </Label>
+          <VariableBrowser
+            customVariables={formState.customVariables}
+            onInsert={handleInsertVariable(
+              "industryContext",
+              industryContextRef
+            )}
+            size="sm"
+          />
+        </div>
         <Textarea
           disabled={data.personalisation.isLocked || isSaving}
           id="industryContext"
           onChange={handleInputChange("industryContext")}
           placeholder="e.g., Retail business selling office supplies with 3 locations across NSW. We have 15 staff members and turnover approximately $2M annually. Main customers are small businesses and schools."
+          ref={industryContextRef}
           rows={6}
           value={formState.industryContext}
         />
@@ -128,18 +197,87 @@ export function TemplateVariableForm({ data }: { data: UserSettings }) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="chartOfAccounts">Chart of Accounts</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="chartOfAccounts">Chart of Accounts</Label>
+          {xeroConnection ? (
+            <Badge className="gap-1" variant="secondary">
+              <ExternalLink className="h-3 w-3" />
+              Synced from Xero
+            </Badge>
+          ) : (
+            <VariableBrowser
+              customVariables={formState.customVariables}
+              onInsert={handleInsertVariable(
+                "chartOfAccounts",
+                chartOfAccountsRef
+              )}
+              size="sm"
+            />
+          )}
+        </div>
+
+        {xeroConnection && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="text-xs">
+              <strong>{xeroConnection.tenantName}</strong> -{" "}
+              {xeroConnection.accountCount || 0} accounts
+              {xeroConnection.chartOfAccountsSyncedAt && (
+                <>
+                  {" "}
+                  • Last synced{" "}
+                  {new Date(
+                    xeroConnection.chartOfAccountsSyncedAt
+                  ).toLocaleDateString()}
+                </>
+              )}
+              {" • "}
+              <Link
+                className="text-primary hover:underline"
+                href="/settings/chartofaccounts"
+              >
+                View/Manage Chart
+              </Link>
+            </AlertDescription>
+          </Alert>
+        )}
+
         <Textarea
-          disabled={data.personalisation.isLocked || isSaving}
+          disabled={
+            data.personalisation.isLocked || isSaving || !!xeroConnection
+          }
           id="chartOfAccounts"
           onChange={handleInputChange("chartOfAccounts")}
-          placeholder="e.g., 1000 - Cash at Bank, 1100 - Accounts Receivable, 2000 - Accounts Payable, 4000 - Sales Revenue, 5000 - Cost of Goods Sold, 6000 - Operating Expenses"
+          placeholder={
+            xeroConnection
+              ? "Chart of accounts is automatically synced from Xero. Disable Xero integration to edit manually."
+              : "e.g., 1000 - Cash at Bank, 1100 - Accounts Receivable, 2000 - Accounts Payable, 4000 - Sales Revenue, 5000 - Cost of Goods Sold, 6000 - Operating Expenses"
+          }
+          ref={chartOfAccountsRef}
           rows={8}
           value={formState.chartOfAccounts}
         />
         <p className="text-muted-foreground text-xs">
-          Paste your chart of accounts here for more accurate coding
-          suggestions. Available in prompts as{" "}
+          {xeroConnection ? (
+            <>
+              Your chart of accounts is automatically populated from your active
+              Xero connection. To use a manual chart, disconnect Xero or switch
+              to a different organization.
+            </>
+          ) : (
+            <>
+              Paste your chart of accounts here for more accurate coding
+              suggestions. Or{" "}
+              <Link
+                className="text-primary hover:underline"
+                href="/settings/integrations"
+              >
+                connect to Xero
+              </Link>{" "}
+              for automatic sync.
+            </>
+          )}{" "}
+          Available in prompts as{" "}
           <code className="rounded bg-muted px-1 py-0.5">
             {"{"}
             {"{"}CHART_OF_ACCOUNTS{"}"}
@@ -157,7 +295,15 @@ export function TemplateVariableForm({ data }: { data: UserSettings }) {
       <div className="flex items-center justify-end gap-3">
         <Button
           disabled={isSaving}
-          onClick={() => window.location.reload()}
+          onClick={() => {
+            // Reset form to original data
+            setFormState({
+              companyName: data.personalisation.companyName || "",
+              industryContext: data.personalisation.industryContext || "",
+              chartOfAccounts: data.personalisation.chartOfAccounts || "",
+              customVariables: data.personalisation.customVariables || {},
+            });
+          }}
           type="button"
           variant="ghost"
         >

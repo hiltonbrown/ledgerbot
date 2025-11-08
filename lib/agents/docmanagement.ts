@@ -114,7 +114,7 @@ const PdfCiteSchema = z.object({
 
 const XeroQuerySchema = z.object({
   resource: z.string(),
-  params: z.record(z.any()).optional(),
+  params: z.record(z.string(), z.any()).optional(),
 });
 
 function estimateTokens(text: string) {
@@ -733,11 +733,6 @@ export function getDocManagementAgent() {
       pdf_cite: pdfCiteTool,
       xero_query: xeroQueryTool,
     },
-    middleware: [
-      async (next, ctx) => {
-        return next(ctx);
-      },
-    ],
   });
 
   return cachedAgent;

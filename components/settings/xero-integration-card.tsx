@@ -379,12 +379,20 @@ export function XeroIntegrationCard({
             <SelectItem value="add-new">Add new...</SelectItem>
           </SelectContent>
         </Select>
-        <Link
-          className="text-primary text-xs hover:underline"
-          href="/settings/integrations/xero/select-org"
-        >
-          View all organizations
-        </Link>
+        <div className="flex flex-col gap-1">
+          <Link
+            className="text-primary text-xs hover:underline"
+            href="/settings/integrations/xero/select-org"
+          >
+            View all organizations
+          </Link>
+          <Link
+            className="text-primary text-xs hover:underline"
+            href="/settings/chartofaccounts"
+          >
+            Manage Chart of Accounts
+          </Link>
+        </div>
       </div>
     </div>
   );

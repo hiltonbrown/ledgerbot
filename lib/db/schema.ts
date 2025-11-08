@@ -271,11 +271,39 @@ export const xeroConnection = pgTable("XeroConnection", {
   rateLimitDayRemaining: integer("rateLimitDayRemaining"), // X-DayLimit-Remaining header value
   rateLimitResetAt: timestamp("rateLimitResetAt"), // When rate limit will reset (from Retry-After)
   rateLimitProblem: varchar("rateLimitProblem", { length: 50 }), // X-Rate-Limit-Problem header (minute or day)
+  // Chart of Accounts
+  chartOfAccounts: jsonb("chartOfAccounts").$type<XeroAccount[]>(), // Structured chart of accounts data from Xero API
+  chartOfAccountsSyncedAt: timestamp("chartOfAccountsSyncedAt"), // Last time chart was synced from Xero
+  chartOfAccountsVersion: varchar("chartOfAccountsVersion", { length: 50 }), // Xero API version used for sync
+  chartOfAccountsHash: varchar("chartOfAccountsHash", { length: 64 }), // SHA-256 hash for change detection
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });
 
 export type XeroConnection = InferSelectModel<typeof xeroConnection>;
+
+// Xero Account structure from Xero API (camelCase as returned by xero-node SDK)
+export type XeroAccount = {
+  accountID: string;
+  code: string;
+  name: string;
+  type: string; // BANK, CURRENT, CURRLIAB, DEPRECIATN, DIRECTCOSTS, EQUITY, EXPENSE, FIXED, INVENTORY, LIABILITY, NONCURRENT, OTHERINCOME, OVERHEADS, PREPAYMENT, REVENUE, SALES, TERMLIAB, PAYGLIABILITY
+  taxType?: string;
+  description?: string;
+  _class?: string; // ASSET, EQUITY, EXPENSE, LIABILITY, REVENUE (note: underscore prefix)
+  status: string; // ACTIVE, ARCHIVED, DELETED
+  systemAccount?: string;
+  enablePaymentsToAccount?: boolean;
+  showInExpenseClaims?: boolean;
+  bankAccountNumber?: string;
+  bankAccountType?: string;
+  currencyCode?: string;
+  reportingCode?: string;
+  reportingCodeName?: string;
+  hasAttachments?: boolean;
+  updatedDateUTC?: string;
+  addToWatchlist?: boolean;
+};
 
 export const regulatoryDocument = pgTable(
   "RegulatoryDocument",
