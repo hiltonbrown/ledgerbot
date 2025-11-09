@@ -43,7 +43,7 @@ export async function POST(req: Request) {
 
     const stream = createUIMessageStream({
       execute: ({ writer: dataStream }) => {
-        const result = workflowSupervisorAgent.stream({
+        const result = workflowSupervisorAgent.generate({
           messages,
           maxSteps: 10, // Workflows may need more steps
           onStepFinish: ({ text: stepText, toolCalls: stepToolCalls }) => {
