@@ -14,11 +14,7 @@ const vercelGateway = createGateway({
 
 export const myProvider = isTestEnvironment
   ? (() => {
-      const {
-        artifactModel,
-        createMockLanguageModel,
-        titleModel,
-      } = require("./models.mock");
+      const { createMockLanguageModel } = require("./models.mock");
 
       const chatLanguageModels = Object.fromEntries(
         chatModels.map(({ id }) => [id, createMockLanguageModel()])
@@ -27,8 +23,6 @@ export const myProvider = isTestEnvironment
       return customProvider({
         languageModels: {
           ...chatLanguageModels,
-          "title-model": titleModel,
-          "artifact-model": artifactModel,
         },
       });
     })()
@@ -51,8 +45,6 @@ export const myProvider = isTestEnvironment
             ];
           })
         ),
-        "title-model": vercelGateway.languageModel("xai/grok-2-1212"),
-        "artifact-model": vercelGateway.languageModel("xai/grok-2-1212"),
       },
     });
 

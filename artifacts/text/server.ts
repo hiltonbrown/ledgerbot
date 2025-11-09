@@ -5,11 +5,11 @@ import { createDocumentHandler } from "@/lib/artifacts/server";
 
 export const textDocumentHandler = createDocumentHandler<"text">({
   kind: "text",
-  onCreateDocument: async ({ title, dataStream }) => {
+  onCreateDocument: async ({ title, dataStream, modelId }) => {
     let draftContent = "";
 
     const { fullStream } = streamText({
-      model: myProvider.languageModel("artifact-model"),
+      model: myProvider.languageModel(modelId),
       system:
         "Write about the given topic. Markdown is supported. Use headings wherever appropriate. If the prompt includes specific data (such as JSON data, numbers, names, or other factual information), use that EXACT data in your response. Do not make up or invent data if specific data is provided in the prompt.",
       experimental_transform: smoothStream({ chunking: "word" }),
@@ -34,11 +34,11 @@ export const textDocumentHandler = createDocumentHandler<"text">({
 
     return draftContent;
   },
-  onUpdateDocument: async ({ document, description, dataStream }) => {
+  onUpdateDocument: async ({ document, description, dataStream, modelId }) => {
     let draftContent = "";
 
     const { fullStream } = streamText({
-      model: myProvider.languageModel("artifact-model"),
+      model: myProvider.languageModel(modelId),
       system: updateDocumentPrompt(document.content, "text"),
       experimental_transform: smoothStream({ chunking: "word" }),
       prompt: description,

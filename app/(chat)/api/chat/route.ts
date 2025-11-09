@@ -315,6 +315,7 @@ export async function POST(request: Request) {
     } else {
       const title = await generateTitleFromUserMessage({
         message,
+        modelId: selectedChatModel,
       });
 
       await saveChat({
@@ -726,14 +727,17 @@ export async function POST(request: Request) {
             createDocument: createDocument({
               user,
               dataStream,
+              modelId: selectedChatModel,
             }),
             updateDocument: updateDocument({
               user,
               dataStream,
+              modelId: selectedChatModel,
             }),
             requestSuggestions: requestSuggestions({
               user,
               dataStream,
+              modelId: selectedChatModel,
             }),
             ...xeroTools,
           },

@@ -8,9 +8,10 @@ import type { AuthUser } from "@/lib/types/auth";
 type UpdateDocumentProps = {
   user: AuthUser;
   dataStream: UIMessageStreamWriter<ChatMessage>;
+  modelId: string;
 };
 
-export const updateDocument = ({ user, dataStream }: UpdateDocumentProps) =>
+export const updateDocument = ({ user, dataStream, modelId }: UpdateDocumentProps) =>
   tool({
     description:
       "Modify an EXISTING document artifact that was previously created in this conversation. Use when user wants to change, improve, or revise content they've already seen. Requires a valid document ID from this conversation.",
@@ -49,6 +50,7 @@ export const updateDocument = ({ user, dataStream }: UpdateDocumentProps) =>
         description,
         dataStream,
         user,
+        modelId,
       });
 
       dataStream.write({ type: "data-finish", data: null, transient: true });
