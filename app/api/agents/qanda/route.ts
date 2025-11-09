@@ -122,11 +122,14 @@ export async function POST(req: Request) {
               // Save the last user message if not already saved
               const lastUserMessage = messages[messages.length - 1];
               if (lastUserMessage?.role === "user") {
+                const content = typeof lastUserMessage.content === "string"
+                  ? lastUserMessage.content
+                  : "";
                 dbMessages.push({
                   id: generateUUID(),
                   chatId,
                   role: "user",
-                  parts: lastUserMessage.parts || [],
+                  parts: [{ type: "text", text: content }],
                   attachments: [],
                   createdAt: new Date(),
                   confidence: null,
