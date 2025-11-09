@@ -33,7 +33,7 @@ const executeMonthEndCloseTool = createTool({
     );
 
     try {
-      const result = await monthEndCloseWorkflow.execute({ context });
+      const result = await monthEndCloseWorkflow.execute({ inputData: context });
       return result;
     } catch (error) {
       console.error("[Workflow Supervisor] Month-End Close failed:", error);
@@ -70,7 +70,7 @@ const executeInvestorUpdateTool = createTool({
     );
 
     try {
-      const result = await investorUpdateWorkflow.execute({ context });
+      const result = await investorUpdateWorkflow.execute({ inputData: context });
       return result;
     } catch (error) {
       console.error("[Workflow Supervisor] Investor Update failed:", error);
@@ -103,7 +103,7 @@ const executeAtoAuditPackTool = createTool({
     );
 
     try {
-      const result = await atoAuditPackWorkflow.execute({ context });
+      const result = await atoAuditPackWorkflow.execute({ inputData: context });
       return result;
     } catch (error) {
       console.error("[Workflow Supervisor] ATO Audit Pack failed:", error);
