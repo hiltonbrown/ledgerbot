@@ -10,11 +10,13 @@ import { myProvider } from "../providers";
 type RequestSuggestionsProps = {
   user: AuthUser;
   dataStream: UIMessageStreamWriter<ChatMessage>;
+  modelId: string;
 };
 
 export const requestSuggestions = ({
   user,
   dataStream,
+  modelId,
 }: RequestSuggestionsProps) =>
   tool({
     description: "Request suggestions for a document",
@@ -38,7 +40,7 @@ export const requestSuggestions = ({
       >[] = [];
 
       const { elementStream } = streamObject({
-        model: myProvider.languageModel("artifact-model"),
+        model: myProvider.languageModel(modelId),
         system:
           "You are a help writing assistant. Given a piece of writing, please offer suggestions to improve the piece of writing and describe the change. It is very important for the edits to contain full sentences instead of just words. Max 5 suggestions.",
         prompt: document.content,

@@ -13,6 +13,7 @@ import { generateUUID } from "@/lib/utils";
 type CreateDocumentProps = {
   user: AuthUser;
   dataStream: UIMessageStreamWriter<ChatMessage>;
+  modelId: string;
 };
 
 const inputSchema = z
@@ -76,7 +77,7 @@ const inputSchema = z
     }
   });
 
-export const createDocument = ({ user, dataStream }: CreateDocumentProps) =>
+export const createDocument = ({ user, dataStream, modelId }: CreateDocumentProps) =>
   tool({
     description:
       "Create a BRAND NEW document artifact when action=`create`, or analyse an existing spreadsheet when action=`analyze`. Only use the create flow for fresh content that is unrelated to existing documents.",
@@ -184,6 +185,7 @@ export const createDocument = ({ user, dataStream }: CreateDocumentProps) =>
         title,
         dataStream,
         user,
+        modelId,
       });
 
       dataStream.write({ type: "data-finish", data: null, transient: true });

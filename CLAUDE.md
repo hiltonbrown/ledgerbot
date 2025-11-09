@@ -115,9 +115,7 @@ Copy `.env.example` to `.env.local` and configure:
   - `openai-gpt-5-mini`: GPT-5 Mini (fast, cost-efficient)
   - `google-gemini-2-5-flash`: Gemini 2.5 Flash (speed-optimized with reasoning)
 - Reasoning models use `extractReasoningMiddleware` with `<think>` tags
-- Additional specialized models:
-  - `title-model`: xAI Grok 2 (`xai/grok-2-1212`) for chat title generation
-  - `artifact-model`: xAI Grok 2 (`xai/grok-2-1212`) for document generation
+- Title generation and artifact creation use the user's selected chat model (passed dynamically)
 - **TokenLens Integration**: Uses cached model catalog (`unstable_cache`) with 24h revalidation
   - `getTokenlensCatalog()` fetches model pricing and capabilities from TokenLens API
   - Falls back to default catalog if fetch fails
