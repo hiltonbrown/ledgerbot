@@ -123,7 +123,7 @@ export async function POST(req: Request) {
               const lastUserMessage = messages[messages.length - 1];
               if (lastUserMessage?.role === "user") {
                 dbMessages.push({
-                  id: lastUserMessage.id || generateUUID(),
+                  id: generateUUID(),
                   chatId,
                   role: "user",
                   parts: lastUserMessage.parts || [],
