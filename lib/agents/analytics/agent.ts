@@ -103,7 +103,7 @@ const generateNarrativeTool = createTool({
     recommendations: z.array(z.string()).describe("Action items"),
   }),
   execute: async ({ context }) => {
-    const { period, kpis, context } = context;
+    const { period, kpis, context: additionalContext } = context;
 
     const narrativeParts: string[] = [];
 
@@ -144,9 +144,9 @@ const generateNarrativeTool = createTool({
       recommendations.push("Prepare fundraising or cost reduction plan");
     }
 
-    if (context) {
+    if (additionalContext) {
       narrativeParts.push("");
-      narrativeParts.push(`Context: ${context}`);
+      narrativeParts.push(`Context: ${additionalContext}`);
     }
 
     return {
