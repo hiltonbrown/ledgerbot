@@ -34,8 +34,30 @@ const executeMonthEndCloseTool = createTool({
 
     try {
       const run = await monthEndCloseWorkflow.createRunAsync();
-      const result = await run.start({ inputData: context });
-      return result;
+      const workflowResult = await run.start({ inputData: context });
+
+      // Extract success status and steps from workflow result
+      if (workflowResult.status === "success") {
+        const result = workflowResult.result;
+        return {
+          success: result.status === "complete",
+          stepsCompleted: Object.keys(workflowResult.steps || {}).length,
+          reportId: result.reportId,
+          errors: [],
+        };
+      }
+
+      // Workflow failed
+      const errorMessage =
+        "error" in workflowResult
+          ? workflowResult.error.message
+          : "Workflow execution failed";
+
+      return {
+        success: false,
+        stepsCompleted: Object.keys(workflowResult.steps || {}).length,
+        errors: [errorMessage],
+      };
     } catch (error) {
       console.error("[Workflow Supervisor] Month-End Close failed:", error);
       return {
@@ -72,8 +94,21 @@ const executeInvestorUpdateTool = createTool({
 
     try {
       const run = await investorUpdateWorkflow.createRunAsync();
-      const result = await run.start({ inputData: context });
-      return result;
+      const workflowResult = await run.start({ inputData: context });
+
+      // Extract success status from workflow result
+      if (workflowResult.status === "success") {
+        const result = workflowResult.result;
+        return {
+          success: true,
+          reportId: "investor-report-123", // Mock ID for now
+          forecastId: "forecast-123", // Mock ID for now
+        };
+      }
+
+      return {
+        success: false,
+      };
     } catch (error) {
       console.error("[Workflow Supervisor] Investor Update failed:", error);
       return {
@@ -106,8 +141,21 @@ const executeAtoAuditPackTool = createTool({
 
     try {
       const run = await atoAuditPackWorkflow.createRunAsync();
-      const result = await run.start({ inputData: context });
-      return result;
+      const workflowResult = await run.start({ inputData: context });
+
+      // Extract success status from workflow result
+      if (workflowResult.status === "success") {
+        const result = workflowResult.result;
+        return {
+          success: true,
+          packId: result.packId,
+          fileUrl: result.fileUrl,
+        };
+      }
+
+      return {
+        success: false,
+      };
     } catch (error) {
       console.error("[Workflow Supervisor] ATO Audit Pack failed:", error);
       return {

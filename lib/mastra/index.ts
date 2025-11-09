@@ -29,7 +29,9 @@ export const mastra = new Mastra({
 /**
  * Helper to get an agent by name with type safety
  */
-export function getAgent<T extends keyof typeof mastra.agents>(name: T) {
+type AgentNames = "qanda" | "forecasting" | "reconciliation" | "compliance" | "analytics" | "workflow";
+
+export function getAgent<T extends AgentNames>(name: T) {
   return mastra.getAgent(name);
 }
 

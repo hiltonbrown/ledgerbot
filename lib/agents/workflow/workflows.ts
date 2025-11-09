@@ -33,7 +33,7 @@ const processDocumentsStep = createStep({
     return {
       documentsProcessed: 0,
       validationErrors: [],
-      status: "complete",
+      status: "complete" as const,
     };
   },
 });
@@ -42,8 +42,9 @@ const processDocumentsStep = createStep({
 const reconcileTransactionsStep = createStep({
   id: "reconcile-transactions",
   inputSchema: z.object({
-    month: z.string(),
-    userId: z.string(),
+    documentsProcessed: z.number(),
+    validationErrors: z.array(z.string()),
+    status: z.enum(["complete", "partial", "failed"]),
   }),
   outputSchema: z.object({
     matchedCount: z.number(),
@@ -51,9 +52,11 @@ const reconcileTransactionsStep = createStep({
     autoApprovedCount: z.number(),
     status: z.enum(["complete", "review_required", "failed"]),
   }),
-  execute: async ({ inputData }) => {
+  execute: async ({ inputData: _stepInput, getInitData }) => {
+    const workflowInput = getInitData();
+    const { month, userId } = workflowInput;
     console.log(
-      `[Month-End Close] Step 2: Reconciling transactions for ${inputData.month}`
+      `[Month-End Close] Step 2: Reconciling transactions for ${month}`
     );
 
     // In production, this would run the reconciliation agent
@@ -63,7 +66,7 @@ const reconcileTransactionsStep = createStep({
       matchedCount: 0,
       exceptionsCount: 0,
       autoApprovedCount: 0,
-      status: "complete",
+      status: "complete" as const,
     };
   },
 });
@@ -72,8 +75,10 @@ const reconcileTransactionsStep = createStep({
 const complianceCheckStep = createStep({
   id: "compliance-check",
   inputSchema: z.object({
-    month: z.string(),
-    userId: z.string(),
+    matchedCount: z.number(),
+    exceptionsCount: z.number(),
+    autoApprovedCount: z.number(),
+    status: z.enum(["complete", "review_required", "failed"]),
   }),
   outputSchema: z.object({
     upcomingDeadlines: z.array(
@@ -86,9 +91,11 @@ const complianceCheckStep = createStep({
     issues: z.array(z.string()),
     status: z.enum(["compliant", "warnings", "critical"]),
   }),
-  execute: async ({ inputData }) => {
+  execute: async ({ inputData: _stepInput, getInitData }) => {
+    const workflowInput = getInitData();
+    const { month, userId } = workflowInput;
     console.log(
-      `[Month-End Close] Step 3: Running compliance checks for ${inputData.month}`
+      `[Month-End Close] Step 3: Running compliance checks for ${month}`
     );
 
     // In production, this would run the compliance agent
@@ -97,7 +104,7 @@ const complianceCheckStep = createStep({
     return {
       upcomingDeadlines: [],
       issues: [],
-      status: "compliant",
+      status: "compliant" as const,
     };
   },
 });
@@ -106,8 +113,15 @@ const complianceCheckStep = createStep({
 const generateAnalyticsStep = createStep({
   id: "generate-analytics",
   inputSchema: z.object({
-    month: z.string(),
-    userId: z.string(),
+    upcomingDeadlines: z.array(
+      z.object({
+        type: z.string(),
+        dueDate: z.string(),
+        priority: z.string(),
+      })
+    ),
+    issues: z.array(z.string()),
+    status: z.enum(["compliant", "warnings", "critical"]),
   }),
   outputSchema: z.object({
     reportId: z.string(),
@@ -119,9 +133,11 @@ const generateAnalyticsStep = createStep({
     }),
     status: z.enum(["complete", "failed"]),
   }),
-  execute: async ({ inputData }) => {
+  execute: async ({ inputData: _stepInput, getInitData }) => {
+    const workflowInput = getInitData();
+    const { month, userId } = workflowInput;
     console.log(
-      `[Month-End Close] Step 4: Generating analytics for ${inputData.month}`
+      `[Month-End Close] Step 4: Generating analytics for ${month}`
     );
 
     // In production, this would run the analytics agent
@@ -135,7 +151,7 @@ const generateAnalyticsStep = createStep({
         runway: 0,
         revenueGrowth: 0,
       },
-      status: "complete",
+      status: "complete" as const,
     };
   },
 });
@@ -147,10 +163,14 @@ export const monthEndCloseWorkflow = createWorkflow({
     userId: z.string(),
   }),
   outputSchema: z.object({
-    success: z.boolean(),
-    stepsCompleted: z.number(),
-    reportId: z.string().optional(),
-    errors: z.array(z.string()),
+    reportId: z.string(),
+    kpis: z.object({
+      grossMargin: z.number(),
+      netBurn: z.number(),
+      runway: z.number(),
+      revenueGrowth: z.number(),
+    }),
+    status: z.enum(["complete", "failed"]),
   }),
 })
   .then(processDocumentsStep)
@@ -193,22 +213,20 @@ const fetchFinancialDataStep = createStep({
 const createForecastStep = createStep({
   id: "create-forecast",
   inputSchema: z.object({
-    period: z.string(),
-    userId: z.string(),
-    historicalData: z.object({
-      revenue: z.array(z.number()),
-      expenses: z.array(z.number()),
-      cash: z.number(),
-    }),
+    revenue: z.array(z.number()),
+    expenses: z.array(z.number()),
+    cash: z.number(),
   }),
   outputSchema: z.object({
     forecastId: z.string(),
     scenarios: z.array(z.string()),
   }),
-  execute: async ({ inputData }) => {
-    console.log(`[Investor Update] Creating forecast for ${inputData.period}`);
+  execute: async ({ inputData, getInitData }) => {
+    const { period, userId } = getInitData();
+    console.log(`[Investor Update] Creating forecast for ${period}`);
 
-    // In production, run forecasting agent
+    // In production, run forecasting agent with historical data from previous step
+    // inputData contains: revenue, expenses, cash
     return {
       forecastId: "forecast-123",
       scenarios: ["Base", "Upside", "Downside"],
@@ -219,8 +237,8 @@ const createForecastStep = createStep({
 const prepareInvestorQAStep = createStep({
   id: "prepare-investor-qa",
   inputSchema: z.object({
-    period: z.string(),
-    userId: z.string(),
+    forecastId: z.string(),
+    scenarios: z.array(z.string()),
   }),
   outputSchema: z.object({
     qaPairs: z.array(
@@ -230,12 +248,14 @@ const prepareInvestorQAStep = createStep({
       })
     ),
   }),
-  execute: async ({ inputData }) => {
+  execute: async ({ inputData, getInitData }) => {
+    const { period, userId } = getInitData();
     console.log(
-      `[Investor Update] Preparing Q&A for ${inputData.period}`
+      `[Investor Update] Preparing Q&A for ${period}`
     );
 
     // In production, use Q&A agent to generate anticipated investor questions
+    // inputData contains: forecastId, scenarios
     return {
       qaPairs: [],
     };
@@ -249,9 +269,12 @@ export const investorUpdateWorkflow = createWorkflow({
     userId: z.string(),
   }),
   outputSchema: z.object({
-    success: z.boolean(),
-    reportId: z.string().optional(),
-    forecastId: z.string().optional(),
+    qaPairs: z.array(
+      z.object({
+        question: z.string(),
+        answer: z.string(),
+      })
+    ),
   }),
 })
   .then(fetchFinancialDataStep)
@@ -289,20 +312,22 @@ const collectAuditDocumentsStep = createStep({
 const verifyComplianceStep = createStep({
   id: "verify-compliance",
   inputSchema: z.object({
-    period: z.string(),
-    userId: z.string(),
+    documentIds: z.array(z.string()),
+    documentCount: z.number(),
   }),
   outputSchema: z.object({
     compliant: z.boolean(),
     issues: z.array(z.string()),
     references: z.array(z.string()),
   }),
-  execute: async ({ inputData }) => {
+  execute: async ({ inputData, getInitData }) => {
+    const { period, userId } = getInitData();
     console.log(
-      `[ATO Audit Pack] Verifying compliance for ${inputData.period}`
+      `[ATO Audit Pack] Verifying compliance for ${period}`
     );
 
     // In production, run compliance agent to verify all requirements
+    // inputData contains: documentIds, documentCount
     return {
       compliant: true,
       issues: [],
@@ -314,20 +339,24 @@ const verifyComplianceStep = createStep({
 const generateAuditPackStep = createStep({
   id: "generate-audit-pack",
   inputSchema: z.object({
-    period: z.string(),
-    userId: z.string(),
-    documentIds: z.array(z.string()),
+    compliant: z.boolean(),
+    issues: z.array(z.string()),
+    references: z.array(z.string()),
   }),
   outputSchema: z.object({
     packId: z.string(),
     fileUrl: z.string(),
   }),
-  execute: async ({ inputData }) => {
+  execute: async ({ inputData, getInitData, getStepResult }) => {
+    const { period, userId } = getInitData();
+    const { documentIds } = getStepResult(collectAuditDocumentsStep);
     console.log(
-      `[ATO Audit Pack] Generating audit pack for ${inputData.period}`
+      `[ATO Audit Pack] Generating audit pack for ${period}`
     );
 
     // In production, compile all documents into a PDF package
+    // inputData contains: compliant, issues, references
+    // Get documentIds from previous step
     return {
       packId: "audit-pack-123",
       fileUrl: "/files/audit-pack-123.pdf",
@@ -342,9 +371,8 @@ export const atoAuditPackWorkflow = createWorkflow({
     userId: z.string(),
   }),
   outputSchema: z.object({
-    success: z.boolean(),
-    packId: z.string().optional(),
-    fileUrl: z.string().optional(),
+    packId: z.string(),
+    fileUrl: z.string(),
   }),
 })
   .then(collectAuditDocumentsStep)
