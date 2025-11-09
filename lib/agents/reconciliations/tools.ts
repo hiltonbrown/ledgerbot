@@ -78,11 +78,11 @@ export function createReconciliationXeroTools(userId: string) {
           .describe("Transaction status"),
       }),
       outputSchema: z.string(),
-      execute: async ({ inputData }) => {
+      execute: async ({ context }) => {
         const result = await executeXeroMCPTool(
           userId,
           "xero_get_bank_transactions",
-          inputData
+          context
         );
         return result.content[0].text;
       },
@@ -103,11 +103,11 @@ export function createReconciliationXeroTools(userId: string) {
           .describe("End date (ISO 8601 format YYYY-MM-DD)"),
       }),
       outputSchema: z.string(),
-      execute: async ({ inputData }) => {
+      execute: async ({ context }) => {
         const result = await executeXeroMCPTool(
           userId,
           "xero_list_journal_entries",
-          inputData
+          context
         );
         return result.content[0].text;
       },
@@ -142,11 +142,11 @@ export function createReconciliationXeroTools(userId: string) {
           .describe("Filter by account type"),
       }),
       outputSchema: z.string(),
-      execute: async ({ inputData }) => {
+      execute: async ({ context }) => {
         const result = await executeXeroMCPTool(
           userId,
           "xero_list_accounts",
-          inputData
+          context
         );
         return result.content[0].text;
       },
@@ -202,8 +202,8 @@ export const matchTransactionsTool = createTool({
     ),
     unmatchedCount: z.number(),
   }),
-  execute: async ({ inputData }) => {
-    const { bankTransactions, ledgerEntries, matchThreshold } = inputData;
+  execute: async ({ context }) => {
+    const { bankTransactions, ledgerEntries, matchThreshold } = context;
     const matches: ReconciliationMatch[] = [];
     const matchedLedgerIds = new Set<string>();
 
@@ -305,7 +305,7 @@ export const proposeAdjustmentTool = createTool({
       confidence: z.number(),
     }),
   }),
-  execute: async ({ inputData }) => {
+  execute: async ({ context }) => {
     const {
       transactionId,
       amount,
@@ -314,7 +314,7 @@ export const proposeAdjustmentTool = createTool({
       suggestedDebitAccount,
       suggestedCreditAccount,
       rationale,
-    } = inputData;
+    } = context;
 
     const proposal: AdjustmentProposal = {
       id: generateUUID(),
@@ -359,8 +359,8 @@ export const identifyExceptionsTool = createTool({
       })
     ),
   }),
-  execute: async ({ inputData }) => {
-    const { matches } = inputData;
+  execute: async ({ context }) => {
+    const { matches } = context;
     const exceptions: ReconciliationException[] = [];
 
     for (const match of matches) {

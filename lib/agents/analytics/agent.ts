@@ -28,8 +28,8 @@ const calculateKpisTool = createTool({
     }),
     insights: z.array(z.string()).describe("Key insights and recommendations"),
   }),
-  execute: async ({ inputData }) => {
-    const { revenue, cogs = [], expenses, cash = 0 } = inputData;
+  execute: async ({ context }) => {
+    const { revenue, cogs = [], expenses, cash = 0 } = context;
 
     const latestRevenue = revenue[revenue.length - 1] || 0;
     const previousRevenue = revenue[revenue.length - 2] || 0;
@@ -102,8 +102,8 @@ const generateNarrativeTool = createTool({
     narrative: z.string().describe("Executive narrative summary"),
     recommendations: z.array(z.string()).describe("Action items"),
   }),
-  execute: async ({ inputData }) => {
-    const { period, kpis, context } = inputData;
+  execute: async ({ context }) => {
+    const { period, kpis, context } = context;
 
     const narrativeParts: string[] = [];
 
@@ -179,11 +179,11 @@ function createAnalyticsXeroTools(userId: string) {
           .default("MONTH"),
       }),
       outputSchema: z.string(),
-      execute: async ({ inputData }) => {
+      execute: async ({ context }) => {
         const result = await executeXeroMCPTool(
           userId,
           "xero_get_profit_and_loss",
-          inputData
+          context
         );
         return result.content[0].text;
       },
@@ -202,11 +202,11 @@ function createAnalyticsXeroTools(userId: string) {
           .describe("End date (ISO 8601 format YYYY-MM-DD)"),
       }),
       outputSchema: z.string(),
-      execute: async ({ inputData }) => {
+      execute: async ({ context }) => {
         const result = await executeXeroMCPTool(
           userId,
           "xero_get_balance_sheet",
-          inputData
+          context
         );
         return result.content[0].text;
       },

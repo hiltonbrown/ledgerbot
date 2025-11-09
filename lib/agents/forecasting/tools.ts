@@ -34,11 +34,11 @@ export function createForecastingXeroTools(userId: string) {
           .describe("Reporting timeframe"),
       }),
       outputSchema: z.string(),
-      execute: async ({ inputData }) => {
+      execute: async ({ context }) => {
         const result = await executeXeroMCPTool(
           userId,
           "xero_get_profit_and_loss",
-          inputData
+          context
         );
         return result.content[0].text;
       },
@@ -59,11 +59,11 @@ export function createForecastingXeroTools(userId: string) {
           .describe("End date for the report (ISO 8601 format YYYY-MM-DD)"),
       }),
       outputSchema: z.string(),
-      execute: async ({ inputData }) => {
+      execute: async ({ context }) => {
         const result = await executeXeroMCPTool(
           userId,
           "xero_get_balance_sheet",
-          inputData
+          context
         );
         return result.content[0].text;
       },

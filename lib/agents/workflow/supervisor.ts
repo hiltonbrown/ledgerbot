@@ -27,13 +27,13 @@ const executeMonthEndCloseTool = createTool({
     reportId: z.string().optional(),
     errors: z.array(z.string()),
   }),
-  execute: async ({ inputData }) => {
+  execute: async ({ context }) => {
     console.log(
-      `[Workflow Supervisor] Executing Month-End Close for ${inputData.month}`
+      `[Workflow Supervisor] Executing Month-End Close for ${context.month}`
     );
 
     try {
-      const result = await monthEndCloseWorkflow.start(inputData);
+      const result = await monthEndCloseWorkflow.start(context);
       return result;
     } catch (error) {
       console.error("[Workflow Supervisor] Month-End Close failed:", error);
@@ -64,13 +64,13 @@ const executeInvestorUpdateTool = createTool({
     reportId: z.string().optional(),
     forecastId: z.string().optional(),
   }),
-  execute: async ({ inputData }) => {
+  execute: async ({ context }) => {
     console.log(
-      `[Workflow Supervisor] Executing Investor Update for ${inputData.period}`
+      `[Workflow Supervisor] Executing Investor Update for ${context.period}`
     );
 
     try {
-      const result = await investorUpdateWorkflow.start(inputData);
+      const result = await investorUpdateWorkflow.start(context);
       return result;
     } catch (error) {
       console.error("[Workflow Supervisor] Investor Update failed:", error);
@@ -97,13 +97,13 @@ const executeAtoAuditPackTool = createTool({
     packId: z.string().optional(),
     fileUrl: z.string().optional(),
   }),
-  execute: async ({ inputData }) => {
+  execute: async ({ context }) => {
     console.log(
-      `[Workflow Supervisor] Executing ATO Audit Pack for ${inputData.period}`
+      `[Workflow Supervisor] Executing ATO Audit Pack for ${context.period}`
     );
 
     try {
-      const result = await atoAuditPackWorkflow.start(inputData);
+      const result = await atoAuditPackWorkflow.start(context);
       return result;
     } catch (error) {
       console.error("[Workflow Supervisor] ATO Audit Pack failed:", error);

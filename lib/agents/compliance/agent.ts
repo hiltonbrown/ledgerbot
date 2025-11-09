@@ -36,8 +36,8 @@ const checkDeadlinesTool = createTool({
       })
     ),
   }),
-  execute: async ({ inputData }) => {
-    const { obligationType, monthsAhead } = inputData;
+  execute: async ({ context }) => {
+    const { obligationType, monthsAhead } = context;
 
     // Mock deadlines - in production, this would query a database or external API
     const now = new Date();
@@ -89,8 +89,8 @@ const getAtoReferencesTool = createTool({
       })
     ),
   }),
-  execute: async ({ inputData }) => {
-    const { query, limit } = inputData;
+  execute: async ({ context }) => {
+    const { query, limit } = context;
 
     try {
       const results = await searchRegulatoryDocuments(query, {
@@ -132,7 +132,7 @@ function createComplianceXeroTools(userId: string) {
           .describe("End date (ISO 8601 format YYYY-MM-DD)"),
       }),
       outputSchema: z.string(),
-      execute: async ({ inputData }) => {
+      execute: async ({ context }) => {
         // In production, this would call the actual Xero GST report endpoint
         // For now, we'll use a placeholder implementation
         try {
@@ -141,7 +141,7 @@ function createComplianceXeroTools(userId: string) {
             "xero_get_organisation",
             {}
           );
-          return `GST Report for ${inputData.fromDate} to ${inputData.toDate}\n${result.content[0].text}`;
+          return `GST Report for ${context.fromDate} to ${context.toDate}\n${result.content[0].text}`;
         } catch (error) {
           return "Unable to retrieve GST report from Xero";
         }

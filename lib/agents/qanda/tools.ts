@@ -43,8 +43,8 @@ export const regulatorySearchTool = createTool({
       .optional(),
     message: z.string().optional(),
   }),
-  execute: async ({ context, inputData }) => {
-    const { query, category, limit } = inputData;
+  execute: async ({ context }) => {
+    const { query, category, limit } = context;
     try {
       console.log(`[Q&A Agent] Regulatory search for: "${query}"`);
       const results = await searchRegulatoryDocuments(query, {
@@ -126,11 +126,11 @@ export function createQandaXeroTools(userId: string) {
           .describe("Maximum number of invoices to return"),
       }),
       outputSchema: z.string(),
-      execute: async ({ inputData }) => {
+      execute: async ({ context }) => {
         const result = await executeXeroMCPTool(
           userId,
           "xero_list_invoices",
-          inputData
+          context
         );
         return result.content[0].text;
       },
@@ -168,11 +168,11 @@ export function createQandaXeroTools(userId: string) {
           .describe("Maximum number of contacts to return"),
       }),
       outputSchema: z.string(),
-      execute: async ({ inputData }) => {
+      execute: async ({ context }) => {
         const result = await executeXeroMCPTool(
           userId,
           "xero_list_contacts",
-          inputData
+          context
         );
         return result.content[0].text;
       },
@@ -211,11 +211,11 @@ export function createQandaXeroTools(userId: string) {
           .describe("Filter by account type"),
       }),
       outputSchema: z.string(),
-      execute: async ({ inputData }) => {
+      execute: async ({ context }) => {
         const result = await executeXeroMCPTool(
           userId,
           "xero_list_accounts",
-          inputData
+          context
         );
         return result.content[0].text;
       },

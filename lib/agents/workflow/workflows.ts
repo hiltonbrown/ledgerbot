@@ -22,9 +22,9 @@ const processDocumentsStep = createStep({
     validationErrors: z.array(z.string()),
     status: z.enum(["complete", "partial", "failed"]),
   }),
-  execute: async ({ inputData }) => {
+  execute: async ({ context }) => {
     console.log(
-      `[Month-End Close] Step 1: Processing documents for ${inputData.month}`
+      `[Month-End Close] Step 1: Processing documents for ${context.month}`
     );
 
     // In production, this would trigger the document management agent
@@ -51,9 +51,9 @@ const reconcileTransactionsStep = createStep({
     autoApprovedCount: z.number(),
     status: z.enum(["complete", "review_required", "failed"]),
   }),
-  execute: async ({ inputData }) => {
+  execute: async ({ context }) => {
     console.log(
-      `[Month-End Close] Step 2: Reconciling transactions for ${inputData.month}`
+      `[Month-End Close] Step 2: Reconciling transactions for ${context.month}`
     );
 
     // In production, this would run the reconciliation agent
@@ -86,9 +86,9 @@ const complianceCheckStep = createStep({
     issues: z.array(z.string()),
     status: z.enum(["compliant", "warnings", "critical"]),
   }),
-  execute: async ({ inputData }) => {
+  execute: async ({ context }) => {
     console.log(
-      `[Month-End Close] Step 3: Running compliance checks for ${inputData.month}`
+      `[Month-End Close] Step 3: Running compliance checks for ${context.month}`
     );
 
     // In production, this would run the compliance agent
@@ -119,9 +119,9 @@ const generateAnalyticsStep = createStep({
     }),
     status: z.enum(["complete", "failed"]),
   }),
-  execute: async ({ inputData }) => {
+  execute: async ({ context }) => {
     console.log(
-      `[Month-End Close] Step 4: Generating analytics for ${inputData.month}`
+      `[Month-End Close] Step 4: Generating analytics for ${context.month}`
     );
 
     // In production, this would run the analytics agent
@@ -176,9 +176,9 @@ const fetchFinancialDataStep = createStep({
     expenses: z.array(z.number()),
     cash: z.number(),
   }),
-  execute: async ({ inputData }) => {
+  execute: async ({ context }) => {
     console.log(
-      `[Investor Update] Fetching financial data for ${inputData.period}`
+      `[Investor Update] Fetching financial data for ${context.period}`
     );
 
     // In production, fetch from Xero or database
@@ -205,8 +205,8 @@ const createForecastStep = createStep({
     forecastId: z.string(),
     scenarios: z.array(z.string()),
   }),
-  execute: async ({ inputData }) => {
-    console.log(`[Investor Update] Creating forecast for ${inputData.period}`);
+  execute: async ({ context }) => {
+    console.log(`[Investor Update] Creating forecast for ${context.period}`);
 
     // In production, run forecasting agent
     return {
@@ -230,9 +230,9 @@ const prepareInvestorQAStep = createStep({
       })
     ),
   }),
-  execute: async ({ inputData }) => {
+  execute: async ({ context }) => {
     console.log(
-      `[Investor Update] Preparing Q&A for ${inputData.period}`
+      `[Investor Update] Preparing Q&A for ${context.period}`
     );
 
     // In production, use Q&A agent to generate anticipated investor questions
@@ -275,8 +275,8 @@ const collectAuditDocumentsStep = createStep({
     documentIds: z.array(z.string()),
     documentCount: z.number(),
   }),
-  execute: async ({ inputData }) => {
-    console.log(`[ATO Audit Pack] Collecting documents for ${inputData.period}`);
+  execute: async ({ context }) => {
+    console.log(`[ATO Audit Pack] Collecting documents for ${context.period}`);
 
     // In production, use document management agent to gather required documents
     return {
@@ -297,9 +297,9 @@ const verifyComplianceStep = createStep({
     issues: z.array(z.string()),
     references: z.array(z.string()),
   }),
-  execute: async ({ inputData }) => {
+  execute: async ({ context }) => {
     console.log(
-      `[ATO Audit Pack] Verifying compliance for ${inputData.period}`
+      `[ATO Audit Pack] Verifying compliance for ${context.period}`
     );
 
     // In production, run compliance agent to verify all requirements
@@ -322,9 +322,9 @@ const generateAuditPackStep = createStep({
     packId: z.string(),
     fileUrl: z.string(),
   }),
-  execute: async ({ inputData }) => {
+  execute: async ({ context }) => {
     console.log(
-      `[ATO Audit Pack] Generating audit pack for ${inputData.period}`
+      `[ATO Audit Pack] Generating audit pack for ${context.period}`
     );
 
     // In production, compile all documents into a PDF package
