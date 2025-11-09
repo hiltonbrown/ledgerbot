@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import type { ContextFile } from "@/lib/db/schema";
 import { FILE_TYPE_LABELS } from "@/lib/types";
 
@@ -76,9 +77,11 @@ export function ContextFileList({ files }: { files: ContextFile[] }) {
 
   if (fileList.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed p-6 text-center text-muted-foreground text-sm">
-        No files uploaded yet.
-      </div>
+      <Card>
+        <CardContent className="py-8 text-center">
+          <p className="text-muted-foreground text-sm">No files uploaded yet.</p>
+        </CardContent>
+      </Card>
     );
   }
 
