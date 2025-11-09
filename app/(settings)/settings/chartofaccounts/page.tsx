@@ -178,10 +178,7 @@ export default async function ChartOfAccountsPage() {
 
       {/* Chart Display */}
       <Card>
-        <CardHeader>
-          <CardTitle>Chart of Accounts</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <ChartOfAccountsDisplay
             accounts={activeConnection.chartOfAccounts}
             organisationName={activeConnection.tenantName || undefined}
