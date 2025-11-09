@@ -4,6 +4,7 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 import type { TokenUsageByModel } from "@/app/(settings)/api/usage/data";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Collapsible,
   CollapsibleContent,
@@ -56,11 +57,13 @@ export function ModelTokenUsage({ models }: { models: TokenUsageByModel[] }) {
 
   if (models.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed p-8 text-center">
-        <p className="text-muted-foreground text-sm">
-          No token usage data available yet
-        </p>
-      </div>
+      <Card>
+        <CardContent className="py-8 text-center">
+          <p className="text-muted-foreground text-sm">
+            No token usage data available yet
+          </p>
+        </CardContent>
+      </Card>
     );
   }
 

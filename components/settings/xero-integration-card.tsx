@@ -273,8 +273,8 @@ export function XeroIntegrationCard({
             </div>
           </div>
 
-          {/* Error Details Section */}
-          {activeConnection.lastError && (
+          {/* Error Details Section - Only show if connection status is error */}
+          {activeConnection.lastError && !isStatusConnected && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription className="space-y-3">
