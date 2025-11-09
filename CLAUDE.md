@@ -235,28 +235,119 @@ Artifacts are special UI components that render AI-generated content in a side p
 - **Behavior**: Real-time updates visible to user during AI generation
 - **Important**: Never update documents immediately after creation - wait for user feedback
 
-### Agent Workspaces
+### Agent Workspaces (Mastra Framework)
 
-LedgerBot features specialized AI agent workspaces for accounting automation (`app/agents/`):
+LedgerBot features specialized AI agent workspaces for accounting automation built on **Mastra** (`app/agents/`).
 
-**Available Agents**:
+**Framework**: All agents use [Mastra](https://mastra.ai) for unified architecture, tool integration, and workflow orchestration.
+
+**Shared Mastra Instance** (`lib/mastra/index.ts`):
+- Centralized agent registration and configuration
+- Type-safe agent access via `mastra.getAgent(name)`
+- Shared tools and integrations
+- Built-in observability and monitoring
+
+**Available Agents** (all using Mastra):
 1. **Document Processing** (`/agents/docmanagement`): AI-assisted intake for invoices, receipts, and bank statements with automated OCR and validation queues
-2. **Reconciliations** (`/agents/reconciliations`): Continuous bank feed matching with fuzzy logic suggestions and ledger adjustment proposals
+   - **Status**: ✅ Fully implemented with Mastra
+   - **Tools**: PDF load, RAG search, citation extraction, optional Xero query
+   - **Features**: Document caching, chunk-based search, citation scoring
+
+2. **Reconciliations** (`/agents/reconciliations`): Continuous bank feed matching with fuzzy logic and ledger adjustment proposals
+   - **Status**: ✅ Fully implemented with Mastra
+   - **Tools**: `matchTransactions`, `proposeAdjustment`, `identifyExceptions`, Xero bank transactions
+   - **Features**: Levenshtein distance matching, auto-approval (≥80% score), severity classification
+   - **API**: `POST /api/agents/reconciliations`
+
 3. **Compliance** (`/agents/compliance`): ATO-aware co-pilot for BAS, payroll, and super obligations with automatic reminders
-4. **Analytics** (`/agents/analytics`): Narrative-rich reporting with KPI annotations, drill-down tables, and presentation-ready exports
-5. **Forecasting** (`/agents/forecasting`): Scenario modeling and runway projections with LangGraph workflows
-6. **Advisory Q&A** (`/agents/qanda`): Regulatory-aware conversational assistant for Australian tax law, Fair Work awards, and compliance queries with citations and confidence scoring
-7. **Workflow Supervisor** (`/agents/workflow`): Graph orchestrations across document, reconciliation, and compliance agents with traceability
+   - **Status**: ✅ Fully implemented with Mastra
+   - **Tools**: `checkDeadlines`, `getAtoReferences`, Xero GST report
+   - **Features**: Deadline tracking, ATO ruling search, professional disclaimer management
+   - **API**: `POST /api/agents/compliance`
+
+4. **Analytics** (`/agents/analytics`): Narrative-rich reporting with KPI annotations and presentation-ready insights
+   - **Status**: ✅ Fully implemented with Mastra
+   - **Tools**: `calculateKpis`, `generateNarrative`, Xero P&L/Balance Sheet
+   - **Features**: Gross margin, burn rate, runway calculation, executive summaries
+   - **API**: `POST /api/agents/analytics`
+
+5. **Forecasting** (`/agents/forecasting`): Scenario modeling and runway projections with multiple financial models
+   - **Status**: ✅ Enhanced with Mastra (maintains backward compatibility)
+   - **Tools**: Xero P&L and Balance Sheet integration
+   - **Features**: Base/Upside/Downside scenarios, memory system, 4 model types
+   - **API**: `POST /api/agents/forecasting`
+
+6. **Advisory Q&A** (`/agents/qanda`): Regulatory-aware conversational assistant for Australian tax law and compliance
+   - **Status**: ✅ Refactored to Mastra Agent
+   - **Tools**: `regulatorySearch`, conditional Xero tools
+   - **Features**: Confidence scoring, citation system, human review escalation
+   - **API**: `POST /api/agents/qanda`
+
+7. **Workflow Supervisor** (`/agents/workflow`): Multi-agent workflow orchestration with Mastra workflows
+   - **Status**: ✅ Fully implemented with Mastra workflows
+   - **Tools**: `executeMonthEndClose`, `executeInvestorUpdate`, `executeAtoAuditPack`
+   - **Workflows**:
+     - Month-End Close: Documents → Reconciliations → Compliance → Analytics
+     - Investor Update: Analytics → Forecasting → Q&A
+     - ATO Audit Pack: Documents → Compliance → Workflow
+   - **API**: `POST /api/agents/workflow`
+
+**Agent Architecture Pattern**:
+```
+lib/agents/[agent-name]/
+├── agent.ts          # Mastra Agent definition with instructions and tools
+├── tools.ts          # Agent-specific tools using createTool()
+├── types.ts          # TypeScript type definitions
+└── utils.ts          # Helper functions (optional)
+```
+
+**API Route Pattern** (consistent across all agents):
+```typescript
+export async function POST(req: Request) {
+  const user = await getAuthUser();
+  const { messages, settings } = await req.json();
+
+  // Conditional Xero integration
+  const xeroConnection = await getActiveXeroConnection(user.id);
+  const agent = xeroConnection
+    ? createAgentWithXero(user.id, settings?.model)
+    : baseAgent;
+
+  const stream = createUIMessageStream({
+    execute: ({ writer: dataStream }) => {
+      const result = agent.stream({
+        messages,
+        maxSteps: 5,
+        onStepFinish: ({ text, toolCalls }) => { /* logging */ },
+        onFinish: async ({ text, toolCalls, usage }) => { /* save messages */ },
+      });
+      dataStream.merge(result.toUIMessageStream());
+    },
+  });
+
+  return new Response(stream.pipeThrough(new JsonToSseTransformStream()));
+}
+```
+
+**Key Features Across All Agents**:
+- ✅ Streaming responses with real-time updates
+- ✅ Conditional Xero tool integration
+- ✅ Step-by-step execution tracking
+- ✅ Token usage monitoring
+- ✅ Database message persistence
+- ✅ Comprehensive error handling
+- ✅ Type-safe Zod schemas
 
 **Agent Overview Dashboard** (`/agents`):
-- Displays automation coverage metrics (76% of workflows delegated)
-- Shows human review queue with escalations (28 items across validation, mismatches, clarifications)
-- Provides agent-specific metrics (docs processed, match rates, upcoming lodgments, etc.)
-- Includes change management tracking (releases, risk register, recommended actions)
+- Displays automation coverage metrics
+- Shows human review queue with escalations
+- Provides agent-specific metrics
+- Includes change management tracking
 - Links to individual agent workspace pages
 
 **Agent Components** (`components/agents/`):
 - `agent-summary-card.tsx`: Displays agent status and metrics on overview page
+- `agents-header.tsx`: Navigation header for agent workspaces
 
 ### Q&A Agent - Regulatory RAG System
 
@@ -273,7 +364,9 @@ The Q&A agent provides regulatory-aware assistance for Australian tax law, emplo
 - **Suggested Questions**: Common Australian regulatory queries (minimum wage, super, payroll tax, BAS)
 - **Stream Controls**: Toggles for streaming responses and showing/hiding citations
 
-**Backend Implementation** (completed):
+**Backend Implementation** (completed with Mastra):
+- **Mastra Agent**: `lib/agents/qanda/agent.ts` - Full Mastra Agent with regulatory and Xero tools
+- **Mastra Tools**: `lib/agents/qanda/tools.ts` - `regulatorySearchTool` and conditional Xero tools
 - **Database schema**: `regulatoryDocument`, `regulatoryScrapeJob`, and `qaReviewRequest` tables with full-text search
 - **Configuration system**: Markdown-based source management (`config/regulatory-sources.md`) with 10 Australian sources
 - **Scraping infrastructure**: Mastra ingestion agents with rate limiting, summarisation, and job orchestration
@@ -281,7 +374,7 @@ The Q&A agent provides regulatory-aware assistance for Australian tax law, emplo
 - **AI tool**: `regulatorySearch` tool for RAG retrieval with category filtering
 - **Confidence scoring**: Multi-factor algorithm analyzing citations, relevance, hedging language, and Xero integration
 - **API endpoints**:
-  - `/api/agents/qanda` - Streaming chat with regulatory + Xero tools
+  - `/api/agents/qanda` - Streaming chat with Mastra Agent (regulatory + Xero tools)
   - `/api/regulatory/search` - Full-text search
   - `/api/regulatory/scrape` - Manual scraping trigger
   - `/api/regulatory/stats` - Knowledge base statistics
@@ -397,13 +490,39 @@ See `/docs/regulatory-system-summary.md` for complete implementation details and
 ### Library Structure
 
 **`lib/` Directory Organization**:
+- `mastra/`: **Mastra framework configuration** (unified agent system)
+  - `index.ts`: Shared Mastra instance with all 6 agents registered
+- `agents/`: **Agent implementations using Mastra**
+  - `qanda/`: Q&A agent (regulatory RAG, confidence scoring)
+    - `agent.ts`: Mastra Agent with regulatory and Xero tools
+    - `tools.ts`: Regulatory search and Xero tool wrappers
+    - `types.ts`: Type definitions
+  - `forecasting/`: Forecasting agent (scenario modeling)
+    - `agent.ts`: Mastra Agent + legacy function
+    - `tools.ts`: Xero P&L and balance sheet tools
+    - `config.ts`, `memory.ts`, `utils.ts`: Supporting modules
+  - `reconciliations/`: Reconciliation agent (bank matching)
+    - `agent.ts`: Mastra Agent with matching logic
+    - `tools.ts`: Match, adjustment, and exception tools
+    - `types.ts`: Match and exception types
+  - `compliance/`: Compliance agent (ATO obligations)
+    - `agent.ts`: Mastra Agent with deadline tracking
+  - `analytics/`: Analytics agent (KPI calculation)
+    - `agent.ts`: Mastra Agent with KPI and narrative tools
+  - `workflow/`: Workflow supervisor
+    - `supervisor.ts`: Mastra Agent for orchestration
+    - `workflows.ts`: Mastra workflow definitions (Month-End Close, Investor Update, ATO Audit Pack)
+  - `docmanagement/`: Document management agent
+    - `docmanagement.ts`: Mastra Agent with PDF processing
+    - `workflow.ts`, `types.ts`: Supporting modules
 - `ai/`: AI provider configuration, models, prompts, tools, and context management
   - `providers.ts`: AI Gateway configuration
   - `models.ts`: Available chat models with reasoning flags
   - `prompts.ts`: System prompts (regular, artifacts, code, sheet, update)
   - `entitlements.ts`: User entitlements and rate limits
   - `context-manager.ts`: Context file selection and formatting
-  - `tools/`: AI tool implementations (createDocument, updateDocument, getWeather, requestSuggestions)
+  - `tools/`: AI tool implementations (createDocument, updateDocument, getWeather, requestSuggestions, regulatory, Xero)
+  - `xero-mcp-client.ts`: Xero MCP integration for tools
 - `artifacts/`: Artifact rendering logic (text, code, image, sheet)
 - `auth/`: Clerk authentication helpers and user management
   - `clerk-helpers.ts`: getAuthUser, requireAuth, isAuthenticated
@@ -414,6 +533,17 @@ See `/docs/regulatory-system-summary.md` for complete implementation details and
   - `utils.ts`: Database utilities
 - `files/`: File processing and context management
   - `context-processor.ts`: File upload processing pipeline
+  - `pdf-ocr.ts`: OCR extraction for scanned PDFs
+  - `parsers.ts`: File parsers
+- `regulatory/`: Regulatory knowledge base system
+  - `confidence.ts`: Confidence scoring algorithm
+  - `scraper.ts`: Mastra-based scraping
+  - `search.ts`: PostgreSQL full-text search
+  - `config-parser.ts`: Source configuration parser
+- `xero/`: Xero OAuth integration
+  - `connection-manager.ts`: OAuth client and token refresh
+  - `encryption.ts`: AES-256-GCM token encryption
+  - `types.ts`: TypeScript types
 - `editor/`: Editor-related utilities
 - `types/`: TypeScript type definitions
 - `constants.ts`: Application constants
@@ -531,15 +661,172 @@ Environment variable `PLAYWRIGHT=True` is set automatically by test script.
 4. Update `ArtifactKind` type in `components/artifact.tsx`
 5. Add rendering logic to artifact renderer
 
-### Adding a New Agent Workspace
+### Adding a New Mastra Agent
 
-1. Create new directory in `app/agents/your-agent/`
-2. Create `page.tsx` with agent-specific UI and metrics
-3. Add agent entry to `agentSnapshots` array in `app/agents/page.tsx`:
-   - Include title, description, href, icon, and metrics
-4. Create agent-specific components in `components/agents/` if needed
-5. Add agent settings page section in `app/(settings)/settings/agents/page.tsx`
-6. Update agent configuration management as needed
+**Step 1: Create Agent Directory Structure**
+```bash
+mkdir -p lib/agents/your-agent
+```
+
+**Step 2: Define Agent with Mastra** (`lib/agents/your-agent/agent.ts`)
+```typescript
+import { Agent } from "@mastra/core/agent";
+import { myProvider } from "@/lib/ai/providers";
+
+const INSTRUCTIONS = `You are [agent description]...`;
+
+export const yourAgent = new Agent({
+  name: "your-agent",
+  instructions: INSTRUCTIONS,
+  model: myProvider.languageModel("anthropic-claude-sonnet-4-5"),
+  tools: {
+    // Register your tools here
+  },
+});
+
+// Optional: Agent with conditional tools (e.g., Xero)
+export function createYourAgentWithXero(userId: string) {
+  const xeroTools = createYourAgentXeroTools(userId);
+
+  return new Agent({
+    name: "your-agent-with-xero",
+    instructions: INSTRUCTIONS,
+    model: myProvider.languageModel("anthropic-claude-sonnet-4-5"),
+    tools: {
+      // Base tools
+      ...xeroTools, // Conditional tools
+    },
+  });
+}
+```
+
+**Step 3: Create Tools** (`lib/agents/your-agent/tools.ts`)
+```typescript
+import { createTool } from "@mastra/core/tools";
+import { z } from "zod";
+
+export const yourToolName = createTool({
+  id: "yourToolName",
+  description: "Clear description of what this tool does",
+  inputSchema: z.object({
+    param: z.string().describe("Parameter description"),
+  }),
+  outputSchema: z.object({
+    result: z.string(),
+  }),
+  execute: async ({ context, inputData }) => {
+    // Tool logic here
+    return { result: "..." };
+  },
+});
+```
+
+**Step 4: Register Agent** (`lib/mastra/index.ts`)
+```typescript
+import { yourAgent } from "@/lib/agents/your-agent/agent";
+
+export const mastra = new Mastra({
+  agents: {
+    // ... existing agents
+    yourAgent: yourAgent,
+  },
+});
+```
+
+**Step 5: Create API Route** (`app/api/agents/your-agent/route.ts`)
+```typescript
+import { createUIMessageStream, JsonToSseTransformStream } from "ai";
+import { NextResponse } from "next/server";
+import type { CoreMessage } from "ai";
+import { yourAgent, createYourAgentWithXero } from "@/lib/agents/your-agent/agent";
+import { getAuthUser } from "@/lib/auth/clerk-helpers";
+import { getActiveXeroConnection, getChatById, saveChat, saveMessages } from "@/lib/db/queries";
+
+export const maxDuration = 60;
+
+export async function POST(req: Request) {
+  const user = await getAuthUser();
+  if (!user) return new NextResponse("Not authenticated", { status: 401 });
+
+  const { messages, settings } = await req.json();
+
+  // Conditional Xero integration
+  const xeroConnection = await getActiveXeroConnection(user.id);
+  const agent = xeroConnection ? createYourAgentWithXero(user.id) : yourAgent;
+
+  const stream = createUIMessageStream({
+    execute: ({ writer: dataStream }) => {
+      const result = agent.stream({
+        messages,
+        maxSteps: 5,
+        onFinish: async ({ text, toolCalls, usage }) => {
+          // Save messages to database
+        },
+      });
+      dataStream.merge(result.toUIMessageStream());
+    },
+  });
+
+  return new Response(stream.pipeThrough(new JsonToSseTransformStream()));
+}
+```
+
+**Step 6: Create UI Page** (`app/agents/your-agent/page.tsx`)
+1. Create agent-specific UI with metrics and chat interface
+2. Add agent entry to `agentSnapshots` in `app/agents/page.tsx`
+3. Create agent-specific components in `components/agents/` if needed
+
+**Step 7: Add Agent Settings** (optional)
+- Add configuration section in `app/(settings)/settings/agents/page.tsx`
+
+### Adding a New Mastra Workflow
+
+**Step 1: Define Workflow Steps** (`lib/agents/workflow/workflows.ts`)
+```typescript
+import { createWorkflow, createStep } from "@mastra/core";
+import { z } from "zod";
+
+const step1 = createStep({
+  id: "step-1",
+  inputSchema: z.object({ input: z.string() }),
+  outputSchema: z.object({ output: z.string() }),
+  execute: async ({ inputData }) => {
+    // Step logic
+    return { output: "result" };
+  },
+});
+
+export const yourWorkflow = createWorkflow({
+  id: "your-workflow",
+  inputSchema: z.object({ userId: z.string(), data: z.string() }),
+  outputSchema: z.object({ success: z.boolean() }),
+})
+  .then(step1)
+  .then(step2)  // Sequential
+  .commit();
+```
+
+**Step 2: Create Workflow Tool** (`lib/agents/workflow/supervisor.ts`)
+```typescript
+import { createTool } from "@mastra/core/tools";
+import { yourWorkflow } from "./workflows";
+
+const executeYourWorkflowTool = createTool({
+  id: "executeYourWorkflow",
+  description: "Execute your workflow",
+  inputSchema: z.object({ userId: z.string(), data: z.string() }),
+  outputSchema: z.object({ success: z.boolean() }),
+  execute: async ({ inputData }) => {
+    const result = await yourWorkflow.start(inputData);
+    return result;
+  },
+});
+
+// Register in workflowSupervisorAgent tools
+```
+
+**Step 3: Update Supervisor Instructions**
+Add workflow description to supervisor agent instructions
 
 ### Database Schema Changes
 
@@ -631,139 +918,6 @@ Follow these steps to add a new third-party API integration with OAuth:
 - Document environment variables and OAuth flow
 - Add tool usage examples for chat interface
 
-# Using Gemini CLI for LedgerBot Codebase Analysis
-
-When analyzing your LedgerBot codebase or multiple files that might exceed context limits, use the Gemini CLI with its massive context window. Use `gemini -p` to leverage Google Gemini's large context capacity for your Next.js TypeScript AI application.
-
-## File and Directory Inclusion Syntax for LedgerBot
-
-Use the `@` syntax to include files and directories in your Gemini prompts. The paths should be relative to your LedgerBot project root:
-
-### LedgerBot-Specific Examples:
-
-**Single file analysis:**
-```bash
-gemini -p "@package.json Explain the dependencies and project configuration for this AI chatbot"
-
-gemini -p "@next.config.ts Analyze the Next.js configuration and any AI-specific settings"
-
-gemini -p "@proxy.ts Review the proxy implementation for authentication and routing"
-```
-
-**Multiple configuration files:**
-```bash
-gemini -p "@package.json @tsconfig.json @next.config.ts Analyze the complete TypeScript and Next.js setup"
-
-gemini -p "@drizzle.config.ts @lib/ Review the database configuration and schema implementation"
-```
-
-**Core application directories:**
-```bash
-gemini -p "@app/ Summarize the Next.js app router structure and API routes"
-
-gemini -p "@components/ Analyze the React component architecture and UI patterns"
-
-gemini -p "@lib/ Review the utility functions, database connections, and AI integrations"
-
-gemini -p "@hooks/ Examine the custom React hooks and state management"
-```
-
-**Full project analysis:**
-```bash
-gemini -p "@./ Give me a complete overview of this AI chatbot project structure"
-
-# Or use --all_files flag:
-gemini --all_files -p "Analyze the entire LedgerBot project architecture and AI integrations"
-```
-
-## LedgerBot Feature Verification Examples
-
-**Check AI/Chat implementation:**
-```bash
-gemini -p "@app/ @components/ @lib/ Is the AI chat functionality fully implemented? Show me the chat components and API routes"
-
-gemini -p "@app/api/ @lib/ Are the AI SDK integrations properly configured? List all AI provider connections"
-```
-
-**Verify agent workspaces:**
-```bash
-gemini -p "@app/agents/ Show me all the agent workspaces and their purposes"
-
-gemini -p "@app/agents/ @components/agents/ Are agent dashboards properly implemented with metrics and navigation?"
-```
-
-**Verify authentication system:**
-```bash
-gemini -p "@proxy.ts @app/ @lib/ Is Clerk authentication implemented? Show all auth-related proxy and API routes"
-
-gemini -p "@app/ @components/ Are protected routes and user sessions properly handled throughout the application?"
-
-gemini -p "@lib/auth/ @lib/db/schema.ts Review Clerk integration and user synchronization logic"
-```
-
-**Database and ORM verification:**
-```bash
-gemini -p "@lib/db/ @drizzle.config.ts Is the Drizzle ORM setup complete? Show the database schema and migration files"
-
-gemini -p "@lib/ @app/api/ Are database queries properly implemented with error handling?"
-```
-
-**UI/UX component analysis:**
-```bash
-gemini -p "@components/ @app/ Are Radix UI components properly integrated? Show the component library usage"
-
-gemini -p "@components/ @lib/ Is dark mode and theming implemented consistently across the application?"
-```
-
-**Development workflow verification:**
-```bash
-gemini -p "@tests/ @playwright.config.ts Is end-to-end testing properly set up with Playwright?"
-
-gemini -p "@biome.jsonc @package.json Are linting and formatting tools (Biome) configured correctly?"
-```
-
-**Security and proxy checks:**
-```bash
-gemini -p "@proxy.ts @app/api/ Are proper security headers and CORS policies implemented?"
-
-gemini -p "@lib/ @app/ Is input validation and sanitization implemented for user inputs and file uploads?"
-```
-
-**Performance and optimization:**
-```bash
-gemini -p "@app/ @components/ @lib/ Are Next.js performance optimizations (caching, streaming) properly implemented?"
-
-gemini -p "@package.json @next.config.ts Are bundle size optimizations and tree-shaking configured?"
-```
-
-## LedgerBot-Specific Use Cases
-
-Use gemini -p when:
-- Analyzing the complete AI accounting application architecture across app/, components/, and lib/
-- Reviewing specialized agent workspaces and their bookkeeping automation features
-- Understanding Next.js 15 app router implementation and API routes
-- Checking the Drizzle ORM database integration and schema (including ContextFile and UserSettings)
-- Verifying Vercel AI SDK and provider configurations
-- Analyzing TypeScript types and configurations across the project
-- Reviewing the React component hierarchy and state management
-- Understanding Clerk authentication flows and user synchronization
-- Checking context file processing and RAG implementation
-- Reviewing test coverage and Playwright e2e test setup
-
-## Important Notes for LedgerBot
-
-- Paths in @ syntax are relative to your LedgerBot project root directory
-- The CLI will include file contents directly in the context for analysis
-- Perfect for analyzing the complex Next.js/TypeScript/AI SDK integration
-- Gemini's context window can handle your entire codebase including large files like pnpm-lock.yaml
-- Ideal for understanding the interaction between AI providers, database, UI components, and agent workspaces
-- When checking implementations, reference the specific LedgerBot features like:
-  - Chat functionality with multi-model support and reasoning
-  - Agent workspaces for accounting automation (document processing, reconciliations, compliance, etc.)
-  - Context file uploads and RAG implementation
-  - User settings and personalization (default model, reasoning preferences, custom prompts)
-  - Usage accounting and entitlement enforcement
-
 # Using MCP Servers for Updated Documentation
 
 When working with external libraries or needing up-to-date documentation, leverage Model Context Protocol (MCP) servers to access current information beyond static docs.
@@ -780,18 +934,6 @@ Example workflow:
 2. Then use `get-library-docs` to obtain the latest documentation with practical examples.
 
 This ensures you have current, accurate information rather than relying on potentially outdated cached docs.
-
-## GitHub MCP Server
-
-For accessing GitHub repositories, issues, pull requests, and code:
-
-- Use GitHub MCP server tools to search repositories, view issues, browse code, or check recent commits.
-- Particularly useful for:
-  - Staying updated on dependency repositories
-  - Researching implementation patterns from open-source projects
-  - Checking for recent bug fixes or feature additions
-
-Note: Ensure MCP servers are properly configured and connected in your development environment. If GitHub MCP server is not available, consider setting it up for enhanced documentation access.
 
 # Engineering Practices
 ⚠️ Preserve integrity of external dependencies.

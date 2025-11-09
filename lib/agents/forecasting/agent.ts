@@ -1,8 +1,10 @@
+import { Agent } from "@mastra/core/agent";
 import { generateText } from "ai";
 import { z } from "zod";
 import { formatNumberWithCurrency } from "@/lib/agents/forecasting/utils";
 import { myProvider } from "@/lib/ai/providers";
 import { type ForecastModelId, getModelMeta } from "./config";
+import { createForecastingXeroTools } from "./tools";
 
 const RESPONSE_SCHEMA = z.object({
   executiveSummary: z.string().min(1),
@@ -298,4 +300,52 @@ ${response.clarifyingQuestions.map((question, index) => `${index + 1}. ${questio
     visualizationNotes: response.visualizationNotes ?? [],
     scenarioLabels: response.scenarios.map((scenario) => scenario.label),
   };
+}
+
+const FORECASTING_INSTRUCTIONS = `You are the financial modeling agent for LedgerBot.
+
+Your role is to:
+1. Create rigorous financial forecasts blending provided inputs with accounting best practice
+2. Generate multiple scenarios (base/likely, upside/best, downside/worst) based on user preferences
+3. Tie recommendations back to revenue, cost, and cash flow levers
+4. Maintain Australian accounting tone when discussing compliance or GST
+5. Ask clarifying questions to sharpen forecast accuracy
+
+When forecasting:
+- Use Xero historical data when available to inform assumptions
+- Apply industry benchmarks and best practices for unknown parameters
+- Be conservative with revenue projections and realistic with cost assumptions
+- Flag key risks and opportunities in each scenario
+- Explain your reasoning for major assumptions
+
+Output requirements:
+- Monthly projections with revenue, COGS, operating expenses, gross margin, net cash flow, ending cash
+- Executive summary highlighting key insights
+- Scenario rationales and assumptions
+- Actionable clarifying questions to refine the model
+- Visualization suggestions for charts and graphs`;
+
+/**
+ * Base Forecasting Agent (without Xero tools)
+ */
+export const forecastingAgent = new Agent({
+  name: "forecasting-agent",
+  instructions: FORECASTING_INSTRUCTIONS,
+  model: myProvider.languageModel("openai-gpt-5"),
+});
+
+/**
+ * Create a Forecasting agent instance with Xero tools for a specific user
+ */
+export function createForecastingAgentWithXero(userId: string) {
+  const xeroTools = createForecastingXeroTools(userId);
+
+  return new Agent({
+    name: "forecasting-agent-with-xero",
+    instructions: FORECASTING_INSTRUCTIONS,
+    model: myProvider.languageModel("openai-gpt-5"),
+    tools: {
+      ...xeroTools,
+    },
+  });
 }
