@@ -80,8 +80,7 @@ export async function POST(req: Request) {
 
     const stream = createUIMessageStream({
       execute: ({ writer: dataStream }) => {
-        const result = agent.generate({
-          messages,
+        const result = agent.generate(messages, {
           maxSteps: 5,
           onStepFinish: ({ text: stepText, toolCalls: stepToolCalls }) => {
             console.log("[Q&A Agent] Step finished:", {
