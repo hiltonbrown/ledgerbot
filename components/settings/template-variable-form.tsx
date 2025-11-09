@@ -212,6 +212,7 @@ export function TemplateVariableForm({
       setFormState((state) => ({
         ...state,
         [field]: value,
+        ...(field === "country" && { state: "" }),
       }));
     };
 
