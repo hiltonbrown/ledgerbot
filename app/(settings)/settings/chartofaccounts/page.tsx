@@ -53,15 +53,11 @@ export default async function ChartOfAccountsPage() {
             Settings
           </Link>
           <ChevronRight className="h-4 w-4" />
+          <Link className="hover:text-foreground" href="/settings/integrations">
+            Integrations
+          </Link>
+          <ChevronRight className="h-4 w-4" />
           <span className="text-foreground">Chart of Accounts</span>
-        </div>
-
-        {/* Header */}
-        <div>
-          <h1 className="font-semibold text-3xl">Chart of Accounts</h1>
-          <p className="text-muted-foreground">
-            Manage your Xero chart of accounts for AI assistance
-          </p>
         </div>
 
         {/* No connections state */}
@@ -93,15 +89,11 @@ export default async function ChartOfAccountsPage() {
             Settings
           </Link>
           <ChevronRight className="h-4 w-4" />
+          <Link className="hover:text-foreground" href="/settings/integrations">
+            Integrations
+          </Link>
+          <ChevronRight className="h-4 w-4" />
           <span className="text-foreground">Chart of Accounts</span>
-        </div>
-
-        {/* Header */}
-        <div>
-          <h1 className="font-semibold text-3xl">Chart of Accounts</h1>
-          <p className="text-muted-foreground">
-            Manage your Xero chart of accounts for AI assistance
-          </p>
         </div>
 
         {/* Company Selector */}
@@ -152,14 +144,6 @@ export default async function ChartOfAccountsPage() {
         </Link>
         <ChevronRight className="h-4 w-4" />
         <span className="text-foreground">Chart of Accounts</span>
-      </div>
-
-      {/* Header */}
-      <div>
-        <h1 className="font-semibold text-3xl">Chart of Accounts</h1>
-        <p className="text-muted-foreground">
-          Manage your Xero chart of accounts for AI assistance
-        </p>
       </div>
 
       {/* Company Selector */}
