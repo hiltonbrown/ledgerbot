@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { ChevronRight, ExternalLink, Info } from "lucide-react";
+import { ExternalLink, Info } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -47,19 +47,6 @@ export default async function ChartOfAccountsPage() {
   if (connections.length === 0) {
     return (
       <div className="mx-auto max-w-5xl space-y-6">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-muted-foreground text-sm">
-          <Link className="hover:text-foreground" href="/settings">
-            Settings
-          </Link>
-          <ChevronRight className="h-4 w-4" />
-          <Link className="hover:text-foreground" href="/settings/integrations">
-            Integrations
-          </Link>
-          <ChevronRight className="h-4 w-4" />
-          <span className="text-foreground">Chart of Accounts</span>
-        </div>
-
         {/* No connections state */}
         <Card>
           <CardContent className="py-12 text-center">
@@ -83,19 +70,6 @@ export default async function ChartOfAccountsPage() {
   if (!activeConnection || !activeConnection.chartOfAccounts) {
     return (
       <div className="mx-auto max-w-5xl space-y-6">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-muted-foreground text-sm">
-          <Link className="hover:text-foreground" href="/settings">
-            Settings
-          </Link>
-          <ChevronRight className="h-4 w-4" />
-          <Link className="hover:text-foreground" href="/settings/integrations">
-            Integrations
-          </Link>
-          <ChevronRight className="h-4 w-4" />
-          <span className="text-foreground">Chart of Accounts</span>
-        </div>
-
         {/* Company Selector */}
         <Card>
           <CardHeader>
@@ -133,19 +107,6 @@ export default async function ChartOfAccountsPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-muted-foreground text-sm">
-        <Link className="hover:text-foreground" href="/settings">
-          Settings
-        </Link>
-        <ChevronRight className="h-4 w-4" />
-        <Link className="hover:text-foreground" href="/settings/integrations">
-          Integrations
-        </Link>
-        <ChevronRight className="h-4 w-4" />
-        <span className="text-foreground">Chart of Accounts</span>
-      </div>
-
       {/* Company Selector */}
       <Card>
         <CardHeader>
