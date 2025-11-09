@@ -2,7 +2,7 @@ import {
   type Integration,
   IntegrationCard,
 } from "@/components/settings/integration-card";
-import { SettingsSection } from "@/components/settings/settings-section";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { XeroIntegrationCard } from "@/components/settings/xero-integration-card";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import { getXeroConnectionsByUserId } from "@/lib/db/queries";
@@ -101,32 +101,55 @@ export default async function IntegrationsPage() {
   const xeroConnections = user ? await getXeroConnectionsByUserId(user.id) : [];
 
   return (
-    <div className="space-y-8">
-      <SettingsSection
-        description="Connect your accounting software to sync financial data and automate workflows."
-        title="Accounting"
-      >
-        <div className="grid gap-4 md:grid-cols-2">
-          <XeroIntegrationCard
-            initialConnections={xeroConnections}
-            integration={xeroIntegration}
-          />
-          {accountingIntegrations.map((integration) => (
-            <IntegrationCard integration={integration} key={integration.id} />
-          ))}
-        </div>
-      </SettingsSection>
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="font-semibold text-3xl">Integrations</h1>
+        <p className="text-muted-foreground">
+          Connect your accounting software and workforce management systems to
+          sync data and automate workflows
+        </p>
+      </div>
 
-      <SettingsSection
-        description="Integrate payroll and workforce management systems to streamline employee data and time tracking."
-        title="Payroll"
-      >
-        <div className="grid gap-4 md:grid-cols-2">
-          {payrollIntegrations.map((integration) => (
-            <IntegrationCard integration={integration} key={integration.id} />
-          ))}
-        </div>
-      </SettingsSection>
+      {/* Accounting Integrations */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Accounting</CardTitle>
+          <p className="text-muted-foreground text-sm">
+            Connect your accounting software to sync financial data and automate
+            workflows
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-2">
+            <XeroIntegrationCard
+              initialConnections={xeroConnections}
+              integration={xeroIntegration}
+            />
+            {accountingIntegrations.map((integration) => (
+              <IntegrationCard integration={integration} key={integration.id} />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Payroll Integrations */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Payroll</CardTitle>
+          <p className="text-muted-foreground text-sm">
+            Integrate payroll and workforce management systems to streamline
+            employee data and time tracking
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-2">
+            {payrollIntegrations.map((integration) => (
+              <IntegrationCard integration={integration} key={integration.id} />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
