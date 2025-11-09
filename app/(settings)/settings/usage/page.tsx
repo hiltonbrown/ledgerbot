@@ -1,4 +1,7 @@
 import { format } from "date-fns";
+import { Info } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card, CardContent } from "@/components/ui/card";
 import { ModelComparisonChart } from "@/components/settings/model-comparison-chart";
 import { ModelTokenUsage } from "@/components/settings/model-token-usage";
 import { SettingsSection } from "@/components/settings/settings-section";
@@ -23,15 +26,22 @@ export default async function UsagePage(props: PageProps) {
 
   if (!user) {
     return (
-      <div className="space-y-8">
-        <SettingsSection
-          description="Please sign in to view usage tracking"
-          title="Usage tracking"
-        >
-          <p className="text-muted-foreground text-sm">
-            Authentication required
+      <div className="space-y-6">
+        <div>
+          <h1 className="font-semibold text-3xl">Token Usage Tracking</h1>
+          <p className="text-muted-foreground">
+            Track token usage, costs, and performance across AI models
           </p>
-        </SettingsSection>
+        </div>
+
+        <Card>
+          <CardContent className="py-12 text-center">
+            <h3 className="font-semibold text-lg">Authentication Required</h3>
+            <p className="mt-2 text-muted-foreground text-sm">
+              Please sign in to view usage tracking
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -40,29 +50,39 @@ export default async function UsagePage(props: PageProps) {
   const tokenSummary = await getTokenUsageSummary(user.id, period);
 
   return (
-    <div className="space-y-8">
-      {/* Header with Period Selector */}
-      <SettingsSection
-        actions={<UsagePeriodSelector />}
-        description="Track token usage, costs, and performance across AI models"
-        title="Token Usage Tracking"
-      >
-        <div className="space-y-2 text-muted-foreground text-sm">
-          <p>
-            Billing cycle:{" "}
-            <span className="font-medium">{tokenSummary.billingCycle}</span>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="font-semibold text-3xl">Token Usage Tracking</h1>
+          <p className="text-muted-foreground">
+            Track token usage, costs, and performance across AI models
           </p>
-          <p>
-            Last updated:{" "}
-            <span className="font-medium">
+        </div>
+        <div className="shrink-0">
+          <UsagePeriodSelector />
+        </div>
+      </div>
+
+      {/* Billing Info */}
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertDescription>
+          <div className="flex flex-col gap-1 text-xs sm:flex-row sm:gap-4">
+            <p>
+              <strong className="font-medium">Billing cycle:</strong>{" "}
+              {tokenSummary.billingCycle}
+            </p>
+            <p>
+              <strong className="font-medium">Last updated:</strong>{" "}
               {format(
                 new Date(tokenSummary.lastUpdated),
                 "MMM d, yyyy 'at' h:mm a"
               )}
-            </span>
-          </p>
-        </div>
-      </SettingsSection>
+            </p>
+          </div>
+        </AlertDescription>
+      </Alert>
 
       {/* Summary Cards */}
       <SettingsSection title="Overview">
