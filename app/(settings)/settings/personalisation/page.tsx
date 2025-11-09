@@ -1,9 +1,10 @@
 import { eq } from "drizzle-orm";
-import Link from "next/link";
+import { AIPreferencesForm } from "@/components/settings/ai-preferences-form";
+import { ChatSuggestionsForm } from "@/components/settings/chat-suggestions-form";
+import { CustomInstructionsForm } from "@/components/settings/custom-instructions-form";
+import { LockSettingsBanner } from "@/components/settings/lock-settings-banner";
 import { ProfileInfoCard } from "@/components/settings/profile-info-card";
-import { PromptSettingsForm } from "@/components/settings/prompt-settings-form";
 import { TemplateVariableForm } from "@/components/settings/template-variable-form";
-import { XeroCompanySelector } from "@/components/settings/xero-company-selector";
 import { requireAuth } from "@/lib/auth/clerk-helpers";
 import { db } from "@/lib/db/queries";
 import { xeroConnection } from "@/lib/db/schema";
@@ -41,76 +42,23 @@ export default async function PersonalisationSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="font-semibold text-lg">Profile</h2>
-        <p className="text-muted-foreground text-sm">
-          Your profile information is managed through Clerk authentication.
-        </p>
-      </div>
+      {/* Lock Settings Banner */}
+      <LockSettingsBanner data={data} />
+
+      {/* Profile & Account */}
       <ProfileInfoCard data={data} />
 
-      <div className="pt-4">
-        <h2 className="font-semibold text-lg">Template Variables</h2>
-        <p className="text-muted-foreground text-sm">
-          Define variables that will be automatically substituted in your system
-          prompts. Use these to personalize the AI assistant with your business
-          information.
-        </p>
-      </div>
+      {/* Business Information (includes Template Variables, Country, State, Chart of Accounts) */}
       <TemplateVariableForm data={data} xeroConnection={activeConnection} />
 
-      {xeroConnectionsWithCount.length > 0 && (
-        <>
-          <div className="pt-4">
-            <h2 className="font-semibold text-lg">Xero Integration</h2>
-            <p className="text-muted-foreground text-sm">
-              Select which Xero organization to use for your chart of accounts.
-              The chart will be automatically included in AI conversations.
-            </p>
-          </div>
-          <div className="rounded-lg border p-6">
-            <XeroCompanySelector
-              activeConnectionId={activeConnection?.id}
-              connections={xeroConnectionsWithCount}
-              showViewAll
-            />
-            {activeConnection && (
-              <div className="mt-4 flex items-center justify-between rounded-md border bg-muted/30 p-3">
-                <div className="text-sm">
-                  <p className="font-medium">
-                    {activeConnection.accountCount} accounts synced
-                  </p>
-                  {activeConnection.chartOfAccountsSyncedAt && (
-                    <p className="text-muted-foreground text-xs">
-                      Last synced:{" "}
-                      {new Date(
-                        activeConnection.chartOfAccountsSyncedAt
-                      ).toLocaleDateString()}
-                    </p>
-                  )}
-                </div>
-                <Link
-                  className="text-primary text-sm hover:underline"
-                  href="/settings/chartofaccounts"
-                >
-                  View Chart of Accounts
-                </Link>
-              </div>
-            )}
-          </div>
-        </>
-      )}
+      {/* AI Preferences */}
+      <AIPreferencesForm data={data} />
 
-      <div className="pt-4">
-        <h2 className="font-semibold text-lg">System Prompts</h2>
-        <p className="text-muted-foreground text-sm">
-          Customize the prompts used by the AI assistant for different types of
-          tasks. You can use template variables like {"{"}
-          {"{"}COMPANY_NAME{"}"}
-          {"}"} in your prompts.
-        </p>
-      </div>
-      <PromptSettingsForm data={data} />
+      {/* Custom Instructions */}
+      <CustomInstructionsForm data={data} />
+
+      {/* Chat Suggestions */}
+      <ChatSuggestionsForm data={data} />
     </div>
   );
 }
