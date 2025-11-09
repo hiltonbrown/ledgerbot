@@ -28,6 +28,7 @@ export async function POST(req: Request) {
       messages: CoreMessage[];
       settings?: {
         model?: string;
+        chatId?: string;
         autoApprove?: boolean;
         matchThreshold?: number;
       };
