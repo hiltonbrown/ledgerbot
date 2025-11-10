@@ -372,7 +372,6 @@ export const generatePaymentProposalTool = createTool({
   execute: async ({ context }) => {
     const {
       paymentDate,
-      excludeDisputed,
       requireApproval,
     } = context;
 
