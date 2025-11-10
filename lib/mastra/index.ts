@@ -8,6 +8,7 @@ import { complianceAgent } from "@/lib/agents/compliance/agent";
 import { analyticsAgent } from "@/lib/agents/analytics/agent";
 import { workflowSupervisorAgent } from "@/lib/agents/workflow/supervisor";
 import { apAgent } from "@/lib/agents/ap/agent";
+import { arAgent } from "@/lib/agents/ar/agent";
 
 /**
  * Shared Mastra instance for LedgerBot agents
@@ -25,13 +26,14 @@ export const mastra = new Mastra({
     analytics: analyticsAgent,
     workflow: workflowSupervisorAgent,
     ap: apAgent,
+    ar: arAgent,
   },
 });
 
 /**
  * Helper to get an agent by name with type safety
  */
-type AgentNames = "qanda" | "forecasting" | "reconciliation" | "compliance" | "analytics" | "workflow" | "ap";
+type AgentNames = "qanda" | "forecasting" | "reconciliation" | "compliance" | "analytics" | "workflow" | "ap" | "ar";
 
 export function getAgent<T extends AgentNames>(name: T) {
   return mastra.getAgent(name);
@@ -48,4 +50,5 @@ export {
   analyticsAgent,
   workflowSupervisorAgent,
   apAgent,
+  arAgent,
 };
