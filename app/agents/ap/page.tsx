@@ -202,7 +202,8 @@ export default function AccountsPayableAgentPage() {
       setError(null);
 
       const historyPayload: ChatMessage[] = chatMessages.map(
-        ({ role, content, sources }) => ({
+        ({ id, role, content, sources }) => ({
+          id,
           role,
           content,
           sources,

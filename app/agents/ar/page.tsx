@@ -576,7 +576,8 @@ export default function AccountsReceivableAgentPage() {
       setError(null);
 
       const historyPayload: ChatMessage[] = chatMessages.map(
-        ({ role, content, sources }) => ({
+        ({ id, role, content, sources }) => ({
+          id,
           role,
           content,
           sources,
