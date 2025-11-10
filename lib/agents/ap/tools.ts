@@ -381,9 +381,9 @@ export const generatePaymentProposalTool = createTool({
 
       // TODO: In production, query database for bills meeting criteria
       // This is a mock implementation
-      const proposal: PaymentProposal = {
+      const proposal = {
         batchName: `Payment Run - ${paymentDate}`,
-        proposedDate: new Date(paymentDate),
+        proposedDate: new Date(paymentDate).toISOString(),
         bills: [
           // Mock data - would be populated from database
           {
@@ -391,7 +391,7 @@ export const generatePaymentProposalTool = createTool({
             billNumber: "INV-001",
             vendorName: "Example Supplier Pty Ltd",
             amount: 2500.0,
-            dueDate: new Date(paymentDate),
+            dueDate: new Date(paymentDate).toISOString(),
             priority: "due_soon" as const,
           },
         ],
