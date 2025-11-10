@@ -372,10 +372,6 @@ export const generatePaymentProposalTool = createTool({
   execute: async ({ context }) => {
     const {
       paymentDate,
-      includeOverdue,
-      maxAmount,
-      excludeDisputed,
-      requireApproval,
     } = context;
 
     try {
@@ -385,9 +381,9 @@ export const generatePaymentProposalTool = createTool({
 
       // TODO: In production, query database for bills meeting criteria
       // This is a mock implementation
-      const proposal: PaymentProposal = {
+      const proposal = {
         batchName: `Payment Run - ${paymentDate}`,
-        proposedDate: new Date(paymentDate),
+        proposedDate: new Date(paymentDate).toISOString(),
         bills: [
           // Mock data - would be populated from database
           {
@@ -395,7 +391,7 @@ export const generatePaymentProposalTool = createTool({
             billNumber: "INV-001",
             supplierName: "Example Supplier Pty Ltd",
             amount: 2500.0,
-            dueDate: new Date(paymentDate),
+            dueDate: new Date(paymentDate).toISOString(),
             priority: "due_soon" as const,
           },
         ],
@@ -416,7 +412,14 @@ export const generatePaymentProposalTool = createTool({
 
       return {
         success: true,
-        proposal,
+        proposal: {
+          ...proposal,
+          proposedDate: proposal.proposedDate.toISOString(),
+          bills: proposal.bills.map((bill) => ({
+            ...bill,
+            dueDate: bill.dueDate.toISOString(),
+          })),
+        },
       };
     } catch (error) {
       console.error("[AP Agent] Payment proposal error:", error);
@@ -468,7 +471,6 @@ export const assessPaymentRiskTool = createTool({
   execute: async ({ context }) => {
     const {
       billId,
-      supplierName,
       amount,
       hasABN,
       hasTaxInvoice,
