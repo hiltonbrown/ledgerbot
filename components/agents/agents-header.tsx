@@ -3,11 +3,11 @@
 import {
   Activity,
   BarChart3,
-  ClipboardList,
+  CreditCard,
+  DollarSign,
   FileText,
   Gauge,
   Network,
-  ShieldCheck,
   Sparkles,
 } from "lucide-react";
 import Link from "next/link";
@@ -28,18 +28,6 @@ const agentLinks = [
     icon: FileText,
   },
   {
-    href: "/agents/reconciliations",
-    label: "Reconciliations",
-    description: "Match ledger and bank activity",
-    icon: ClipboardList,
-  },
-  {
-    href: "/agents/compliance",
-    label: "Compliance",
-    description: "Tax, GST and payroll guardrails",
-    icon: ShieldCheck,
-  },
-  {
     href: "/agents/analytics",
     label: "Analytics",
     description: "Financial reporting insights",
@@ -50,6 +38,18 @@ const agentLinks = [
     label: "Forecasting",
     description: "Scenario planning & cash runway",
     icon: Gauge,
+  },
+  {
+    href: "/agents/ar",
+    label: "Accounts Receivable",
+    description: "Customer invoice management and DSO reduction",
+    icon: DollarSign,
+  },
+  {
+    href: "/agents/ap",
+    label: "Accounts Payable",
+    description: "Vendor bill management and payment runs",
+    icon: CreditCard,
   },
   {
     href: "/agents/qanda",
@@ -76,16 +76,6 @@ const labelsByPath: Record<string, { title: string; blurb: string }> = {
     blurb:
       "Upload statements and invoices, review extraction confidence and manage human validation queues.",
   },
-  "/agents/reconciliations": {
-    title: "Reconciliation Agent",
-    blurb:
-      "Track matching accuracy, clear exceptions and approve proposed ledger adjustments with confidence.",
-  },
-  "/agents/compliance": {
-    title: "Compliance Agent",
-    blurb:
-      "Stay ahead of lodgement deadlines, GST obligations and payroll compliance with built-in guardrails.",
-  },
   "/agents/analytics": {
     title: "Analytics Agent",
     blurb:
@@ -95,6 +85,15 @@ const labelsByPath: Record<string, { title: string; blurb: string }> = {
     title: "Forecasting Agent",
     blurb:
       "Model multiple scenarios, monitor assumptions and keep the runway forecast aligned with live data.",
+  },
+  "/agents/ar": {
+    title: "Accounts Receivable Agent",
+    blurb:
+      "Manage customer invoices, send payment reminders, predict late payments, and reduce Days Sales Outstanding (DSO).",
+  },
+  "/agents/ap": {
+    title: "Accounts Payable Agent",
+    blurb: "Manage vendor bills, approval workflows, and payment runs.",
   },
   "/agents/qanda": {
     title: "Advisory Q&A Agent",

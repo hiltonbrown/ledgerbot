@@ -2,8 +2,8 @@ import {
   type Integration,
   IntegrationCard,
 } from "@/components/settings/integration-card";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { XeroIntegrationCard } from "@/components/settings/xero-integration-card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import { getXeroConnectionsByUserId } from "@/lib/db/queries";
 

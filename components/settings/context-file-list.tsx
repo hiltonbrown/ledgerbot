@@ -79,7 +79,9 @@ export function ContextFileList({ files }: { files: ContextFile[] }) {
     return (
       <Card>
         <CardContent className="py-8 text-center">
-          <p className="text-muted-foreground text-sm">No files uploaded yet.</p>
+          <p className="text-muted-foreground text-sm">
+            No files uploaded yet.
+          </p>
         </CardContent>
       </Card>
     );

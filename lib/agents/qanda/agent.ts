@@ -2,7 +2,7 @@ import "server-only";
 
 import { Agent } from "@mastra/core/agent";
 import { myProvider } from "@/lib/ai/providers";
-import { regulatorySearchTool, createQandaXeroTools } from "./tools";
+import { createQandaXeroTools, regulatorySearchTool } from "./tools";
 
 const SYSTEM_INSTRUCTIONS = `You are an Australian regulatory compliance assistant specializing in employment law, taxation, and payroll obligations.
 
@@ -49,9 +49,7 @@ export function createQandaAgentWithXero(userId: string, modelId?: string) {
   return new Agent({
     name: "qanda-agent-with-xero",
     instructions: SYSTEM_INSTRUCTIONS,
-    model: myProvider.languageModel(
-      modelId || "anthropic-claude-sonnet-4-5"
-    ),
+    model: myProvider.languageModel(modelId || "anthropic-claude-sonnet-4-5"),
     tools: {
       regulatorySearch: regulatorySearchTool,
       ...xeroTools,

@@ -1,9 +1,6 @@
-import { NextResponse } from "next/server";
 import type { CoreMessage } from "ai";
-import {
-  qandaAgent,
-  createQandaAgentWithXero,
-} from "@/lib/agents/qanda/agent";
+import { NextResponse } from "next/server";
+import { createQandaAgentWithXero, qandaAgent } from "@/lib/agents/qanda/agent";
 import type { QandaSettings } from "@/lib/agents/qanda/types";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import {

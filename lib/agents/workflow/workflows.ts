@@ -1,13 +1,13 @@
 import "server-only";
 
-import { createWorkflow, createStep } from "@mastra/core";
+import { createStep, createWorkflow } from "@mastra/core";
 import { z } from "zod";
 import { mastra } from "@/lib/mastra";
 
 /**
  * Workflow: Month-End Close
  *
- * Orchestrates: Documents → Reconciliations → Compliance → Analytics
+ * Orchestrates: Documents → Reconciliations → Analytics
  */
 
 // Step 1: Process and validate documents
@@ -71,57 +71,14 @@ const reconcileTransactionsStep = createStep({
   },
 });
 
-// Step 3: Compliance checks
-const complianceCheckStep = createStep({
-  id: "compliance-check",
+// Step 4: Generate analytics report
+const generateAnalyticsStep = createStep({
+  id: "generate-analytics",
   inputSchema: z.object({
     matchedCount: z.number(),
     exceptionsCount: z.number(),
     autoApprovedCount: z.number(),
     status: z.enum(["complete", "review_required", "failed"]),
-  }),
-  outputSchema: z.object({
-    upcomingDeadlines: z.array(
-      z.object({
-        type: z.string(),
-        dueDate: z.string(),
-        priority: z.string(),
-      })
-    ),
-    issues: z.array(z.string()),
-    status: z.enum(["compliant", "warnings", "critical"]),
-  }),
-  execute: async ({ inputData: _stepInput, getInitData }) => {
-    const workflowInput = getInitData();
-    const { month, userId } = workflowInput;
-    console.log(
-      `[Month-End Close] Step 3: Running compliance checks for ${month}`
-    );
-
-    // In production, this would run the compliance agent
-    // to check BAS, PAYG, and super obligations
-
-    return {
-      upcomingDeadlines: [],
-      issues: [],
-      status: "compliant" as const,
-    };
-  },
-});
-
-// Step 4: Generate analytics report
-const generateAnalyticsStep = createStep({
-  id: "generate-analytics",
-  inputSchema: z.object({
-    upcomingDeadlines: z.array(
-      z.object({
-        type: z.string(),
-        dueDate: z.string(),
-        priority: z.string(),
-      })
-    ),
-    issues: z.array(z.string()),
-    status: z.enum(["compliant", "warnings", "critical"]),
   }),
   outputSchema: z.object({
     reportId: z.string(),
@@ -136,9 +93,7 @@ const generateAnalyticsStep = createStep({
   execute: async ({ inputData: _stepInput, getInitData }) => {
     const workflowInput = getInitData();
     const { month, userId } = workflowInput;
-    console.log(
-      `[Month-End Close] Step 4: Generating analytics for ${month}`
-    );
+    console.log(`[Month-End Close] Step 4: Generating analytics for ${month}`);
 
     // In production, this would run the analytics agent
     // to create the financial report with KPIs and narrative
@@ -175,7 +130,6 @@ export const monthEndCloseWorkflow = createWorkflow({
 })
   .then(processDocumentsStep)
   .then(reconcileTransactionsStep)
-  .then(complianceCheckStep)
   .then(generateAnalyticsStep)
   .commit();
 
@@ -203,9 +157,9 @@ const fetchFinancialDataStep = createStep({
 
     // In production, fetch from Xero or database
     return {
-      revenue: [100000, 110000, 120000],
-      expenses: [80000, 85000, 90000],
-      cash: 500000,
+      revenue: [100_000, 110_000, 120_000],
+      expenses: [80_000, 85_000, 90_000],
+      cash: 500_000,
     };
   },
 });
@@ -250,9 +204,7 @@ const prepareInvestorQAStep = createStep({
   }),
   execute: async ({ inputData, getInitData }) => {
     const { period, userId } = getInitData();
-    console.log(
-      `[Investor Update] Preparing Q&A for ${period}`
-    );
+    console.log(`[Investor Update] Preparing Q&A for ${period}`);
 
     // In production, use Q&A agent to generate anticipated investor questions
     // inputData contains: forecastId, scenarios
@@ -285,7 +237,7 @@ export const investorUpdateWorkflow = createWorkflow({
 /**
  * Workflow: ATO Audit Pack
  *
- * Orchestrates: Documents → Compliance → Workflow
+ * Orchestrates: Documents → Workflow
  */
 
 const collectAuditDocumentsStep = createStep({
@@ -299,7 +251,9 @@ const collectAuditDocumentsStep = createStep({
     documentCount: z.number(),
   }),
   execute: async ({ inputData }) => {
-    console.log(`[ATO Audit Pack] Collecting documents for ${inputData.period}`);
+    console.log(
+      `[ATO Audit Pack] Collecting documents for ${inputData.period}`
+    );
 
     // In production, use document management agent to gather required documents
     return {
@@ -309,39 +263,11 @@ const collectAuditDocumentsStep = createStep({
   },
 });
 
-const verifyComplianceStep = createStep({
-  id: "verify-compliance",
-  inputSchema: z.object({
-    documentIds: z.array(z.string()),
-    documentCount: z.number(),
-  }),
-  outputSchema: z.object({
-    compliant: z.boolean(),
-    issues: z.array(z.string()),
-    references: z.array(z.string()),
-  }),
-  execute: async ({ inputData, getInitData }) => {
-    const { period, userId } = getInitData();
-    console.log(
-      `[ATO Audit Pack] Verifying compliance for ${period}`
-    );
-
-    // In production, run compliance agent to verify all requirements
-    // inputData contains: documentIds, documentCount
-    return {
-      compliant: true,
-      issues: [],
-      references: [],
-    };
-  },
-});
-
 const generateAuditPackStep = createStep({
   id: "generate-audit-pack",
   inputSchema: z.object({
-    compliant: z.boolean(),
-    issues: z.array(z.string()),
-    references: z.array(z.string()),
+    documentIds: z.array(z.string()),
+    documentCount: z.number(),
   }),
   outputSchema: z.object({
     packId: z.string(),
@@ -350,9 +276,7 @@ const generateAuditPackStep = createStep({
   execute: async ({ inputData, getInitData, getStepResult }) => {
     const { period, userId } = getInitData();
     const { documentIds } = getStepResult(collectAuditDocumentsStep);
-    console.log(
-      `[ATO Audit Pack] Generating audit pack for ${period}`
-    );
+    console.log(`[ATO Audit Pack] Generating audit pack for ${period}`);
 
     // In production, compile all documents into a PDF package
     // inputData contains: compliant, issues, references
@@ -376,6 +300,5 @@ export const atoAuditPackWorkflow = createWorkflow({
   }),
 })
   .then(collectAuditDocumentsStep)
-  .then(verifyComplianceStep)
   .then(generateAuditPackStep)
   .commit();

@@ -3,6 +3,8 @@
 import {
   BarChart3,
   Calculator,
+  CreditCard,
+  DollarSign,
   FileText,
   MessageSquare,
   Network,
@@ -56,18 +58,19 @@ export default function AgentSettingsPage() {
     requiresReview: true,
   });
 
-  // Tax and Compliance Agent state
-  const [taxComplianceEnabled, setTaxComplianceEnabled] = useState(true);
-  const [jurisdiction, setJurisdiction] = useState<string[]>(["nsw"]);
-  const [complianceTypes, setComplianceTypes] = useState({
-    gst: true,
-    superannuation: true,
-    payg: true,
-    fbt: false,
-    payrollTax: false,
-  });
-  const [showDisclaimer, setShowDisclaimer] = useState(true);
-  const [requireHumanAudit, setRequireHumanAudit] = useState(true);
+  // Accounts Receivable Agent state
+  const [arEnabled, setArEnabled] = useState(true);
+  const [minDaysOverdue, setMinDaysOverdue] = useState("30");
+  const [collectionTone, setCollectionTone] = useState("professional");
+  const [autoConfirmPayments, setAutoConfirmPayments] = useState(true);
+  const [dsoTarget, setDsoTarget] = useState("30");
+
+  // Accounts Payable Agent state
+  const [apEnabled, setApEnabled] = useState(true);
+  const [invoiceProcessing, setInvoiceProcessing] = useState("auto");
+  const [approvalWorkflows, setApprovalWorkflows] = useState(true);
+  const [paymentRuns, setPaymentRuns] = useState("manual");
+  const [vendorManagement, setVendorManagement] = useState(true);
 
   // Reporting and Analytics Agent state
   const [reportingEnabled, setReportingEnabled] = useState(true);
@@ -414,150 +417,145 @@ export default function AgentSettingsPage() {
             </SettingRow>
           </AgentConfigCard>
 
-          {/* Tax and Compliance Agent */}
+          {/* Accounts Receivable Agent */}
           <AgentConfigCard
             agent={{
-              id: "tax-compliance",
-              name: "Tax and Compliance Agent",
+              id: "accounts-receivable",
+              name: "Accounts Receivable Agent",
               description:
-                "Provides guidance on GST, superannuation, tax law, reporting deadlines, and compliance obligations.",
-              enabled: taxComplianceEnabled,
-              icon: <Scale className="h-5 w-5" />,
+                "Automates invoice management, payment reminders, and predicts late payments to reduce DSO.",
+              enabled: arEnabled,
+              icon: <DollarSign className="h-5 w-5" />,
             }}
-            onEnabledChange={setTaxComplianceEnabled}
+            onEnabledChange={setArEnabled}
             onReset={() => {
-              setJurisdiction(["nsw"]);
-              setShowDisclaimer(true);
-              setRequireHumanAudit(true);
+              setMinDaysOverdue("30");
+              setCollectionTone("professional");
+              setAutoConfirmPayments(true);
+              setDsoTarget("30");
             }}
           >
             <SettingRow
-              description="Australian states and territories for payroll tax"
-              label="Payroll Tax"
+              description="Minimum days overdue to trigger reminders"
+              label="Min days overdue"
             >
-              <MultiSelect
-                onChange={setJurisdiction}
-                options={[
-                  { label: "New South Wales", value: "nsw" },
-                  { label: "Victoria", value: "vic" },
-                  { label: "Queensland", value: "qld" },
-                  { label: "South Australia", value: "sa" },
-                  { label: "Western Australia", value: "wa" },
-                  { label: "Tasmania", value: "tas" },
-                  { label: "Northern Territory", value: "nt" },
-                  { label: "Australian Capital Territory", value: "act" },
-                ]}
-                placeholder="Select states/territories..."
-                selected={jurisdiction}
-              />
-            </SettingRow>
-
-            <SettingRow label="Compliance types">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label
-                    className="font-normal text-sm"
-                    htmlFor="compliance-gst"
-                  >
-                    GST
-                  </Label>
-                  <Switch
-                    checked={complianceTypes.gst}
-                    id="compliance-gst"
-                    onCheckedChange={(checked) =>
-                      setComplianceTypes((prev) => ({ ...prev, gst: checked }))
-                    }
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label
-                    className="font-normal text-sm"
-                    htmlFor="compliance-super"
-                  >
-                    Superannuation
-                  </Label>
-                  <Switch
-                    checked={complianceTypes.superannuation}
-                    id="compliance-super"
-                    onCheckedChange={(checked) =>
-                      setComplianceTypes((prev) => ({
-                        ...prev,
-                        superannuation: checked,
-                      }))
-                    }
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label
-                    className="font-normal text-sm"
-                    htmlFor="compliance-payg"
-                  >
-                    PAYG withholding
-                  </Label>
-                  <Switch
-                    checked={complianceTypes.payg}
-                    id="compliance-payg"
-                    onCheckedChange={(checked) =>
-                      setComplianceTypes((prev) => ({
-                        ...prev,
-                        payg: checked,
-                      }))
-                    }
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label
-                    className="font-normal text-sm"
-                    htmlFor="compliance-fbt"
-                  >
-                    Fringe Benefits Tax
-                  </Label>
-                  <Switch
-                    checked={complianceTypes.fbt}
-                    id="compliance-fbt"
-                    onCheckedChange={(checked) =>
-                      setComplianceTypes((prev) => ({ ...prev, fbt: checked }))
-                    }
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label
-                    className="font-normal text-sm"
-                    htmlFor="compliance-payroll-tax"
-                  >
-                    Payroll Tax
-                  </Label>
-                  <Switch
-                    checked={complianceTypes.payrollTax}
-                    id="compliance-payroll-tax"
-                    onCheckedChange={(checked) =>
-                      setComplianceTypes((prev) => ({
-                        ...prev,
-                        payrollTax: checked,
-                      }))
-                    }
-                  />
-                </div>
-              </div>
-            </SettingRow>
-
-            <SettingRow
-              description="Show legal disclaimer with advice"
-              label="Display disclaimer"
-            >
-              <Switch
-                checked={showDisclaimer}
-                onCheckedChange={setShowDisclaimer}
+              <Input
+                max="365"
+                min="0"
+                onChange={(e) => setMinDaysOverdue(e.target.value)}
+                type="number"
+                value={minDaysOverdue}
               />
             </SettingRow>
 
             <SettingRow
-              description="Require human audit for critical advice"
-              label="Human audit required"
+              description="Tone of automated payment reminders"
+              label="Collection tone"
+            >
+              <Select onValueChange={setCollectionTone} value={collectionTone}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="professional">Professional</SelectItem>
+                  <SelectItem value="friendly">Friendly</SelectItem>
+                  <SelectItem value="firm">Firm</SelectItem>
+                </SelectContent>
+              </Select>
+            </SettingRow>
+
+            <SettingRow
+              description="Automatically confirm payments received"
+              label="Auto-confirm payments"
             >
               <Switch
-                checked={requireHumanAudit}
-                onCheckedChange={setRequireHumanAudit}
+                checked={autoConfirmPayments}
+                onCheckedChange={setAutoConfirmPayments}
+              />
+            </SettingRow>
+
+            <SettingRow
+              description="Target Days Sales Outstanding (DSO)"
+              label="DSO Target"
+            >
+              <Input
+                max="90"
+                min="1"
+                onChange={(e) => setDsoTarget(e.target.value)}
+                type="number"
+                value={dsoTarget}
+              />
+            </SettingRow>
+          </AgentConfigCard>
+
+          {/* Accounts Payable Agent */}
+          <AgentConfigCard
+            agent={{
+              id: "accounts-payable",
+              name: "Accounts Payable Agent",
+              description:
+                "Automates vendor bill management, approval workflows, and payment runs.",
+              enabled: apEnabled,
+              icon: <CreditCard className="h-5 w-5" />,
+            }}
+            onEnabledChange={setApEnabled}
+            onReset={() => {
+              setInvoiceProcessing("auto");
+              setApprovalWorkflows(true);
+              setPaymentRuns("manual");
+              setVendorManagement(true);
+            }}
+          >
+            <SettingRow
+              description="How to process incoming invoices"
+              label="Invoice processing"
+            >
+              <Select
+                onValueChange={setInvoiceProcessing}
+                value={invoiceProcessing}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">Automatic</SelectItem>
+                  <SelectItem value="manual">Manual</SelectItem>
+                </SelectContent>
+              </Select>
+            </SettingRow>
+
+            <SettingRow
+              description="Enable multi-step approval workflows"
+              label="Approval workflows"
+            >
+              <Switch
+                checked={approvalWorkflows}
+                onCheckedChange={setApprovalWorkflows}
+              />
+            </SettingRow>
+
+            <SettingRow
+              description="How to handle payment runs"
+              label="Payment runs"
+            >
+              <Select onValueChange={setPaymentRuns} value={paymentRuns}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">Automatic</SelectItem>
+                  <SelectItem value="manual">Manual</SelectItem>
+                </SelectContent>
+              </Select>
+            </SettingRow>
+
+            <SettingRow
+              description="Enable vendor management features"
+              label="Vendor management"
+            >
+              <Switch
+                checked={vendorManagement}
+                onCheckedChange={setVendorManagement}
               />
             </SettingRow>
           </AgentConfigCard>
