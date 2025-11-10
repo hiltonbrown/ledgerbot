@@ -15,7 +15,7 @@ import {
   upsertInvoices,
 } from "@/lib/db/queries/ar";
 import type { ArCommsArtefactInsert, ArNoteInsert, ArPaymentInsert, ArReminderInsert } from "@/lib/db/schema/ar";
-import { asOfOrToday, formatDisplayDate, getDaysOverdue } from "@/lib/util/dates";
+import { asOfOrToday, formatDisplayDate } from "@/lib/util/dates";
 import { getXeroProvider } from "./xero";
 
 /**
