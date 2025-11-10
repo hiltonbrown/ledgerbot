@@ -1,17 +1,17 @@
 import "server-only";
 
-import { Agent } from "@mastra/core/agent";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { Agent } from "@mastra/core/agent";
 import { myProvider } from "@/lib/ai/providers";
 import {
-  validateABNTool,
-  suggestBillCodingTool,
-  checkDuplicateBillsTool,
-  generatePaymentProposalTool,
   assessPaymentRiskTool,
-  generateEmailDraftTool,
+  checkDuplicateBillsTool,
   createAPXeroTools,
+  generateEmailDraftTool,
+  generatePaymentProposalTool,
+  suggestBillCodingTool,
+  validateABNTool,
 } from "./tools";
 
 // Load system prompt from markdown file
@@ -69,9 +69,7 @@ export function createAPAgentWithXero(userId: string, modelId?: string) {
   return new Agent({
     name: "ap-agent-with-xero",
     instructions: SYSTEM_INSTRUCTIONS,
-    model: myProvider.languageModel(
-      modelId || "anthropic-claude-sonnet-4-5"
-    ),
+    model: myProvider.languageModel(modelId || "anthropic-claude-sonnet-4-5"),
     tools: {
       validateABN: validateABNTool,
       suggestBillCoding: suggestBillCodingTool,

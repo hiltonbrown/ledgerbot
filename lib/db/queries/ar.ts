@@ -1,6 +1,8 @@
 import "server-only";
 
 import { and, desc, eq, gte, lt, lte, sql } from "drizzle-orm";
+import { ChatSDKError } from "@/lib/errors";
+import { db } from "../queries";
 import type {
   ArCommsArtefact,
   ArCommsArtefactInsert,
@@ -23,8 +25,6 @@ import {
   arPayment,
   arReminder,
 } from "../schema/ar";
-import { db } from "../queries";
-import { ChatSDKError } from "@/lib/errors";
 
 export type InvoiceWithContact = ArInvoice & {
   contact: ArContact;
@@ -218,7 +218,7 @@ export async function upsertInvoices(
       .map(
         (row) =>
           `(${columns
-            .map((col) => sql`${row[col]}`)
+            .map((col) => sql`${row[col as keyof typeof row]}`)
             .join(", ")})`
       )
       .join(", ");
@@ -239,7 +239,7 @@ export async function upsertInvoices(
           .map(
             (row) =>
               `(${columns
-                .map((col) => sql`${row[col]}`)
+                .map((col) => sql`${row[col as keyof typeof row]}`)
                 .join(", ")})`
           )
           .join(", ")
@@ -252,8 +252,8 @@ export async function upsertInvoices(
     // Execute the query
     const upsertedInvoices = await db.execute(query);
 
-    // If db.execute returns { rows }, return rows; otherwise, return result directly
-    return upsertedInvoices.rows ?? upsertedInvoices;
+    // Return the result (cast through unknown due to Drizzle execute type)
+    return upsertedInvoices as unknown as ArInvoice[];
   } catch (error) {
     throw new ChatSDKError("bad_request:database", "Failed to upsert invoices");
   }
@@ -266,10 +266,7 @@ export async function insertPayment(
   payment: ArPaymentInsert
 ): Promise<{ payment: ArPayment; invoice: ArInvoice }> {
   try {
-    const [newPayment] = await db
-      .insert(arPayment)
-      .values(payment)
-      .returning();
+    const [newPayment] = await db.insert(arPayment).values(payment).returning();
 
     // Get invoice and calculate new status
     const [invoice] = await db
@@ -279,15 +276,16 @@ export async function insertPayment(
       .limit(1);
 
     if (!invoice) {
-      throw new ChatSDKError("not_found", "Invoice not found");
+      throw new ChatSDKError("bad_request:database", "Invoice not found");
     }
 
     const newAmountPaid = (
-      parseFloat(invoice.amountPaid) + parseFloat(payment.amount.toString())
+      Number.parseFloat(invoice.amountPaid) +
+      Number.parseFloat(payment.amount.toString())
     ).toFixed(2);
 
-    const total = parseFloat(invoice.total);
-    const paid = parseFloat(newAmountPaid);
+    const total = Number.parseFloat(invoice.total);
+    const paid = Number.parseFloat(newAmountPaid);
 
     let newStatus: string = invoice.status;
     if (paid >= total) {

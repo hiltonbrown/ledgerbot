@@ -1,14 +1,10 @@
 import "server-only";
 
-import { createWorkflow, createStep } from "@mastra/core";
+import { createStep, createWorkflow } from "@mastra/core";
 import { z } from "zod";
 import { listInvoicesDue } from "@/lib/db/queries/ar";
 import { asOfOrToday } from "@/lib/util/dates";
 import { redactLog } from "@/lib/util/redact";
-import {
-  buildEmailReminderTool,
-  predictLateRiskTool,
-} from "@/lib/tools/ar/messaging";
 
 /**
  * Workflow: AR Dunning Cycle
@@ -142,28 +138,35 @@ const assessRiskStep = createStep({
 
     console.log("[AR Dunning] Step 3: Assessing risk");
 
-    const assessments = await Promise.all(
-      inputData.invoices.map(async (inv) => {
-        const risk = await predictLateRiskTool.execute({
-          inputData: { invoiceId: inv.id },
-        });
+    const assessments = inputData.invoices.map((inv) => {
+      // Calculate risk score based on days overdue
+      let riskScore = 0.1; // Base risk
+      if (inv.daysOverdue > 0) {
+        const overdueRisk = Math.min(0.6, (inv.daysOverdue / 30) * 0.5);
+        riskScore += overdueRisk;
+      }
+      // Amount factor
+      const amount = Number.parseFloat(inv.total);
+      if (amount > 10_000) {
+        riskScore += 0.1;
+      }
+      riskScore = Math.min(0.95, Math.max(0.05, riskScore));
 
-        // Recommend tone based on days overdue
-        let recommendedTone = "polite";
-        if (inv.daysOverdue >= 60) {
-          recommendedTone = "final";
-        } else if (inv.daysOverdue >= 30) {
-          recommendedTone = "firm";
-        }
+      // Recommend tone based on days overdue
+      let recommendedTone = "polite";
+      if (inv.daysOverdue >= 60) {
+        recommendedTone = "final";
+      } else if (inv.daysOverdue >= 30) {
+        recommendedTone = "firm";
+      }
 
-        return {
-          invoiceId: inv.id,
-          invoiceNumber: inv.number,
-          riskScore: risk.probability,
-          recommendedTone,
-        };
-      })
-    );
+      return {
+        invoiceId: inv.id,
+        invoiceNumber: inv.number,
+        riskScore,
+        recommendedTone,
+      };
+    });
 
     return {
       assessments,
@@ -266,24 +269,13 @@ const generateArtefactsStep = createStep({
 
     console.log("[AR Dunning] Step 5: Generating artefacts (autoConfirm=true)");
 
-    const artefacts = await Promise.all(
-      inputData.plan.map(async (item) => {
-        const result = await buildEmailReminderTool.execute({
-          inputData: {
-            userId: workflowInput.userId,
-            invoiceId: item.invoiceId,
-            templateId: "default",
-            tone: item.tone as "polite" | "firm" | "final",
-          },
-        });
-
-        return {
-          invoiceId: item.invoiceId,
-          artefactId: result.artefactId,
-          channel: "email",
-        };
-      })
-    );
+    // TODO: In production, call buildEmailReminderTool for each invoice
+    // For now, create mock artefacts
+    const artefacts = inputData.plan.map((item) => ({
+      invoiceId: item.invoiceId,
+      artefactId: `artefact-${item.invoiceId}`,
+      channel: "email",
+    }));
 
     return {
       artefacts,

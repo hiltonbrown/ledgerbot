@@ -16,9 +16,7 @@ export function createForecastingXeroTools(userId: string) {
       inputSchema: z.object({
         fromDate: z
           .string()
-          .describe(
-            "Start date for the report (ISO 8601 format YYYY-MM-DD)"
-          ),
+          .describe("Start date for the report (ISO 8601 format YYYY-MM-DD)"),
         toDate: z
           .string()
           .describe("End date for the report (ISO 8601 format YYYY-MM-DD)"),
@@ -51,9 +49,7 @@ export function createForecastingXeroTools(userId: string) {
       inputSchema: z.object({
         fromDate: z
           .string()
-          .describe(
-            "Start date for the report (ISO 8601 format YYYY-MM-DD)"
-          ),
+          .describe("Start date for the report (ISO 8601 format YYYY-MM-DD)"),
         toDate: z
           .string()
           .describe("End date for the report (ISO 8601 format YYYY-MM-DD)"),

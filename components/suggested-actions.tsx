@@ -25,18 +25,27 @@ function PureSuggestedActions({
   suggestions,
 }: SuggestedActionsProps) {
   const defaultSuggestions = [
-    "How do I resolve duplicate transactions in Xero?",
-    "How do I properly record GST on imported supplier invoices?",
-    "Help me plan a healthy meal preparation for the week.",
-    "Draft a professional email to clients about overdue invoices.",
+    {
+      id: "default-1",
+      text: "How do I resolve duplicate transactions in Xero?",
+    },
+    {
+      id: "default-2",
+      text: "How do I properly record GST on imported supplier invoices?",
+    },
+    {
+      id: "default-3",
+      text: "Help me plan a healthy meal preparation for the week.",
+    },
+    {
+      id: "default-4",
+      text: "Draft a professional email to clients about overdue invoices.",
+    },
   ];
 
   // Use user suggestions if provided, otherwise use defaults
   const suggestedActions = suggestions
-    ? suggestions
-        .filter((s) => s.enabled)
-        .sort((a, b) => a.order - b.order)
-        .map((s) => s.text)
+    ? suggestions.filter((s) => s.enabled).sort((a, b) => a.order - b.order)
     : defaultSuggestions;
 
   return (
@@ -48,8 +57,8 @@ function PureSuggestedActions({
         <motion.div
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 20 }}
-          initial={{ opacity: 0, y: 20 }}
-          key={suggestedAction}
+          initial={{ opacity: 0, y: 0 }}
+          key={suggestedAction.id}
           transition={{ delay: 0.05 * index }}
         >
           <Suggestion
@@ -61,9 +70,9 @@ function PureSuggestedActions({
                 parts: [{ type: "text", text: suggestion }],
               });
             }}
-            suggestion={suggestedAction}
+            suggestion={suggestedAction.text}
           >
-            {suggestedAction}
+            {suggestedAction.text}
           </Suggestion>
         </motion.div>
       ))}

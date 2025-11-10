@@ -128,10 +128,6 @@ export function getQuarterEnd(date: Date): Date {
 /**
  * Check if date is within range
  */
-export function isWithinRange(
-  date: Date,
-  start: Date,
-  end: Date
-): boolean {
+export function isWithinRange(date: Date, start: Date, end: Date): boolean {
   return date >= start && date <= end;
 }

@@ -5,8 +5,8 @@
 import "server-only";
 
 import type { XeroClient } from "xero-node";
-import { getDecryptedConnection } from "@/lib/xero/connection-manager";
 import { addDays } from "@/lib/util/dates";
+import { getDecryptedConnection } from "@/lib/xero/connection-manager";
 
 export type XeroInvoice = {
   invoiceID: string;
@@ -34,7 +34,11 @@ export type XeroContact = {
   contactID: string;
   name: string;
   emailAddress?: string;
-  phones?: Array<{ phoneType: string; phoneNumber: string; phoneCountryCode?: string }>;
+  phones?: Array<{
+    phoneType: string;
+    phoneNumber: string;
+    phoneCountryCode?: string;
+  }>;
   isCustomer?: boolean;
   isSupplier?: boolean;
 };
@@ -47,11 +51,14 @@ export type XeroProvider = {
     dateFrom?: string;
     dateTo?: string;
   }) => Promise<XeroInvoice[]>;
-  markPaid: (invoiceId: string, payment: {
-    amount: number;
-    date: string;
-    reference?: string;
-  }) => Promise<{ success: boolean; error?: string }>;
+  markPaid: (
+    invoiceId: string,
+    payment: {
+      amount: number;
+      date: string;
+      reference?: string;
+    }
+  ) => Promise<{ success: boolean; error?: string }>;
   listContacts: (params?: {
     searchTerm?: string;
     isCustomer?: boolean;
@@ -81,7 +88,10 @@ export async function getXeroProvider(userId: string): Promise<XeroProvider> {
 
     return getRealXeroProvider(connection.tenantId);
   } catch (error) {
-    console.error("[AR Xero] Error getting connection, falling back to mock:", error);
+    console.error(
+      "[AR Xero] Error getting connection, falling back to mock:",
+      error
+    );
     return getMockXeroProvider();
   }
 }
@@ -110,7 +120,7 @@ function getRealXeroProvider(tenantId: string): XeroProvider {
         }
         if (params.contactIds && params.contactIds.length > 0) {
           const contactFilter = params.contactIds
-            .map(id => `Contact.ContactID==Guid("${id}")`)
+            .map((id) => `Contact.ContactID==Guid("${id}")`)
             .join(" OR ");
           where.push(`(${contactFilter})`);
         }
@@ -164,7 +174,7 @@ function getRealXeroProvider(tenantId: string): XeroProvider {
       try {
         const where = [];
         if (params?.isCustomer) {
-          where.push('IsCustomer==true');
+          where.push("IsCustomer==true");
         }
 
         const response = await xero.accountingApi.getContacts(
@@ -275,10 +285,10 @@ function getMockXeroProvider(): XeroProvider {
       dueDateString: addDays(today, -30).toISOString().split("T")[0], // 30 days overdue
       status: "AUTHORISED",
       lineAmountTypes: "Exclusive",
-      subTotal: 12000.0,
+      subTotal: 12_000.0,
       totalTax: 1200.0,
-      total: 13200.0,
-      amountDue: 13200.0,
+      total: 13_200.0,
+      amountDue: 13_200.0,
       amountPaid: 0.0,
       currencyCode: "AUD",
     },
@@ -315,26 +325,22 @@ function getMockXeroProvider(): XeroProvider {
 
       if (params.status) {
         filtered = filtered.filter(
-          inv => inv.status === params.status!.toUpperCase()
+          (inv) => inv.status === params.status!.toUpperCase()
         );
       }
 
       if (params.contactIds && params.contactIds.length > 0) {
-        filtered = filtered.filter(inv =>
+        filtered = filtered.filter((inv) =>
           params.contactIds!.includes(inv.contact.contactID)
         );
       }
 
       if (params.dateFrom) {
-        filtered = filtered.filter(
-          inv => inv.dateString >= params.dateFrom!
-        );
+        filtered = filtered.filter((inv) => inv.dateString >= params.dateFrom!);
       }
 
       if (params.dateTo) {
-        filtered = filtered.filter(
-          inv => inv.dateString <= params.dateTo!
-        );
+        filtered = filtered.filter((inv) => inv.dateString <= params.dateTo!);
       }
 
       return filtered;
@@ -346,7 +352,7 @@ function getMockXeroProvider(): XeroProvider {
         payment,
       });
 
-      const invoice = mockInvoices.find(inv => inv.invoiceID === invoiceId);
+      const invoice = mockInvoices.find((inv) => inv.invoiceID === invoiceId);
       if (!invoice) {
         return { success: false, error: "Invoice not found" };
       }
@@ -362,14 +368,14 @@ function getMockXeroProvider(): XeroProvider {
 
       if (params?.isCustomer !== undefined) {
         filtered = filtered.filter(
-          contact => contact.isCustomer === params.isCustomer
+          (contact) => contact.isCustomer === params.isCustomer
         );
       }
 
       if (params?.searchTerm) {
         const searchLower = params.searchTerm.toLowerCase();
         filtered = filtered.filter(
-          contact =>
+          (contact) =>
             contact.name.toLowerCase().includes(searchLower) ||
             contact.emailAddress?.toLowerCase().includes(searchLower)
         );

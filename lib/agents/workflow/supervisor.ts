@@ -5,9 +5,9 @@ import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import { myProvider } from "@/lib/ai/providers";
 import {
-  monthEndCloseWorkflow,
-  investorUpdateWorkflow,
   atoAuditPackWorkflow,
+  investorUpdateWorkflow,
+  monthEndCloseWorkflow,
 } from "./workflows";
 
 /**
@@ -16,7 +16,7 @@ import {
 const executeMonthEndCloseTool = createTool({
   id: "executeMonthEndClose",
   description:
-    "Execute the Month-End Close workflow which processes documents, reconciles transactions, runs compliance checks, and generates analytics.",
+    "Execute the Month-End Close workflow which processes documents, reconciles transactions, and generates analytics.",
   inputSchema: z.object({
     month: z.string().describe("Month to close (YYYY-MM format)"),
     userId: z.string(),
@@ -124,7 +124,7 @@ const executeInvestorUpdateTool = createTool({
 const executeAtoAuditPackTool = createTool({
   id: "executeAtoAuditPack",
   description:
-    "Execute the ATO Audit Pack workflow which collects documents, verifies compliance, and generates the audit package.",
+    "Execute the ATO Audit Pack workflow which collects documents, and generates the audit package.",
   inputSchema: z.object({
     period: z.string().describe("Audit period"),
     userId: z.string(),
@@ -169,14 +169,14 @@ const SUPERVISOR_INSTRUCTIONS = `You are the Workflow Supervisor agent for Ledge
 
 Your role is to:
 1. Orchestrate multi-agent workflows for complex accounting processes
-2. Coordinate between document processing, reconciliation, compliance, analytics, and forecasting agents
+2. Coordinate between document processing, reconciliation, analytics, and forecasting agents
 3. Track workflow execution status and handle failures gracefully
 4. Provide visibility into multi-step operations
 
 Available Workflows:
-1. **Month-End Close** (executeMonthEndClose): Processes documents → reconciles transactions → runs compliance checks → generates analytics report
+1. **Month-End Close** (executeMonthEndClose): Processes documents → reconciles transactions → generates analytics report
 2. **Investor Update** (executeInvestorUpdate): Gathers financial data → creates forecasts → prepares Q&A
-3. **ATO Audit Pack** (executeAtoAuditPack): Collects documents → verifies compliance → generates audit package
+3. **ATO Audit Pack** (executeAtoAuditPack): Collects documents → generates audit package
 
 When executing workflows:
 - Determine which workflow the user needs based on their request
@@ -189,7 +189,7 @@ When executing workflows:
 Workflow Selection Guide:
 - Month-end accounting tasks → Month-End Close
 - Board updates, fundraising → Investor Update
-- ATO audit, compliance review → ATO Audit Pack
+- ATO audit → ATO Audit Pack
 
 Best Practices:
 - Run workflows during off-peak hours when possible

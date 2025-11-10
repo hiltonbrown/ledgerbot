@@ -37,7 +37,8 @@ const calculateKpisTool = createTool({
     const latestExpenses = expenses[expenses.length - 1] || 0;
 
     const grossProfit = latestRevenue - latestCogs;
-    const grossMargin = latestRevenue > 0 ? (grossProfit / latestRevenue) * 100 : 0;
+    const grossMargin =
+      latestRevenue > 0 ? (grossProfit / latestRevenue) * 100 : 0;
 
     const netBurn = latestExpenses - latestRevenue;
     const runway = netBurn > 0 ? cash / netBurn : Number.POSITIVE_INFINITY;
@@ -169,10 +170,12 @@ function createAnalyticsXeroTools(userId: string) {
         fromDate: z
           .string()
           .describe("Start date (ISO 8601 format YYYY-MM-DD)"),
-        toDate: z
-          .string()
-          .describe("End date (ISO 8601 format YYYY-MM-DD)"),
-        periods: z.number().optional().default(12).describe("Number of periods"),
+        toDate: z.string().describe("End date (ISO 8601 format YYYY-MM-DD)"),
+        periods: z
+          .number()
+          .optional()
+          .default(12)
+          .describe("Number of periods"),
         timeframe: z
           .enum(["MONTH", "QUARTER", "YEAR"])
           .optional()
@@ -197,9 +200,7 @@ function createAnalyticsXeroTools(userId: string) {
         fromDate: z
           .string()
           .describe("Start date (ISO 8601 format YYYY-MM-DD)"),
-        toDate: z
-          .string()
-          .describe("End date (ISO 8601 format YYYY-MM-DD)"),
+        toDate: z.string().describe("End date (ISO 8601 format YYYY-MM-DD)"),
       }),
       outputSchema: z.string(),
       execute: async ({ context }) => {

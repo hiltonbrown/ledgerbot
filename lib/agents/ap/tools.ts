@@ -2,6 +2,7 @@ import "server-only";
 
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
+import { executeXeroMCPTool } from "@/lib/ai/xero-mcp-client";
 import type {
   ABNValidation,
   Bill,
@@ -13,7 +14,6 @@ import type {
   PaymentRiskFlag,
   SupplierRiskLevel,
 } from "@/types/ap";
-import { executeXeroMCPTool } from "@/lib/ai/xero-mcp-client";
 
 /**
  * Validate Australian Business Number (ABN)
@@ -75,15 +75,15 @@ export const validateABNTool = createTool({
           entityName: "Example Business Pty Ltd",
           entityType: "Australian Private Company",
           gstRegistered: true,
-          message: "ABN validation stub - integrate with ABR API for production",
+          message:
+            "ABN validation stub - integrate with ABR API for production",
         },
       };
     } catch (error) {
       console.error("[AP Agent] ABN validation error:", error);
       return {
         success: false,
-        error:
-          error instanceof Error ? error.message : "ABN validation failed",
+        error: error instanceof Error ? error.message : "ABN validation failed",
       };
     }
   },
@@ -317,18 +317,13 @@ export const generatePaymentProposalTool = createTool({
   description:
     "Generates a payment run proposal based on due dates, approval status, and risk assessment. Prioritizes urgent payments and flags high-risk items for review.",
   inputSchema: z.object({
-    paymentDate: z
-      .string()
-      .describe("Proposed payment date (YYYY-MM-DD)"),
+    paymentDate: z.string().describe("Proposed payment date (YYYY-MM-DD)"),
     includeOverdue: z
       .boolean()
       .optional()
       .default(true)
       .describe("Include overdue bills"),
-    maxAmount: z
-      .number()
-      .optional()
-      .describe("Maximum total payment amount"),
+    maxAmount: z.number().optional().describe("Maximum total payment amount"),
     excludeDisputed: z
       .boolean()
       .optional()
@@ -370,14 +365,10 @@ export const generatePaymentProposalTool = createTool({
     error: z.string().optional(),
   }),
   execute: async ({ context }) => {
-    const {
-      paymentDate,
-    } = context;
+    const { paymentDate } = context;
 
     try {
-      console.log(
-        `[AP Agent] Generating payment proposal for ${paymentDate}`
-      );
+      console.log(`[AP Agent] Generating payment proposal for ${paymentDate}`);
 
       // TODO: In production, query database for bills meeting criteria
       // This is a mock implementation
@@ -412,14 +403,7 @@ export const generatePaymentProposalTool = createTool({
 
       return {
         success: true,
-        proposal: {
-          ...proposal,
-          proposedDate: proposal.proposedDate.toISOString(),
-          bills: proposal.bills.map((bill) => ({
-            ...bill,
-            dueDate: bill.dueDate.toISOString(),
-          })),
-        },
+        proposal,
       };
     } catch (error) {
       console.error("[AP Agent] Payment proposal error:", error);
@@ -521,7 +505,9 @@ export const assessPaymentRiskTool = createTool({
       if (supplierStatus === "blocked") {
         flags.push("inactive_supplier");
         riskScore += 50;
-        recommendations.push("Supplier is blocked - investigate before payment");
+        recommendations.push(
+          "Supplier is blocked - investigate before payment"
+        );
       }
 
       // Check for unusual amount
@@ -605,8 +591,13 @@ export const generateEmailDraftTool = createTool({
     error: z.string().optional(),
   }),
   execute: async ({ context }) => {
-    const { purpose, supplierName, supplierEmail, subject, context: emailContext } =
-      context;
+    const {
+      purpose,
+      supplierName,
+      supplierEmail,
+      subject,
+      context: emailContext,
+    } = context;
 
     try {
       console.log(
@@ -620,7 +611,8 @@ export const generateEmailDraftTool = createTool({
       switch (purpose) {
         case "follow_up":
           emailSubject =
-            emailSubject || `Follow-up: Outstanding invoice from ${supplierName}`;
+            emailSubject ||
+            `Follow-up: Outstanding invoice from ${supplierName}`;
           emailBody = `Dear ${supplierName},
 
 I hope this email finds you well.
@@ -637,7 +629,7 @@ Accounts Payable Team`;
           break;
 
         case "reminder":
-          emailSubject = emailSubject || `Reminder: Missing information`;
+          emailSubject = emailSubject || "Reminder: Missing information";
           emailBody = `Dear ${supplierName},
 
 This is a friendly reminder regarding:
@@ -654,7 +646,7 @@ Accounts Payable Team`;
           break;
 
         case "query":
-          emailSubject = emailSubject || `Query regarding invoice`;
+          emailSubject = emailSubject || "Query regarding invoice";
           emailBody = `Dear ${supplierName},
 
 We are processing your invoice and have the following query:
@@ -671,7 +663,7 @@ Accounts Payable Team`;
           break;
 
         case "payment_advice":
-          emailSubject = emailSubject || `Payment advice`;
+          emailSubject = emailSubject || "Payment advice";
           emailBody = `Dear ${supplierName},
 
 Please be advised that the following payment has been scheduled:
@@ -750,14 +742,10 @@ export function createAPXeroTools(userId: string) {
       }),
       outputSchema: z.string(),
       execute: async ({ context }) => {
-        const result = await executeXeroMCPTool(
-          userId,
-          "xero_list_invoices",
-          {
-            ...context,
-            invoiceType: "ACCPAY", // Bills are ACCPAY type
-          }
-        );
+        const result = await executeXeroMCPTool(userId, "xero_list_invoices", {
+          ...context,
+          invoiceType: "ACCPAY", // Bills are ACCPAY type
+        });
         return result.content[0].text;
       },
     }),

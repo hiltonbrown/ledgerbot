@@ -15,12 +15,7 @@ import {
 } from "@/lib/tools/ar/messaging";
 
 // Load system prompt from markdown file
-const SYSTEM_PROMPT_PATH = join(
-  process.cwd(),
-  "prompts",
-  "ar",
-  "system.md"
-);
+const SYSTEM_PROMPT_PATH = join(process.cwd(), "prompts", "ar", "system.md");
 const SYSTEM_INSTRUCTIONS = readFileSync(SYSTEM_PROMPT_PATH, "utf-8");
 
 /**
@@ -53,9 +48,7 @@ export function createArAgentWithModel(modelId?: string) {
   return new Agent({
     name: "ar-agent-custom",
     instructions: SYSTEM_INSTRUCTIONS,
-    model: myProvider.languageModel(
-      modelId || "anthropic-claude-sonnet-4-5"
-    ),
+    model: myProvider.languageModel(modelId || "anthropic-claude-sonnet-4-5"),
     tools: {
       getInvoicesDue: getInvoicesDueTool,
       predictLateRisk: predictLateRiskTool,

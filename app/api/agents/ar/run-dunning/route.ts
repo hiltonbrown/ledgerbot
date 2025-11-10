@@ -54,22 +54,12 @@ export async function POST(req: Request) {
           );
 
           // Execute workflow
-          const run = await arDunningWorkflow.createRunAsync(workflowInput);
-          const startResult = await run.start();
-
-          // If the workflow run supports progress events, send them to the client.
-          if (typeof run.on === "function") {
-            run.on("progress", (progress) => {
-              controller.enqueue(
-                encoder.encode(
-                  `data: ${JSON.stringify({ type: "progress", ...progress })}\n\n`
-                )
-              );
-            });
-          }
+          const run = await arDunningWorkflow.createRunAsync();
+          const startResult = await run.start({ inputData: workflowInput });
 
           // Get final result
-          const result = startResult.results;
+          const result =
+            startResult.status === "success" ? startResult.result : null;
 
           // Build final response
           const finalData = {
@@ -110,7 +100,7 @@ export async function POST(req: Request) {
 
     if (error instanceof z.ZodError) {
       return new NextResponse(
-        JSON.stringify({ error: "Invalid request", details: error.errors }),
+        JSON.stringify({ error: "Invalid request", details: error.issues }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }

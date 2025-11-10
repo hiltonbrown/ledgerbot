@@ -1,11 +1,8 @@
-import { NextResponse } from "next/server";
 import type { CoreMessage } from "ai";
+import { NextResponse } from "next/server";
 import { workflowSupervisorAgent } from "@/lib/agents/workflow/supervisor";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
-import {
-  getChatById,
-  saveChat,
-} from "@/lib/db/queries";
+import { getChatById, saveChat } from "@/lib/db/queries";
 
 export const maxDuration = 300; // 5 minutes for workflow execution
 

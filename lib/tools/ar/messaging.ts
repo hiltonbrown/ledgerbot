@@ -14,7 +14,12 @@ import {
   upsertContacts,
   upsertInvoices,
 } from "@/lib/db/queries/ar";
-import type { ArCommsArtefactInsert, ArNoteInsert, ArPaymentInsert, ArReminderInsert } from "@/lib/db/schema/ar";
+import type {
+  ArCommsArtefactInsert,
+  ArNoteInsert,
+  ArPaymentInsert,
+  ArReminderInsert,
+} from "@/lib/db/schema/ar";
 import { asOfOrToday, formatDisplayDate } from "@/lib/util/dates";
 import { getXeroProvider } from "./xero";
 
@@ -59,7 +64,7 @@ export const getInvoicesDueTool = createTool({
     ),
     asOf: z.string(),
   }),
-  execute: async ({ inputData }) => {
+  execute: async ({ context: inputData }) => {
     const asOfDate = asOfOrToday(inputData.asOf);
     const result = await listInvoicesDue({
       userId: inputData.userId,
@@ -76,7 +81,9 @@ export const getInvoicesDueTool = createTool({
         dueDate: inv.dueDate.toISOString(),
         total: inv.total,
         amountPaid: inv.amountPaid,
-        amountDue: (parseFloat(inv.total) - parseFloat(inv.amountPaid)).toFixed(2),
+        amountDue: (
+          Number.parseFloat(inv.total) - Number.parseFloat(inv.amountPaid)
+        ).toFixed(2),
         status: inv.status,
         daysOverdue: inv.daysOverdue,
         contact: {
@@ -106,7 +113,7 @@ export const predictLateRiskTool = createTool({
     probability: z.number().min(0).max(1).describe("Risk probability (0-1)"),
     factors: z.array(z.string()).describe("Contributing risk factors"),
   }),
-  execute: async ({ inputData }) => {
+  execute: async ({ context: inputData }) => {
     const invoice = await getInvoiceWithContact(inputData.invoiceId);
 
     if (!invoice) {
@@ -118,14 +125,14 @@ export const predictLateRiskTool = createTool({
 
     // Days overdue factor (exponential)
     if (invoice.daysOverdue > 0) {
-      const overdueRisk = Math.min(0.6, invoice.daysOverdue / 30 * 0.5);
+      const overdueRisk = Math.min(0.6, (invoice.daysOverdue / 30) * 0.5);
       probability += overdueRisk;
       factors.push(`${invoice.daysOverdue} days overdue`);
     }
 
     // Amount factor (larger invoices = higher risk in this simple model)
-    const amount = parseFloat(invoice.total);
-    if (amount > 10000) {
+    const amount = Number.parseFloat(invoice.total);
+    if (amount > 10_000) {
       probability += 0.1;
       factors.push("High invoice amount");
     }
@@ -165,9 +172,7 @@ export const buildEmailReminderTool = createTool({
     userId: z.string().describe("User ID"),
     invoiceId: z.string().describe("Invoice ID"),
     templateId: z.string().describe("Template ID"),
-    tone: z
-      .enum(["polite", "firm", "final"])
-      .describe("Tone of the reminder"),
+    tone: z.enum(["polite", "firm", "final"]).describe("Tone of the reminder"),
   }),
   outputSchema: z.object({
     invoiceId: z.string(),
@@ -177,7 +182,7 @@ export const buildEmailReminderTool = createTool({
     artefactId: z.string(),
     preview: z.string().describe("First 100 chars of body"),
   }),
-  execute: async ({ inputData }) => {
+  execute: async ({ context: inputData }) => {
     const invoice = await getInvoiceWithContact(inputData.invoiceId);
 
     if (!invoice) {
@@ -226,9 +231,7 @@ export const buildSmsReminderTool = createTool({
     userId: z.string().describe("User ID"),
     invoiceId: z.string().describe("Invoice ID"),
     templateId: z.string().describe("Template ID"),
-    tone: z
-      .enum(["polite", "firm", "final"])
-      .describe("Tone of the reminder"),
+    tone: z.enum(["polite", "firm", "final"]).describe("Tone of the reminder"),
   }),
   outputSchema: z.object({
     invoiceId: z.string(),
@@ -237,7 +240,7 @@ export const buildSmsReminderTool = createTool({
     artefactId: z.string(),
     preview: z.string().describe("First 50 chars"),
   }),
-  execute: async ({ inputData }) => {
+  execute: async ({ context: inputData }) => {
     const invoice = await getInvoiceWithContact(inputData.invoiceId);
 
     if (!invoice) {
@@ -294,7 +297,7 @@ export const reconcilePaymentTool = createTool({
     amountPaid: z.string(),
     amountRemaining: z.string(),
   }),
-  execute: async ({ inputData }) => {
+  execute: async ({ context: inputData }) => {
     const payment: ArPaymentInsert = {
       invoiceId: inputData.invoiceId,
       amount: inputData.amount.toFixed(2),
@@ -305,7 +308,8 @@ export const reconcilePaymentTool = createTool({
     const result = await insertPayment(payment);
 
     const amountRemaining = (
-      parseFloat(result.invoice.total) - parseFloat(result.invoice.amountPaid)
+      Number.parseFloat(result.invoice.total) -
+      Number.parseFloat(result.invoice.amountPaid)
     ).toFixed(2);
 
     return {
@@ -341,7 +345,7 @@ export const postNoteTool = createTool({
     visibility: z.string(),
     createdAt: z.string(),
   }),
-  execute: async ({ inputData }) => {
+  execute: async ({ context: inputData }) => {
     const note: ArNoteInsert = {
       userId: inputData.userId,
       invoiceId: inputData.invoiceId,
@@ -366,17 +370,22 @@ export const postNoteTool = createTool({
  */
 export const syncXeroTool = createTool({
   id: "syncXero",
-  description: "Synchronise invoices and contacts from Xero (or mock data if not configured)",
+  description:
+    "Synchronise invoices and contacts from Xero (or mock data if not configured)",
   inputSchema: z.object({
     userId: z.string().describe("User ID"),
-    since: z.string().datetime().optional().describe("Sync data modified since this date"),
+    since: z
+      .string()
+      .datetime()
+      .optional()
+      .describe("Sync data modified since this date"),
   }),
   outputSchema: z.object({
     contactsSync: z.number(),
     invoicesSynced: z.number(),
     isUsingMock: z.boolean(),
   }),
-  execute: async ({ inputData }) => {
+  execute: async ({ context: inputData }) => {
     const xero = await getXeroProvider(inputData.userId);
 
     // Sync contacts first
@@ -442,7 +451,7 @@ function generateEmailContent(
 
   const displayDate = formatDisplayDate(invoice.dueDate);
   const amountDue = (
-    parseFloat(invoice.total) - parseFloat(invoice.amountPaid)
+    Number.parseFloat(invoice.total) - Number.parseFloat(invoice.amountPaid)
   ).toFixed(2);
 
   const subjects = {
@@ -465,8 +474,9 @@ function generateEmailContent(
 
   const closings = {
     polite: `If you have already made this payment, please disregard this message. If you have any questions or need to discuss payment arrangements, please don't hesitate to contact us.\n\nThank you for your attention to this matter.\n\nKind regards,`,
-    firm: `Please arrange payment immediately. If payment has already been made, please provide proof of payment. Contact us urgently if you need to discuss payment arrangements.\n\nRegards,`,
-    final: `If payment is not received within 7 days, we will be forced to escalate this matter, which may include:\n- Suspension of services\n- Referral to a debt collection agency\n- Legal action\n\nPlease contact us immediately to resolve this matter.\n\nUrgent attention required,`,
+    firm: "Please arrange payment immediately. If payment has already been made, please provide proof of payment. Contact us urgently if you need to discuss payment arrangements.\n\nRegards,",
+    final:
+      "If payment is not received within 7 days, we will be forced to escalate this matter, which may include:\n- Suspension of services\n- Referral to a debt collection agency\n- Legal action\n\nPlease contact us immediately to resolve this matter.\n\nUrgent attention required,",
   };
 
   const body = `${greetings[tone]}
@@ -494,7 +504,7 @@ function generateSmsContent(
   if (!invoice) throw new Error("Invoice not found");
 
   const amountDue = (
-    parseFloat(invoice.total) - parseFloat(invoice.amountPaid)
+    Number.parseFloat(invoice.total) - Number.parseFloat(invoice.amountPaid)
   ).toFixed(2);
 
   const messages = {

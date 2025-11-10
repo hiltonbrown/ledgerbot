@@ -2,8 +2,8 @@ import "server-only";
 
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import { searchRegulatoryDocuments } from "@/lib/regulatory/search";
 import { executeXeroMCPTool } from "@/lib/ai/xero-mcp-client";
+import { searchRegulatoryDocuments } from "@/lib/regulatory/search";
 
 /**
  * Regulatory search tool for Mastra agents

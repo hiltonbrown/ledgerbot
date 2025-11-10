@@ -1,10 +1,10 @@
 import { Info } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Card, CardContent } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { ContextFileList } from "@/components/settings/context-file-list";
 import { ContextFileUpload } from "@/components/settings/context-file-upload";
 import { SettingsSection } from "@/components/settings/settings-section";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { entitlementsByUserType } from "@/lib/ai/entitlements";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import { getContextFilesByUserId, getUserStorageUsage } from "@/lib/db/queries";
@@ -70,8 +70,8 @@ export default async function FilesPage() {
             </div>
             <Progress value={usagePercentage} />
             <p className="text-xs">
-              Files uploaded here are automatically included in all conversations
-              as persistent context.
+              Files uploaded here are automatically included in all
+              conversations as persistent context.
             </p>
           </div>
         </AlertDescription>

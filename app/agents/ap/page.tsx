@@ -1,463 +1,472 @@
 "use client";
 
-import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
 import {
   AlertTriangle,
-  CheckCircle,
-  CreditCard,
-  DollarSign,
+  CreditCard, // Changed from DollarSign for AP agent
   FileText,
-  Mail,
-  Send,
-  Users,
-  XCircle,
+  Loader2,
+  MessageSquare,
+  Upload,
 } from "lucide-react";
-import { useState } from "react";
-import useSWR from "swr";
+import {
+  type ChangeEvent,
+  type FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { fetcher } from "@/lib/utils";
+import { generateUUID } from "@/lib/utils";
 
-type XeroConnectionStatus = {
-  connected: boolean;
-  organisationName?: string;
+// Simplified ChatMessage type for AP agent
+type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+  id: string;
+  sources?: string[];
 };
 
-const suggestedTasks = [
-  "Ingest these three supplier bills and suggest GL accounts and GST codes",
-  "Prepare a payment run for next Wednesday. Exclude disputed invoices.",
-  "Validate this vendor's ABN: 51 824 753 556",
-  "Check if this bill is a duplicate: Officeworks, $450.50, dated 2024-11-05",
-  "Draft a follow-up email to a vendor about a missing tax invoice",
-  "Generate a payment batch proposal for bills due this week",
-];
+type AgentChatResponse = {
+  text: string;
+  error?: string;
+  message?: string;
+};
 
-function getRiskBadge(level: string) {
-  switch (level?.toLowerCase()) {
-    case "low":
-      return (
-        <Badge className="bg-green-500 hover:bg-green-600">
-          <CheckCircle className="mr-1 h-3 w-3" />
-          Low Risk
-        </Badge>
-      );
-    case "medium":
-      return (
-        <Badge className="bg-yellow-500 hover:bg-yellow-600">
-          <AlertTriangle className="mr-1 h-3 w-3" />
-          Medium Risk
-        </Badge>
-      );
-    case "high":
-      return (
-        <Badge className="bg-orange-500 hover:bg-orange-600">
-          <AlertTriangle className="mr-1 h-3 w-3" />
-          High Risk
-        </Badge>
-      );
-    case "critical":
-      return (
-        <Badge className="bg-red-500 hover:bg-red-600">
-          <XCircle className="mr-1 h-3 w-3" />
-          Critical Risk
-        </Badge>
-      );
-    default:
-      return <Badge variant="outline">{level}</Badge>;
-  }
-}
+type AgentLoadSuccess = {
+  docId: string; // This might need to be changed to something like 'apSessionId' or similar
+  meta?: {
+    contextFileId?: string;
+    tokenEstimate?: number;
+    fileName?: string;
+    warnings?: string[];
+  };
+};
 
-export default function APAgentPage() {
-  const [requireABN, setRequireABN] = useState(true);
-  const [gstValidation, setGstValidation] = useState(true);
-  const [duplicateCheckDays, setDuplicateCheckDays] = useState(90);
-  const [input, setInput] = useState("");
+export default function AccountsPayableAgentPage() {
+  const [contextFileId, setContextFileId] = useState<string | null>(null); // Still useful for chat context
+  const [apSessionId, setApSessionId] = useState<string | null>(null); // Renamed from arSessionId
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [questionInput, setQuestionInput] = useState("");
+  const [warnings, setWarnings] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [agentReady, setAgentReady] = useState(false);
+  const [isPreparingAgent, setIsPreparingAgent] = useState(false);
+  const [agentStatus, setAgentStatus] = useState("Idle");
+  const [agentContextMeta, setAgentContextMeta] =
+    useState<AgentLoadSuccess | null>(null);
+  const [isAnswering, setIsAnswering] = useState(false);
 
-  // Check Xero connection status
-  const { data: xeroStatus } = useSWR<XeroConnectionStatus>(
-    "/api/xero/status",
-    fetcher,
-    {
-      fallbackData: { connected: false },
-    }
-  );
-
-  // Use real chat API
-  const chat = useChat({
-    id: "ap-agent",
-    transport: new DefaultChatTransport({
-      api: "/api/agents/ap",
-      fetch,
-      prepareSendMessagesRequest(request: any) {
-        return {
-          body: {
-            messages: request.messages,
-            settings: {
-              model: "anthropic-claude-sonnet-4-5",
-              requireABN,
-              gstValidation,
-              duplicateCheckDays,
-              autoApprovalThreshold: 1000, // $1,000 auto-approval threshold
-              defaultPaymentTerms: "NET30",
-            },
-          },
-        };
-      },
-    }),
-  });
-
-  const { messages, sendMessage, status } = chat;
-
-  const handleSendMessage = () => {
-    if (!input.trim()) {
+  const appendWarnings = useCallback((messages?: string[]) => {
+    if (!messages || messages.length === 0) {
       return;
     }
-    sendMessage({
-      role: "user",
-      parts: [{ type: "text", text: input }],
-    } as any);
-    setInput("");
-  };
+    setWarnings((current) => {
+      const unique = new Set(current);
+      for (const message of messages.filter((message) =>
+        Boolean(message?.trim())
+      )) {
+        unique.add(message.trim());
+      }
+      return Array.from(unique);
+    });
+  }, []);
 
-  const handleSuggestedTask = (task: string) => {
-    setInput(task);
-  };
+  // Restore conversation from Redis cache on mount (if available)
+  useEffect(() => {
+    async function restoreConversation() {
+      if (!contextFileId) {
+        return;
+      }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
+      try {
+        // API endpoint for AP conversation might be different
+        const response = await fetch(
+          `/api/agents/ap/conversation?contextFileId=${contextFileId}`
+        );
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data = await response.json();
+
+        if (data.cached && data.data) {
+          console.log(
+            `[ap-agent] Restoring conversation with ${data.data.messages.length} messages`
+          );
+
+          setApSessionId(data.data.apSessionId); // Renamed from arSessionId
+
+          // Restore chat messages
+          const restoredMessages: ChatMessage[] = data.data.messages.map(
+            (msg: ChatMessage, index: number) => ({
+              ...msg,
+              id: generateUUID(),
+            })
+          );
+          setChatMessages(restoredMessages);
+        }
+
+        if (contextFileId && data.data?.apSessionId) {
+          // Renamed from arSessionId
+          void prepareApAgent(contextFileId, data.data.apSessionId);
+        }
+      } catch (error) {
+        console.error("[ap-agent] Failed to restore conversation:", error);
+      }
     }
-  };
 
+    restoreConversation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contextFileId]);
+
+  const resetWorkflow = useCallback(() => {
+    setContextFileId(null);
+    setApSessionId(null); // Renamed from arSessionId
+    setChatMessages([]);
+    setQuestionInput("");
+    setWarnings([]);
+    setError(null);
+    setAgentReady(false);
+    setAgentContextMeta(null);
+    setAgentStatus("Idle");
+    setIsPreparingAgent(false);
+  }, []);
+
+  const prepareApAgent = useCallback(
+    // Renamed from prepareArAgent
+    async (contextId: string, apSessionIdValue?: string) => {
+      // Renamed from arSessionIdValue
+      setIsPreparingAgent(true);
+      setAgentReady(false);
+      setAgentStatus("Initializing AP agent..."); // Updated status message
+
+      try {
+        const response = await fetch("/api/agents/ap", {
+          // Updated API endpoint
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            mode: "load",
+            contextFileId: contextId,
+            apSessionId: apSessionIdValue, // Renamed from arSessionId
+          }),
+        });
+
+        const data: { doc?: AgentLoadSuccess; error?: string } =
+          await response.json();
+
+        if (!response.ok || !data.doc) {
+          throw new Error(data.error ?? "Failed to prepare the AP agent."); // Updated error message
+        }
+
+        setAgentContextMeta(data.doc);
+        setAgentReady(true);
+        setAgentStatus(`AP Agent ready for session ${data.doc.docId}`); // Updated status message
+        const warningList =
+          (data.doc.meta?.warnings as string[] | undefined) ?? [];
+        appendWarnings(warningList);
+      } catch (prepError) {
+        const message =
+          prepError instanceof Error
+            ? prepError.message
+            : "Unable to prepare the AP agent."; // Updated error message
+        setAgentStatus(message);
+        setError(message);
+      } finally {
+        setIsPreparingAgent(false);
+      }
+    },
+    [appendWarnings]
+  );
+
+  const handleAskQuestion = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+
+      const trimmed = questionInput.trim();
+      if (!trimmed) {
+        return;
+      }
+
+      setError(null);
+
+      const historyPayload: ChatMessage[] = chatMessages.map(
+        ({ role, content, sources }) => ({
+          role,
+          content,
+          sources,
+        })
+      );
+
+      const userMessage: ChatMessage = {
+        id: generateUUID(),
+        role: "user",
+        content: trimmed,
+      };
+
+      const assistantMessageId = generateUUID();
+
+      setChatMessages((current) => [
+        ...current,
+        userMessage,
+        {
+          id: assistantMessageId,
+          role: "assistant",
+          content: "",
+        },
+      ]);
+      setQuestionInput("");
+      setIsAnswering(true);
+
+      try {
+        const response = await fetch("/api/agents/ap", {
+          // Updated API endpoint
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            mode: "chat",
+            contextFileId,
+            apSessionId, // Renamed from arSessionId
+            message: trimmed,
+            history: historyPayload,
+            stream: true,
+          }),
+        });
+
+        const contentType = response.headers.get("content-type") ?? "";
+
+        const updateAssistantMessage = (updater: (prev: string) => string) => {
+          setChatMessages((current) =>
+            current.map((message) =>
+              message.id === assistantMessageId
+                ? {
+                    ...message,
+                    content: updater(message.content ?? ""),
+                  }
+                : message
+            )
+          );
+        };
+
+        if (contentType.includes("text/event-stream")) {
+          const reader = response.body?.getReader();
+          if (!reader) {
+            throw new Error("Streaming is not supported in this environment.");
+          }
+
+          const decoder = new TextDecoder();
+          let buffer = "";
+
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) {
+              break;
+            }
+
+            buffer += decoder.decode(value, { stream: true });
+            const events = buffer.split("\n\n");
+            buffer = events.pop() ?? "";
+
+            for (const rawEvent of events) {
+              const lines = rawEvent.split("\n");
+              const eventLine = lines.find((line) =>
+                line.startsWith("event: ")
+              );
+              const dataLine = lines.find((line) => line.startsWith("data: "));
+              const eventName = eventLine?.slice(7) ?? "";
+              if (!dataLine) {
+                continue;
+              }
+              const payload = JSON.parse(
+                dataLine.slice(6)
+              ) as AgentChatResponse;
+
+              if (eventName === "delta" && typeof payload.text === "string") {
+                updateAssistantMessage((prev) => `${prev}${payload.text}`);
+              } else if (eventName === "final") {
+                updateAssistantMessage(() => payload.text ?? "");
+              } else if (eventName === "error") {
+                const fallback =
+                  payload.error ??
+                  "I wasn't able to answer that question. Please try again.";
+                updateAssistantMessage(() => fallback);
+              }
+            }
+          }
+
+          setIsAnswering(false);
+          return;
+        }
+
+        const data: AgentChatResponse = await response.json();
+
+        if (!response.ok || typeof data.text !== "string") {
+          throw new Error(data.error ?? "Unable to answer the question.");
+        }
+
+        updateAssistantMessage(() => data.text);
+      } catch (answerError) {
+        const message =
+          answerError instanceof Error
+            ? answerError.message
+            : "Please try again in a few moments.";
+        setChatMessages((current) =>
+          current.map((chatMessage) =>
+            chatMessage.id === assistantMessageId
+              ? {
+                  ...chatMessage,
+                  content: `I wasn't able to answer that question. ${message}`,
+                }
+              : chatMessage
+          )
+        );
+      } finally {
+        setIsAnswering(false);
+      }
+    },
+    [chatMessages, apSessionId, contextFileId, questionInput] // Updated dependencies
+  );
+
+  const canChat = Boolean(contextFileId && agentReady);
   return (
-    <div className="space-y-6">
-      {/* AP Overview Stats */}
+    <div className="space-y-10">
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-col gap-2">
           <CardTitle className="flex items-center gap-2 text-lg">
-            <CreditCard className="h-5 w-5 text-primary" />
-            Accounts Payable Overview
+            <CreditCard className="h-5 w-5 text-primary" /> {/* Changed icon */}
+            Accounts Payable Agent
           </CardTitle>
+          <p className="text-muted-foreground text-sm">
+            Manage vendor bills, approval workflows, and payment runs.
+          </p>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-4">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-muted-foreground text-xs uppercase">
-                  Pending Bills
+        <CardContent>
+          <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+            <div className="space-y-4"></div>
+            <div className="space-y-4">
+              <div className="rounded-md border bg-background p-4 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-primary" />
+                    <h3 className="font-semibold text-sm">
+                      Chat with AP Agent
+                    </h3>
+                    <Badge>
+                      {agentReady ? "Agent ready" : "Sync required"}
+                    </Badge>
+                  </div>
+                  <Button
+                    disabled={!contextFileId || isPreparingAgent}
+                    onClick={() => {
+                      if (!contextFileId) {
+                        return;
+                      }
+                      void prepareApAgent(
+                        contextFileId,
+                        apSessionId ?? undefined // Renamed from arSessionId
+                      );
+                    }}
+                    size="sm"
+                    variant="outline"
+                  >
+                    {isPreparingAgent ? (
+                      <>
+                        <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                        Syncing
+                      </>
+                    ) : (
+                      "Sync AP Session" // Updated button text
+                    )}
+                  </Button>
+                </div>
+                <p className="mt-2 text-muted-foreground text-xs">
+                  {agentReady ? agentStatus : `Agent status: ${agentStatus}`}
+                  {agentContextMeta?.meta?.tokenEstimate
+                    ? ` · est. ${agentContextMeta.meta.tokenEstimate} tokens`
+                    : ""}
                 </p>
-                <Badge variant="secondary">
-                  <FileText className="mr-1 h-3 w-3" />0
-                </Badge>
+                <ScrollArea className="mt-3 h-72 rounded-md border bg-muted/20 p-3">
+                  {chatMessages.length === 0 ? (
+                    <p className="text-muted-foreground text-xs">
+                      Ask natural-language questions to manage vendor bills,
+                      approval workflows, and payment runs.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {chatMessages.map((message) => (
+                        <div
+                          className={
+                            "rounded-md border p-3 text-sm leading-relaxed"
+                          }
+                          key={message.id}
+                        >
+                          <p className="font-semibold text-muted-foreground text-xs uppercase">
+                            {message.role === "assistant" ? "LedgerBot" : "You"}
+                          </p>
+                          <p className="mt-1 whitespace-pre-wrap">
+                            {message.content}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+                <form className="mt-3 space-y-2" onSubmit={handleAskQuestion}>
+                  {!agentReady && (
+                    <p className="text-muted-foreground text-xs">
+                      Sync the AP session to activate LedgerBot before asking a
+                      question.
+                    </p>
+                  )}
+                  <Textarea
+                    disabled={!canChat || isAnswering}
+                    onChange={(event) => setQuestionInput(event.target.value)}
+                    placeholder="e.g. What are the unpaid bills for vendor XYZ?"
+                    rows={3}
+                    value={questionInput}
+                  />
+                  <div className="flex items-center justify-between">
+                    <p className="text-muted-foreground text-xs">
+                      LedgerBot will use available AP data to answer your
+                      questions.
+                    </p>
+                    <Button
+                      disabled={
+                        !canChat ||
+                        isAnswering ||
+                        questionInput.trim().length === 0
+                      }
+                      type="submit"
+                    >
+                      {isAnswering ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Thinking
+                        </>
+                      ) : (
+                        "Ask"
+                      )}
+                    </Button>
+                  </div>
+                </form>
               </div>
-              <Progress value={0} />
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-muted-foreground text-xs uppercase">
-                  Awaiting Approval
-                </p>
-                <Badge variant="secondary">
-                  <AlertTriangle className="mr-1 h-3 w-3" />0
-                </Badge>
-              </div>
-              <Progress value={0} />
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-muted-foreground text-xs uppercase">
-                  Due This Week
-                </p>
-                <Badge variant="secondary">
-                  <DollarSign className="mr-1 h-3 w-3" />0
-                </Badge>
-              </div>
-              <Progress value={0} />
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-muted-foreground text-xs uppercase">
-                  Active Vendors
-                </p>
-                <Badge variant="secondary">
-                  <Users className="mr-1 h-3 w-3" />0
-                </Badge>
-              </div>
-              <Progress value={0} />
-            </div>
-          </div>
-
-          <div className="rounded-md border bg-muted/40 p-3 text-xs">
-            <div className="flex items-center gap-2">
-              {xeroStatus?.connected ? (
-                <>
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  <p className="text-foreground">
-                    <span className="font-semibold">Xero Connected:</span>{" "}
-                    {xeroStatus.organisationName}
-                  </p>
-                </>
-              ) : (
-                <>
-                  <XCircle className="h-4 w-4 text-muted-foreground" />
-                  <p className="text-muted-foreground">
-                    <span className="font-semibold">Xero not connected.</span>{" "}
-                    Connect Xero in Settings → Integrations for real-time bill
-                    access.
-                  </p>
-                </>
-              )}
             </div>
           </div>
         </CardContent>
       </Card>
-
-      {/* Main Chat Interface */}
-      <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-        <Card>
-          <CardHeader className="flex flex-col gap-2">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <FileText className="h-5 w-5 text-primary" />
-              AP Workspace
-            </CardTitle>
-            <p className="text-muted-foreground text-sm">
-              Process supplier bills, validate vendors, generate payment runs,
-              and draft vendor communications. All operations are GST-aware for
-              Australian businesses.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Conversation History */}
-            <ScrollArea className="h-[500px] rounded-md border bg-muted/20 p-4">
-              <div className="space-y-4">
-                {messages.length === 0 && (
-                  <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
-                    <p>
-                      Start a conversation or select a suggested task below
-                    </p>
-                  </div>
-                )}
-
-                {messages.map((message) => {
-                  return (
-                    <div
-                      className="rounded-lg border bg-card p-4 shadow-sm"
-                      data-role={message.role}
-                      key={message.id}
-                    >
-                      <div className="flex items-center justify-between text-muted-foreground text-xs">
-                        <span className="font-medium text-foreground capitalize">
-                          {message.role === "user" ? "You" : "AP Agent"}
-                        </span>
-                        <span>
-                          {new Date().toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                      </div>
-
-                      <div className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">
-                        {message.parts
-                          ?.map((part, _idx) =>
-                            part.type === "text" ? part.text : null
-                          )
-                          .filter(Boolean)
-                          .join("") || ""}
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {status === "in_progress" && (
-                  <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                    <span>Processing...</span>
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
-
-            {/* Input Area */}
-            <div className="space-y-2">
-              <Textarea
-                className="min-h-[100px] resize-none"
-                disabled={status === "in_progress"}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Describe your AP task... (e.g., 'Process this Officeworks bill for $450 dated today, suggest coding')"
-                value={input}
-              />
-              <div className="flex items-center justify-between">
-                <p className="text-muted-foreground text-xs">
-                  Press Enter to send, Shift+Enter for new line
-                </p>
-                <Button
-                  disabled={!input.trim() || status === "in_progress"}
-                  onClick={handleSendMessage}
-                  size="sm"
-                >
-                  <Send className="mr-2 h-4 w-4" />
-                  Send
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Sidebar: Settings and Quick Actions */}
-        <div className="space-y-4">
-          {/* Agent Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Agent Settings</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs" htmlFor="require-abn">
-                  Require ABN
-                </Label>
-                <Switch
-                  checked={requireABN}
-                  id="require-abn"
-                  onCheckedChange={setRequireABN}
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <Label className="text-xs" htmlFor="gst-validation">
-                  GST Validation
-                </Label>
-                <Switch
-                  checked={gstValidation}
-                  id="gst-validation"
-                  onCheckedChange={setGstValidation}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs" htmlFor="duplicate-days">
-                  Duplicate Check Days: {duplicateCheckDays}
-                </Label>
-                <input
-                  className="w-full"
-                  id="duplicate-days"
-                  max="180"
-                  min="30"
-                  onChange={(e) =>
-                    setDuplicateCheckDays(Number.parseInt(e.target.value))
-                  }
-                  step="30"
-                  type="range"
-                  value={duplicateCheckDays}
-                />
-                <p className="text-muted-foreground text-xs">
-                  Check for duplicates in the last {duplicateCheckDays} days
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Suggested Tasks */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Suggested Tasks</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {suggestedTasks.map((task, idx) => (
-                <Button
-                  className="h-auto w-full justify-start text-wrap text-left text-xs"
-                  disabled={status === "in_progress"}
-                  key={idx}
-                  onClick={() => handleSuggestedTask(task)}
-                  size="sm"
-                  variant="outline"
-                >
-                  {task}
-                </Button>
-              ))}
-            </CardContent>
-          </Card>
-
-          {/* Common Operations */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Button
-                className="w-full justify-start text-xs"
-                size="sm"
-                variant="outline"
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                Upload Bill PDF
-              </Button>
-              <Button
-                className="w-full justify-start text-xs"
-                size="sm"
-                variant="outline"
-              >
-                <DollarSign className="mr-2 h-4 w-4" />
-                View Payment Runs
-              </Button>
-              <Button
-                className="w-full justify-start text-xs"
-                size="sm"
-                variant="outline"
-              >
-                <Users className="mr-2 h-4 w-4" />
-                Manage Vendors
-              </Button>
-              <Button
-                className="w-full justify-start text-xs"
-                size="sm"
-                variant="outline"
-              >
-                <Mail className="mr-2 h-4 w-4" />
-                Email Drafts
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Risk Legend */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Risk Levels</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs">Low Risk</span>
-                {getRiskBadge("low")}
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs">Medium Risk</span>
-                {getRiskBadge("medium")}
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs">High Risk</span>
-                {getRiskBadge("high")}
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs">Critical Risk</span>
-                {getRiskBadge("critical")}
-              </div>
-              <Separator className="my-2" />
-              <p className="text-muted-foreground text-xs">
-                Risk scores: Low (&lt;20), Medium (20-39), High (40-59),
-                Critical (60+)
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
     </div>
   );
 }

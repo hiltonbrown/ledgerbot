@@ -145,13 +145,9 @@ export const arCommsArtefact = pgTable(
   },
   (table) => ({
     userIdIdx: index("ar_comms_artefact_user_id_idx").on(table.userId),
-    invoiceIdIdx: index("ar_comms_artefact_invoice_id_idx").on(
-      table.invoiceId
-    ),
+    invoiceIdIdx: index("ar_comms_artefact_invoice_id_idx").on(table.invoiceId),
     channelIdx: index("ar_comms_artefact_channel_idx").on(table.channel),
-    createdAtIdx: index("ar_comms_artefact_created_at_idx").on(
-      table.createdAt
-    ),
+    createdAtIdx: index("ar_comms_artefact_created_at_idx").on(table.createdAt),
   })
 );
 
