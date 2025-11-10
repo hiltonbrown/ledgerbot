@@ -281,7 +281,7 @@ export const checkDuplicateBillsTool = createTool({
     error: z.string().optional(),
   }),
   execute: async ({ context }) => {
-    const { vendorName, billNumber, amount, date, checkDays } = context;
+    const { vendorName, amount, date, checkDays } = context;
 
     try {
       console.log(
