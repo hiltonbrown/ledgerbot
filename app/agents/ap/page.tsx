@@ -108,7 +108,7 @@ export default function AccountsPayableAgentPage() {
           setChatMessages(restoredMessages);
         }
 
-        if (contextFileId && data.data?.apSessionId) {
+        if (data.data?.apSessionId) {
           // Renamed from arSessionId
           void prepareApAgent(contextFileId, data.data.apSessionId);
         }
