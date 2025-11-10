@@ -186,7 +186,7 @@ export default function AccountsReceivableAgentPage() {
           setChatMessages(restoredMessages);
         }
 
-        if (contextFileId && data.data?.arSessionId) {
+        if (data.data?.arSessionId) {
           // Renamed from documentId
           void prepareArAgent(contextFileId, data.data.arSessionId);
         }
