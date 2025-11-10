@@ -2,6 +2,7 @@ import {
   Activity,
   BarChart3,
   ClipboardList,
+  CreditCard,
   FileText,
   Gauge,
   Network,
@@ -83,6 +84,25 @@ const agentSnapshots = [
         helper: "Updated 2 days ago",
       },
       { label: "Confidence bands", value: "±8%", helper: "Median variance" },
+    ],
+  },
+  {
+    title: "Accounts Payable",
+    description:
+      "Vendor intake, bill coding with GST validation, approval workflows and payment run proposals for Australian businesses.",
+    href: "/agents/ap",
+    icon: <CreditCard className="h-5 w-5" />,
+    metrics: [
+      {
+        label: "Pending bills",
+        value: "0",
+        helper: "All up to date",
+      },
+      {
+        label: "Payment runs",
+        value: "0",
+        helper: "None scheduled",
+      },
     ],
   },
   {
