@@ -67,7 +67,7 @@ export async function POST(req: Request) {
 
     if (xeroConnection) {
       console.log("[AP Agent] Using agent with Xero tools");
-      console.log(`[AP Agent] Xero organisation: ${xeroConnection.organisationName}`);
+      console.log(`[AP Agent] Xero organisation: ${xeroConnection.tenantName}`);
     } else {
       console.log("[AP Agent] Using base agent (no Xero connection)");
     }
