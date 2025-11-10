@@ -464,7 +464,6 @@ export const assessPaymentRiskTool = createTool({
   execute: async ({ context }) => {
     const {
       billId,
-      vendorName,
       amount,
       hasABN,
       hasTaxInvoice,
