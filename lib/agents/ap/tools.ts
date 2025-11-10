@@ -11,7 +11,7 @@ import type {
   GSTCode,
   PaymentProposal,
   PaymentRiskFlag,
-  VendorRiskLevel,
+  SupplierRiskLevel,
 } from "@/types/ap";
 import { executeXeroMCPTool } from "@/lib/ai/xero-mcp-client";
 
@@ -22,7 +22,7 @@ import { executeXeroMCPTool } from "@/lib/ai/xero-mcp-client";
 export const validateABNTool = createTool({
   id: "validateABN",
   description:
-    "Validates an Australian Business Number (ABN) and retrieves business entity information. Use this to verify vendor legitimacy and GST registration status.",
+    "Validates an Australian Business Number (ABN) and retrieves business entity information. Use this to verify supplier legitimacy and GST registration status.",
   inputSchema: z.object({
     abn: z
       .string()
@@ -97,7 +97,7 @@ export const suggestBillCodingTool = createTool({
   description:
     "Analyzes bill line item descriptions and suggests appropriate GL account codes and GST tax codes for Australian businesses. Returns coding suggestions with confidence scores and reasoning.",
   inputSchema: z.object({
-    vendorName: z.string().describe("Name of the vendor/supplier"),
+    supplierName: z.string().describe("Name of the supplier"),
     lineItems: z
       .array(
         z.object({
@@ -135,11 +135,11 @@ export const suggestBillCodingTool = createTool({
     error: z.string().optional(),
   }),
   execute: async ({ context }) => {
-    const { vendorName, lineItems, chartOfAccounts } = context;
+    const { supplierName, lineItems, chartOfAccounts } = context;
 
     try {
       console.log(
-        `[AP Agent] Generating coding suggestions for ${lineItems.length} line items from ${vendorName}`
+        `[AP Agent] Generating coding suggestions for ${lineItems.length} line items from ${supplierName}`
       );
 
       // AI-powered coding suggestion logic
@@ -251,9 +251,9 @@ export const suggestBillCodingTool = createTool({
 export const checkDuplicateBillsTool = createTool({
   id: "checkDuplicateBills",
   description:
-    "Checks if a bill is a potential duplicate by comparing vendor, amount, date, and reference number against recent bills. Helps prevent double-payment.",
+    "Checks if a bill is a potential duplicate by comparing supplier, amount, date, and reference number against recent bills. Helps prevent double-payment.",
   inputSchema: z.object({
-    vendorName: z.string().describe("Vendor name"),
+    supplierName: z.string().describe("Supplier name"),
     billNumber: z.string().optional().describe("Bill/invoice number"),
     amount: z.number().describe("Bill total amount"),
     date: z.string().describe("Bill date (YYYY-MM-DD)"),
@@ -281,11 +281,11 @@ export const checkDuplicateBillsTool = createTool({
     error: z.string().optional(),
   }),
   execute: async ({ context }) => {
-    const { vendorName, amount, date, checkDays } = context;
+    const { supplierName, amount, date, checkDays } = context;
 
     try {
       console.log(
-        `[AP Agent] Checking for duplicate bills from ${vendorName} for $${amount}`
+        `[AP Agent] Checking for duplicate bills from ${supplierName} for $${amount}`
       );
 
       // TODO: In production, query database for similar bills
@@ -350,7 +350,7 @@ export const generatePaymentProposalTool = createTool({
           z.object({
             billId: z.string(),
             billNumber: z.string(),
-            vendorName: z.string(),
+            supplierName: z.string(),
             amount: z.number(),
             dueDate: z.string(),
             priority: z.enum(["urgent", "due_soon", "normal"]),
@@ -389,7 +389,7 @@ export const generatePaymentProposalTool = createTool({
           {
             billId: "INV-001",
             billNumber: "INV-001",
-            vendorName: "Example Supplier Pty Ltd",
+            supplierName: "Example Supplier Pty Ltd",
             amount: 2500.0,
             dueDate: new Date(paymentDate).toISOString(),
             priority: "due_soon" as const,
@@ -440,21 +440,21 @@ export const generatePaymentProposalTool = createTool({
 export const assessPaymentRiskTool = createTool({
   id: "assessPaymentRisk",
   description:
-    "Evaluates payment risk factors for a bill including missing information, vendor status, approval status, and unusual patterns. Returns risk level and specific flags.",
+    "Evaluates payment risk factors for a bill including missing information, supplier status, approval status, and unusual patterns. Returns risk level and specific flags.",
   inputSchema: z.object({
     billId: z.string().describe("Bill ID to assess"),
-    vendorName: z.string().describe("Vendor name"),
+    supplierName: z.string().describe("Supplier name"),
     amount: z.number().describe("Bill amount"),
-    hasABN: z.boolean().describe("Whether vendor has valid ABN"),
+    hasABN: z.boolean().describe("Whether supplier has valid ABN"),
     hasTaxInvoice: z.boolean().describe("Whether tax invoice is attached"),
     isApproved: z.boolean().describe("Whether bill is approved"),
-    vendorStatus: z
+    supplierStatus: z
       .enum(["active", "inactive", "pending", "blocked"])
-      .describe("Current vendor status"),
+      .describe("Current supplier status"),
     averageAmount: z
       .number()
       .optional()
-      .describe("Vendor's average bill amount for comparison"),
+      .describe("Supplier's average bill amount for comparison"),
   }),
   outputSchema: z.object({
     success: z.boolean(),
@@ -475,7 +475,7 @@ export const assessPaymentRiskTool = createTool({
       hasABN,
       hasTaxInvoice,
       isApproved,
-      vendorStatus,
+      supplierStatus,
       averageAmount,
     } = context;
 
@@ -491,7 +491,7 @@ export const assessPaymentRiskTool = createTool({
         flags.push("missing_abn");
         riskScore += 20;
         recommendations.push(
-          "Request ABN from vendor for GST compliance and validation"
+          "Request ABN from supplier for GST compliance and validation"
         );
       }
 
@@ -509,19 +509,19 @@ export const assessPaymentRiskTool = createTool({
         recommendations.push("Obtain required approval before payment");
       }
 
-      // Check vendor status
-      if (vendorStatus === "inactive") {
-        flags.push("inactive_vendor");
+      // Check supplier status
+      if (supplierStatus === "inactive") {
+        flags.push("inactive_supplier");
         riskScore += 25;
         recommendations.push(
-          "Verify vendor is still operational before payment"
+          "Verify supplier is still operational before payment"
         );
       }
 
-      if (vendorStatus === "blocked") {
-        flags.push("inactive_vendor");
+      if (supplierStatus === "blocked") {
+        flags.push("inactive_supplier");
         riskScore += 50;
-        recommendations.push("Vendor is blocked - investigate before payment");
+        recommendations.push("Supplier is blocked - investigate before payment");
       }
 
       // Check for unusual amount
@@ -529,12 +529,12 @@ export const assessPaymentRiskTool = createTool({
         flags.push("unusual_amount");
         riskScore += 15;
         recommendations.push(
-          `Amount is ${Math.round((amount / averageAmount) * 100)}% of vendor's average - verify legitimacy`
+          `Amount is ${Math.round((amount / averageAmount) * 100)}% of supplier's average - verify legitimacy`
         );
       }
 
       // Determine risk level
-      let riskLevel: VendorRiskLevel;
+      let riskLevel: SupplierRiskLevel;
       if (riskScore >= 60) {
         riskLevel = "critical";
       } else if (riskScore >= 40) {
@@ -572,18 +572,18 @@ export const assessPaymentRiskTool = createTool({
 });
 
 /**
- * Generate email draft for vendor communication
+ * Generate email draft for supplier communication
  */
 export const generateEmailDraftTool = createTool({
   id: "generateEmailDraft",
   description:
-    "Generates professional email draft for vendor communication including payment advice, follow-ups, queries, and reminders. Returns draft as text artifact for user review - does NOT send emails.",
+    "Generates professional email draft for supplier communication including payment advice, follow-ups, queries, and reminders. Returns draft as text artifact for user review - does NOT send emails.",
   inputSchema: z.object({
     purpose: z
       .enum(["follow_up", "reminder", "query", "payment_advice"])
       .describe("Purpose of the email"),
-    vendorName: z.string().describe("Vendor name"),
-    vendorEmail: z.string().describe("Vendor email address"),
+    supplierName: z.string().describe("Supplier name"),
+    supplierEmail: z.string().describe("Supplier email address"),
     subject: z.string().optional().describe("Email subject line"),
     context: z
       .string()
@@ -605,12 +605,12 @@ export const generateEmailDraftTool = createTool({
     error: z.string().optional(),
   }),
   execute: async ({ context }) => {
-    const { purpose, vendorName, vendorEmail, subject, context: emailContext } =
+    const { purpose, supplierName, supplierEmail, subject, context: emailContext } =
       context;
 
     try {
       console.log(
-        `[AP Agent] Generating ${purpose} email draft for ${vendorName}`
+        `[AP Agent] Generating ${purpose} email draft for ${supplierName}`
       );
 
       let emailSubject = subject;
@@ -620,8 +620,8 @@ export const generateEmailDraftTool = createTool({
       switch (purpose) {
         case "follow_up":
           emailSubject =
-            emailSubject || `Follow-up: Outstanding invoice from ${vendorName}`;
-          emailBody = `Dear ${vendorName},
+            emailSubject || `Follow-up: Outstanding invoice from ${supplierName}`;
+          emailBody = `Dear ${supplierName},
 
 I hope this email finds you well.
 
@@ -638,7 +638,7 @@ Accounts Payable Team`;
 
         case "reminder":
           emailSubject = emailSubject || `Reminder: Missing information`;
-          emailBody = `Dear ${vendorName},
+          emailBody = `Dear ${supplierName},
 
 This is a friendly reminder regarding:
 
@@ -655,7 +655,7 @@ Accounts Payable Team`;
 
         case "query":
           emailSubject = emailSubject || `Query regarding invoice`;
-          emailBody = `Dear ${vendorName},
+          emailBody = `Dear ${supplierName},
 
 We are processing your invoice and have the following query:
 
@@ -672,7 +672,7 @@ Accounts Payable Team`;
 
         case "payment_advice":
           emailSubject = emailSubject || `Payment advice`;
-          emailBody = `Dear ${vendorName},
+          emailBody = `Dear ${supplierName},
 
 Please be advised that the following payment has been scheduled:
 
@@ -689,7 +689,7 @@ Accounts Payable Team`;
       }
 
       const draft: EmailDraft = {
-        to: vendorEmail,
+        to: supplierEmail,
         subject: emailSubject,
         body: emailBody,
         purpose,

@@ -4,14 +4,14 @@
  */
 
 /**
- * Vendor validation status
+ * Supplier validation status
  */
-export type VendorStatus = "active" | "inactive" | "pending" | "blocked";
+export type SupplierStatus = "active" | "inactive" | "pending" | "blocked";
 
 /**
- * Vendor risk level for payment operations
+ * Supplier risk level for payment operations
  */
-export type VendorRiskLevel = "low" | "medium" | "high" | "critical";
+export type SupplierRiskLevel = "low" | "medium" | "high" | "critical";
 
 /**
  * Bill status in AP workflow
@@ -53,22 +53,22 @@ export type PaymentRiskFlag =
   | "missing_tax_invoice"
   | "duplicate_bill"
   | "unusual_amount"
-  | "inactive_vendor"
+  | "inactive_supplier"
   | "missing_approval"
   | "overdue_terms"
   | "bank_details_changed";
 
 /**
- * Vendor information
+ * Supplier information
  */
-export interface Vendor {
+export interface Supplier {
   id: string;
   name: string;
   abn?: string;
   email?: string;
   phone?: string;
-  status: VendorStatus;
-  riskLevel: VendorRiskLevel;
+  status: SupplierStatus;
+  riskLevel: SupplierRiskLevel;
   paymentTerms?: string;
   defaultAccount?: string;
   notes?: string;
@@ -96,8 +96,8 @@ export interface BillLineItem {
  */
 export interface Bill {
   id: string;
-  vendorId: string;
-  vendorName: string;
+  supplierId: string;
+  supplierName: string;
   billNumber: string;
   reference?: string;
   date: Date;
@@ -138,7 +138,7 @@ export interface CodingSuggestion {
 export interface ApprovalItem {
   billId: string;
   billNumber: string;
-  vendorName: string;
+  supplierName: string;
   amount: number;
   dueDate: Date;
   status: ApprovalStatus;
@@ -173,7 +173,7 @@ export interface PaymentProposal {
   bills: Array<{
     billId: string;
     billNumber: string;
-    vendorName: string;
+    supplierName: string;
     amount: number;
     dueDate: Date;
     priority: "urgent" | "due_soon" | "normal";
@@ -206,7 +206,7 @@ export interface EmailDraft {
  */
 export interface AuditEntry {
   id: string;
-  entityType: "bill" | "vendor" | "payment" | "approval";
+  entityType: "bill" | "supplier" | "payment" | "approval";
   entityId: string;
   action: string;
   userId: string;
