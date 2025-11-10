@@ -47,7 +47,7 @@ Bookkeepers and accountants in Australia waste countless hours on repetitive tas
 
 ## ✨ Why LedgerBot?
 
-### 🤖 7 Specialized AI Agents
+### 🤖 8 Specialized AI Agents
 
 Each agent is purpose-built for specific accounting workflows:
 
@@ -326,6 +326,50 @@ LedgerBot includes dedicated agent workspaces optimized for specific accounting 
 - Parallel task execution
 
 **Use Case**: Upload invoice → Document agent extracts data → Reconciliation agent matches payment → Compliance agent checks GST treatment → All automated
+
+---
+
+### 8. 💰 Accounts Receivable (`/agents/ar`)
+
+**Purpose**: Reduce Days Sales Outstanding (DSO) with AI-powered dunning and risk assessment
+
+**Features:**
+- Due/overdue invoice monitoring
+- Late payment risk prediction
+- Copy-ready email and SMS reminders (polite/firm/final tones)
+- Payment reconciliation
+- Xero invoice synchronisation (or mock data for testing)
+- Internal notes and status tracking
+
+**Use Case**: View 15 overdue invoices → AI predicts late payment risk → Generate professional reminder emails → Copy and send to customers → Record payments as they arrive
+
+**Important Guardrails:**
+- ⚠️ **Communications are DISABLED** - Agent generates copy-ready artefacts only
+- ✅ Users must manually copy and send emails/SMS
+- ✅ `COMMS_ENABLED=false` enforced at environment level
+- ✅ Respects Australian consumer protection expectations
+- ✅ PII redaction in logs (emails/phones masked)
+
+**Workflow States:**
+1. **Triage**: Validate inputs (asOf date, minDaysOverdue, tone, autoConfirm)
+2. **Fetch**: Retrieve invoices from database (synced from Xero or mock)
+3. **Assess**: Calculate late payment risk (0-1 probability)
+4. **Propose**: Present dunning plan with recommended actions
+5. **Confirm**: Wait for user approval (unless autoConfirm=true)
+6. **Act**: Generate artefacts (email subject + body, SMS text)
+7. **Summarise**: Provide artefact IDs and next steps
+
+**API Endpoints:**
+- `POST /api/agents/ar` - Chat interface with streaming
+- `POST /api/agents/ar/run-dunning` - Batch dunning cycle
+
+**Environment Variables:**
+```bash
+COMMS_ENABLED=false           # Hard guard (must be false)
+AR_DEFAULT_TONE=polite        # Default reminder tone
+XERO_CLIENT_ID=***            # Optional - uses mock data if not configured
+XERO_CLIENT_SECRET=***
+```
 
 ---
 
