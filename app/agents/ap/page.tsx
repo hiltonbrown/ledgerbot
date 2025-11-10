@@ -1,12 +1,9 @@
 "use client";
 
 import {
-  AlertTriangle,
   CreditCard, // Changed from DollarSign for AP agent
-  FileText,
   Loader2,
   MessageSquare,
-  Upload,
 } from "lucide-react";
 import {
   type ChangeEvent,
