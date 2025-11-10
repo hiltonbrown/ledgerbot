@@ -57,24 +57,15 @@ export async function POST(req: Request) {
           const run = await arDunningWorkflow.createRunAsync(workflowInput);
           const startResult = await run.start();
 
-          // Send state updates as the workflow progresses
-          const states = [
-            "triage",
-            "fetch",
-            "assess",
-            "propose",
-            "act",
-            "summarise",
-          ];
-
-          for (const state of states) {
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({ type: "progress", state, message: `Processing ${state}...` })}\n\n`
-              )
-            );
-            // Small delay to simulate progress (in production, would track actual workflow steps)
-            await new Promise((resolve) => setTimeout(resolve, 500));
+          // If the workflow run supports progress events, send them to the client.
+          if (typeof run.on === "function") {
+            run.on("progress", (progress) => {
+              controller.enqueue(
+                encoder.encode(
+                  `data: ${JSON.stringify({ type: "progress", ...progress })}\n\n`
+                )
+              );
+            });
           }
 
           // Get final result
