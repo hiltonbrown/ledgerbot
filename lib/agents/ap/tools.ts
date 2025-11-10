@@ -416,7 +416,14 @@ export const generatePaymentProposalTool = createTool({
 
       return {
         success: true,
-        proposal,
+        proposal: {
+          ...proposal,
+          proposedDate: proposal.proposedDate.toISOString(),
+          bills: proposal.bills.map((bill) => ({
+            ...bill,
+            dueDate: bill.dueDate.toISOString(),
+          })),
+        },
       };
     } catch (error) {
       console.error("[AP Agent] Payment proposal error:", error);
