@@ -203,45 +203,57 @@ export async function upsertInvoices(
   invoices: Omit<ArInvoiceInsert, "userId">[]
 ): Promise<ArInvoice[]> {
   try {
-    const results: ArInvoice[] = [];
+    // Prepare all invoice values with userId
+    const invoiceValues = invoices.map((invoice) => ({
+      ...invoice,
+      userId,
+      updatedAt: new Date(),
+    }));
 
-    for (const invoice of invoices) {
-      const existing = invoice.externalRef
-        ? await db
-            .select()
-            .from(arInvoice)
-            .where(
-              and(
-                eq(arInvoice.userId, userId),
-                eq(arInvoice.externalRef, invoice.externalRef)
-              )
-            )
-            .limit(1)
-        : [];
+    // Use raw SQL for bulk upsert with ON CONFLICT (externalRef, userId)
+    // This assumes arInvoice has columns: id, userId, externalRef, ...other fields
+    // and that externalRef + userId is a unique constraint
+    const columns = Object.keys(invoiceValues[0]);
+    const valuesSql = invoiceValues
+      .map(
+        (row) =>
+          `(${columns
+            .map((col) => sql`${row[col]}`)
+            .join(", ")})`
+      )
+      .join(", ");
 
-      if (existing.length > 0) {
-        const [updated] = await db
-          .update(arInvoice)
-          .set({
-            ...invoice,
-            updatedAt: new Date(),
-          })
-          .where(eq(arInvoice.id, existing[0].id))
-          .returning();
-        results.push(updated);
-      } else {
-        const [inserted] = await db
-          .insert(arInvoice)
-          .values({
-            ...invoice,
-            userId,
-          })
-          .returning();
-        results.push(inserted);
-      }
-    }
+    // Build the ON CONFLICT clause to update all fields except id, userId, externalRef
+    const updateColumns = columns.filter(
+      (col) => !["id", "userId", "externalRef"].includes(col)
+    );
+    const setSql = updateColumns
+      .map((col) => `${col} = EXCLUDED.${col}`)
+      .join(", ");
 
-    return results;
+    // Compose the SQL query
+    const query = sql`
+      INSERT INTO ${arInvoice} (${sql.raw(columns.join(", "))})
+      VALUES ${sql.raw(
+        invoiceValues
+          .map(
+            (row) =>
+              `(${columns
+                .map((col) => sql`${row[col]}`)
+                .join(", ")})`
+          )
+          .join(", ")
+      )}
+      ON CONFLICT (externalRef, userId)
+      DO UPDATE SET ${sql.raw(setSql)}
+      RETURNING *;
+    `;
+
+    // Execute the query
+    const upsertedInvoices = await db.execute(query);
+
+    // If db.execute returns { rows }, return rows; otherwise, return result directly
+    return upsertedInvoices.rows ?? upsertedInvoices;
   } catch (error) {
     throw new ChatSDKError("bad_request:database", "Failed to upsert invoices");
   }
