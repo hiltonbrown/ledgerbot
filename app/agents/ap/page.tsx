@@ -1,6 +1,7 @@
 "use client";
 
-import { useChat } from "ai/react";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 import {
   CreditCard,
   FileText,
@@ -23,13 +24,31 @@ export default function AccountsPayableAgentPage() {
   } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [input, setInput] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading } =
-    useChat({
+  const { messages, sendMessage, status } = useChat({
+    transport: new DefaultChatTransport({
       api: "/api/agents/ap",
-      initialMessages: [],
-    });
+    }),
+  });
+
+  const isLoading = status === "streaming";
+
+  const handleInputChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(event.target.value);
+  };
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!input.trim()) return;
+
+    sendMessage({
+      role: "user",
+      parts: [{ type: "text", text: input }],
+    } as any);
+    setInput("");
+  };
 
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -63,17 +82,10 @@ export default function AccountsPayableAgentPage() {
       const processingMessage = `I've uploaded an invoice file: ${data.fileName}. Please extract the invoice data, match the vendor, suggest coding, and create a draft bill in Xero if connected. File URL: ${data.fileUrl}`;
 
       // Programmatically submit the message
-      const submitEvent = new Event(
-        "submit"
-      ) as unknown as FormEvent<HTMLFormElement>;
-      handleInputChange({
-        target: { value: processingMessage },
-      } as ChangeEvent<HTMLTextAreaElement>);
-
-      // Small delay to ensure input is set
-      setTimeout(() => {
-        handleSubmit(submitEvent);
-      }, 100);
+      sendMessage({
+        role: "user",
+        parts: [{ type: "text", text: processingMessage }],
+      } as any);
     } catch (error) {
       setUploadError(
         error instanceof Error ? error.message : "Failed to upload file"
@@ -228,7 +240,12 @@ export default function AccountsPayableAgentPage() {
                         {message.role === "user" ? "You" : "AP Agent"}
                       </p>
                       <div className="whitespace-pre-wrap text-sm">
-                        {message.content}
+                        {message.parts
+                          ?.map((part) =>
+                            part.type === "text" ? part.text : null
+                          )
+                          .filter(Boolean)
+                          .join("") || ""}
                       </div>
                     </div>
                   ))}
@@ -283,17 +300,12 @@ export default function AccountsPayableAgentPage() {
               className="justify-start"
               disabled={isLoading}
               onClick={() => {
-                handleInputChange({
-                  target: {
-                    value: "Show me all unpaid bills that are overdue",
-                  },
-                } as ChangeEvent<HTMLTextAreaElement>);
-                setTimeout(() => {
-                  const submitEvent = new Event(
-                    "submit"
-                  ) as unknown as FormEvent<HTMLFormElement>;
-                  handleSubmit(submitEvent);
-                }, 100);
+                sendMessage({
+                  role: "user",
+                  parts: [
+                    { type: "text", text: "Show me all unpaid bills that are overdue" },
+                  ],
+                } as any);
               }}
               variant="outline"
             >
@@ -305,17 +317,12 @@ export default function AccountsPayableAgentPage() {
               className="justify-start"
               disabled={isLoading}
               onClick={() => {
-                handleInputChange({
-                  target: {
-                    value: "Generate a payment run proposal for this Friday",
-                  },
-                } as ChangeEvent<HTMLTextAreaElement>);
-                setTimeout(() => {
-                  const submitEvent = new Event(
-                    "submit"
-                  ) as unknown as FormEvent<HTMLFormElement>;
-                  handleSubmit(submitEvent);
-                }, 100);
+                sendMessage({
+                  role: "user",
+                  parts: [
+                    { type: "text", text: "Generate a payment run proposal for this Friday" },
+                  ],
+                } as any);
               }}
               variant="outline"
             >
@@ -327,17 +334,12 @@ export default function AccountsPayableAgentPage() {
               className="justify-start"
               disabled={isLoading}
               onClick={() => {
-                handleInputChange({
-                  target: {
-                    value: "List all bills awaiting approval",
-                  },
-                } as ChangeEvent<HTMLTextAreaElement>);
-                setTimeout(() => {
-                  const submitEvent = new Event(
-                    "submit"
-                  ) as unknown as FormEvent<HTMLFormElement>;
-                  handleSubmit(submitEvent);
-                }, 100);
+                sendMessage({
+                  role: "user",
+                  parts: [
+                    { type: "text", text: "List all bills awaiting approval" },
+                  ],
+                } as any);
               }}
               variant="outline"
             >
@@ -349,18 +351,15 @@ export default function AccountsPayableAgentPage() {
               className="justify-start"
               disabled={isLoading}
               onClick={() => {
-                handleInputChange({
-                  target: {
-                    value:
-                      "What vendors do I have in my system? Show me the top 5 by spend.",
-                  },
-                } as ChangeEvent<HTMLTextAreaElement>);
-                setTimeout(() => {
-                  const submitEvent = new Event(
-                    "submit"
-                  ) as unknown as FormEvent<HTMLFormElement>;
-                  handleSubmit(submitEvent);
-                }, 100);
+                sendMessage({
+                  role: "user",
+                  parts: [
+                    {
+                      type: "text",
+                      text: "What vendors do I have in my system? Show me the top 5 by spend.",
+                    },
+                  ],
+                } as any);
               }}
               variant="outline"
             >
