@@ -29,6 +29,8 @@ Any required changes should be handled through configuration overrides or adapte
 ```bash
 # Development
 pnpm dev                 # Start dev server with Turbo
+pnpm studio              # Start Mastra Studio (agent testing UI)
+pnpm studio:https        # Start Mastra Studio with HTTPS
 
 # Building & Production
 pnpm build              # Run migrations and build for production
@@ -251,6 +253,8 @@ LedgerBot features specialized AI agent workspaces for accounting automation bui
 - Type-safe agent access via `mastra.getAgent(name)`
 - Shared tools and integrations
 - Built-in observability and monitoring
+
+**Mastra Studio**: For local development and debugging, use [Mastra Studio](https://mastra.ai/docs/getting-started/studio) - an interactive UI for testing agents, workflows, and tools. See `/docs/mastra-studio-integration-guide.md` for complete setup instructions. Quick start: `pnpm studio` (opens at http://localhost:4111).
 
 **Available Agents** (all using Mastra):
 1. **Document Processing** (`/agents/docmanagement`): AI-assisted intake for invoices, receipts, and bank statements with automated OCR and validation queues
