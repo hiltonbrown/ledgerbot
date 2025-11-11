@@ -222,7 +222,7 @@ function getRealXeroProvider(
         console.log(`[AR Xero] Fetching invoices with WHERE: ${whereClause}`);
 
         // CRITICAL FIX: Use pagination to get ALL invoices, not just first page
-        const allInvoices = await paginateResults(async (page) => {
+        const allInvoices = await paginateResults<XeroInvoice>(async (page) => {
           const response = await xero.accountingApi.getInvoices(
             connection.tenantId,
             undefined, // ifModifiedSince
@@ -240,7 +240,7 @@ function getRealXeroProvider(
             100 // pageSize
           );
 
-          return response.body.invoices || [];
+          return (response.body.invoices || []) as XeroInvoice[];
         });
 
         console.log(`[AR Xero] Retrieved ${allInvoices.length} total invoices`);
@@ -315,7 +315,7 @@ function getRealXeroProvider(
         console.log(`[AR Xero] Fetching contacts with WHERE: ${whereClause}`);
 
         // CRITICAL FIX: Use pagination to get ALL contacts
-        const allContacts = await paginateResults(async (page) => {
+        const allContacts = await paginateResults<XeroContact>(async (page) => {
           const response = await xero.accountingApi.getContacts(
             connection.tenantId,
             undefined, // ifModifiedSince
@@ -329,7 +329,7 @@ function getRealXeroProvider(
             100 // pageSize
           );
 
-          return response.body.contacts || [];
+          return (response.body.contacts || []) as XeroContact[];
         });
 
         console.log(`[AR Xero] Retrieved ${allContacts.length} total contacts`);

@@ -8,9 +8,11 @@ import {
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import {
   getContextFileById,
+  saveChat,
   saveDocument,
   touchContextFile,
 } from "@/lib/db/queries";
+import { generateUUID } from "@/lib/utils";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -75,12 +77,23 @@ export async function POST(request: Request) {
       questions: questionResult.questions,
     });
 
+    const chatId = generateUUID();
+    const chatTitle = `Summary: ${contextFile.originalName ?? contextFile.name}`;
+
+    await saveChat({
+      id: chatId,
+      userId: user.id,
+      title: chatTitle,
+      visibility: "private",
+    });
+
     await saveDocument({
       id: payload.documentId,
-      title: `Summary: ${contextFile.originalName ?? contextFile.name}`,
+      title: chatTitle,
       kind: "text",
       content: markdown,
       userId: user.id,
+      chatId,
     });
 
     await touchContextFile(contextFile.id);

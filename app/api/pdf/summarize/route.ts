@@ -10,6 +10,7 @@ import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import {
   db,
   getContextFileById,
+  saveChat,
   saveDocument,
   touchContextFile,
 } from "@/lib/db/queries";
@@ -147,6 +148,8 @@ export async function POST(request: Request) {
           });
 
           const documentId = payload.summaryDocumentId ?? generateUUID();
+          const chatId = generateUUID();
+          const chatTitle = `Summary: ${contextFile.originalName ?? contextFile.name}`;
 
           const markdown = buildSummaryDocument({
             fileName: contextFile.originalName ?? contextFile.name,
@@ -155,12 +158,20 @@ export async function POST(request: Request) {
             sections: summaryResult.sections as PdfSectionSummary[],
           });
 
+          await saveChat({
+            id: chatId,
+            userId: user.id,
+            title: chatTitle,
+            visibility: "private",
+          });
+
           await saveDocument({
             id: documentId,
-            title: `Summary: ${contextFile.originalName ?? contextFile.name}`,
+            title: chatTitle,
             kind: "text",
             content: markdown,
             userId: user.id,
+            chatId,
           });
 
           await touchContextFile(contextFile.id);
@@ -202,6 +213,8 @@ export async function POST(request: Request) {
     });
 
     const documentId = payload.summaryDocumentId ?? generateUUID();
+    const chatId = generateUUID();
+    const chatTitle = `Summary: ${contextFile.originalName ?? contextFile.name}`;
 
     const markdown = buildSummaryDocument({
       fileName: contextFile.originalName ?? contextFile.name,
@@ -210,12 +223,20 @@ export async function POST(request: Request) {
       sections: summaryResult.sections as PdfSectionSummary[],
     });
 
+    await saveChat({
+      id: chatId,
+      userId: user.id,
+      title: chatTitle,
+      visibility: "private",
+    });
+
     await saveDocument({
       id: documentId,
-      title: `Summary: ${contextFile.originalName ?? contextFile.name}`,
+      title: chatTitle,
       kind: "text",
       content: markdown,
       userId: user.id,
+      chatId,
     });
 
     await touchContextFile(contextFile.id);
