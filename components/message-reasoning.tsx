@@ -36,7 +36,7 @@ export function MessageReasoning({
     if (!text.trim()) return [];
 
     // Try to split by numbered steps (1., 2., etc.)
-    const numberedSteps = text.match(/(?:^|\n)(?:\d+\.|\*|-)\s+[^\n]+(?:\n(?!\d+\.|\*|-).*?)*/g);
+    const numberedSteps = text.match(/(?:^|\n)(\d+\.|\*|-)\s+[^\n]+(?:\n(?!(?:\d+\.|\*|-)\s).*?)*/g);
     if (numberedSteps && numberedSteps.length > 1) {
       return numberedSteps.map(step => step.trim());
     }
