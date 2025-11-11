@@ -40,13 +40,15 @@ export type DocumentHandler<T = ArtifactKind> = {
 
 export function createDocumentHandler<T extends ArtifactKind>(config: {
   kind: T;
-  onCreateDocument: (params: CreateDocumentCallbackProps) => Promise<string>;
+  onCreateDocument: (
+    params: CreateDocumentCallbackProps
+  ) => Promise<string | { content: string; generatedTitle: string }>;
   onUpdateDocument: (params: UpdateDocumentCallbackProps) => Promise<string>;
 }): DocumentHandler<T> {
   return {
     kind: config.kind,
     onCreateDocument: async (args: CreateDocumentCallbackProps) => {
-      const draftContent = await config.onCreateDocument({
+      const result = await config.onCreateDocument({
         id: args.id,
         title: args.title,
         dataStream: args.dataStream,
@@ -54,10 +56,15 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
         modelId: args.modelId,
       });
 
+      // Handle both string and object return types
+      const draftContent = typeof result === "string" ? result : result.content;
+      const finalTitle =
+        typeof result === "string" ? args.title : result.generatedTitle;
+
       if (args.user?.id) {
         await saveDocument({
           id: args.id,
-          title: args.title,
+          title: finalTitle,
           content: draftContent,
           kind: config.kind,
           userId: args.user.id,
