@@ -64,7 +64,7 @@ export function MessageReasoning({
       <ChainOfThoughtContent>
         {steps.map((step, index) => (
           <ChainOfThoughtStep
-            key={`step-${index}`}
+            key={`step-${index}-${step.substring(0, 20)}`}
             label={index === 0 && steps.length === 1 ? "Reasoning" : `Step ${index + 1}`}
             status={isLoading && index === steps.length - 1 ? "active" : "complete"}
           >
