@@ -98,18 +98,12 @@ importers:
       '@vercel/otel':
         specifier: ^1.14.0
         version: 1.14.0(@opentelemetry/api-logs@0.200.0)(@opentelemetry/api@1.9.0)(@opentelemetry/instrumentation@0.203.0(@opentelemetry/api@1.9.0))(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.203.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))
-      '@vercel/postgres':
-        specifier: ^0.10.0
-        version: 0.10.0
       '@vercel/speed-insights':
         specifier: ^1.2.0
         version: 1.2.0(next@16.0.0(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(@playwright/test@1.56.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react@19.2.0)
       ai:
         specifier: 5.0.80
         version: 5.0.80(zod@4.1.12)
-      bcrypt-ts:
-        specifier: ^5.0.3
-        version: 5.0.3
       cheerio:
         specifier: ^1.1.2
         version: 1.1.2
@@ -279,9 +273,6 @@ importers:
       '@tailwindcss/typography':
         specifier: ^0.5.19
         version: 0.5.19(tailwindcss@4.1.16)
-      '@types/d3-scale':
-        specifier: ^4.0.9
-        version: 4.0.9
       '@types/he':
         specifier: ^1.2.3
         version: 1.2.3
@@ -291,9 +282,6 @@ importers:
       '@types/papaparse':
         specifier: ^5.3.16
         version: 5.3.16
-      '@types/pdf-parse':
-        specifier: ^1.1.5
-        version: 1.1.5
       '@types/react':
         specifier: ^18.3.26
         version: 18.3.26
@@ -3368,9 +3356,6 @@ packages:
   '@types/papaparse@5.3.16':
     resolution: {integrity: sha512-T3VuKMC2H0lgsjI9buTB3uuKj3EMD2eap1MOuEQuBQ44EnDx/IkGhU6EwiTf9zG3za4SKlmwKAImdDKdNnCsXg==}
 
-  '@types/pdf-parse@1.1.5':
-    resolution: {integrity: sha512-kBfrSXsloMnUJOKi25s3+hRmkycHfLK6A09eRGqF/N8BkQoPUmaCr+q8Cli5FnfohEz/rsv82zAiPz/LXtOGhA==}
-
   '@types/pg-pool@2.0.6':
     resolution: {integrity: sha512-TaAUE5rq2VQYxab5Ts7WZhKNmuN78Q6PiFonTDdpbx8a1H0M1vhy3rhiMjl+e2iHmogyMw7jZF4FrE6eJUy5HQ==}
 
@@ -3654,10 +3639,6 @@ packages:
   baseline-browser-mapping@2.8.24:
     resolution: {integrity: sha512-uUhTRDPXamakPyghwrUcjaGvvBqGrWvBHReoiULMIpOJVM9IYzQh83Xk2Onx5HlGI2o10NNCzcs9TG/S3TkwrQ==}
     hasBin: true
-
-  bcrypt-ts@5.0.3:
-    resolution: {integrity: sha512-2FcgD12xPbwCoe5i9/HK0jJ1xA1m+QfC1e6htG9Bl/hNOnLyaFmQSlqLKcfe3QdnoMPKpKEGFCbESBTg+SJNOw==}
-    engines: {node: '>=18'}
 
   bignumber.js@9.3.1:
     resolution: {integrity: sha512-Ko0uX15oIUS7wJ3Rb30Fs6SkVbLmPBAKdlm7q9+ak9bbIeFf0MwuBsQV6z7+X768/cHsfg+WlysDWJcmthjsjQ==}
@@ -7910,6 +7891,7 @@ snapshots:
   '@neondatabase/serverless@0.9.5':
     dependencies:
       '@types/pg': 8.11.6
+    optional: true
 
   '@next/env@16.0.0': {}
 
@@ -10062,10 +10044,6 @@ snapshots:
     dependencies:
       '@types/node': 22.18.13
 
-  '@types/pdf-parse@1.1.5':
-    dependencies:
-      '@types/node': 22.18.13
-
   '@types/pg-pool@2.0.6':
     dependencies:
       '@types/pg': 8.15.5
@@ -10075,6 +10053,7 @@ snapshots:
       '@types/node': 22.18.13
       pg-protocol: 1.10.3
       pg-types: 4.1.0
+    optional: true
 
   '@types/pg@8.15.5':
     dependencies:
@@ -10177,6 +10156,7 @@ snapshots:
       ws: 8.18.3(bufferutil@4.0.9)
     transitivePeerDependencies:
       - utf-8-validate
+    optional: true
 
   '@vercel/speed-insights@1.2.0(next@16.0.0(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(@playwright/test@1.56.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react@19.2.0)':
     optionalDependencies:
@@ -10324,8 +10304,6 @@ snapshots:
 
   baseline-browser-mapping@2.8.24: {}
 
-  bcrypt-ts@5.0.3: {}
-
   bignumber.js@9.3.1: {}
 
   body-parser@1.20.3:
@@ -10382,6 +10360,7 @@ snapshots:
   bufferutil@4.0.9:
     dependencies:
       node-gyp-build: 4.8.4
+    optional: true
 
   builtins@5.1.0:
     dependencies:
@@ -12404,7 +12383,8 @@ snapshots:
       fetch-blob: 3.2.0
       formdata-polyfill: 4.0.10
 
-  node-gyp-build@4.8.4: {}
+  node-gyp-build@4.8.4:
+    optional: true
 
   node-releases@2.0.27: {}
 
@@ -12431,7 +12411,8 @@ snapshots:
 
   object-inspect@1.13.4: {}
 
-  obuf@1.1.2: {}
+  obuf@1.1.2:
+    optional: true
 
   oidc-token-hash@5.1.1: {}
 
@@ -12542,7 +12523,8 @@ snapshots:
 
   pg-int8@1.0.1: {}
 
-  pg-numeric@1.0.2: {}
+  pg-numeric@1.0.2:
+    optional: true
 
   pg-protocol@1.10.3: {}
 
@@ -12563,6 +12545,7 @@ snapshots:
       postgres-date: 2.1.0
       postgres-interval: 3.0.0
       postgres-range: 1.1.4
+    optional: true
 
   picocolors@1.1.1: {}
 
@@ -12654,25 +12637,30 @@ snapshots:
 
   postgres-array@2.0.0: {}
 
-  postgres-array@3.0.4: {}
+  postgres-array@3.0.4:
+    optional: true
 
   postgres-bytea@1.0.0: {}
 
   postgres-bytea@3.0.0:
     dependencies:
       obuf: 1.1.2
+    optional: true
 
   postgres-date@1.0.7: {}
 
-  postgres-date@2.1.0: {}
+  postgres-date@2.1.0:
+    optional: true
 
   postgres-interval@1.2.0:
     dependencies:
       xtend: 4.0.2
 
-  postgres-interval@3.0.0: {}
+  postgres-interval@3.0.0:
+    optional: true
 
-  postgres-range@1.1.4: {}
+  postgres-range@1.1.4:
+    optional: true
 
   postgres@3.4.7: {}
 
