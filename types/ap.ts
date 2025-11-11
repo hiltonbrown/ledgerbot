@@ -239,3 +239,107 @@ export interface APAgentSettings {
   duplicateCheckDays?: number; // Number of days to check for duplicate bills
   defaultPaymentTerms?: string;
 }
+
+/**
+ * Extracted invoice data from PDF/image processing
+ */
+export interface ExtractedInvoiceData {
+  supplierName?: string;
+  supplierABN?: string;
+  supplierAddress?: string;
+  supplierEmail?: string;
+  supplierPhone?: string;
+  invoiceNumber?: string;
+  invoiceDate?: string; // YYYY-MM-DD
+  dueDate?: string; // YYYY-MM-DD
+  purchaseOrderNumber?: string;
+  subtotal?: number;
+  gstAmount?: number;
+  totalAmount?: number;
+  lineItems?: Array<{
+    description: string;
+    quantity?: number;
+    unitPrice?: number;
+    amount: number;
+    gstIncluded?: boolean;
+  }>;
+  paymentTerms?: string;
+  bankDetails?: {
+    accountName?: string;
+    bsb?: string;
+    accountNumber?: string;
+  };
+  rawText?: string;
+  confidence?: number; // 0-1 confidence score for extraction quality
+  warnings?: string[]; // Any validation warnings or missing fields
+}
+
+/**
+ * Vendor matching result
+ */
+export interface VendorMatchResult {
+  matched: boolean;
+  contact?: {
+    contactId: string;
+    name: string;
+    email?: string;
+    phone?: string;
+    isSupplier: boolean;
+  };
+  suggestions?: Array<{
+    contactId: string;
+    name: string;
+    similarity: number;
+    email?: string;
+  }>;
+  shouldCreateNew?: boolean;
+  proposedContact?: {
+    name: string;
+    email?: string;
+    phone?: string;
+    taxNumber?: string; // ABN
+  };
+}
+
+/**
+ * Invoice processing result
+ */
+export interface InvoiceProcessingResult {
+  success: boolean;
+  invoiceData?: ExtractedInvoiceData;
+  vendorMatch?: VendorMatchResult;
+  codingSuggestions?: CodingSuggestion[];
+  duplicateCheck?: {
+    isDuplicate: boolean;
+    potentialDuplicates?: Array<{
+      billId: string;
+      billNumber: string;
+      amount: number;
+      date: string;
+      similarity: number;
+    }>;
+  };
+  riskAssessment?: {
+    level: SupplierRiskLevel;
+    flags: PaymentRiskFlag[];
+    score: number;
+    recommendations: string[];
+  };
+  xeroBillDraft?: {
+    contactId?: string;
+    contactName: string;
+    invoiceNumber: string;
+    date: string;
+    dueDate: string;
+    lineItems: Array<{
+      description: string;
+      quantity: number;
+      unitAmount: number;
+      accountCode?: string;
+      taxType: string;
+    }>;
+    total: number;
+  };
+  error?: string;
+  warnings?: string[];
+}
