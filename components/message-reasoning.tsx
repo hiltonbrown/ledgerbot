@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import {
-  Reasoning,
-  ReasoningContent,
-  ReasoningTrigger,
-} from "./elements/reasoning";
+  ChainOfThought,
+  ChainOfThoughtContent,
+  ChainOfThoughtHeader,
+  ChainOfThoughtStep,
+} from "./elements/chain-of-thought";
+import { Response } from "./elements/response";
 
 type MessageReasoningProps = {
   isLoading: boolean;
@@ -29,16 +31,55 @@ export function MessageReasoning({
     }
   }, [isLoading]);
 
-  // Keep reasoning open by default, allow user to collapse if desired
+  // Parse reasoning into steps (split by double newlines or numbered lists)
+  const parseReasoningSteps = (text: string): string[] => {
+    if (!text.trim()) return [];
+
+    // Try to split by numbered steps (1., 2., etc.)
+    const numberedSteps = text.match(/(?:^|\n)(\d+\.|\*|-)\s+[^\n]+(?:\n(?!(?:\d+\.|\*|-)\s).*?)*/g);
+    if (numberedSteps && numberedSteps.length > 1) {
+      return numberedSteps.map(step => step.trim());
+    }
+
+    // Try to split by double newlines
+    const paragraphs = text.split(/\n\n+/).filter(p => p.trim());
+    if (paragraphs.length > 1) {
+      return paragraphs;
+    }
+
+    // Return as single step
+    return [text];
+  };
+
+  const steps = parseReasoningSteps(reasoning);
+
   return (
-    <Reasoning
-      autoCloseOnFinish={false}
+    <ChainOfThought
       data-testid="message-reasoning"
       defaultOpen={defaultOpen}
-      isStreaming={isLoading}
     >
-      <ReasoningTrigger />
-      <ReasoningContent>{reasoning}</ReasoningContent>
-    </Reasoning>
+      <ChainOfThoughtHeader>
+        {isLoading ? "Thinking..." : "Chain of Thought"}
+      </ChainOfThoughtHeader>
+      <ChainOfThoughtContent>
+        {steps.map((step, index) => (
+          <ChainOfThoughtStep
+            key={`step-${index}-${step.substring(0, 20)}`}
+            label={index === 0 && steps.length === 1 ? "Reasoning" : `Step ${index + 1}`}
+            status={isLoading && index === steps.length - 1 ? "active" : "complete"}
+          >
+            <Response className="text-sm">{step}</Response>
+          </ChainOfThoughtStep>
+        ))}
+        {isLoading && steps.length === 0 && (
+          <ChainOfThoughtStep
+            label="Processing"
+            status="active"
+          >
+            <Response className="text-sm">Analyzing your request...</Response>
+          </ChainOfThoughtStep>
+        )}
+      </ChainOfThoughtContent>
+    </ChainOfThought>
   );
 }
