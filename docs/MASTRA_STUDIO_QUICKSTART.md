@@ -25,14 +25,37 @@ pnpm studio
 
 ## Available Agents
 
-| Agent | Test Prompt Example |
-|-------|-------------------|
-| **qanda** | "What is the minimum wage in Australia?" |
-| **forecasting** | "Create a 12-month revenue forecast" |
-| **analytics** | "Calculate our gross margin and burn rate" |
-| **workflow** | "Execute month-end close workflow" |
-| **ap** | "Validate ABN: 51 824 753 556" |
-| **ar** | "Show all overdue invoices" |
+| Agent | Model | Test Prompt Example |
+|-------|-------|-------------------|
+| **qanda** | Claude Sonnet 4.5 | "What is the minimum wage in Australia?" |
+| **forecasting** | GPT-5 | "Create a 12-month revenue forecast" |
+| **analytics** | Claude Sonnet 4.5 | "Calculate our gross margin and burn rate" |
+| **workflow** | Claude Sonnet 4.5 | "Execute month-end close workflow" |
+| **ap** | Claude Sonnet 4.5 | "Validate ABN: 51 824 753 556" |
+| **ar** | Claude Sonnet 4.5 | "Show all overdue invoices" |
+
+### How Agents Connect
+
+All agents are **pre-registered** in `lib/mastra/index.ts` and automatically available in Studio. No manual connection needed!
+
+```typescript
+// lib/mastra/index.ts
+export const mastra = new Mastra({
+  agents: {
+    qanda: qandaAgent,
+    forecasting: forecastingAgent,
+    analytics: analyticsAgent,
+    workflow: workflowSupervisorAgent,
+    ap: apAgent,
+    ar: arAgent,
+  },
+});
+```
+
+**Connection Flow**:
+Agent Definition → Registration → Studio Access → Production Use
+
+**Key Benefit**: Testing in Studio = Testing production agents (same code, same config)
 
 ## Files Created
 
