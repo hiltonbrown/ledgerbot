@@ -65,12 +65,17 @@ export async function POST(request: Request) {
 
   const documents = await getDocumentsById({ id });
 
-  if (documents.length > 0) {
-    const [doc] = documents;
+  if (documents.length === 0) {
+    return new ChatSDKError(
+      "not_found:document",
+      "Document not found"
+    ).toResponse();
+  }
 
-    if (doc.userId !== user.id) {
-      return new ChatSDKError("forbidden:document").toResponse();
-    }
+  const [doc] = documents;
+
+  if (doc.userId !== user.id) {
+    return new ChatSDKError("forbidden:document").toResponse();
   }
 
   const document = await saveDocument({
@@ -79,6 +84,7 @@ export async function POST(request: Request) {
     title,
     kind,
     userId: user.id,
+    chatId: doc.chatId,
   });
 
   return Response.json(document, { status: 200 });

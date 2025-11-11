@@ -55,6 +55,7 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
         dataStream: args.dataStream,
         user: args.user,
         modelId: args.modelId,
+        chatId: args.chatId,
       });
 
       // Handle both string and object return types

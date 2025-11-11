@@ -250,6 +250,7 @@ export async function POST(request: Request) {
       content: agentResult.csv,
       kind: "sheet",
       userId: user.id,
+      chatId,
     });
 
     const userMessageId = generateUUID();

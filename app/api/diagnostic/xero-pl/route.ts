@@ -33,7 +33,7 @@ export async function GET() {
     const report = {
       userId: user.id,
       userEmail: user.email,
-      xeroOrganisation: xeroConnection.organisationName,
+      xeroOrganisation: xeroConnection.tenantName,
       timestamp: new Date().toISOString(),
       tests: [] as any[],
     };
