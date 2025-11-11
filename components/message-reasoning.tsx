@@ -36,13 +36,15 @@ export function MessageReasoning({
     if (!text.trim()) return [];
 
     // Try to split by numbered steps (1., 2., etc.)
-    const numberedSteps = text.match(/(?:^|\n)(\d+\.|\*|-)\s+[^\n]+(?:\n(?!(?:\d+\.|\*|-)\s).*?)*/g);
+    const numberedSteps = text.match(
+      /(?:^|\n)(\d+\.|\*|-)\s+[^\n]+(?:\n(?!(?:\d+\.|\*|-)\s).*?)*/g
+    );
     if (numberedSteps && numberedSteps.length > 1) {
-      return numberedSteps.map(step => step.trim());
+      return numberedSteps.map((step) => step.trim());
     }
 
     // Try to split by double newlines
-    const paragraphs = text.split(/\n\n+/).filter(p => p.trim());
+    const paragraphs = text.split(/\n\n+/).filter((p) => p.trim());
     if (paragraphs.length > 1) {
       return paragraphs;
     }
@@ -54,10 +56,7 @@ export function MessageReasoning({
   const steps = parseReasoningSteps(reasoning);
 
   return (
-    <ChainOfThought
-      data-testid="message-reasoning"
-      defaultOpen={defaultOpen}
-    >
+    <ChainOfThought data-testid="message-reasoning" defaultOpen={defaultOpen}>
       <ChainOfThoughtHeader>
         {isLoading ? "Thinking..." : "Chain of Thought"}
       </ChainOfThoughtHeader>
@@ -65,17 +64,20 @@ export function MessageReasoning({
         {steps.map((step, index) => (
           <ChainOfThoughtStep
             key={`step-${index}-${step.substring(0, 20)}`}
-            label={index === 0 && steps.length === 1 ? "Reasoning" : `Step ${index + 1}`}
-            status={isLoading && index === steps.length - 1 ? "active" : "complete"}
+            label={
+              index === 0 && steps.length === 1
+                ? "Reasoning"
+                : `Step ${index + 1}`
+            }
+            status={
+              isLoading && index === steps.length - 1 ? "active" : "complete"
+            }
           >
             <Response className="text-sm">{step}</Response>
           </ChainOfThoughtStep>
         ))}
         {isLoading && steps.length === 0 && (
-          <ChainOfThoughtStep
-            label="Processing"
-            status="active"
-          >
+          <ChainOfThoughtStep label="Processing" status="active">
             <Response className="text-sm">Analyzing your request...</Response>
           </ChainOfThoughtStep>
         )}

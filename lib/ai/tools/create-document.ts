@@ -14,6 +14,7 @@ type CreateDocumentProps = {
   user: AuthUser;
   dataStream: UIMessageStreamWriter<ChatMessage>;
   modelId: string;
+  chatId: string;
 };
 
 const inputSchema = z
@@ -81,6 +82,7 @@ export const createDocument = ({
   user,
   dataStream,
   modelId,
+  chatId,
 }: CreateDocumentProps) =>
   tool({
     description:
@@ -190,6 +192,7 @@ export const createDocument = ({
         dataStream,
         user,
         modelId,
+        chatId,
       });
 
       dataStream.write({ type: "data-finish", data: null, transient: true });

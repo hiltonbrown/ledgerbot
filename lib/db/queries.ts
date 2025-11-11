@@ -485,12 +485,14 @@ export async function saveDocument({
   kind,
   content,
   userId,
+  chatId,
 }: {
   id: string;
   title: string;
   kind: ArtifactKind;
   content: string;
   userId: string;
+  chatId: string;
 }) {
   try {
     return await db
@@ -501,6 +503,7 @@ export async function saveDocument({
         kind,
         content,
         userId,
+        chatId,
         createdAt: new Date(),
       })
       .returning();
@@ -522,6 +525,23 @@ export async function getDocumentsById({ id }: { id: string }) {
     throw new ChatSDKError(
       "bad_request:database",
       "Failed to get documents by id"
+    );
+  }
+}
+
+export async function getDocumentsByChatId({ chatId }: { chatId: string }) {
+  try {
+    const documents = await db
+      .select()
+      .from(document)
+      .where(eq(document.chatId, chatId))
+      .orderBy(asc(document.createdAt));
+
+    return documents;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get documents by chat id"
     );
   }
 }

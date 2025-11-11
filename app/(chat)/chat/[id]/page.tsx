@@ -5,7 +5,11 @@ import { Chat } from "@/components/chat";
 import { DataStreamHandler } from "@/components/data-stream-handler";
 import { chatModelIds, DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
-import { getChatById, getMessagesByChatId } from "@/lib/db/queries";
+import {
+  getChatById,
+  getDocumentsByChatId,
+  getMessagesByChatId,
+} from "@/lib/db/queries";
 import { convertToUIMessages } from "@/lib/utils";
 
 export default async function Page(props: { params: Promise<{ id: string }> }) {
@@ -41,11 +45,17 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
 
   const uiMessages = convertToUIMessages(messagesFromDb);
 
+  const documents = await getDocumentsByChatId({ chatId: id });
+
   const cookieStore = await cookies();
   const chatModelFromCookie = cookieStore.get("chat-model");
   const initialModelId = chatModelFromCookie?.value;
   const isValidModelId =
     initialModelId && chatModelIds.includes(initialModelId);
+
+  // Get the most recent document to restore artifact
+  const latestDocument =
+    documents.length > 0 ? documents[documents.length - 1] : null;
 
   if (!isValidModelId) {
     return (
@@ -55,6 +65,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
           firstName={userSettings.personalisation.firstName}
           id={chat.id}
           initialChatModel={DEFAULT_CHAT_MODEL}
+          initialDocument={latestDocument}
           initialLastContext={chat.lastContext ?? undefined}
           initialMessages={uiMessages}
           initialVisibilityType={chat.visibility}
@@ -72,6 +83,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         firstName={userSettings.personalisation.firstName}
         id={chat.id}
         initialChatModel={initialModelId}
+        initialDocument={latestDocument}
         initialLastContext={chat.lastContext ?? undefined}
         initialMessages={uiMessages}
         initialVisibilityType={chat.visibility}

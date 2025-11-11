@@ -1,10 +1,10 @@
 import { Mastra } from "@mastra/core";
-import { qandaAgent } from "@/lib/agents/qanda/agent";
-import { forecastingAgent } from "@/lib/agents/forecasting/agent";
 import { analyticsAgent } from "@/lib/agents/analytics/agent";
-import { workflowSupervisorAgent } from "@/lib/agents/workflow/supervisor";
 import { apAgent } from "@/lib/agents/ap/agent";
 import { arAgent } from "@/lib/agents/ar/agent";
+import { forecastingAgent } from "@/lib/agents/forecasting/agent";
+import { qandaAgent } from "@/lib/agents/qanda/agent";
+import { workflowSupervisorAgent } from "@/lib/agents/workflow/supervisor";
 
 /**
  * Mastra Studio Configuration

@@ -22,6 +22,7 @@ export type CreateDocumentCallbackProps = {
   dataStream: UIMessageStreamWriter<ChatMessage>;
   user: AuthUser;
   modelId: string;
+  chatId: string;
 };
 
 export type UpdateDocumentCallbackProps = {
@@ -68,6 +69,7 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
           content: draftContent,
           kind: config.kind,
           userId: args.user.id,
+          chatId: args.chatId,
         });
       }
 
@@ -89,6 +91,7 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
           content: draftContent,
           kind: config.kind,
           userId: args.user.id,
+          chatId: args.document.chatId,
         });
       }
 

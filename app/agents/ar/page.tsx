@@ -160,10 +160,12 @@ export default function AccountsReceivableAgentPage() {
   };
 
   const getRiskBadge = (daysOverdue: number) => {
-    if (daysOverdue <= 30) return { label: "Low", variant: "secondary" as const };
+    if (daysOverdue <= 30)
+      return { label: "Low", variant: "secondary" as const };
     if (daysOverdue <= 60)
       return { label: "Medium", variant: "default" as const };
-    if (daysOverdue <= 90) return { label: "High", variant: "destructive" as const };
+    if (daysOverdue <= 90)
+      return { label: "High", variant: "destructive" as const };
     return { label: "Critical", variant: "destructive" as const };
   };
 
@@ -230,13 +232,13 @@ export default function AccountsReceivableAgentPage() {
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+              <CardTitle className="font-medium text-sm">
                 Total Outstanding
               </CardTitle>
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
+              <div className="font-bold text-2xl">
                 {formatCurrency(ageingReport.summary.totalOutstanding)}
               </div>
               <p className="text-muted-foreground text-xs">
@@ -248,13 +250,13 @@ export default function AccountsReceivableAgentPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+              <CardTitle className="font-medium text-sm">
                 Active Debtors
               </CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
+              <div className="font-bold text-2xl">
                 {ageingReport.summary.contactCount}
               </div>
               <p className="text-muted-foreground text-xs">
@@ -265,13 +267,11 @@ export default function AccountsReceivableAgentPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Average DSO
-              </CardTitle>
+              <CardTitle className="font-medium text-sm">Average DSO</CardTitle>
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
+              <div className="font-bold text-2xl">
                 {ageingReport.summary.contactCount > 0
                   ? Math.round(
                       ageingReport.contacts.reduce(
@@ -310,7 +310,7 @@ export default function AccountsReceivableAgentPage() {
                     : 0;
 
                 return (
-                  <div key={bucket.label} className="space-y-2">
+                  <div className="space-y-2" key={bucket.label}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-sm">
@@ -325,7 +325,7 @@ export default function AccountsReceivableAgentPage() {
                         {formatCurrency(bucket.totalOutstanding)}
                       </span>
                     </div>
-                    <Progress value={percentage} className="h-2" />
+                    <Progress className="h-2" value={percentage} />
                   </div>
                 );
               })}
@@ -375,7 +375,7 @@ export default function AccountsReceivableAgentPage() {
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
                         {contact.email && (
-                          <div className="truncate max-w-[200px]">
+                          <div className="max-w-[200px] truncate">
                             {contact.email}
                           </div>
                         )}
@@ -428,9 +428,7 @@ export default function AccountsReceivableAgentPage() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
-            <h3 className="mb-2 font-semibold text-lg">
-              No Overdue Invoices
-            </h3>
+            <h3 className="mb-2 font-semibold text-lg">No Overdue Invoices</h3>
             <p className="mb-4 text-center text-muted-foreground text-sm">
               All invoices are paid or not yet due. Click "Sync from Xero" to
               refresh data.

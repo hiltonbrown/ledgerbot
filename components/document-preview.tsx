@@ -213,9 +213,7 @@ const PureDocumentHeader = ({
   isStreaming: boolean;
 }) => {
   // Extract short title (before pipe) or use full title
-  const displayTitle = title.includes("|")
-    ? title.split("|")[0].trim()
-    : title;
+  const displayTitle = title.includes("|") ? title.split("|")[0].trim() : title;
 
   return (
     <div className="flex flex-row items-start justify-between gap-2 rounded-t-2xl border border-b-0 p-4 sm:items-center dark:border-zinc-700 dark:bg-muted">

@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useArtifactSelector } from "@/hooks/use-artifact";
+import { useArtifact, useArtifactSelector } from "@/hooks/use-artifact";
 import { useAutoResume } from "@/hooks/use-auto-resume";
 import { useChatVisibility } from "@/hooks/use-chat-visibility";
 import { isReasoningModelId } from "@/lib/ai/models";
@@ -45,6 +45,7 @@ export function Chat({
   suggestions,
   initialDefaultReasoning,
   firstName,
+  initialDocument,
 }: {
   id: string;
   initialMessages: ChatMessage[];
@@ -61,6 +62,12 @@ export function Chat({
   }>;
   initialDefaultReasoning?: boolean;
   firstName?: string;
+  initialDocument?: {
+    id: string;
+    title: string;
+    kind: string;
+    content: string | null;
+  } | null;
 }) {
   const { visibilityType } = useChatVisibility({
     chatId: id,
@@ -243,6 +250,27 @@ export function Chat({
 
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const isArtifactVisible = useArtifactSelector((state) => state.isVisible);
+  const { setArtifact } = useArtifact();
+
+  // Restore the most recent artifact when loading the chat
+  useEffect(() => {
+    if (initialDocument && initialDocument.content) {
+      setArtifact({
+        documentId: initialDocument.id,
+        title: initialDocument.title,
+        kind: initialDocument.kind as "text" | "code" | "image" | "sheet",
+        content: initialDocument.content,
+        status: "idle",
+        isVisible: false, // Don't auto-show on load, user can open it
+        boundingBox: {
+          top: 0,
+          left: 0,
+          width: 0,
+          height: 0,
+        },
+      });
+    }
+  }, [initialDocument, setArtifact]);
 
   useAutoResume({
     autoResume,

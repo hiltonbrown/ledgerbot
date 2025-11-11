@@ -303,7 +303,10 @@ export default function AccountsPayableAgentPage() {
                 sendMessage({
                   role: "user",
                   parts: [
-                    { type: "text", text: "Show me all unpaid bills that are overdue" },
+                    {
+                      type: "text",
+                      text: "Show me all unpaid bills that are overdue",
+                    },
                   ],
                 } as any);
               }}
@@ -320,7 +323,10 @@ export default function AccountsPayableAgentPage() {
                 sendMessage({
                   role: "user",
                   parts: [
-                    { type: "text", text: "Generate a payment run proposal for this Friday" },
+                    {
+                      type: "text",
+                      text: "Generate a payment run proposal for this Friday",
+                    },
                   ],
                 } as any);
               }}

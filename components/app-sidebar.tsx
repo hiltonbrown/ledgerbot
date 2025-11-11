@@ -202,11 +202,11 @@ export function AppSidebar({
   ];
 
   return (
-    <Sidebar variant="inset" className="group-data-[side=left]:border-r-0">
+    <Sidebar className="group-data-[side=left]:border-r-0" variant="inset">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
+            <SidebarMenuButton asChild size="lg">
               <Link
                 href="/"
                 onClick={() => {
@@ -235,9 +235,9 @@ export function AppSidebar({
                     router.push("/");
                     router.refresh();
                   }}
+                  size="sm"
                   type="button"
                   variant="outline"
-                  size="sm"
                 >
                   <PlusIcon />
                   <span>New Chat</span>
@@ -279,7 +279,7 @@ export function AppSidebar({
       <SidebarContent>
         <NavMain items={navMain} />
         <SidebarHistory user={user} />
-        <NavSecondary items={navSecondary} className="mt-auto" />
+        <NavSecondary className="mt-auto" items={navSecondary} />
       </SidebarContent>
       <SidebarFooter>{user && <NavUser />}</SidebarFooter>
     </Sidebar>

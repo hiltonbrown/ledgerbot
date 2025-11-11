@@ -1107,8 +1107,14 @@ export function createAPXeroTools(userId: string) {
         error: z.string().optional(),
       }),
       execute: async ({ context }) => {
-        const { contactId, invoiceNumber, date, dueDate, reference, lineItems } =
-          context;
+        const {
+          contactId,
+          invoiceNumber,
+          date,
+          dueDate,
+          reference,
+          lineItems,
+        } = context;
 
         try {
           console.log(

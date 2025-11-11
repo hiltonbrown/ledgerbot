@@ -732,7 +732,7 @@ NEXT STEPS:
     `Total outstanding: $${totalDue.toFixed(2)}`,
     `Number of overdue invoices: ${invoices.length}`,
     `Oldest invoice: ${maxDaysOverdue} days overdue`,
-    `Payment terms: Net 30 days`,
+    "Payment terms: Net 30 days",
     tone === "final"
       ? "This is final notice before collections"
       : "We value your business and want to help",
