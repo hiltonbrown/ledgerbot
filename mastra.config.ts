@@ -1,11 +1,16 @@
 import { Mastra } from "@mastra/core";
-import { mastra as ledgerbotMastra } from "@/lib/mastra";
+import { qandaAgent } from "@/lib/agents/qanda/agent";
+import { forecastingAgent } from "@/lib/agents/forecasting/agent";
+import { analyticsAgent } from "@/lib/agents/analytics/agent";
+import { workflowSupervisorAgent } from "@/lib/agents/workflow/supervisor";
+import { apAgent } from "@/lib/agents/ap/agent";
+import { arAgent } from "@/lib/agents/ar/agent";
 
 /**
  * Mastra Studio Configuration
  *
- * This file extends the main LedgerBot Mastra instance with
- * Studio-specific server settings for local development.
+ * This file imports all LedgerBot agents and configures the Studio
+ * development server for local testing and debugging.
  *
  * Usage:
  * - Run `pnpm studio` to start the development server
@@ -15,8 +20,15 @@ import { mastra as ledgerbotMastra } from "@/lib/mastra";
  * Available agents: qanda, forecasting, analytics, workflow, ap, ar
  */
 export const mastra = new Mastra({
-  // Import all registered agents from the main LedgerBot instance
-  agents: ledgerbotMastra.agents,
+  // Register all LedgerBot agents (same as lib/mastra/index.ts)
+  agents: {
+    qanda: qandaAgent,
+    forecasting: forecastingAgent,
+    analytics: analyticsAgent,
+    workflow: workflowSupervisorAgent,
+    ap: apAgent,
+    ar: arAgent,
+  },
 
   // Studio server configuration
   server: {
@@ -26,23 +38,37 @@ export const mastra = new Mastra({
 });
 
 /**
- * Uncomment below to enable HTTPS for local development
+ * HTTPS Configuration (Optional)
  *
- * Requirements:
- * 1. Generate certificates using mkcert or similar tool
- * 2. Place certs in project root
- * 3. Run `pnpm studio:https`
+ * To enable HTTPS for local development:
+ * 1. Generate certificates using mkcert:
+ *    - Install mkcert: https://github.com/FiloSottile/mkcert
+ *    - Run: mkcert -install
+ *    - Run: mkcert localhost 127.0.0.1 ::1
+ * 2. Uncomment the HTTPS configuration below
+ * 3. Update certificate paths if needed
+ * 4. Run: pnpm studio:https
+ *
+ * Example with HTTPS enabled:
+ *
+ * import fs from "node:fs";
+ *
+ * export const mastra = new Mastra({
+ *   agents: {
+ *     qanda: qandaAgent,
+ *     forecasting: forecastingAgent,
+ *     analytics: analyticsAgent,
+ *     workflow: workflowSupervisorAgent,
+ *     ap: apAgent,
+ *     ar: arAgent,
+ *   },
+ *   server: {
+ *     port: 4111,
+ *     host: "localhost",
+ *     https: {
+ *       key: fs.readFileSync("./localhost+2-key.pem"),
+ *       cert: fs.readFileSync("./localhost+2.pem"),
+ *     },
+ *   },
+ * });
  */
-// import fs from "node:fs";
-//
-// export const mastra = new Mastra({
-//   agents: ledgerbotMastra.agents,
-//   server: {
-//     port: 4111,
-//     host: "localhost",
-//     https: {
-//       key: fs.readFileSync("./localhost-key.pem"),
-//       cert: fs.readFileSync("./localhost-cert.pem"),
-//     },
-//   },
-// });
