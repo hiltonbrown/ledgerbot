@@ -2233,6 +2233,104 @@ async function executeXeroToolOperation(
         };
       }
 
+      case "xero_create_bill": {
+        const {
+          contactId,
+          invoiceNumber,
+          date,
+          dueDate,
+          lineItems,
+          reference,
+          status,
+        } = args;
+
+        // Validate required fields
+        if (!contactId || !date || !dueDate || !lineItems) {
+          throw new Error(
+            "contactId, date, dueDate, and lineItems are required"
+          );
+        }
+
+        // Validate line items array
+        if (!Array.isArray(lineItems) || lineItems.length === 0) {
+          throw new Error("lineItems must be a non-empty array");
+        }
+
+        // Validate each line item
+        for (const item of lineItems) {
+          if (
+            !item.description ||
+            typeof item.quantity !== "number" ||
+            typeof item.unitAmount !== "number" ||
+            !item.accountCode
+          ) {
+            throw new Error(
+              "All line items must have description, quantity, unitAmount, and accountCode"
+            );
+          }
+        }
+
+        // Validate status if provided
+        if (status && !["DRAFT", "AUTHORISED"].includes(status as string)) {
+          throw new Error("Status must be either DRAFT or AUTHORISED");
+        }
+
+        // Construct bill (ACCPAY invoice)
+        const bill: Invoice = {
+          type: Invoice.TypeEnum.ACCPAY, // Accounts Payable - Bills from suppliers
+          contact: {
+            contactID: contactId as string,
+          },
+          invoiceNumber: invoiceNumber as string | undefined,
+          date: date as string,
+          dueDate: dueDate as string,
+          lineItems: (lineItems as any[]).map((item) => ({
+            description: item.description,
+            quantity: item.quantity,
+            unitAmount: item.unitAmount,
+            accountCode: item.accountCode,
+            taxType: item.taxType || "INPUT2", // Default to INPUT2 (GST on expenses)
+          })),
+          status:
+            (status as string) === "AUTHORISED"
+              ? Invoice.StatusEnum.AUTHORISED
+              : Invoice.StatusEnum.DRAFT,
+          reference: reference as string | undefined,
+        };
+
+        const response = await client.accountingApi.createInvoices(
+          connection.tenantId,
+          {
+            invoices: [bill],
+          }
+        );
+
+        // Check for validation errors from Xero API
+        if (response.body.invoices?.[0]?.hasErrors) {
+          const errors = response.body.invoices[0].validationErrors;
+          throw new Error(
+            `Bill creation validation failed: ${JSON.stringify(errors)}`
+          );
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  success: true,
+                  invoice: response.body.invoices?.[0],
+                  message: "Bill created successfully in Xero",
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
+
       case "xero_update_invoice": {
         const {
           invoiceId,

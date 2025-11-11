@@ -1067,7 +1067,7 @@ export function createAPXeroTools(userId: string) {
     xero_create_bill: createTool({
       id: "xero_create_bill",
       description:
-        "Creates a new supplier bill (ACCPAY invoice) in Xero with line items and optionally attaches a PDF. Returns the created bill details including Xero invoice ID.",
+        "Creates a new supplier bill (ACCPAY invoice) in Xero with line items. Bills are created in DRAFT status for user review before approval. Returns the created bill details including Xero invoice ID.",
       inputSchema: z.object({
         contactId: z
           .string()
@@ -1097,10 +1097,6 @@ export function createAPXeroTools(userId: string) {
             })
           )
           .describe("Array of line items for the bill"),
-        attachmentUrl: z
-          .string()
-          .optional()
-          .describe("Optional URL to PDF invoice to attach"),
       }),
       outputSchema: z.object({
         success: z.boolean(),
@@ -1111,44 +1107,43 @@ export function createAPXeroTools(userId: string) {
         error: z.string().optional(),
       }),
       execute: async ({ context }) => {
-        const {
-          contactId,
-          invoiceNumber,
-          date,
-          dueDate,
-          reference,
-          lineItems,
-          attachmentUrl,
-        } = context;
+        const { contactId, invoiceNumber, date, dueDate, reference, lineItems } =
+          context;
 
         try {
           console.log(
             `[AP Agent] Creating Xero bill ${invoiceNumber} for contact ${contactId}`
           );
 
-          // TODO: In production, use Xero API to create invoice
-          // This is a mock implementation showing the expected structure
+          // Use the xero_create_bill MCP tool to create the bill in Xero
+          const result = await executeXeroMCPTool(userId, "xero_create_bill", {
+            contactId,
+            invoiceNumber,
+            date,
+            dueDate,
+            reference,
+            lineItems,
+            status: "DRAFT", // Always create as draft for user review
+          });
 
-          // Step 1: Create the invoice via Xero API
-          const mockInvoiceId = `INV-${Date.now()}`;
+          // Parse the JSON response
+          const response = JSON.parse(result.content[0].text);
 
-          // Step 2: If attachment provided, upload to Xero
-          if (attachmentUrl) {
-            console.log(
-              `[AP Agent] Would attach PDF from ${attachmentUrl} to invoice ${mockInvoiceId}`
-            );
-            // TODO: Download PDF and upload as attachment to Xero invoice
+          if (response.success && response.invoice) {
+            const invoice = response.invoice;
+            return {
+              success: true,
+              invoiceId: invoice.invoiceID,
+              invoiceNumber: invoice.invoiceNumber || invoiceNumber,
+              status: invoice.status,
+              total: invoice.total,
+            };
           }
 
+          // If not successful, return error
           return {
-            success: true,
-            invoiceId: mockInvoiceId,
-            invoiceNumber,
-            status: "DRAFT",
-            total: lineItems.reduce(
-              (sum, item) => sum + item.quantity * item.unitAmount,
-              0
-            ),
+            success: false,
+            error: response.message || "Failed to create bill in Xero",
           };
         } catch (error) {
           console.error("[AP Agent] Error creating Xero bill:", error);
@@ -1171,11 +1166,6 @@ export function createAPXeroTools(userId: string) {
         name: z.string().describe("Supplier/contact name (required)"),
         email: z.string().optional().describe("Supplier email address"),
         phone: z.string().optional().describe("Supplier phone number"),
-        taxNumber: z.string().optional().describe("ABN or tax number"),
-        isSupplier: z
-          .boolean()
-          .default(true)
-          .describe("Mark as supplier (default true)"),
       }),
       outputSchema: z.object({
         success: z.boolean(),
@@ -1184,20 +1174,38 @@ export function createAPXeroTools(userId: string) {
         error: z.string().optional(),
       }),
       execute: async ({ context }) => {
-        const { name, email, phone, taxNumber, isSupplier } = context;
+        const { name, email, phone } = context;
 
         try {
           console.log(`[AP Agent] Creating Xero contact: ${name}`);
 
-          // TODO: In production, use Xero API to create contact
-          // This is a mock implementation
+          // Use the xero_create_contact MCP tool to create the contact in Xero
+          const result = await executeXeroMCPTool(
+            userId,
+            "xero_create_contact",
+            {
+              name,
+              email,
+              phone,
+            }
+          );
 
-          const mockContactId = `CONTACT-${Date.now()}`;
+          // Parse the JSON response
+          const response = JSON.parse(result.content[0].text);
 
+          if (response.success && response.contact) {
+            const contact = response.contact;
+            return {
+              success: true,
+              contactId: contact.contactID,
+              name: contact.name,
+            };
+          }
+
+          // If not successful, return error
           return {
-            success: true,
-            contactId: mockContactId,
-            name,
+            success: false,
+            error: response.message || "Failed to create contact in Xero",
           };
         } catch (error) {
           console.error("[AP Agent] Error creating Xero contact:", error);
