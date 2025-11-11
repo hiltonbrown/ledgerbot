@@ -84,26 +84,26 @@ export const ChainOfThoughtHeader = memo(
     const { isOpen, setIsOpen } = useChainOfThought();
 
     return (
-      <Collapsible onOpenChange={setIsOpen} open={isOpen}>
-        <CollapsibleTrigger
+      <CollapsibleTrigger
+        className={cn(
+          "flex w-full items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground",
+          className
+        )}
+        {...props}
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <BrainIcon className="size-4" />
+        <span className="flex-1 text-left">
+          {children ?? "Chain of Thought"}
+        </span>
+        <ChevronDownIcon
           className={cn(
-            "flex w-full items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground",
-            className
+            "size-4 transition-transform",
+            isOpen ? "rotate-180" : "rotate-0"
           )}
-          {...props}
-        >
-          <BrainIcon className="size-4" />
-          <span className="flex-1 text-left">
-            {children ?? "Chain of Thought"}
-          </span>
-          <ChevronDownIcon
-            className={cn(
-              "size-4 transition-transform",
-              isOpen ? "rotate-180" : "rotate-0"
-            )}
-          />
-        </CollapsibleTrigger>
-      </Collapsible>
+        />
+      </CollapsibleTrigger>
     );
   }
 );
