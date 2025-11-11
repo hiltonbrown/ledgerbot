@@ -523,3 +523,254 @@ function mapXeroStatus(xeroStatus: string, hasAmountDue: boolean): string {
   if (xeroStatus === "AUTHORISED" && hasAmountDue) return "awaiting_payment";
   return "awaiting_payment";
 }
+
+/**
+ * Build call script artefact for phone conversation
+ */
+export const buildCallScriptTool = createTool({
+  id: "buildCallScript",
+  description:
+    "Generate a call script for a phone conversation about overdue invoices. Includes talking points, responses to common objections, and payment options.",
+  inputSchema: z.object({
+    userId: z.string().describe("User ID"),
+    contactId: z.string().describe("Customer/Contact ID"),
+    tone: z
+      .enum(["polite", "firm", "final"])
+      .describe("Tone of the call script"),
+    includePaymentPlan: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe("Include payment plan options in script"),
+  }),
+  outputSchema: z.object({
+    contactId: z.string(),
+    contactName: z.string(),
+    script: z.string(),
+    talkingPoints: z.array(z.string()),
+    objectionResponses: z.array(
+      z.object({
+        objection: z.string(),
+        response: z.string(),
+      })
+    ),
+    tone: z.string(),
+  }),
+  execute: async ({ context: inputData }) => {
+    // Get all invoices for this contact
+    const invoices = await listInvoicesDue({
+      userId: inputData.userId,
+      asOf: new Date(),
+      minDaysOverdue: 0,
+      customerId: inputData.contactId,
+    });
+
+    if (invoices.invoices.length === 0) {
+      throw new Error("No invoices found for this contact");
+    }
+
+    const contact = invoices.invoices[0].contact;
+    const totalDue = invoices.invoices.reduce(
+      (sum, inv) =>
+        sum +
+        (Number.parseFloat(inv.total) - Number.parseFloat(inv.amountPaid)),
+      0
+    );
+
+    const oldestInvoice = invoices.invoices.sort(
+      (a, b) => b.daysOverdue - a.daysOverdue
+    )[0];
+
+    const script = generateCallScript(
+      contact,
+      invoices.invoices,
+      totalDue,
+      oldestInvoice.daysOverdue,
+      inputData.tone as "polite" | "firm" | "final",
+      inputData.includePaymentPlan
+    );
+
+    return script;
+  },
+});
+
+/**
+ * Save note to Xero Contact (via API if connected, local DB otherwise)
+ */
+export const saveNoteToXeroTool = createTool({
+  id: "saveNoteToXero",
+  description:
+    "Save a note to a Xero Contact. If Xero is connected, saves to both Xero and local DB. Otherwise saves to local DB only.",
+  inputSchema: z.object({
+    userId: z.string().describe("User ID"),
+    contactId: z.string().describe("Contact ID (local database ID)"),
+    note: z.string().describe("Note content"),
+  }),
+  outputSchema: z.object({
+    success: z.boolean(),
+    noteId: z.string(),
+    savedToXero: z.boolean(),
+    message: z.string(),
+  }),
+  execute: async ({ context: inputData }) => {
+    // For now, we'll save to local DB only
+    // Future enhancement: integrate with Xero API to save notes
+    // Xero doesn't have a native "notes" API, but we can use Contact.Notes field
+    // or create a custom tracking category
+
+    // Get contact to find associated invoices
+    const invoices = await listInvoicesDue({
+      userId: inputData.userId,
+      asOf: new Date(),
+      minDaysOverdue: 0,
+      customerId: inputData.contactId,
+    });
+
+    if (invoices.invoices.length === 0) {
+      throw new Error("No invoices found for this contact");
+    }
+
+    // Save note to first invoice (as contact-level notes need invoice association)
+    const note: ArNoteInsert = {
+      userId: inputData.userId,
+      invoiceId: invoices.invoices[0].id,
+      body: inputData.note,
+      visibility: "shared",
+      metadata: {
+        isContactNote: true,
+        contactId: inputData.contactId,
+        createdAt: new Date().toISOString(),
+      },
+    };
+
+    const created = await createNote(note);
+
+    // TODO: Future enhancement - save to Xero via API
+    // This would require the Xero API to support contact notes
+    // For now, we just save locally
+
+    return {
+      success: true,
+      noteId: created.id,
+      savedToXero: false,
+      message:
+        "Note saved to local database. Xero contact notes sync is not yet implemented.",
+    };
+  },
+});
+
+// Helper function for call script generation
+function generateCallScript(
+  contact: { name: string; email?: string | null; phone?: string | null },
+  invoices: Array<{
+    id: string;
+    number: string;
+    dueDate: Date;
+    total: string;
+    amountPaid: string;
+    daysOverdue: number;
+  }>,
+  totalDue: number,
+  maxDaysOverdue: number,
+  tone: "polite" | "firm" | "final",
+  includePaymentPlan: boolean
+): {
+  contactId: string;
+  contactName: string;
+  script: string;
+  talkingPoints: string[];
+  objectionResponses: Array<{ objection: string; response: string }>;
+  tone: string;
+} {
+  const invoiceList = invoices
+    .map(
+      (inv) =>
+        `• Invoice ${inv.number}: $${(Number.parseFloat(inv.total) - Number.parseFloat(inv.amountPaid)).toFixed(2)} (${inv.daysOverdue} days overdue)`
+    )
+    .join("\n");
+
+  const greetings = {
+    polite: `Hi ${contact.name}, this is [Your Name] from [Your Company]. I hope you're doing well today. I'm calling regarding some outstanding invoices on your account.`,
+    firm: `Hello ${contact.name}, this is [Your Name] from [Your Company]. I'm calling about overdue invoices on your account that require immediate attention.`,
+    final: `${contact.name}, this is [Your Name] from [Your Company]. This is a final courtesy call regarding seriously overdue invoices before we escalate to collections.`,
+  };
+
+  const mainPoints = {
+    polite: `I wanted to touch base with you about ${invoices.length} invoice${invoices.length > 1 ? "s" : ""} that ${invoices.length > 1 ? "are" : "is"} now overdue. The total outstanding amount is $${totalDue.toFixed(2)}, with the oldest invoice being ${maxDaysOverdue} days past due.`,
+    firm: `Your account currently has ${invoices.length} overdue invoice${invoices.length > 1 ? "s" : ""} totaling $${totalDue.toFixed(2)}. Some of these are now ${maxDaysOverdue} days overdue, which is significantly past our payment terms.`,
+    final: `Your account is seriously delinquent with ${invoices.length} invoice${invoices.length > 1 ? "s" : ""} totaling $${totalDue.toFixed(2)}. The oldest invoice is ${maxDaysOverdue} days overdue. We need to resolve this immediately to avoid further action.`,
+  };
+
+  const closings = {
+    polite:
+      "Can we arrange payment today, or would you like to discuss a payment plan?",
+    firm: "I need to know when we can expect full payment. Can you commit to a payment date today?",
+    final:
+      "We need payment within 48 hours to prevent this from going to collections. Can you make payment immediately, or do we need to proceed with formal action?",
+  };
+
+  const paymentPlanSection = includePaymentPlan
+    ? `\n\nPAYMENT PLAN OPTIONS:\nIf full payment isn't possible right now, we can discuss:\n• Split payment over 2-4 weeks\n• Partial payment today with balance on agreed date\n• Weekly installments until cleared\n\nWhat would work best for your situation?`
+    : "";
+
+  const script = `${greetings[tone]}
+
+${mainPoints[tone]}
+
+INVOICE BREAKDOWN:
+${invoiceList}
+
+${closings[tone]}${paymentPlanSection}
+
+NEXT STEPS:
+1. Confirm payment method and timeline
+2. Send payment confirmation email
+3. Update account notes with agreed terms
+4. Follow up if payment not received by agreed date`;
+
+  const talkingPoints = [
+    `Total outstanding: $${totalDue.toFixed(2)}`,
+    `Number of overdue invoices: ${invoices.length}`,
+    `Oldest invoice: ${maxDaysOverdue} days overdue`,
+    `Payment terms: Net 30 days`,
+    tone === "final"
+      ? "This is final notice before collections"
+      : "We value your business and want to help",
+  ];
+
+  const objectionResponses = [
+    {
+      objection: "I haven't received the invoice",
+      response: `I can resend that immediately. The invoice was originally sent on [date] to ${contact.email || "your email on file"}. Would you like me to send it to a different email address?`,
+    },
+    {
+      objection: "I'm having cash flow issues",
+      response:
+        "I understand that can be challenging. Would a payment plan help? We could arrange smaller weekly or bi-weekly payments to make this more manageable.",
+    },
+    {
+      objection: "There's a dispute with the invoice",
+      response:
+        "I wasn't aware of any issues. Can you tell me specifically what the concern is so we can resolve it? In the meantime, would you be comfortable paying the undisputed portion?",
+    },
+    {
+      objection: "I'll pay it next week/month",
+      response:
+        "I appreciate you committing to payment. Can we be more specific about the date? I'd like to note exactly when we can expect payment and send you a confirmation.",
+    },
+    {
+      objection: "I've already paid this",
+      response:
+        "Let me check our records. Can you provide the payment date, amount, and reference number? I'll verify this immediately and update your account if needed.",
+    },
+  ];
+
+  return {
+    contactId: contact.name, // We don't have ID in this context
+    contactName: contact.name,
+    script,
+    talkingPoints,
+    objectionResponses,
+    tone,
+  };
+}

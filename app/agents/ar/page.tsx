@@ -2,946 +2,467 @@
 
 import {
   AlertTriangle,
-  DollarSign, // Changed from Sparkles for AR agent
+  Clock,
+  DollarSign,
   FileText,
   Loader2,
-  MessageSquare,
-  Upload,
+  Phone,
+  RefreshCw,
+  TrendingUp,
+  Users,
 } from "lucide-react";
-import {
-  type ChangeEvent,
-  type FormEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Textarea } from "@/components/ui/textarea";
-// Removed PdfChatMessage, PdfGuidedQuestion, PdfSectionSummary types as they are not needed for AR
-// import type {
-//   PdfChatMessage,
-//   PdfGuidedQuestion,
-//   PdfSectionSummary,
-// } from "@/lib/agents/docmanagement/types";
-import { generateUUID } from "@/lib/utils";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
-// Simplified ChatMessage type for AR agent
-type ChatMessage = {
-  role: "user" | "assistant";
-  content: string;
-  id: string;
-  sources?: string[];
+type AgeingBucket = {
+  label: string;
+  minDays: number;
+  maxDays: number | null;
+  totalOutstanding: number;
+  invoiceCount: number;
 };
 
-// Removed UploadResponse, SummarizeResponse, QuestionsResponse types
-// type UploadResponse = {
-//   contextFileId: string;
-//   fileName: string;
-//   size: number;
-//   status: "ready" | "needs_ocr";
-//   tokenEstimate?: number;
-//   usedOCR?: boolean;
-//   warnings?: string[];
-// };
-
-// type SummarizeResponse = {
-//   documentId: string;
-//   summary: string;
-//   highlights: string[];
-//   sections: PdfSectionSummary[];
-//   warnings: string[];
-//   usage?: {
-//     totalBilledTokens?: number;
-//     totalInputTokens?: number;
-//     totalOutputTokens?: number;
-//   };
-// };
-
-// type QuestionsResponse = {
-//   documentId: string;
-//   questions: PdfGuidedQuestion[];
-//   warnings: string[];
-// };
-
-type AgentChatResponse = {
-  text: string;
-  error?: string;
-  message?: string;
-};
-
-type AgentLoadSuccess = {
-  docId: string; // This might need to be changed to something like 'arSessionId' or similar
-  pageCount?: number; // Not relevant for AR agent
-  meta?: {
-    contextFileId?: string;
-    tokenEstimate?: number;
-    fileName?: string;
-    warnings?: string[];
+type ContactAgeing = {
+  contactId: string;
+  contactName: string;
+  email: string | null;
+  phone: string | null;
+  totalOutstanding: number;
+  invoiceCount: number;
+  buckets: {
+    current: number;
+    thirtyDays: number;
+    sixtyDays: number;
+    ninetyPlus: number;
   };
+  oldestInvoiceDays: number;
 };
 
-// Removed formatFileSize function as it's not needed
-// function formatFileSize(bytes: number) {
-//   if (bytes < 1024) {
-//     return `${bytes} B`;
-//   }
-//   if (bytes < 1024 * 1024) {
-//     return `${(bytes / 1024).toFixed(1)} KB`;
-//   }
-//   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-// }
+type AgeingReport = {
+  asOf: string;
+  summary: {
+    totalOutstanding: number;
+    invoiceCount: number;
+    contactCount: number;
+  };
+  buckets: AgeingBucket[];
+  contacts: ContactAgeing[];
+};
+
+type SyncStatus = {
+  isSyncing: boolean;
+  lastSynced: Date | null;
+  contactsSynced: number;
+  invoicesSynced: number;
+  isUsingMock: boolean;
+};
 
 export default function AccountsReceivableAgentPage() {
-  // Removed fileInputRef
-  // const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const [contextFileId, setContextFileId] = useState<string | null>(null); // Still useful for chat context
-  const [arSessionId, setArSessionId] = useState<string | null>(null); // Renamed from documentId
-  // Removed summary, highlights, sections, questions states
-  // const [summary, setSummary] = useState("");
-  // const [highlights, setHighlights] = useState<string[]>([]);
-  // const [sections, setSections] = useState<PdfSectionSummary[]>([]);
-  // const [questions, setQuestions] = useState<PdfGuidedQuestion[]>([]);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [questionInput, setQuestionInput] = useState("");
-  const [warnings, setWarnings] = useState<string[]>([]);
+  const [ageingReport, setAgeingReport] = useState<AgeingReport | null>(null);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>({
+    isSyncing: false,
+    lastSynced: null,
+    contactsSynced: 0,
+    invoicesSynced: 0,
+    isUsingMock: false,
+  });
+  const [isLoadingReport, setIsLoadingReport] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [agentReady, setAgentReady] = useState(false);
-  const [isPreparingAgent, setIsPreparingAgent] = useState(false);
-  const [agentStatus, setAgentStatus] = useState("Idle");
-  const [agentContextMeta, setAgentContextMeta] =
-    useState<AgentLoadSuccess | null>(null);
-  // Removed uploadMetadata, summaryUsage, isUploading, isSummarizing, isGeneratingQuestions, summaryProgress, summaryStage
-  // const [uploadMetadata, setUploadMetadata] = useState<{
-  //   fileName: string;
-  //   size: number;
-  //   tokenEstimate?: number;
-  // } | null>(null);
-  // const [summaryUsage, setSummaryUsage] = useState<
-  //   SummarizeResponse["usage"] | null
-  // >(null);
-  // const [isUploading, setIsUploading] = useState(false);
-  // const [isSummarizing, setIsSummarizing] = useState(false);
-  // const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
-  const [isAnswering, setIsAnswering] = useState(false);
-  // const [summaryProgress, setSummaryProgress] = useState(0);
-  // const [summaryStage, setSummaryStage] = useState("");
 
-  const appendWarnings = useCallback((messages?: string[]) => {
-    if (!messages || messages.length === 0) {
-      return;
-    }
-    setWarnings((current) => {
-      const unique = new Set(current);
-      for (const message of messages.filter((message) =>
-        Boolean(message?.trim())
-      )) {
-        unique.add(message.trim());
-      }
-      return Array.from(unique);
-    });
-  }, []);
-
-  // Restore conversation from Redis cache on mount (if available)
-  useEffect(() => {
-    async function restoreConversation() {
-      if (!contextFileId) {
-        return;
-      }
-
-      try {
-        // API endpoint for AR conversation might be different
-        const response = await fetch(
-          `/api/agents/ar/conversation?contextFileId=${contextFileId}`
-        );
-
-        if (!response.ok) {
-          return;
-        }
-
-        const data = await response.json();
-
-        if (data.cached && data.data) {
-          console.log(
-            `[ar-agent] Restoring conversation with ${data.data.messages.length} messages`
-          );
-
-          setArSessionId(data.data.arSessionId); // Renamed from documentId
-          // setSummary(data.data.summary); // Removed
-
-          // Restore chat messages
-          const restoredMessages: ChatMessage[] = data.data.messages.map(
-            (msg: ChatMessage, index: number) => ({
-              ...msg,
-              id: generateUUID(),
-            })
-          );
-          setChatMessages(restoredMessages);
-        }
-
-        if (data.data?.arSessionId) {
-          // Renamed from documentId
-          void prepareArAgent(contextFileId, data.data.arSessionId);
-        }
-      } catch (error) {
-        console.error("[ar-agent] Failed to restore conversation:", error);
-      }
-    }
-
-    restoreConversation();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contextFileId]);
-
-  const resetWorkflow = useCallback(() => {
-    setContextFileId(null);
-    setArSessionId(null); // Renamed from documentId
-    // Removed summary, highlights, sections, questions states
-    // setSummary("");
-    // setHighlights([]);
-    // setSections([]);
-    // setQuestions([]);
-    setChatMessages([]);
-    setQuestionInput("");
-    setWarnings([]);
-    // Removed uploadMetadata, summaryUsage
-    // setUploadMetadata(null);
-    // setSummaryUsage(null);
+  const loadAgeingReport = useCallback(async () => {
+    setIsLoadingReport(true);
     setError(null);
-    setAgentReady(false);
-    setAgentContextMeta(null);
-    setAgentStatus("Idle");
-    setIsPreparingAgent(false);
+
+    try {
+      const response = await fetch("/api/agents/ar/ageing");
+
+      if (!response.ok) {
+        throw new Error("Failed to load ageing report");
+      }
+
+      const data: AgeingReport = await response.json();
+      setAgeingReport(data);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to load ageing report";
+      setError(message);
+    } finally {
+      setIsLoadingReport(false);
+    }
   }, []);
 
-  const prepareArAgent = useCallback(
-    // Renamed from prepareDocAgent
-    async (contextId: string, arSessionIdValue?: string) => {
-      // Renamed from docIdValue
-      setIsPreparingAgent(true);
-      setAgentReady(false);
-      setAgentStatus("Initializing AR agent..."); // Updated status message
+  const handleSyncXero = useCallback(async () => {
+    setSyncStatus((prev) => ({ ...prev, isSyncing: true }));
+    setError(null);
 
-      try {
-        const response = await fetch("/api/agents/ar", {
-          // Updated API endpoint
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            mode: "load",
-            contextFileId: contextId,
-            arSessionId: arSessionIdValue, // Renamed from docId
-          }),
-        });
-
-        const data: { doc?: AgentLoadSuccess; error?: string } =
-          await response.json();
-
-        if (!response.ok || !data.doc) {
-          throw new Error(data.error ?? "Failed to prepare the AR agent."); // Updated error message
-        }
-
-        setAgentContextMeta(data.doc);
-        setAgentReady(true);
-        // Removed pageCount related logic
-        // const pageLabel = data.doc.pageCount === 1 ? "page" : "pages";
-        setAgentStatus(`AR Agent ready for session ${data.doc.docId}`); // Updated status message
-        const warningList =
-          (data.doc.meta?.warnings as string[] | undefined) ?? [];
-        appendWarnings(warningList);
-      } catch (prepError) {
-        const message =
-          prepError instanceof Error
-            ? prepError.message
-            : "Unable to prepare the AR agent."; // Updated error message
-        setAgentStatus(message);
-        setError(message);
-      } finally {
-        setIsPreparingAgent(false);
-      }
-    },
-    [appendWarnings]
-  );
-
-  // Removed generateQuestionsForSummary and runSummarization functions
-  // const generateQuestionsForSummary = useCallback(
-  //   async (
-  //     contextId: string,
-  //     docId: string,
-  //     payload: {
-  //       summary: string;
-  //       highlights: string[];
-  //       sections: PdfSectionSummary[];
-  //     }
-  //   ) => {
-  //     if (!contextId || !docId) {
-  //       return;
-  //     }
-  //     if (!payload.summary.trim() || payload.sections.length === 0) {
-  //       setQuestions([]);
-  //       return;
-  //     }
-
-  //     setIsGeneratingQuestions(true);
-  //     try {
-  //       const response = await fetch("/api/pdf/questions", {
-  //         method: "POST",
-  //         headers: {
-  //           "Content-Type": "application/json",
-  //         },
-  //         body: JSON.stringify({
-  //           contextFileId: contextId,
-  //           documentId: docId,
-  //           summary: payload.summary,
-  //           highlights: payload.highlights,
-  //           sections: payload.sections,
-  //         }),
-  //       });
-
-  //       if (!response.ok) {
-  //         const errorData: { error?: string } = await response.json();
-  //         throw new Error(
-  //           errorData?.error ?? "Failed to generate follow-up questions."
-  //         );
-  //       }
-  //       const data: QuestionsResponse = await response.json();
-  //       setQuestions(data.questions ?? []);
-  //       appendWarnings(data.warnings);
-  //       setError(null);
-  //     } catch (generationError) {
-  //       const message =
-  //         generationError instanceof Error
-  //           ? generationError.message
-  //           : "Unable to generate guided questions.";
-  //       setError(message);
-  //     } finally {
-  //       setIsGeneratingQuestions(false);
-  //     }
-  //   },
-  //   [appendWarnings]
-  // );
-
-  // const runSummarization = useCallback(
-  //   async (contextId: string) => {
-  //     setIsSummarizing(true);
-  //     setSummaryProgress(0);
-  //     setSummaryStage("Starting...");
-
-  //     try {
-  //       const response = await fetch("/api/pdf/summarize", {
-  //         method: "POST",
-  //         headers: {
-  //           "Content-Type": "application/json",
-  //         },
-  //         body: JSON.stringify({
-  //           contextFileId: contextId,
-  //           stream: true, // Enable SSE streaming
-  //         }),
-  //       });
-
-  //       if (!response.ok) {
-  //         throw new Error("Failed to summarise the PDF.");
-  //       }
-
-  //       // Check if response is SSE stream
-  //       const contentType = response.headers.get("content-type") ?? "";
-  //       if (contentType.includes("text/event-stream")) {
-  //         // Handle SSE streaming response
-  //         const reader = response.body?.getReader();
-  //         const decoder = new TextDecoder();
-
-  //         if (!reader) {
-  //           throw new Error("Failed to read stream");
-  //         }
-
-  //         let buffer = "";
-
-  //         while (true) {
-  //           const { done, value } = await reader.read();
-
-  //           if (done) {
-  //             break;
-  //           }
-
-  //           buffer += decoder.decode(value, { stream: true });
-
-  //           // Process complete SSE messages
-  //           const lines = buffer.split("\n");
-  //           buffer = lines.pop() || ""; // Keep incomplete line in buffer
-
-  //           for (const line of lines) {
-  //             if (line.startsWith("event: ")) {
-  //               const event = line.slice(7);
-  //               const nextLine = lines[lines.indexOf(line) + 1];
-
-  //               if (nextLine?.startsWith("data: ")) {
-  //                 const data = JSON.parse(
-  //                   nextLine.slice(6)
-  //                 );
-
-  //                 if (event === "progress") {
-  //                   setSummaryProgress(data.progress);
-  //                   setSummaryStage(data.message);
-  //                 } else if (event === "complete") {
-  //                   const summarizeData = data as SummarizeResponse;
-  //                   setDocumentId(summarizeData.documentId);
-  //                   setSummary(summarizeData.summary);
-  //                   setHighlights(summarizeData.highlights ?? []);
-  //                   setSections(summarizeData.sections ?? []);
-  //                   setSummaryUsage(summarizeData.usage ?? null);
-  //                   appendWarnings(summarizeData.warnings);
-  //                   setError(null);
-
-  //                   await generateQuestionsForSummary(
-  //                     contextId,
-  //                     summarizeData.documentId,
-  //                     {
-  //                       summary: summarizeData.summary,
-  //                       highlights: summarizeData.highlights ?? [],
-  //                       sections: summarizeData.sections ?? [],
-  //                     }
-  //                   );
-
-  //                   void prepareDocAgent(contextId, summarizeData.documentId);
-  //                 } else if (event === "error") {
-  //                   throw new Error(
-  //                     data.message || "Failed to summarise the PDF."
-  //                   );
-  //                 }
-  //               }
-  //             }
-  //           }
-  //         }
-  //       } else {
-  //         // Fallback to JSON response (non-streaming)
-  //         const data: SummarizeResponse | { error?: string } =
-  //           await response.json();
-
-  //         const errorData = data as { error?: string };
-  //         if (errorData.error) {
-  //           throw new Error(errorData.error);
-  //         }
-
-  //         const summarizeData = data as SummarizeResponse;
-  //         setDocumentId(summarizeData.documentId);
-  //         setSummary(summarizeData.summary);
-  //         setHighlights(summarizeData.highlights ?? []);
-  //         setSections(summarizeData.sections ?? []);
-  //         setSummaryUsage(summarizeData.usage ?? null);
-  //         appendWarnings(summarizeData.warnings);
-  //         setError(null);
-
-  //         await generateQuestionsForSummary(
-  //           contextId,
-  //           summarizeData.documentId,
-  //           {
-  //             summary: summarizeData.summary,
-  //             highlights: summarizeData.highlights ?? [],
-  //             sections: summarizeData.sections ?? [],
-  //           }
-  //         );
-
-  //         void prepareDocAgent(contextId, summarizeData.documentId);
-  //       }
-  //     } catch (summarizeError) {
-  //       const message =
-  //         summarizeError instanceof Error
-  //           ? summarizeError.message
-  //           : "LedgerBot couldn't summarise this PDF.";
-  //       setError(message);
-  //     } finally {
-  //       setIsSummarizing(false);
-  //       setSummaryProgress(0);
-  //       setSummaryStage("");
-  //     }
-  //   },
-  //   [appendWarnings, generateQuestionsForSummary, prepareDocAgent]
-  // );
-
-  // Removed handleFileChange and handleRegenerateQuestions
-  // const handleFileChange = useCallback(
-  //   async (event: ChangeEvent<HTMLInputElement>) => {
-  //     const file = event.target.files?.[0];
-  //     if (!file) {
-  //       return;
-  //     }
-
-  //     resetWorkflow();
-  //     setIsUploading(true);
-
-  //     try {
-  //       const formData = new FormData();
-  //       formData.append("file", file);
-
-  //       const response = await fetch("/api/pdf/upload", {
-  //         method: "POST",
-  //         body: formData,
-  //       });
-
-  //       const data: UploadResponse | { error?: string } = await response.json();
-
-  //       if (!response.ok) {
-  //         const errorData = data as { error?: string };
-  //         throw new Error(errorData.error ?? "Failed to upload the PDF.");
-  //       }
-
-  //       // Type narrowing: at this point, data must be UploadResponse
-  //       const uploadData = data as UploadResponse;
-
-  //       setUploadMetadata({
-  //         fileName: uploadData.fileName,
-  //         size: uploadData.size,
-  //         tokenEstimate: uploadData.tokenEstimate,
-  //       });
-
-  //       // Show OCR success message if OCR was used
-  //       if (uploadData.usedOCR) {
-  //         appendWarnings([
-  //           "This PDF was scanned or image-based. Text was successfully extracted using OCR.",
-  //         ]);
-  //       } else {
-  //         appendWarnings(uploadData.warnings);
-  //       }
-
-  //       if (uploadData.status === "ready") {
-  //         setContextFileId(uploadData.contextFileId);
-  //         setAgentReady(false);
-  //         setAgentContextMeta(null);
-  //         setAgentStatus("Waiting for summary...");
-  //         await runSummarization(uploadData.contextFileId);
-  //       } else {
-  //         setError(
-  //           uploadData.warnings?.[0] ??
-  //             "No searchable text detected. The PDF may be password protected or corrupted."
-  //         );
-  //       }
-  //     } catch (uploadError) {
-  //       const message =
-  //         uploadError instanceof Error
-  //           ? uploadError.message
-  //           : "Upload failed. Please try again.";
-  //       setError(message);
-  //     } finally {
-  //       setIsUploading(false);
-  //       if (fileInputRef.current) {
-  //         fileInputRef.current.value = "";
-  //       }
-  //     }
-  //   },
-  //   [appendWarnings, resetWorkflow, runSummarization]
-  // );
-
-  // const handleRegenerateQuestions = useCallback(async () => {
-  //   if (!contextFileId || !documentId) {
-  //     return;
-  //   }
-
-  //   await generateQuestionsForSummary(contextFileId, documentId, {
-  //     summary,
-  //     highlights,
-  //     sections,
-  //   });
-  // }, [
-  //   contextFileId,
-  //   documentId,
-  //   generateQuestionsForSummary,
-  //   highlights,
-  //   sections,
-  //   summary,
-  // ]);
-
-  const handleAskQuestion = useCallback(
-    async (event: FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-
-      // Removed summary and sections checks
-      // if (!contextFileId || !summary.trim() || sections.length === 0) {
-      //   setError("Upload and summarise a PDF before asking questions.");
-      //   return;
-      // }
-
-      const trimmed = questionInput.trim();
-      if (!trimmed) {
-        return;
-      }
-
-      setError(null);
-
-      const historyPayload: ChatMessage[] = chatMessages.map(
-        ({ id, role, content, sources }) => ({
-          id,
-          role,
-          content,
-          sources,
-        })
-      );
-
-      const userMessage: ChatMessage = {
-        id: generateUUID(),
-        role: "user",
-        content: trimmed,
-      };
-
-      const assistantMessageId = generateUUID();
-
-      setChatMessages((current) => [
-        ...current,
-        userMessage,
-        {
-          id: assistantMessageId,
-          role: "assistant",
-          content: "",
+    try {
+      const response = await fetch("/api/agents/ar/sync", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      ]);
-      setQuestionInput("");
-      setIsAnswering(true);
+        body: JSON.stringify({}),
+      });
 
-      try {
-        const response = await fetch("/api/agents/ar", {
-          // Updated API endpoint
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            mode: "chat",
-            contextFileId,
-            arSessionId, // Renamed from documentId
-            message: trimmed,
-            history: historyPayload,
-            stream: true,
-          }),
-        });
+      const data = await response.json();
 
-        const contentType = response.headers.get("content-type") ?? "";
-
-        const updateAssistantMessage = (updater: (prev: string) => string) => {
-          setChatMessages((current) =>
-            current.map((message) =>
-              message.id === assistantMessageId
-                ? {
-                    ...message,
-                    content: updater(message.content ?? ""),
-                  }
-                : message
-            )
-          );
-        };
-
-        if (contentType.includes("text/event-stream")) {
-          const reader = response.body?.getReader();
-          if (!reader) {
-            throw new Error("Streaming is not supported in this environment.");
-          }
-
-          const decoder = new TextDecoder();
-          let buffer = "";
-
-          while (true) {
-            const { value, done } = await reader.read();
-            if (done) {
-              break;
-            }
-
-            buffer += decoder.decode(value, { stream: true });
-            const events = buffer.split("\n\n");
-            buffer = events.pop() ?? "";
-
-            for (const rawEvent of events) {
-              const lines = rawEvent.split("\n");
-              const eventLine = lines.find((line) =>
-                line.startsWith("event: ")
-              );
-              const dataLine = lines.find((line) => line.startsWith("data: "));
-              const eventName = eventLine?.slice(7) ?? "";
-              if (!dataLine) {
-                continue;
-              }
-              const payload = JSON.parse(
-                dataLine.slice(6)
-              ) as AgentChatResponse;
-
-              if (eventName === "delta" && typeof payload.text === "string") {
-                updateAssistantMessage((prev) => `${prev}${payload.text}`);
-              } else if (eventName === "final") {
-                updateAssistantMessage(() => payload.text ?? "");
-              } else if (eventName === "error") {
-                const fallback =
-                  payload.error ??
-                  "I wasn't able to answer that question. Please try again.";
-                updateAssistantMessage(() => fallback);
-              }
-            }
-          }
-
-          setIsAnswering(false);
-          return;
-        }
-
-        const data: AgentChatResponse = await response.json();
-
-        if (!response.ok || typeof data.text !== "string") {
-          throw new Error(data.error ?? "Unable to answer the question.");
-        }
-
-        updateAssistantMessage(() => data.text);
-      } catch (answerError) {
-        const message =
-          answerError instanceof Error
-            ? answerError.message
-            : "Please try again in a few moments.";
-        setChatMessages((current) =>
-          current.map((chatMessage) =>
-            chatMessage.id === assistantMessageId
-              ? {
-                  ...chatMessage,
-                  content: `I wasn't able to answer that question. ${message}`,
-                }
-              : chatMessage
-          )
-        );
-      } finally {
-        setIsAnswering(false);
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed to sync with Xero");
       }
-    },
-    [chatMessages, arSessionId, contextFileId, questionInput] // Updated dependencies
-  );
 
-  // Removed sectionLookup
-  // const sectionLookup = useMemo(() => {
-  //   const map = new Map<string, { index: number; title: string }>();
-  //   sections.forEach((section, index) => {
-  //     map.set(section.id, { index: index + 1, title: section.title });
-  //   });
-  //   return map;
-  // }, [sections]);
+      setSyncStatus({
+        isSyncing: false,
+        lastSynced: new Date(),
+        contactsSynced: data.contactsSynced,
+        invoicesSynced: data.invoicesSynced,
+        isUsingMock: data.isUsingMock,
+      });
 
-  // Simplified canChat
-  const canChat = Boolean(contextFileId && agentReady);
-  // Removed disableUpload
-  // const disableUpload = isUploading || isSummarizing;
+      // Reload the ageing report after sync
+      await loadAgeingReport();
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to sync with Xero";
+      setError(message);
+      setSyncStatus((prev) => ({ ...prev, isSyncing: false }));
+    }
+  }, [loadAgeingReport]);
+
+  // Load report on mount
+  useEffect(() => {
+    loadAgeingReport();
+  }, [loadAgeingReport]);
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-AU", {
+      style: "currency",
+      currency: "AUD",
+    }).format(amount);
+  };
+
+  const getRiskColor = (daysOverdue: number) => {
+    if (daysOverdue <= 30) return "text-yellow-600";
+    if (daysOverdue <= 60) return "text-orange-600";
+    if (daysOverdue <= 90) return "text-red-600";
+    return "text-red-800";
+  };
+
+  const getRiskBadge = (daysOverdue: number) => {
+    if (daysOverdue <= 30) return { label: "Low", variant: "secondary" as const };
+    if (daysOverdue <= 60)
+      return { label: "Medium", variant: "default" as const };
+    if (daysOverdue <= 90) return { label: "High", variant: "destructive" as const };
+    return { label: "Critical", variant: "destructive" as const };
+  };
+
   return (
-    <div className="space-y-10">
+    <div className="space-y-6">
+      {/* Header */}
       <Card>
         <CardHeader className="flex flex-col gap-2">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <DollarSign className="h-5 w-5 text-primary" /> {/* Changed icon */}
-            Accounts Receivable Agent
-          </CardTitle>
-          <p className="text-muted-foreground text-sm">
-            Manage customer invoices, send payment reminders, predict late
-            payments, and reduce Days Sales Outstanding (DSO).
-          </p>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-            <div className="space-y-4">
-              {/* Removed file upload section */}
-              {/* Removed warnings and error display for upload/summary */}
-              {/* Removed summary and sections display */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <DollarSign className="h-6 w-6 text-primary" />
+              <CardTitle className="text-xl">
+                Accounts Receivable Agent
+              </CardTitle>
             </div>
-            <div className="space-y-4">
-              {/* Removed suggested follow-up questions */}
-              {/* <div className="rounded-md border bg-muted/20 p-4">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="h-4 w-4 text-primary" />
-                    <h3 className="font-semibold text-sm">
-                      Suggested follow-up questions
-                    </h3>
-                  </div>
-                  <Button
-                    disabled={
-                      !contextFileId ||
-                      !documentId ||
-                      sections.length === 0 ||
-                      isGeneratingQuestions ||
-                      isSummarizing
-                    }
-                    onClick={handleRegenerateQuestions}
-                    size="sm"
-                    variant="outline"
-                  >
-                    {isGeneratingQuestions ? (
-                      <>
-                        <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                        Refreshing
-                      </>
-                    ) : (
-                      "Regenerate"
-                    )}
-                  </Button>
-                </div>
-                <div className="mt-3 space-y-2 text-sm leading-relaxed">
-                  {questions.length > 0 ? (
-                    questions.map((question) => (
-                      <div
-                        className="rounded-md border border-muted-foreground/40 border-dashed p-3"
-                        key={question.id}
-                      >
-                        <p className="font-medium">{question.question}</p>
-                        <p className="mt-1 text-muted-foreground text-xs">
-                          {question.rationale}
-                        </p>
-                        <p className="mt-2 text-[11px] text-muted-foreground uppercase">
-                          {question.category} · {question.whenToAsk}
-                        </p>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-muted-foreground text-xs">
-                      Guided prompts will appear after LedgerBot summarises the
-                      PDF. Use them for client follow-ups or reconciliation
-                      notes.
-                    </p>
-                  )}
-                </div>
-              </div> */}
-
-              <div className="rounded-md border bg-background p-4 shadow-sm">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="h-4 w-4 text-primary" />
-                    <h3 className="font-semibold text-sm">
-                      Chat with AR Agent
-                    </h3>
-                    <Badge>
-                      {agentReady ? "Agent ready" : "Sync required"}
-                    </Badge>
-                  </div>
-                  <Button
-                    disabled={
-                      !contextFileId || isPreparingAgent
-                      // Removed summary and sections checks
-                      // || !summary || sections.length === 0
-                    }
-                    onClick={() => {
-                      if (!contextFileId) {
-                        return;
-                      }
-                      void prepareArAgent(
-                        contextFileId,
-                        arSessionId ?? undefined // Renamed from documentId
-                      );
-                    }}
-                    size="sm"
-                    variant="outline"
-                  >
-                    {isPreparingAgent ? (
-                      <>
-                        <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                        Syncing
-                      </>
-                    ) : (
-                      "Sync AR Session" // Updated button text
-                    )}
-                  </Button>
-                </div>
-                <p className="mt-2 text-muted-foreground text-xs">
-                  {agentReady ? agentStatus : `Agent status: ${agentStatus}`}
-                  {agentContextMeta?.meta?.tokenEstimate
-                    ? ` · est. ${agentContextMeta.meta.tokenEstimate} tokens`
-                    : ""}
-                </p>
-                <ScrollArea className="mt-3 h-72 rounded-md border bg-muted/20 p-3">
-                  {chatMessages.length === 0 ? (
-                    <p className="text-muted-foreground text-xs">
-                      Ask natural-language questions to manage customer
-                      invoices, payment reminders, and DSO.
-                    </p>
-                  ) : (
-                    <div className="space-y-3">
-                      {chatMessages.map((message) => (
-                        <div
-                          className={`rounded-md border p-3 text-sm leading-relaxed ${
-                            message.role === "assistant"
-                              ? "bg-muted/40"
-                              : "bg-background"
-                          }`}
-                          key={message.id}
-                        >
-                          <p className="font-semibold text-muted-foreground text-xs uppercase">
-                            {message.role === "assistant" ? "LedgerBot" : "You"}
-                          </p>
-                          <p className="mt-1 whitespace-pre-wrap">
-                            {message.content}
-                          </p>
-                          {/* Removed sources display */}
-                          {/* {message.sources && message.sources.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              {message.sources.map((source) => {
-                                const meta = sectionLookup.get(source);
-                                const label = meta
-                                  ? `Section ${meta.index}: ${meta.title}`
-                                  : "Source excerpt";
-                                return (
-                                  <Badge
-                                    className="text-xs"
-                                    key={source}
-                                    variant="outline"
-                                  >
-                                    {label}
-                                  </Badge>
-                                );
-                              })}
-                            </div>
-                          )} */}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </ScrollArea>
-                <form className="mt-3 space-y-2" onSubmit={handleAskQuestion}>
-                  {!agentReady && (
-                    <p className="text-muted-foreground text-xs">
-                      Sync the AR session to activate LedgerBot before asking a
-                      question.
-                    </p>
-                  )}
-                  <Textarea
-                    disabled={!canChat || isAnswering}
-                    onChange={(event) => setQuestionInput(event.target.value)}
-                    placeholder="e.g. What are the overdue invoices for customer ABC?"
-                    rows={3}
-                    value={questionInput}
-                  />
-                  <div className="flex items-center justify-between">
-                    <p className="text-muted-foreground text-xs">
-                      LedgerBot will use available AR data to answer your
-                      questions.
-                    </p>
-                    <Button
-                      disabled={
-                        !canChat ||
-                        isAnswering ||
-                        questionInput.trim().length === 0
-                      }
-                      type="submit"
-                    >
-                      {isAnswering ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Thinking
-                        </>
-                      ) : (
-                        "Ask"
-                      )}
-                    </Button>
-                  </div>
-                </form>
-              </div>
-            </div>
+            <Button
+              disabled={syncStatus.isSyncing || isLoadingReport}
+              onClick={handleSyncXero}
+              size="default"
+            >
+              {syncStatus.isSyncing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Syncing from Xero
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Sync from Xero
+                </>
+              )}
+            </Button>
           </div>
-        </CardContent>
+          <p className="text-muted-foreground text-sm">
+            Manage customer invoices, track overdue payments, and generate
+            collection scripts. Sync data from Xero to view ageing reports and
+            contact debtors.
+          </p>
+          {syncStatus.lastSynced && (
+            <p className="text-muted-foreground text-xs">
+              Last synced: {syncStatus.lastSynced.toLocaleString()} •{" "}
+              {syncStatus.contactsSynced} contacts, {syncStatus.invoicesSynced}{" "}
+              invoices
+              {syncStatus.isUsingMock && " (using mock data)"}
+            </p>
+          )}
+        </CardHeader>
       </Card>
+
+      {/* Error Display */}
+      {error && (
+        <Card className="border-destructive">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              <p className="font-medium">{error}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Summary Cards */}
+      {ageingReport && (
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Total Outstanding
+              </CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {formatCurrency(ageingReport.summary.totalOutstanding)}
+              </div>
+              <p className="text-muted-foreground text-xs">
+                Across {ageingReport.summary.invoiceCount} invoice
+                {ageingReport.summary.invoiceCount !== 1 ? "s" : ""}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Active Debtors
+              </CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {ageingReport.summary.contactCount}
+              </div>
+              <p className="text-muted-foreground text-xs">
+                Customers with overdue invoices
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Average DSO
+              </CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {ageingReport.summary.contactCount > 0
+                  ? Math.round(
+                      ageingReport.contacts.reduce(
+                        (sum, c) => sum + c.oldestInvoiceDays,
+                        0
+                      ) / ageingReport.summary.contactCount
+                    )
+                  : 0}{" "}
+                days
+              </div>
+              <p className="text-muted-foreground text-xs">
+                Days Sales Outstanding
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Ageing Buckets */}
+      {ageingReport && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              Ageing Summary
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {ageingReport.buckets.map((bucket) => {
+                const percentage =
+                  ageingReport.summary.totalOutstanding > 0
+                    ? (bucket.totalOutstanding /
+                        ageingReport.summary.totalOutstanding) *
+                      100
+                    : 0;
+
+                return (
+                  <div key={bucket.label} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm">
+                          {bucket.label}
+                        </span>
+                        <Badge variant="outline">
+                          {bucket.invoiceCount} invoice
+                          {bucket.invoiceCount !== 1 ? "s" : ""}
+                        </Badge>
+                      </div>
+                      <span className="font-semibold text-sm">
+                        {formatCurrency(bucket.totalOutstanding)}
+                      </span>
+                    </div>
+                    <Progress value={percentage} className="h-2" />
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Debtor List */}
+      {ageingReport && ageingReport.contacts.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <FileText className="h-5 w-5 text-primary" />
+              Debtors ({ageingReport.contacts.length})
+            </CardTitle>
+            <p className="text-muted-foreground text-sm">
+              Click on a debtor name to start a collection conversation with AI
+              assistance
+            </p>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Debtor</TableHead>
+                  <TableHead>Contact</TableHead>
+                  <TableHead className="text-right">Outstanding</TableHead>
+                  <TableHead className="text-right">Invoices</TableHead>
+                  <TableHead className="text-right">Oldest (Days)</TableHead>
+                  <TableHead className="text-right">Risk</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {ageingReport.contacts.map((contact) => {
+                  const risk = getRiskBadge(contact.oldestInvoiceDays);
+                  return (
+                    <TableRow key={contact.contactId}>
+                      <TableCell>
+                        <Link
+                          className="font-medium hover:underline"
+                          href={`/?ar_contact=${contact.contactId}&ar_name=${encodeURIComponent(contact.contactName)}`}
+                        >
+                          {contact.contactName}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {contact.email && (
+                          <div className="truncate max-w-[200px]">
+                            {contact.email}
+                          </div>
+                        )}
+                        {contact.phone && (
+                          <div className="flex items-center gap-1 text-xs">
+                            <Phone className="h-3 w-3" />
+                            {contact.phone}
+                          </div>
+                        )}
+                        {!contact.email && !contact.phone && (
+                          <span className="text-muted-foreground text-xs">
+                            No contact info
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold">
+                        {formatCurrency(contact.totalOutstanding)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {contact.invoiceCount}
+                      </TableCell>
+                      <TableCell
+                        className={`text-right font-semibold ${getRiskColor(contact.oldestInvoiceDays)}`}
+                      >
+                        {contact.oldestInvoiceDays}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Badge variant={risk.variant}>{risk.label}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Link
+                          href={`/?ar_contact=${contact.contactId}&ar_name=${encodeURIComponent(contact.contactName)}`}
+                        >
+                          <Button size="sm" variant="outline">
+                            Contact
+                          </Button>
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Empty State */}
+      {ageingReport && ageingReport.contacts.length === 0 && (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
+            <h3 className="mb-2 font-semibold text-lg">
+              No Overdue Invoices
+            </h3>
+            <p className="mb-4 text-center text-muted-foreground text-sm">
+              All invoices are paid or not yet due. Click "Sync from Xero" to
+              refresh data.
+            </p>
+            <Button disabled={syncStatus.isSyncing} onClick={handleSyncXero}>
+              {syncStatus.isSyncing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Syncing
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Sync from Xero
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Loading State */}
+      {isLoadingReport && !ageingReport && (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Loader2 className="mb-4 h-12 w-12 animate-spin text-primary" />
+            <p className="text-muted-foreground text-sm">
+              Loading ageing report...
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

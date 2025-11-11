@@ -5,12 +5,14 @@ import { join } from "node:path";
 import { Agent } from "@mastra/core/agent";
 import { myProvider } from "@/lib/ai/providers";
 import {
+  buildCallScriptTool,
   buildEmailReminderTool,
   buildSmsReminderTool,
   getInvoicesDueTool,
   postNoteTool,
   predictLateRiskTool,
   reconcilePaymentTool,
+  saveNoteToXeroTool,
   syncXeroTool,
 } from "@/lib/tools/ar/messaging";
 
@@ -34,8 +36,10 @@ export const arAgent = new Agent({
     predictLateRisk: predictLateRiskTool,
     buildEmailReminder: buildEmailReminderTool,
     buildSmsReminder: buildSmsReminderTool,
+    buildCallScript: buildCallScriptTool,
     reconcilePayment: reconcilePaymentTool,
     postNote: postNoteTool,
+    saveNoteToXero: saveNoteToXeroTool,
     syncXero: syncXeroTool,
   },
 });
@@ -54,8 +58,10 @@ export function createArAgentWithModel(modelId?: string) {
       predictLateRisk: predictLateRiskTool,
       buildEmailReminder: buildEmailReminderTool,
       buildSmsReminder: buildSmsReminderTool,
+      buildCallScript: buildCallScriptTool,
       reconcilePayment: reconcilePaymentTool,
       postNote: postNoteTool,
+      saveNoteToXero: saveNoteToXeroTool,
       syncXero: syncXeroTool,
     },
   });
