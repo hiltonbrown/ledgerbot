@@ -100,26 +100,34 @@ async function getXeroClient(
 
   // Calculate actual remaining time for token expiry
   // CRITICAL: We must use the ACTUAL expiry time from the database, not assume 30 minutes
-  // Otherwise the SDK won't know the token is expired and won't auto-refresh
+  // If token is already expired (negative), we must trigger refresh by setting expires_in to 1
+  // Setting to 0 or negative values can cause SDK issues, so use 1 to force immediate refresh
   const expiresAt = new Date(connection.expiresAt);
   const now = new Date();
-  const secondsRemaining = Math.max(
-    0,
-    Math.floor((expiresAt.getTime() - now.getTime()) / 1000)
+  const actualSecondsRemaining = Math.floor(
+    (expiresAt.getTime() - now.getTime()) / 1000
   );
+
+  // If token is expired or expiring within 60 seconds, set to 1 to trigger immediate refresh
+  // Otherwise use actual remaining time
+  const secondsRemaining =
+    actualSecondsRemaining <= 60 ? 1 : actualSecondsRemaining;
 
   console.log(`[getXeroClient] Setting up client for user ${userId}`);
   console.log(`  Token expires at: ${expiresAt.toISOString()}`);
   console.log(`  Current time: ${now.toISOString()}`);
   console.log(
-    `  Seconds remaining: ${secondsRemaining} (${Math.floor(secondsRemaining / 60)} minutes)`
+    `  Actual seconds remaining: ${actualSecondsRemaining} (${Math.floor(actualSecondsRemaining / 60)} minutes)`
+  );
+  console.log(
+    `  Setting expires_in to: ${secondsRemaining} ${actualSecondsRemaining <= 60 ? "(forcing refresh)" : ""}`
   );
 
   await client.setTokenSet({
     access_token: connection.accessToken,
     refresh_token: connection.refreshToken,
     token_type: "Bearer",
-    expires_in: secondsRemaining, // Use ACTUAL remaining time, not hardcoded 1800
+    expires_in: secondsRemaining, // Use ACTUAL remaining time, or 1 to force refresh if expired
   });
 
   return { client, connection };
@@ -133,41 +141,96 @@ async function persistTokenSet(
     const tokenSet = client.readTokenSet();
 
     if (!tokenSet?.access_token || !tokenSet?.refresh_token) {
+      console.log(
+        `[persistTokenSet] No token set to persist for connection ${connection.id}`
+      );
       return;
     }
 
-    const expiresAt = tokenSet.expires_at
-      ? new Date(tokenSet.expires_at * 1000)
-      : tokenSet.expires_in
-        ? new Date(Date.now() + tokenSet.expires_in * 1000)
-        : null;
+    // Extract expiry and authentication_event_id from JWT for accuracy
+    let expiresAt: Date | null = null;
+    let authenticationEventId: string | undefined;
+
+    try {
+      const parts = tokenSet.access_token.split(".");
+      if (parts.length === 3) {
+        const payload = JSON.parse(
+          Buffer.from(parts[1], "base64url").toString("utf-8")
+        );
+        authenticationEventId = payload.authentication_event_id;
+
+        // Use the actual exp claim from JWT (Unix timestamp in seconds)
+        if (payload.exp) {
+          expiresAt = new Date(payload.exp * 1000);
+        }
+      }
+    } catch (jwtError) {
+      console.warn(
+        `[persistTokenSet] Could not extract JWT data for connection ${connection.id}:`,
+        jwtError
+      );
+    }
+
+    // Fallback to calculated expiry if JWT parsing failed
+    if (!expiresAt) {
+      expiresAt = tokenSet.expires_at
+        ? new Date(tokenSet.expires_at * 1000)
+        : tokenSet.expires_in
+          ? new Date(Date.now() + tokenSet.expires_in * 1000)
+          : null;
+    }
 
     if (!expiresAt) {
+      console.warn(
+        `[persistTokenSet] No expiry time available for connection ${connection.id}`
+      );
       return;
     }
 
+    // Check if tokens have actually changed
     const hasChanged =
       tokenSet.access_token !== connection.accessToken ||
       tokenSet.refresh_token !== connection.refreshToken ||
       Math.abs(expiresAt.getTime() - new Date(connection.expiresAt).getTime()) >
-        1000;
+        2000; // 2 second tolerance
 
     if (!hasChanged) {
+      console.log(
+        `[persistTokenSet] Tokens unchanged for connection ${connection.id}`
+      );
       return;
     }
+
+    console.log(
+      `[persistTokenSet] Persisting updated tokens for connection ${connection.id}`
+    );
+    console.log(`  New expiry: ${expiresAt.toISOString()}`);
+    console.log(
+      `  Minutes until expiry: ${Math.floor((expiresAt.getTime() - Date.now()) / (60 * 1000))}`
+    );
 
     await updateXeroTokens({
       id: connection.id,
       accessToken: encryptToken(tokenSet.access_token),
       refreshToken: encryptToken(tokenSet.refresh_token),
       expiresAt,
+      authenticationEventId,
     });
 
+    // Update in-memory connection object
     connection.accessToken = tokenSet.access_token;
     connection.refreshToken = tokenSet.refresh_token;
     connection.expiresAt = expiresAt;
+
+    console.log(
+      `✅ [persistTokenSet] Successfully persisted tokens for connection ${connection.id}`
+    );
   } catch (error) {
-    console.error("Failed to persist Xero token set:", error);
+    console.error(
+      `❌ [persistTokenSet] Failed to persist Xero token set for connection ${connection.id}:`,
+      error
+    );
+    // Don't throw - persistence failure shouldn't break API calls
   }
 }
 

@@ -15,6 +15,10 @@ import type {
   XeroTenant,
 } from "./types";
 
+// In-memory lock to prevent concurrent token refreshes for the same connection
+// Key: connectionId, Value: Promise of ongoing refresh
+const tokenRefreshLocks = new Map<string, Promise<TokenRefreshResult>>();
+
 const XERO_SCOPES = [
   "offline_access",
   "accounting.transactions",
@@ -145,61 +149,42 @@ export async function getDecryptedConnection(
         );
       }
 
-      // Temporary failure - deactivate connection to prevent repeated failures
+      // Temporary failure - DO NOT deactivate, allow retry on next request
       console.warn(
         `⚠️ [Xero Token Refresh] TEMPORARY FAILURE for user ${userId}: ${refreshResult.error}`
       );
-      console.warn("  Deactivating connection to prevent further errors");
+      console.warn(
+        "  Will retry on next request - connection remains active for automatic recovery"
+      );
 
-      // Deactivate the connection - user must reconnect
-      try {
-        await deactivateXeroConnection(connection.id);
-        console.log(
-          `Deactivated Xero connection ${connection.id} due to refresh failure`
-        );
-      } catch (deactivateError) {
-        console.error(
-          `Failed to deactivate Xero connection ${connection.id}:`,
-          deactivateError
-        );
-      }
-
-      // Throw error instead of returning expired tokens
+      // Throw error to indicate refresh failed, but keep connection active
+      // This allows automatic recovery on the next API call
       throw new Error(
-        "Unable to refresh Xero connection. Please reconnect your Xero account in Settings > Integrations."
+        `Unable to refresh Xero token (temporary failure). Please try again in a moment. Error: ${refreshResult.error}`
       );
     } catch (error) {
       // If the error is one of our re-authentication messages, rethrow it
       if (
         error instanceof Error &&
         (error.message.includes("reconnect your Xero account") ||
-          error.message.includes("Unable to refresh Xero connection"))
+          error.message.includes("Unable to refresh Xero token") ||
+          error.message.includes("refresh token has expired"))
       ) {
         throw error;
       }
 
-      // Unexpected error - log and deactivate to be safe
+      // Unexpected error - log but do NOT deactivate (allow automatic recovery)
       console.error(
-        `Unexpected error refreshing Xero token for user ${userId}:`,
+        `⚠️ Unexpected error refreshing Xero token for user ${userId}:`,
         error
       );
+      console.error(
+        "  Connection remains active for automatic recovery on next request"
+      );
 
-      // Deactivate connection on unexpected errors to prevent further issues
-      try {
-        await deactivateXeroConnection(connection.id);
-        console.log(
-          `Deactivated Xero connection ${connection.id} due to unexpected refresh error`
-        );
-      } catch (deactivateError) {
-        console.error(
-          `Failed to deactivate Xero connection ${connection.id}:`,
-          deactivateError
-        );
-      }
-
-      // Throw error requiring reconnection
+      // Throw error but keep connection active for retry
       throw new Error(
-        "An unexpected error occurred with your Xero connection. Please reconnect your Xero account in Settings > Integrations."
+        `Unexpected error refreshing Xero token. Please try again. Error: ${error instanceof Error ? error.message : String(error)}`
       );
     }
   }
@@ -219,6 +204,32 @@ export interface TokenRefreshResult {
 }
 
 export async function refreshXeroToken(
+  connectionId: string,
+  retryWithOldToken = false
+): Promise<TokenRefreshResult> {
+  // Check if there's already a refresh in progress for this connection
+  const existingRefresh = tokenRefreshLocks.get(connectionId);
+  if (existingRefresh) {
+    console.log(
+      `🔒 [refreshXeroToken] Refresh already in progress for connection ${connectionId}, waiting...`
+    );
+    return await existingRefresh;
+  }
+
+  // Create a new refresh promise and store it in the lock map
+  const refreshPromise = performTokenRefresh(
+    connectionId,
+    retryWithOldToken
+  ).finally(() => {
+    // Always remove the lock when done (success or failure)
+    tokenRefreshLocks.delete(connectionId);
+  });
+
+  tokenRefreshLocks.set(connectionId, refreshPromise);
+  return await refreshPromise;
+}
+
+async function performTokenRefresh(
   connectionId: string,
   retryWithOldToken = false
 ): Promise<TokenRefreshResult> {
@@ -374,7 +385,8 @@ export async function refreshXeroToken(
           `Token was updated ${Math.floor(tokenAge / 1000)} seconds ago (< 30 min grace period). Retrying with old token...`
         );
         // Retry once with the old token (within grace period)
-        return await refreshXeroToken(connectionId, true);
+        // Use performTokenRefresh directly to avoid re-acquiring lock
+        return await performTokenRefresh(connectionId, true);
       }
     }
 
