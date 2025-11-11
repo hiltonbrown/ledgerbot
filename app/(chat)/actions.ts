@@ -35,6 +35,43 @@ export async function generateTitleFromUserMessage({
   return title;
 }
 
+export async function generateTitleFromContent({
+  content,
+  kind,
+  modelId,
+}: {
+  content: string;
+  kind: "text" | "code" | "sheet";
+  modelId: string;
+}) {
+  const contentTypeMap = {
+    text: "document",
+    code: "code snippet",
+    sheet: "spreadsheet",
+  };
+
+  const contentType = contentTypeMap[kind];
+  const contentPreview =
+    content.length > 1000 ? `${content.substring(0, 1000)}...` : content;
+
+  const { text: title } = await generateText({
+    model: myProvider.languageModel(modelId),
+    system: `You will generate a short, descriptive title for a ${contentType} based on its content.
+
+Rules:
+- Keep the title between 2-5 words (max 50 characters)
+- Make it descriptive and specific to the content
+- Do not use quotes or colons
+- Focus on the main topic or purpose
+- For spreadsheets: mention the data type (e.g., "Customer Invoices", "Sales Report")
+- For code: mention what it does (e.g., "GST Calculator", "Data Parser")
+- For documents: capture the main subject (e.g., "Revenue Summary", "Tax Guide")`,
+    prompt: `Generate a title for this ${contentType}:\n\n${contentPreview}`,
+  });
+
+  return title.trim();
+}
+
 export async function deleteTrailingMessages({ id }: { id: string }) {
   const messages = await getMessageById({ id });
 

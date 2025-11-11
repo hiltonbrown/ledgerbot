@@ -1,4 +1,5 @@
 import { smoothStream, streamText } from "ai";
+import { generateTitleFromContent } from "@/app/(chat)/actions";
 import { updateDocumentPrompt } from "@/lib/ai/prompts";
 import { myProvider } from "@/lib/ai/providers";
 import { createDocumentHandler } from "@/lib/artifacts/server";
@@ -32,7 +33,21 @@ export const textDocumentHandler = createDocumentHandler<"text">({
       }
     }
 
-    return draftContent;
+    // Generate a short, descriptive title from the content
+    const generatedTitle = await generateTitleFromContent({
+      content: draftContent,
+      kind: "text",
+      modelId,
+    });
+
+    // Update the title in the stream
+    dataStream.write({
+      type: "data-title",
+      data: generatedTitle,
+      transient: true,
+    });
+
+    return { content: draftContent, generatedTitle };
   },
   onUpdateDocument: async ({ document, description, dataStream, modelId }) => {
     let draftContent = "";
