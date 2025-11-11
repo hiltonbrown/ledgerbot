@@ -14,7 +14,7 @@ export function createXeroTools(userId: string) {
   return {
     xero_list_invoices: tool({
       description:
-        "Get a list of invoices from Xero. Can retrieve SALES INVOICES (sent TO customers, Type=ACCREC) or BILLS (received FROM suppliers, Type=ACCPAY). IMPORTANT: When user asks for invoices in a specific month/year, you MUST provide BOTH dateFrom and dateTo parameters to define the complete date range. For example, for 'October 2025' use dateFrom='2025-10-01' and dateTo='2025-10-31'. Use invoiceType parameter to specify which type: 'ACCREC' for sales invoices (default), 'ACCPAY' for bills/supplier invoices.",
+        "Get a list of invoices from Xero. Can retrieve SALES INVOICES (sent TO customers, Type=ACCREC) or BILLS (received FROM suppliers, Type=ACCPAY). IMPORTANT NOTES: (1) Filters by INVOICE DATE (the date the invoice was created), NOT payment date. (2) When user asks for invoices in a specific month/year, you MUST provide BOTH dateFrom and dateTo parameters to define the complete date range. For example, for 'October 2025' use dateFrom='2025-10-01' and dateTo='2025-10-31'. (3) Use invoiceType parameter to specify which type: 'ACCREC' for sales invoices (default), 'ACCPAY' for bills/supplier invoices. (4) This returns only invoice records - P&L reports may include additional transactions like bank transactions, journal entries, and credit notes that won't appear in this list.",
       inputSchema: z.object({
         invoiceType: z
           .enum(["ACCREC", "ACCPAY"])
@@ -294,7 +294,7 @@ export function createXeroTools(userId: string) {
 
     xero_get_profit_and_loss: tool({
       description:
-        "Get profit and loss report from Xero for a specified date range. Use this to analyze revenue, expenses, and profitability over time.",
+        "Get comprehensive profit and loss report from Xero for a specified date range. IMPORTANT: This report includes ALL financial transactions: sales invoices, bills, credit notes, bank transactions, manual journal entries, and payments. Uses the accounting basis configured in Xero (typically ACCRUAL, meaning revenue/expenses recognized when incurred, not when paid). The report may show different totals than invoice lists because it includes bank transactions, journal entries, and other adjustments. For transaction-level analysis, use xero_list_invoices, xero_list_credit_notes, xero_get_bank_transactions, and xero_list_journal_entries separately.",
       inputSchema: z.object({
         fromDate: z
           .string()

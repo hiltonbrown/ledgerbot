@@ -3,10 +3,10 @@
 import {
   BookOpen,
   Bot,
-  Command,
   FileText,
   Home,
   LifeBuoy,
+  Lightbulb,
   MessageSquare,
   Send,
   Settings2,
@@ -214,7 +214,7 @@ export function AppSidebar({
                 }}
               >
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                  <Command className="size-4" />
+                  <Lightbulb className="size-4" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">intellisync</span>
@@ -224,29 +224,6 @@ export function AppSidebar({
                 </div>
               </Link>
             </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem className="mt-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  className="w-full"
-                  onClick={() => {
-                    setOpenMobile(false);
-                    router.push("/");
-                    router.refresh();
-                  }}
-                  size="sm"
-                  type="button"
-                  variant="outline"
-                >
-                  <PlusIcon />
-                  <span>New Chat</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent align="end" className="hidden md:block">
-                Start a new conversation
-              </TooltipContent>
-            </Tooltip>
           </SidebarMenuItem>
           {hasConnections && (
             <SidebarMenuItem className="mt-2">

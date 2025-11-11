@@ -22,12 +22,10 @@ import {
   parseXeroError,
   requiresReconnection,
 } from "@/lib/xero/error-handler";
-import type { RateLimitInfo } from "@/lib/xero/rate-limit-handler";
 import {
   buildPaginationParams,
   extractRateLimitInfo,
   logRateLimitStatus,
-  shouldWaitForRateLimit,
 } from "@/lib/xero/rate-limit-handler";
 import type { DecryptedXeroConnection } from "@/lib/xero/types";
 
@@ -48,7 +46,7 @@ function formatXeroDate(isoDate: string): string {
   return datePart.replace(/-/g, ",");
 }
 
-export interface XeroMCPTool {
+export type XeroMCPTool = {
   name: string;
   description: string;
   inputSchema: {
@@ -56,15 +54,15 @@ export interface XeroMCPTool {
     properties: Record<string, unknown>;
     required?: string[];
   };
-}
+};
 
-export interface XeroMCPToolResult {
+export type XeroMCPToolResult = {
   content: Array<{
     type: "text";
     text: string;
   }>;
   isError?: boolean;
-}
+};
 
 /**
  * Get an authenticated Xero client for a user
@@ -258,12 +256,39 @@ async function paginateXeroAPI<T>(
   let currentPage = 1;
   const effectiveLimit = limit && limit > 0 ? limit : Number.POSITIVE_INFINITY;
   const effectivePageSize = Math.min(Math.max(pageSize, 1), 1000); // Clamp between 1 and 1000
+  let consecutiveEmptyPages = 0;
+  const MAX_CONSECUTIVE_EMPTY = 2; // Stop only after 2 consecutive empty pages
+
+  console.log(
+    `[paginateXeroAPI] Starting pagination: limit=${effectiveLimit}, pageSize=${effectivePageSize}`
+  );
 
   while (allResults.length < effectiveLimit) {
-    const { results: pageResults, headers } = await fetchPage(
-      currentPage,
-      effectivePageSize
+    console.log(
+      `[paginateXeroAPI] Fetching page ${currentPage}, current results: ${allResults.length}`
     );
+
+    let pageResults: T[];
+    let headers: any;
+
+    try {
+      const response = await fetchPage(currentPage, effectivePageSize);
+      pageResults = response.results;
+      headers = response.headers;
+    } catch (error) {
+      console.error(
+        `[paginateXeroAPI] Error fetching page ${currentPage}:`,
+        error
+      );
+      // If we've already got some results, return what we have
+      if (allResults.length > 0) {
+        console.warn(
+          `[paginateXeroAPI] Returning ${allResults.length} results collected before error`
+        );
+        break;
+      }
+      throw error;
+    }
 
     // Track rate limit info from response headers
     if (headers && connectionId) {
@@ -277,28 +302,64 @@ async function paginateXeroAPI<T>(
       }
     }
 
+    // CRITICAL FIX: Only increment empty page counter if we get NO results
+    // Xero can return fewer than pageSize results even when more data exists
     if (!pageResults || pageResults.length === 0) {
-      // No more results
-      break;
-    }
+      consecutiveEmptyPages++;
+      console.log(
+        `[paginateXeroAPI] Page ${currentPage} returned no results (${consecutiveEmptyPages}/${MAX_CONSECUTIVE_EMPTY} consecutive empty)`
+      );
 
-    allResults.push(...pageResults);
+      if (consecutiveEmptyPages >= MAX_CONSECUTIVE_EMPTY) {
+        console.log(
+          `[paginateXeroAPI] Stopping after ${MAX_CONSECUTIVE_EMPTY} consecutive empty pages`
+        );
+        break;
+      }
+    } else {
+      // Reset counter when we get results
+      consecutiveEmptyPages = 0;
+      console.log(
+        `[paginateXeroAPI] Page ${currentPage} returned ${pageResults.length} results`
+      );
 
-    // If we got fewer results than the page size, we're at the end
-    if (pageResults.length < effectivePageSize) {
-      break;
-    }
+      // Add results up to the limit
+      const remainingSlots = effectiveLimit - allResults.length;
+      const resultsToAdd = pageResults.slice(0, remainingSlots);
+      allResults.push(...resultsToAdd);
 
-    // If we've hit the limit, stop
-    if (allResults.length >= effectiveLimit) {
-      break;
+      console.log(
+        `[paginateXeroAPI] Added ${resultsToAdd.length} results, total: ${allResults.length}`
+      );
+
+      // If we've hit the limit exactly, stop
+      if (allResults.length >= effectiveLimit) {
+        console.log(
+          `[paginateXeroAPI] Reached limit of ${effectiveLimit} results`
+        );
+        break;
+      }
+
+      // IMPORTANT: Continue pagination even if we got fewer than pageSize
+      // Xero may return partial pages due to filters, permissions, or data gaps
+      // Only stop after consecutive empty pages (checked above)
     }
 
     currentPage++;
+
+    // Safety limit to prevent infinite loops
+    if (currentPage > 100) {
+      console.warn(
+        `[paginateXeroAPI] Safety limit reached: 100 pages, returning ${allResults.length} results`
+      );
+      break;
+    }
   }
 
-  // Return only up to the limit
-  return limit && limit > 0 ? allResults.slice(0, limit) : allResults;
+  console.log(
+    `[paginateXeroAPI] Completed: fetched ${allResults.length} results across ${currentPage - 1} pages`
+  );
+  return allResults;
 }
 
 /**
@@ -308,7 +369,7 @@ export const xeroMCPTools: XeroMCPTool[] = [
   {
     name: "xero_list_invoices",
     description:
-      "Get a list of invoices from Xero. Can retrieve SALES INVOICES (sent TO customers, Type=ACCREC) or BILLS (received FROM suppliers, Type=ACCPAY). IMPORTANT: When filtering by month/year, you MUST provide BOTH dateFrom and dateTo to define the complete date range. For example, for 'October 2025' use dateFrom='2025-10-01' and dateTo='2025-10-31'. Use invoiceType parameter to specify which type: 'ACCREC' for sales invoices (default), 'ACCPAY' for bills/supplier invoices. Uses pagination for efficient data retrieval.",
+      "Get a list of invoices from Xero. Can retrieve SALES INVOICES (sent TO customers, Type=ACCREC) or BILLS (received FROM suppliers, Type=ACCPAY). IMPORTANT NOTES: (1) Filters by INVOICE DATE (the date the invoice was created), NOT payment date. (2) When filtering by month/year, you MUST provide BOTH dateFrom and dateTo to define the complete date range. For example, for 'October 2025' use dateFrom='2025-10-01' and dateTo='2025-10-31'. (3) Use invoiceType parameter to specify which type: 'ACCREC' for sales invoices (default), 'ACCPAY' for bills/supplier invoices. (4) Uses pagination for efficient data retrieval. (5) This returns only invoice records - P&L reports may include additional transactions like bank transactions, journal entries, and credit notes that won't appear in this list.",
     inputSchema: {
       type: "object",
       properties: {
@@ -574,7 +635,7 @@ export const xeroMCPTools: XeroMCPTool[] = [
   {
     name: "xero_get_profit_and_loss",
     description:
-      "Get profit and loss report from Xero for a specified date range. Shows revenue, expenses, and net profit.",
+      "Get comprehensive profit and loss report from Xero for a specified date range. IMPORTANT: This report includes ALL financial transactions: sales invoices, bills, credit notes, bank transactions, manual journal entries, and payments. Uses the accounting basis configured in Xero (typically ACCRUAL, meaning revenue/expenses recognized when incurred, not when paid). The report may show different totals than invoice lists because it includes bank transactions, journal entries, and other adjustments. For transaction-level analysis, use xero_list_invoices, xero_list_credit_notes, xero_get_bank_transactions, and xero_list_journal_entries separately.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1231,12 +1292,12 @@ export async function executeXeroMCPTool(
   toolName: string,
   args: Record<string, unknown>
 ): Promise<XeroMCPToolResult> {
-  let connectionId: string | undefined;
+  let _connectionId: string | undefined;
   let parsedError: ParsedXeroError | undefined;
 
   try {
     const { client, connection } = await getXeroClient(userId);
-    connectionId = connection.id;
+    _connectionId = connection.id;
 
     try {
       // Execute the Xero API operation
@@ -1346,18 +1407,23 @@ async function executeXeroToolOperation(
         // ACCPAY = Accounts Payable (bills from suppliers)
         const type = (invoiceType as string) || "ACCREC";
         whereClauses.push(`Type=="${type}"`);
-        if (status) whereClauses.push(`Status=="${status}"`);
-        if (contactId)
+        if (status) {
+          whereClauses.push(`Status=="${status}"`);
+        }
+        if (contactId) {
           whereClauses.push(`Contact.ContactID==Guid("${contactId}")`);
+        }
         // Xero API date filter format: Date>=DateTime(2025,10,01) - comma-separated
-        if (dateFrom)
+        if (dateFrom) {
           whereClauses.push(
             `Date>=DateTime(${formatXeroDate(dateFrom as string)})`
           );
-        if (dateTo)
+        }
+        if (dateTo) {
           whereClauses.push(
             `Date<=DateTime(${formatXeroDate(dateTo as string)})`
           );
+        }
 
         const where =
           whereClauses.length > 0 ? whereClauses.join(" AND ") : undefined;
@@ -1435,6 +1501,25 @@ async function executeXeroToolOperation(
           connection.id
         );
 
+        // Validate results before returning
+        if (!Array.isArray(allInvoices)) {
+          console.warn(
+            `[xero_list_invoices] Expected array but got: ${typeof allInvoices}`
+          );
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify([], null, 2),
+              },
+            ],
+          };
+        }
+
+        console.log(
+          `[xero_list_invoices] Successfully retrieved ${allInvoices.length} invoices`
+        );
+
         return {
           content: [
             {
@@ -1447,7 +1532,9 @@ async function executeXeroToolOperation(
 
       case "xero_get_invoice": {
         const { invoiceId } = args;
-        if (!invoiceId) throw new Error("invoiceId is required");
+        if (!invoiceId) {
+          throw new Error("invoiceId is required");
+        }
 
         const response = await client.accountingApi.getInvoice(
           connection.tenantId,
@@ -1543,7 +1630,9 @@ async function executeXeroToolOperation(
 
       case "xero_get_contact": {
         const { contactId } = args;
-        if (!contactId) throw new Error("contactId is required");
+        if (!contactId) {
+          throw new Error("contactId is required");
+        }
 
         const response = await client.accountingApi.getContact(
           connection.tenantId,
@@ -1609,12 +1698,16 @@ async function executeXeroToolOperation(
           let journals = response.body.manualJournals || [];
           if (dateFrom || dateTo) {
             journals = journals.filter((journal) => {
-              if (!journal.date) return false;
+              if (!journal.date) {
+                return false;
+              }
               const journalDate = new Date(journal.date);
-              if (dateFrom && journalDate < new Date(dateFrom as string))
+              if (dateFrom && journalDate < new Date(dateFrom as string)) {
                 return false;
-              if (dateTo && journalDate > new Date(dateTo as string))
+              }
+              if (dateTo && journalDate > new Date(dateTo as string)) {
                 return false;
+              }
               return true;
             });
           }
@@ -1654,12 +1747,16 @@ async function executeXeroToolOperation(
         let journals = allJournals;
         if (dateFrom || dateTo) {
           journals = journals.filter((journal) => {
-            if (!journal.date) return false;
+            if (!journal.date) {
+              return false;
+            }
             const journalDate = new Date(journal.date);
-            if (dateFrom && journalDate < new Date(dateFrom as string))
+            if (dateFrom && journalDate < new Date(dateFrom as string)) {
               return false;
-            if (dateTo && journalDate > new Date(dateTo as string))
+            }
+            if (dateTo && journalDate > new Date(dateTo as string)) {
               return false;
+            }
             return true;
           });
         }
@@ -1678,17 +1775,20 @@ async function executeXeroToolOperation(
         const { bankAccountId, dateFrom, dateTo, limit, page, pageSize } = args;
 
         const whereClauses: string[] = [];
-        if (bankAccountId)
+        if (bankAccountId) {
           whereClauses.push(`BankAccount.AccountID==Guid("${bankAccountId}")`);
+        }
         // Xero API date filter format: Date>=DateTime(2025,10,01) - comma-separated
-        if (dateFrom)
+        if (dateFrom) {
           whereClauses.push(
             `Date>=DateTime(${formatXeroDate(dateFrom as string)})`
           );
-        if (dateTo)
+        }
+        if (dateTo) {
           whereClauses.push(
             `Date<=DateTime(${formatXeroDate(dateTo as string)})`
           );
+        }
 
         const where =
           whereClauses.length > 0 ? whereClauses.join(" AND ") : undefined;
@@ -1778,16 +1878,20 @@ async function executeXeroToolOperation(
         // ACCPAYCREDIT = Purchase credit notes (received from suppliers)
         const type = (creditNoteType as string) || "ACCRECCREDIT";
         whereClauses.push(`Type=="${type}"`);
-        if (status) whereClauses.push(`Status=="${status}"`);
+        if (status) {
+          whereClauses.push(`Status=="${status}"`);
+        }
         // Xero API date filter format: Date>=DateTime(2025,10,01) - comma-separated
-        if (dateFrom)
+        if (dateFrom) {
           whereClauses.push(
             `Date>=DateTime(${formatXeroDate(dateFrom as string)})`
           );
-        if (dateTo)
+        }
+        if (dateTo) {
           whereClauses.push(
             `Date<=DateTime(${formatXeroDate(dateTo as string)})`
           );
+        }
 
         const where =
           whereClauses.length > 0 ? whereClauses.join(" AND ") : undefined;
@@ -1866,14 +1970,16 @@ async function executeXeroToolOperation(
 
         const whereClauses: string[] = [];
         // Xero API date filter format: Date>=DateTime(2025,10,01) - comma-separated
-        if (dateFrom)
+        if (dateFrom) {
           whereClauses.push(
             `Date>=DateTime(${formatXeroDate(dateFrom as string)})`
           );
-        if (dateTo)
+        }
+        if (dateTo) {
           whereClauses.push(
             `Date<=DateTime(${formatXeroDate(dateTo as string)})`
           );
+        }
 
         const where =
           whereClauses.length > 0 ? whereClauses.join(" AND ") : undefined;
@@ -2439,10 +2545,18 @@ async function executeXeroToolOperation(
           invoiceID: invoiceId as string,
         };
 
-        if (contactId) invoice.contact = { contactID: contactId as string };
-        if (date) invoice.date = date as string;
-        if (dueDate) invoice.dueDate = dueDate as string;
-        if (reference) invoice.reference = reference as string;
+        if (contactId) {
+          invoice.contact = { contactID: contactId as string };
+        }
+        if (date) {
+          invoice.date = date as string;
+        }
+        if (dueDate) {
+          invoice.dueDate = dueDate as string;
+        }
+        if (reference) {
+          invoice.reference = reference as string;
+        }
         if (status) {
           invoice.status =
             status === "AUTHORISED"
@@ -2602,8 +2716,12 @@ async function executeXeroToolOperation(
           contactID: contactId as string,
         };
 
-        if (name) contact.name = name as string;
-        if (email) contact.emailAddress = email as string;
+        if (name) {
+          contact.name = name as string;
+        }
+        if (email) {
+          contact.emailAddress = email as string;
+        }
         if (phone) {
           contact.phones = [
             {
@@ -2924,10 +3042,18 @@ async function executeXeroToolOperation(
           creditNoteID: creditNoteId as string,
         };
 
-        if (contactId) creditNote.contact = { contactID: contactId as string };
-        if (date) creditNote.date = date as string;
-        if (reference) creditNote.reference = reference as string;
-        if (status) creditNote.status = status as CreditNote.StatusEnum;
+        if (contactId) {
+          creditNote.contact = { contactID: contactId as string };
+        }
+        if (date) {
+          creditNote.date = date as string;
+        }
+        if (reference) {
+          creditNote.reference = reference as string;
+        }
+        if (status) {
+          creditNote.status = status as CreditNote.StatusEnum;
+        }
         if (lineItems) {
           creditNote.lineItems = (lineItems as any[]).map((item) => ({
             description: item.description,

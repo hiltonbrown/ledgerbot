@@ -4,7 +4,6 @@
 
 import "server-only";
 
-import type { XeroClient } from "xero-node";
 import { addDays } from "@/lib/util/dates";
 import { getDecryptedConnection } from "@/lib/xero/connection-manager";
 
@@ -86,7 +85,8 @@ export async function getXeroProvider(userId: string): Promise<XeroProvider> {
       return getMockXeroProvider();
     }
 
-    return getRealXeroProvider(connection.tenantId);
+    // CRITICAL FIX: Pass the full connection object, not just tenantId
+    return getRealXeroProvider(connection);
   } catch (error) {
     console.error(
       "[AR Xero] Error getting connection, falling back to mock:",
@@ -97,24 +97,108 @@ export async function getXeroProvider(userId: string): Promise<XeroProvider> {
 }
 
 /**
- * Create real Xero provider
+ * Create real Xero provider with proper pagination and error handling
+ * CRITICAL: Must initialize XeroClient with actual tokens from connection
  */
-function getRealXeroProvider(tenantId: string): XeroProvider {
+function getRealXeroProvider(
+  connection: import("@/lib/xero/types").DecryptedXeroConnection
+): XeroProvider {
   // Import xero-node dynamically to avoid build issues when not configured
   const { XeroClient } = require("xero-node");
+
+  // CRITICAL FIX: Create client with proper configuration
   const xero = new XeroClient({
     clientId: process.env.XERO_CLIENT_ID!,
     clientSecret: process.env.XERO_CLIENT_SECRET!,
     redirectUris: [process.env.XERO_REDIRECT_URI!],
     scopes: ["accounting.transactions", "accounting.contacts"],
+    httpTimeout: 10_000, // 10 seconds
   });
+
+  // CRITICAL FIX: Initialize client and set tokens before ANY API calls
+  let initialized = false;
+  const ensureInitialized = async () => {
+    if (!initialized) {
+      await xero.initialize();
+      await xero.setTokenSet({
+        access_token: connection.accessToken,
+        refresh_token: connection.refreshToken,
+        token_type: "Bearer",
+        expires_in: Math.floor(
+          (new Date(connection.expiresAt).getTime() - Date.now()) / 1000
+        ),
+      });
+      initialized = true;
+      console.log("[AR Xero] Client initialized with active tokens");
+    }
+  };
+
+  /**
+   * Helper to format ISO date to Xero DateTime format
+   * @param isoDate - Date string in ISO format (YYYY-MM-DD)
+   * @returns Xero DateTime format (YYYY,MM,DD)
+   */
+  const formatXeroDate = (isoDate: string): string => {
+    const datePart = isoDate.split("T")[0].trim();
+    return datePart.replace(/-/g, ",");
+  };
+
+  /**
+   * Paginate through Xero API results
+   */
+  const paginateResults = async <T>(
+    fetchPage: (page: number) => Promise<T[]>
+  ): Promise<T[]> => {
+    const allResults: T[] = [];
+    let currentPage = 1;
+    let consecutiveEmptyPages = 0;
+    const MAX_CONSECUTIVE_EMPTY = 2;
+    const MAX_PAGES = 100;
+
+    while (currentPage <= MAX_PAGES) {
+      try {
+        const pageResults = await fetchPage(currentPage);
+
+        if (!pageResults || pageResults.length === 0) {
+          consecutiveEmptyPages++;
+          if (consecutiveEmptyPages >= MAX_CONSECUTIVE_EMPTY) {
+            break;
+          }
+        } else {
+          consecutiveEmptyPages = 0;
+          allResults.push(...pageResults);
+        }
+
+        currentPage++;
+      } catch (error) {
+        console.error(`[AR Xero] Error fetching page ${currentPage}:`, error);
+        // Return what we have so far rather than failing completely
+        if (allResults.length > 0) {
+          console.warn(
+            `[AR Xero] Returning ${allResults.length} results collected before error`
+          );
+          break;
+        }
+        throw error;
+      }
+    }
+
+    return allResults;
+  };
 
   return {
     isUsingMock: false,
 
     async listInvoices(params) {
       try {
+        // CRITICAL FIX: Ensure client is initialized before ANY API calls
+        await ensureInitialized();
+
         const where = [];
+
+        // CRITICAL FIX: Always filter for ACCREC (customer invoices) in AR context
+        where.push('Type=="ACCREC"');
+
         if (params.status) {
           where.push(`Status=="${params.status.toUpperCase()}"`);
         }
@@ -124,33 +208,56 @@ function getRealXeroProvider(tenantId: string): XeroProvider {
             .join(" OR ");
           where.push(`(${contactFilter})`);
         }
+
+        // CRITICAL FIX: Use proper Xero DateTime format
         if (params.dateFrom) {
-          where.push(`Date>=DateTime(${params.dateFrom})`);
+          where.push(`Date>=DateTime(${formatXeroDate(params.dateFrom)})`);
         }
         if (params.dateTo) {
-          where.push(`Date<=DateTime(${params.dateTo})`);
+          where.push(`Date<=DateTime(${formatXeroDate(params.dateTo)})`);
         }
 
-        const response = await xero.accountingApi.getInvoices(
-          tenantId,
-          undefined,
-          where.length > 0 ? where.join(" AND ") : undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined
-        );
+        const whereClause = where.length > 0 ? where.join(" AND ") : undefined;
 
-        return response.body.invoices || [];
+        console.log(`[AR Xero] Fetching invoices with WHERE: ${whereClause}`);
+
+        // CRITICAL FIX: Use pagination to get ALL invoices, not just first page
+        const allInvoices = await paginateResults(async (page) => {
+          const response = await xero.accountingApi.getInvoices(
+            connection.tenantId,
+            undefined, // ifModifiedSince
+            whereClause, // where
+            undefined, // order
+            undefined, // IDs
+            undefined, // invoiceNumbers
+            undefined, // contactIDs
+            undefined, // statuses
+            page, // page number
+            undefined, // includeArchived
+            undefined, // createdByMyApp
+            undefined, // unitdp
+            undefined, // summaryOnly
+            100 // pageSize
+          );
+
+          return response.body.invoices || [];
+        });
+
+        console.log(`[AR Xero] Retrieved ${allInvoices.length} total invoices`);
+        return allInvoices;
       } catch (error) {
         console.error("[AR Xero] Error listing invoices:", error);
-        throw new Error("Failed to list invoices from Xero");
+        throw new Error(
+          `Failed to list invoices from Xero: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
       }
     },
 
     async markPaid(invoiceId, payment) {
       try {
+        // CRITICAL FIX: Ensure client is initialized before ANY API calls
+        await ensureInitialized();
+
         const paymentData = {
           invoice: { invoiceID: invoiceId },
           account: { code: "200" }, // Default bank account
@@ -159,7 +266,30 @@ function getRealXeroProvider(tenantId: string): XeroProvider {
           reference: payment.reference,
         };
 
-        await xero.accountingApi.createPayment(tenantId, paymentData);
+        const response = await xero.accountingApi.createPayment(
+          connection.tenantId,
+          paymentData
+        );
+
+        // Validate response
+        if (!response.body.payments || response.body.payments.length === 0) {
+          return {
+            success: false,
+            error: "Payment creation returned no results",
+          };
+        }
+
+        const createdPayment = response.body.payments[0];
+        if (createdPayment.hasValidationErrors) {
+          return {
+            success: false,
+            error: `Validation errors: ${JSON.stringify(createdPayment.validationErrors)}`,
+          };
+        }
+
+        console.log(
+          `[AR Xero] Successfully created payment for invoice ${invoiceId}`
+        );
         return { success: true };
       } catch (error) {
         console.error("[AR Xero] Error marking invoice paid:", error);
@@ -172,24 +302,43 @@ function getRealXeroProvider(tenantId: string): XeroProvider {
 
     async listContacts(params) {
       try {
+        // CRITICAL FIX: Ensure client is initialized before ANY API calls
+        await ensureInitialized();
+
         const where = [];
         if (params?.isCustomer) {
           where.push("IsCustomer==true");
         }
 
-        const response = await xero.accountingApi.getContacts(
-          tenantId,
-          undefined,
-          where.length > 0 ? where.join(" AND ") : undefined,
-          undefined,
-          undefined,
-          params?.searchTerm
-        );
+        const whereClause = where.length > 0 ? where.join(" AND ") : undefined;
 
-        return response.body.contacts || [];
+        console.log(`[AR Xero] Fetching contacts with WHERE: ${whereClause}`);
+
+        // CRITICAL FIX: Use pagination to get ALL contacts
+        const allContacts = await paginateResults(async (page) => {
+          const response = await xero.accountingApi.getContacts(
+            connection.tenantId,
+            undefined, // ifModifiedSince
+            whereClause, // where
+            undefined, // order
+            undefined, // IDs
+            page, // page number
+            undefined, // includeArchived
+            undefined, // summaryOnly
+            params?.searchTerm, // searchTerm
+            100 // pageSize
+          );
+
+          return response.body.contacts || [];
+        });
+
+        console.log(`[AR Xero] Retrieved ${allContacts.length} total contacts`);
+        return allContacts;
       } catch (error) {
         console.error("[AR Xero] Error listing contacts:", error);
-        throw new Error("Failed to list contacts from Xero");
+        throw new Error(
+          `Failed to list contacts from Xero: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
       }
     },
   };
@@ -325,13 +474,13 @@ function getMockXeroProvider(): XeroProvider {
 
       if (params.status) {
         filtered = filtered.filter(
-          (inv) => inv.status === params.status!.toUpperCase()
+          (inv) => inv.status === params.status?.toUpperCase()
         );
       }
 
       if (params.contactIds && params.contactIds.length > 0) {
         filtered = filtered.filter((inv) =>
-          params.contactIds!.includes(inv.contact.contactID)
+          params.contactIds?.includes(inv.contact.contactID)
         );
       }
 
