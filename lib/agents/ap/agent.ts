@@ -8,8 +8,10 @@ import {
   assessPaymentRiskTool,
   checkDuplicateBillsTool,
   createAPXeroTools,
+  extractInvoiceDataTool,
   generateEmailDraftTool,
   generatePaymentProposalTool,
+  matchVendorTool,
   suggestBillCodingTool,
   validateABNTool,
 } from "./tools";
@@ -39,6 +41,8 @@ export const apAgent = new Agent({
   instructions: SYSTEM_INSTRUCTIONS,
   model: myProvider.languageModel("anthropic-claude-sonnet-4-5"),
   tools: {
+    extractInvoiceData: extractInvoiceDataTool,
+    matchVendor: matchVendorTool,
     validateABN: validateABNTool,
     suggestBillCoding: suggestBillCodingTool,
     checkDuplicateBills: checkDuplicateBillsTool,
@@ -71,6 +75,8 @@ export function createAPAgentWithXero(userId: string, modelId?: string) {
     instructions: SYSTEM_INSTRUCTIONS,
     model: myProvider.languageModel(modelId || "anthropic-claude-sonnet-4-5"),
     tools: {
+      extractInvoiceData: extractInvoiceDataTool,
+      matchVendor: matchVendorTool,
       validateABN: validateABNTool,
       suggestBillCoding: suggestBillCodingTool,
       checkDuplicateBills: checkDuplicateBillsTool,

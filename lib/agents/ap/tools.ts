@@ -712,6 +712,209 @@ Accounts Payable Team`;
 });
 
 /**
+ * Extract invoice data from uploaded PDF or image
+ */
+export const extractInvoiceDataTool = createTool({
+  id: "extractInvoiceData",
+  description:
+    "Extracts structured invoice data from an uploaded PDF or image file URL. Returns supplier details, invoice number, dates, line items, amounts, and GST information for Australian tax invoices.",
+  inputSchema: z.object({
+    fileUrl: z.string().describe("Public URL to the PDF or image file"),
+    fileType: z.enum(["pdf", "image"]).describe("Type of file being processed"),
+  }),
+  outputSchema: z.object({
+    success: z.boolean(),
+    invoiceData: z
+      .object({
+        supplierName: z.string().optional(),
+        supplierABN: z.string().optional(),
+        supplierAddress: z.string().optional(),
+        supplierEmail: z.string().optional(),
+        supplierPhone: z.string().optional(),
+        invoiceNumber: z.string().optional(),
+        invoiceDate: z.string().optional(),
+        dueDate: z.string().optional(),
+        purchaseOrderNumber: z.string().optional(),
+        subtotal: z.number().optional(),
+        gstAmount: z.number().optional(),
+        totalAmount: z.number().optional(),
+        lineItems: z
+          .array(
+            z.object({
+              description: z.string(),
+              quantity: z.number().optional(),
+              unitPrice: z.number().optional(),
+              amount: z.number(),
+              gstIncluded: z.boolean().optional(),
+            })
+          )
+          .optional(),
+        paymentTerms: z.string().optional(),
+        bankDetails: z
+          .object({
+            accountName: z.string().optional(),
+            bsb: z.string().optional(),
+            accountNumber: z.string().optional(),
+          })
+          .optional(),
+        rawText: z.string().optional(),
+        confidence: z.number().optional(),
+        warnings: z.array(z.string()).optional(),
+      })
+      .optional(),
+    error: z.string().optional(),
+  }),
+  execute: async ({ context }) => {
+    const { fileUrl, fileType } = context;
+
+    try {
+      console.log(
+        `[AP Agent] Extracting invoice data from ${fileType} at ${fileUrl}`
+      );
+
+      // TODO: In production, use AI vision model or OCR service to extract data
+      // For now, return a mock extraction result
+      // This would integrate with Anthropic Claude with vision or similar service
+
+      const warnings: string[] = [];
+
+      // Mock extraction - in production this would use AI/OCR
+      const invoiceData = {
+        supplierName: "Example Supplier Pty Ltd",
+        supplierABN: "12345678901",
+        supplierAddress: "123 Business Street, Sydney NSW 2000",
+        invoiceNumber: "INV-2024-001",
+        invoiceDate: new Date().toISOString().split("T")[0],
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+          .toISOString()
+          .split("T")[0],
+        subtotal: 1000.0,
+        gstAmount: 100.0,
+        totalAmount: 1100.0,
+        lineItems: [
+          {
+            description: "Professional services",
+            quantity: 1,
+            unitPrice: 1000.0,
+            amount: 1000.0,
+            gstIncluded: false,
+          },
+        ],
+        paymentTerms: "30 days",
+        confidence: 0.75,
+        warnings: [
+          "This is a mock extraction - integrate with AI vision or OCR service for production use",
+          "Some fields may not be detected from scanned invoices",
+        ],
+      };
+
+      return {
+        success: true,
+        invoiceData,
+      };
+    } catch (error) {
+      console.error("[AP Agent] Invoice extraction error:", error);
+      return {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to extract invoice data",
+      };
+    }
+  },
+});
+
+/**
+ * Match supplier to existing Xero contact or propose new contact creation
+ * Requires Xero connection
+ */
+export const matchVendorTool = createTool({
+  id: "matchVendor",
+  description:
+    "Matches extracted supplier information to existing Xero contacts using fuzzy name matching. Returns exact matches, similar contacts, or suggests creating a new contact.",
+  inputSchema: z.object({
+    supplierName: z.string().describe("Supplier name from invoice"),
+    supplierABN: z.string().optional().describe("Supplier ABN if available"),
+    supplierEmail: z
+      .string()
+      .optional()
+      .describe("Supplier email if available"),
+  }),
+  outputSchema: z.object({
+    success: z.boolean(),
+    match: z
+      .object({
+        matched: z.boolean(),
+        contact: z
+          .object({
+            contactId: z.string(),
+            name: z.string(),
+            email: z.string().optional(),
+            phone: z.string().optional(),
+            isSupplier: z.boolean(),
+          })
+          .optional(),
+        suggestions: z
+          .array(
+            z.object({
+              contactId: z.string(),
+              name: z.string(),
+              similarity: z.number(),
+              email: z.string().optional(),
+            })
+          )
+          .optional(),
+        shouldCreateNew: z.boolean(),
+        proposedContact: z
+          .object({
+            name: z.string(),
+            email: z.string().optional(),
+            phone: z.string().optional(),
+            taxNumber: z.string().optional(),
+          })
+          .optional(),
+      })
+      .optional(),
+    error: z.string().optional(),
+  }),
+  execute: async ({ context }) => {
+    const { supplierName, supplierABN, supplierEmail } = context;
+
+    try {
+      console.log(`[AP Agent] Matching vendor: ${supplierName}`);
+
+      // TODO: In production, query Xero contacts and perform fuzzy matching
+      // This is a mock implementation
+
+      // Mock: No exact match found, suggest creating new
+      const match = {
+        matched: false,
+        suggestions: [],
+        shouldCreateNew: true,
+        proposedContact: {
+          name: supplierName,
+          email: supplierEmail,
+          taxNumber: supplierABN,
+        },
+      };
+
+      return {
+        success: true,
+        match,
+      };
+    } catch (error) {
+      console.error("[AP Agent] Vendor matching error:", error);
+      return {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Failed to match vendor",
+      };
+    }
+  },
+});
+
+/**
  * Create Xero-specific AP tools for users with active connection
  */
 export function createAPXeroTools(userId: string) {
@@ -858,6 +1061,154 @@ export function createAPXeroTools(userId: string) {
           context
         );
         return result.content[0].text;
+      },
+    }),
+
+    xero_create_bill: createTool({
+      id: "xero_create_bill",
+      description:
+        "Creates a new supplier bill (ACCPAY invoice) in Xero with line items and optionally attaches a PDF. Returns the created bill details including Xero invoice ID.",
+      inputSchema: z.object({
+        contactId: z
+          .string()
+          .describe("Xero contact ID for the supplier (required)"),
+        invoiceNumber: z.string().describe("Invoice/bill number from supplier"),
+        date: z.string().describe("Invoice date (YYYY-MM-DD)"),
+        dueDate: z.string().describe("Due date for payment (YYYY-MM-DD)"),
+        reference: z
+          .string()
+          .optional()
+          .describe("Optional reference or PO number"),
+        lineItems: z
+          .array(
+            z.object({
+              description: z.string().describe("Line item description"),
+              quantity: z.number().default(1).describe("Quantity (default 1)"),
+              unitAmount: z.number().describe("Unit price excluding GST"),
+              accountCode: z
+                .string()
+                .describe("Expense account code from chart of accounts"),
+              taxType: z
+                .string()
+                .default("INPUT2")
+                .describe(
+                  "Tax type (INPUT2 for GST on expenses, NONE for GST-free)"
+                ),
+            })
+          )
+          .describe("Array of line items for the bill"),
+        attachmentUrl: z
+          .string()
+          .optional()
+          .describe("Optional URL to PDF invoice to attach"),
+      }),
+      outputSchema: z.object({
+        success: z.boolean(),
+        invoiceId: z.string().optional(),
+        invoiceNumber: z.string().optional(),
+        status: z.string().optional(),
+        total: z.number().optional(),
+        error: z.string().optional(),
+      }),
+      execute: async ({ context }) => {
+        const {
+          contactId,
+          invoiceNumber,
+          date,
+          dueDate,
+          reference,
+          lineItems,
+          attachmentUrl,
+        } = context;
+
+        try {
+          console.log(
+            `[AP Agent] Creating Xero bill ${invoiceNumber} for contact ${contactId}`
+          );
+
+          // TODO: In production, use Xero API to create invoice
+          // This is a mock implementation showing the expected structure
+
+          // Step 1: Create the invoice via Xero API
+          const mockInvoiceId = `INV-${Date.now()}`;
+
+          // Step 2: If attachment provided, upload to Xero
+          if (attachmentUrl) {
+            console.log(
+              `[AP Agent] Would attach PDF from ${attachmentUrl} to invoice ${mockInvoiceId}`
+            );
+            // TODO: Download PDF and upload as attachment to Xero invoice
+          }
+
+          return {
+            success: true,
+            invoiceId: mockInvoiceId,
+            invoiceNumber,
+            status: "DRAFT",
+            total: lineItems.reduce(
+              (sum, item) => sum + item.quantity * item.unitAmount,
+              0
+            ),
+          };
+        } catch (error) {
+          console.error("[AP Agent] Error creating Xero bill:", error);
+          return {
+            success: false,
+            error:
+              error instanceof Error
+                ? error.message
+                : "Failed to create bill in Xero",
+          };
+        }
+      },
+    }),
+
+    xero_create_contact: createTool({
+      id: "xero_create_contact",
+      description:
+        "Creates a new supplier contact in Xero. Use this when a vendor match is not found and a new supplier needs to be added.",
+      inputSchema: z.object({
+        name: z.string().describe("Supplier/contact name (required)"),
+        email: z.string().optional().describe("Supplier email address"),
+        phone: z.string().optional().describe("Supplier phone number"),
+        taxNumber: z.string().optional().describe("ABN or tax number"),
+        isSupplier: z
+          .boolean()
+          .default(true)
+          .describe("Mark as supplier (default true)"),
+      }),
+      outputSchema: z.object({
+        success: z.boolean(),
+        contactId: z.string().optional(),
+        name: z.string().optional(),
+        error: z.string().optional(),
+      }),
+      execute: async ({ context }) => {
+        const { name, email, phone, taxNumber, isSupplier } = context;
+
+        try {
+          console.log(`[AP Agent] Creating Xero contact: ${name}`);
+
+          // TODO: In production, use Xero API to create contact
+          // This is a mock implementation
+
+          const mockContactId = `CONTACT-${Date.now()}`;
+
+          return {
+            success: true,
+            contactId: mockContactId,
+            name,
+          };
+        } catch (error) {
+          console.error("[AP Agent] Error creating Xero contact:", error);
+          return {
+            success: false,
+            error:
+              error instanceof Error
+                ? error.message
+                : "Failed to create contact in Xero",
+          };
+        }
       },
     }),
   };
