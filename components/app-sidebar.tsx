@@ -1,12 +1,24 @@
 "use client";
 
-import { UserButton } from "@clerk/nextjs";
-import { Home, Moon, Settings2, Sun, Users } from "lucide-react";
+import {
+  BookOpen,
+  Bot,
+  Command,
+  FileText,
+  Home,
+  LifeBuoy,
+  MessageSquare,
+  Send,
+  Settings2,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { PlusIcon } from "@/components/icons";
+import { NavMain } from "@/components/nav-main";
+import { NavSecondary } from "@/components/nav-secondary";
+import { NavUser } from "@/components/nav-user";
 import { SidebarHistory } from "@/components/sidebar-history";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +35,7 @@ import {
   SidebarFooter,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
@@ -45,7 +58,6 @@ export function AppSidebar({
 }) {
   const router = useRouter();
   const { setOpenMobile } = useSidebar();
-  const { setTheme, resolvedTheme } = useTheme();
   const [isSwitching, setIsSwitching] = useState(false);
   const [selectedConnectionId, setSelectedConnectionId] = useState<string>("");
 
@@ -101,116 +113,175 @@ export function AppSidebar({
   const selectValue =
     selectedConnectionId === "" ? undefined : selectedConnectionId;
 
+  const navMain = [
+    {
+      title: "Chat",
+      url: "/",
+      icon: MessageSquare,
+      isActive: true,
+    },
+    {
+      title: "Agents",
+      url: "/agents",
+      icon: Bot,
+      items: [
+        {
+          title: "Document Processing",
+          url: "/agents/docmanagement",
+        },
+        {
+          title: "Reconciliations",
+          url: "/agents/reconciliations",
+        },
+        {
+          title: "Compliance",
+          url: "/agents/compliance",
+        },
+        {
+          title: "Analytics",
+          url: "/agents/analytics",
+        },
+        {
+          title: "Forecasting",
+          url: "/agents/forecasting",
+        },
+        {
+          title: "Q&A",
+          url: "/agents/qanda",
+        },
+        {
+          title: "Accounts Payable",
+          url: "/agents/ap",
+        },
+        {
+          title: "Accounts Receivable",
+          url: "/agents/ar",
+        },
+        {
+          title: "Workflow",
+          url: "/agents/workflow",
+        },
+      ],
+    },
+    {
+      title: "Settings",
+      url: "/settings",
+      icon: Settings2,
+      items: [
+        {
+          title: "Personalisation",
+          url: "/settings/personalisation",
+        },
+        {
+          title: "Integrations",
+          url: "/settings/integrations",
+        },
+        {
+          title: "Files",
+          url: "/settings/files",
+        },
+        {
+          title: "Usage",
+          url: "/settings/usage",
+        },
+      ],
+    },
+  ];
+
+  const navSecondary = [
+    {
+      title: "Support",
+      url: "#",
+      icon: LifeBuoy,
+    },
+    {
+      title: "Feedback",
+      url: "#",
+      icon: Send,
+    },
+  ];
+
   return (
-    <Sidebar className="group-data-[side=left]:border-r-0">
+    <Sidebar variant="inset" className="group-data-[side=left]:border-r-0">
       <SidebarHeader>
         <SidebarMenu>
-          <div className="flex flex-row items-center justify-between">
-            <Link
-              className="flex flex-row items-center gap-3"
-              href="/"
-              onClick={() => {
-                setOpenMobile(false);
-              }}
-            >
-              <span className="cursor-pointer rounded-md px-2 font-semibold text-lg hover:bg-muted">
-                intellisync
-              </span>
-            </Link>
+          <SidebarMenuItem>
+            <SidebarMenuButton size="lg" asChild>
+              <Link
+                href="/"
+                onClick={() => {
+                  setOpenMobile(false);
+                }}
+              >
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                  <Command className="size-4" />
+                </div>
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-semibold">intellisync</span>
+                  <span className="truncate text-xs">
+                    {activeConnection?.tenantName || "Accounting"}
+                  </span>
+                </div>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem className="mt-2">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
-                  className="h-8 p-1 md:h-fit md:p-2"
+                  className="w-full"
                   onClick={() => {
                     setOpenMobile(false);
                     router.push("/");
                     router.refresh();
                   }}
                   type="button"
-                  variant="ghost"
+                  variant="outline"
+                  size="sm"
                 >
                   <PlusIcon />
+                  <span>New Chat</span>
                 </Button>
               </TooltipTrigger>
               <TooltipContent align="end" className="hidden md:block">
-                New Chat
+                Start a new conversation
               </TooltipContent>
             </Tooltip>
-          </div>
-          {hasConnections ? (
-            <Select
-              disabled={isSwitching}
-              onValueChange={handleSidebarCompanySelect}
-              value={selectValue}
-            >
-              <SelectTrigger
-                aria-label="Active Xero organisation"
-                className="mt-3 h-9 w-full border border-border/40 bg-muted/40 px-2 text-left font-medium text-sm shadow-none focus:ring-0 data-[disabled]:cursor-default data-[disabled]:opacity-100"
+          </SidebarMenuItem>
+          {hasConnections && (
+            <SidebarMenuItem className="mt-2">
+              <Select
+                disabled={isSwitching}
+                onValueChange={handleSidebarCompanySelect}
+                value={selectValue}
               >
-                <SelectValue placeholder="Select Xero organisation" />
-              </SelectTrigger>
-              <SelectContent>
-                {xeroConnections?.map((connection) => (
-                  <SelectItem key={connection.id} value={connection.id}>
-                    {connection.tenantName || "Unnamed organisation"}
-                    {connection.isActive && " (Active)"}
-                  </SelectItem>
-                ))}
-                <SelectSeparator />
-                <SelectItem value="add-new">Add new...</SelectItem>
-              </SelectContent>
-            </Select>
-          ) : (
-            <div className="mt-3 rounded-md bg-muted/30 px-2 py-2 text-muted-foreground text-xs">
-              Connect Xero to display your organisation.
-            </div>
+                <SelectTrigger
+                  aria-label="Active Xero organisation"
+                  className="h-9 w-full border border-border/40 bg-muted/40 px-2 text-left font-medium text-sm shadow-none focus:ring-0 data-[disabled]:cursor-default data-[disabled]:opacity-100"
+                >
+                  <SelectValue placeholder="Select Xero organisation" />
+                </SelectTrigger>
+                <SelectContent>
+                  {xeroConnections?.map((connection) => (
+                    <SelectItem key={connection.id} value={connection.id}>
+                      {connection.tenantName || "Unnamed organisation"}
+                      {connection.isActive && " (Active)"}
+                    </SelectItem>
+                  ))}
+                  <SelectSeparator />
+                  <SelectItem value="add-new">Add new...</SelectItem>
+                </SelectContent>
+              </Select>
+            </SidebarMenuItem>
           )}
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
+        <NavMain items={navMain} />
         <SidebarHistory user={user} />
+        <NavSecondary items={navSecondary} className="mt-auto" />
       </SidebarContent>
-      <SidebarFooter>
-        {user && (
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <UserButton>
-                <UserButton.MenuItems>
-                  <UserButton.Link
-                    href="/"
-                    label="Home"
-                    labelIcon={<Home className="size-4" />}
-                  />
-                  <UserButton.Link
-                    href="/agents"
-                    label="Agents"
-                    labelIcon={<Users className="size-4" />}
-                  />
-                  <UserButton.Action
-                    label={`Toggle ${resolvedTheme === "light" ? "dark" : "light"} mode`}
-                    labelIcon={
-                      resolvedTheme === "dark" ? (
-                        <Sun className="size-4" />
-                      ) : (
-                        <Moon className="size-4" />
-                      )
-                    }
-                    onClick={() =>
-                      setTheme(resolvedTheme === "dark" ? "light" : "dark")
-                    }
-                  />
-                  <UserButton.Link
-                    href="/settings"
-                    label="Settings"
-                    labelIcon={<Settings2 className="size-4" />}
-                  />
-                  <UserButton.Action label="manageAccount" />
-                </UserButton.MenuItems>
-              </UserButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        )}
-      </SidebarFooter>
+      <SidebarFooter>{user && <NavUser />}</SidebarFooter>
     </Sidebar>
   );
 }
