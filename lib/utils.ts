@@ -73,7 +73,7 @@ export function generateUUID(): string {
   }
   // polyfill for environments without crypto.randomUUID
   const bytes = crypto.randomBytes(16);
-  // Per  RFC 4122 4.4: set bits for version and `clock_seq_hi_and_reserved`
+  // Per RFC 4122 4.4: set bits for version and `clock_seq_hi_and_reserved`
   bytes[6] = (bytes[6] & 0x0f) | 0x40; // Version 4
   bytes[8] = (bytes[8] & 0x3f) | 0x80; // Variant 10
   const hex = [...bytes].map(b => b.toString(16).padStart(2, '0'));
