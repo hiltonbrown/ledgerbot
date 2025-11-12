@@ -269,6 +269,22 @@ export function Chat({
           height: 0,
         },
       });
+    } else {
+      // Reset artifact state when there's no document to restore
+      setArtifact({
+        documentId: "init",
+        content: "",
+        kind: "text",
+        title: "",
+        status: "idle",
+        isVisible: false,
+        boundingBox: {
+          top: 0,
+          left: 0,
+          width: 0,
+          height: 0,
+        },
+      });
     }
   }, [initialDocument, setArtifact]);
 
