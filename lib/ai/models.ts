@@ -1,4 +1,4 @@
-export const DEFAULT_CHAT_MODEL: string = "anthropic-claude-sonnet-4-5";
+export const DEFAULT_CHAT_MODEL: string = "anthropic-claude-haiku-4-5";
 
 export type ChatModel = {
   id: string;
@@ -25,10 +25,10 @@ export const chatModels: ChatModel[] = [
     isReasoning: true,
   },
   {
-    id: "openai-gpt-5",
-    name: "OpenAI GPT-5",
+    id: "openai-gpt-5-chat",
+    name: "OpenAI GPT-5.1",
     description: "Flagship OpenAI model for complex and creative tasks",
-    vercelId: "openai/gpt-5",
+    vercelId: "openai/gpt-5-chat",
     isReasoning: true,
   },
   {
