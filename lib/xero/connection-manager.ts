@@ -69,16 +69,47 @@ export async function getDecryptedConnection(
     return null;
   }
 
-  // Check if refresh token might be expired (Xero refresh tokens last 60 days)
-  // We don't have the exact refresh token creation date, so we estimate based on updatedAt
-  const connectionAge = Date.now() - new Date(connection.updatedAt).getTime();
-  const FIFTY_FIVE_DAYS = 55 * 24 * 60 * 60 * 1000; // 55 days in milliseconds
+  // Check if refresh token has expired (Xero refresh tokens last 60 days from issuance)
+  // IMPORTANT: Refresh token expiry is based on ISSUANCE time, not last refresh
+  const refreshTokenAge =
+    Date.now() - new Date(connection.refreshTokenIssuedAt).getTime();
+  const SIXTY_DAYS = 60 * 24 * 60 * 60 * 1000; // 60 days in milliseconds
+  const FIFTY_FIVE_DAYS = 55 * 24 * 60 * 60 * 1000; // Warning threshold
 
-  if (connectionAge > FIFTY_FIVE_DAYS) {
-    console.warn(
-      `Xero connection for user ${userId} is older than 55 days (${Math.floor(connectionAge / (24 * 60 * 60 * 1000))} days). Refresh token may be expired. User should re-authenticate.`
+  const refreshTokenAgeDays = Math.floor(
+    refreshTokenAge / (24 * 60 * 60 * 1000)
+  );
+
+  if (refreshTokenAge >= SIXTY_DAYS) {
+    // Refresh token is definitely expired - deactivate immediately
+    console.error(
+      `❌ [Xero Token] Refresh token expired for user ${userId} - issued ${refreshTokenAgeDays} days ago (limit: 60 days)`
     );
-    // Don't deactivate yet - let the refresh attempt happen and handle the error
+    console.error(
+      "  Connection will be deactivated. User must reconnect in Settings > Integrations."
+    );
+
+    try {
+      await deactivateXeroConnection(connection.id);
+      console.log(
+        `Deactivated connection ${connection.id} due to expired refresh token (${refreshTokenAgeDays} days old)`
+      );
+    } catch (deactivateError) {
+      console.error(
+        `Failed to deactivate connection ${connection.id}:`,
+        deactivateError
+      );
+    }
+
+    throw new Error(
+      `Xero refresh token expired (${refreshTokenAgeDays} days old, limit 60 days). Please reconnect your Xero account in Settings > Integrations.`
+    );
+  }
+
+  if (refreshTokenAge > FIFTY_FIVE_DAYS) {
+    console.warn(
+      `⚠️ [Xero Token] Refresh token is ${refreshTokenAgeDays} days old (expires in ${60 - refreshTokenAgeDays} days). User should consider re-authenticating soon.`
+    );
   }
 
   // Check if access token is expired or expiring soon (within 5 minutes)
@@ -294,35 +325,43 @@ async function performTokenRefresh(
     }
 
     // Extract expiry and authentication_event_id from JWT
-    // CRITICAL: Use the actual 'exp' claim from JWT, not calculated from expires_in
-    let expiresAt = new Date(Date.now() + (tokenSet.expires_in || 1800) * 1000); // Fallback
+    // CRITICAL: Use the actual 'exp' claim from JWT as authoritative source
+    let expiresAt: Date;
     let authenticationEventId: string | undefined;
 
     try {
       // JWT is base64url encoded: header.payload.signature
       const parts = tokenSet.access_token.split(".");
-      if (parts.length === 3) {
-        const payload = JSON.parse(
-          Buffer.from(parts[1], "base64url").toString("utf-8")
+      if (parts.length !== 3) {
+        throw new Error(
+          `Invalid JWT format: expected 3 parts, got ${parts.length}`
         );
-        authenticationEventId = payload.authentication_event_id;
-
-        // Use the actual exp claim from JWT (Unix timestamp in seconds)
-        if (payload.exp) {
-          expiresAt = new Date(payload.exp * 1000);
-          console.log(
-            `  ✓ Token expiry from JWT: ${expiresAt.toISOString()} (${payload.exp})`
-          );
-        } else {
-          console.warn(
-            `  ⚠️ JWT missing exp claim, using calculated expiry: ${expiresAt.toISOString()}`
-          );
-        }
       }
+
+      const payload = JSON.parse(
+        Buffer.from(parts[1], "base64url").toString("utf-8")
+      );
+      authenticationEventId = payload.authentication_event_id;
+
+      // MUST have exp claim - this is the authoritative expiry time
+      if (!payload.exp) {
+        throw new Error(
+          "JWT missing required 'exp' claim - cannot determine token expiry"
+        );
+      }
+
+      // Use the actual exp claim from JWT (Unix timestamp in seconds)
+      expiresAt = new Date(payload.exp * 1000);
+      console.log(
+        `  ✓ Token expiry from JWT: ${expiresAt.toISOString()} (exp: ${payload.exp})`
+      );
     } catch (jwtError) {
-      console.warn(
-        "  ⚠️ Could not extract data from JWT, using calculated expiry:",
+      console.error(
+        "  ❌ CRITICAL: Failed to parse JWT access token:",
         jwtError
+      );
+      throw new Error(
+        `Failed to parse Xero access token JWT: ${jwtError instanceof Error ? jwtError.message : String(jwtError)}`
       );
     }
 

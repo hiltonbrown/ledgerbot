@@ -55,24 +55,38 @@ export async function GET(request: Request) {
         );
       } else {
         failed++;
+        const errorMsg = result.error || "Unknown error";
         console.error(
-          `❌ Failed to refresh token for connection ${connection.id}: ${result.error}`
+          `❌ Failed to refresh token for connection ${connection.id}: ${errorMsg}`
         );
         failures.push({
           connectionId: connection.id,
-          error: result.error || "Unknown error",
+          error: errorMsg,
         });
 
-        // Deactivate connection if refresh failed
-        try {
-          await deactivateXeroConnection(connection.id);
-          console.log(
-            `Deactivated connection ${connection.id} due to refresh failure`
-          );
-        } catch (deactivateError) {
-          console.error(
-            `Failed to deactivate connection ${connection.id}:`,
-            deactivateError
+        // Only deactivate on permanent failures (expired refresh token)
+        // Temporary failures (network, server errors) should retry on next cron run
+        const isPermanentFailure =
+          errorMsg.includes("invalid_grant") ||
+          errorMsg.includes("refresh_token") ||
+          errorMsg.toLowerCase().includes("expired") ||
+          errorMsg.includes("60 days");
+
+        if (isPermanentFailure) {
+          try {
+            await deactivateXeroConnection(connection.id);
+            console.log(
+              `Deactivated connection ${connection.id} due to PERMANENT refresh failure (expired refresh token)`
+            );
+          } catch (deactivateError) {
+            console.error(
+              `Failed to deactivate connection ${connection.id}:`,
+              deactivateError
+            );
+          }
+        } else {
+          console.warn(
+            `⚠️ TEMPORARY failure for connection ${connection.id} - will retry on next cron run (connection remains active)`
           );
         }
       }

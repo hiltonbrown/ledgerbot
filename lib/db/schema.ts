@@ -257,6 +257,7 @@ export const xeroConnection = pgTable("XeroConnection", {
   tenantType: varchar("tenantType", { length: 50 }), // ORGANISATION, PRACTICEMANAGER, PRACTICE
   accessToken: text("accessToken").notNull(), // Encrypted
   refreshToken: text("refreshToken").notNull(), // Encrypted
+  refreshTokenIssuedAt: timestamp("refreshTokenIssuedAt").notNull(), // When refresh token was first issued (for 60-day expiry tracking)
   expiresAt: timestamp("expiresAt").notNull(),
   scopes: jsonb("scopes").$type<string[]>().notNull(),
   authenticationEventId: varchar("authenticationEventId", { length: 255 }), // Xero auth event ID for connection tracking

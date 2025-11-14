@@ -61,7 +61,6 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     return (
       <>
         <Chat
-          key={chat.id}
           autoResume={true}
           firstName={userSettings.personalisation.firstName}
           id={chat.id}
@@ -71,6 +70,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
           initialMessages={uiMessages}
           initialVisibilityType={chat.visibility}
           isReadonly={user.id !== chat.userId}
+          key={chat.id}
         />
         <DataStreamHandler />
       </>
@@ -80,7 +80,6 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   return (
     <>
       <Chat
-        key={chat.id}
         autoResume={true}
         firstName={userSettings.personalisation.firstName}
         id={chat.id}
@@ -90,6 +89,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         initialMessages={uiMessages}
         initialVisibilityType={chat.visibility}
         isReadonly={user.id !== chat.userId}
+        key={chat.id}
       />
       <DataStreamHandler />
     </>

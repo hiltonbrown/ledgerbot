@@ -1086,6 +1086,7 @@ export async function createXeroConnection({
             tenantType: tenantType || existingConnection.tenantType,
             accessToken,
             refreshToken,
+            refreshTokenIssuedAt: now, // Reset refresh token issuance time on re-auth
             expiresAt,
             scopes,
             authenticationEventId,
@@ -1131,6 +1132,7 @@ export async function createXeroConnection({
             tenantType,
             accessToken,
             refreshToken,
+            refreshTokenIssuedAt: now, // Track when refresh token was first issued
             expiresAt,
             scopes,
             authenticationEventId,
