@@ -181,7 +181,7 @@ export function Chat({
             message: request.messages.at(-1),
             selectedChatModel: currentModelIdRef.current,
             selectedVisibilityType: visibilityType,
-            streamReasoning: isReasoningModelId(currentModelIdRef.current),
+            streamReasoning: true, // Always stream reasoning for all models
             showReasoningPreference: getReasoningPreferenceForModel(
               currentModelIdRef.current
             ),

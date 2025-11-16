@@ -4,11 +4,11 @@ This file provides guidance to agents when working with code in this repository.
 
 ## Project Overview
 
-LedgerBot (officially "intellisync-chatbot" in package.json) is an AI-powered accounting and bookkeeping workspace application built on Next.js 15. The app features intelligent chat, document management, specialized accounting agents, and collaborative AI tools. It uses the Vercel AI SDK with multiple AI providers (Anthropic Claude, OpenAI GPT-5, Google Gemini) and provides both conversational AI and artifact-based content creation, with specialized agent workspaces for bookkeeping automation.
+LedgerBot (officially "intellisync-chatbot" in package.json) is an AI-powered accounting and bookkeeping workspace application built on Next.js 16. The app features intelligent chat, document management, specialized accounting agents, and collaborative AI tools. It uses the Vercel AI SDK with multiple AI providers (Anthropic Claude, OpenAI GPT-5, Google Gemini) and provides both conversational AI and artifact-based content creation, with specialized agent workspaces for bookkeeping automation.
 
 ## Key Technologies
 
-- **Framework**: Next.js 15 with experimental PPR (Partial Prerendering)
+- **Framework**: Next.js 16 with experimental PPR (Partial Prerendering)
 - **AI SDK**: Vercel AI SDK with multiple providers (Anthropic Claude, OpenAI GPT-5, Google Gemini, xAI Grok) via AI Gateway
 - **Database**: PostgreSQL with Drizzle ORM
 - **Authentication**: Clerk (clerk.com) - Modern authentication and user management
@@ -18,6 +18,7 @@ LedgerBot (officially "intellisync-chatbot" in package.json) is an AI-powered ac
 - **Testing**: Playwright
 - **Monitoring**: TokenLens for token usage tracking with cached model catalog
 - **Integration**: Model Context Protocol (MCP) SDK for third-party service integrations
+- **Web Scraping**: Mastra ingestion pipeline for regulatory document scraping
 
 ## Setup & Maintenance Notes
 ⚠️ Avoid editing node_modules or dependency source files.
@@ -28,6 +29,8 @@ Any required changes should be handled through configuration overrides or adapte
 ```bash
 # Development
 pnpm dev                 # Start dev server with Turbo
+pnpm studio              # Start Mastra Studio (agent testing UI)
+pnpm studio:https        # Start Mastra Studio with HTTPS
 
 # Building & Production
 pnpm build              # Run migrations and build for production
@@ -58,6 +61,8 @@ Copy `.env.example` to `.env.local` and configure:
 - `AI_GATEWAY_API_KEY`: Required for non-Vercel deployments (OIDC used on Vercel)
 - `AI_GATEWAY_URL`: Optional, override when using a custom Gateway domain
 - `REDIS_URL`: Optional, enables resumable streams
+- `FIRECRAWL_API_KEY`: Required for regulatory document scraping (get from https://firecrawl.dev/)
+- `CRON_SECRET`: Required for securing cron job endpoints (generate with: `openssl rand -base64 32`)
 
 ## Architecture
 
@@ -73,13 +78,13 @@ Copy `.env.example` to `.env.local` and configure:
   - `api/suggestions/route.ts`: Document suggestion system
   - `api/vote/route.ts`: Message voting
 - `app/agents/`: Specialized AI agent workspaces for accounting automation
-  - `analytics/`: Narrative-rich reporting with KPI annotations and exports
-  - `compliance/`: ATO-aware co-pilot for BAS, payroll, and super obligations
-  - `docmanagement/`: AI-assisted intake for invoices, receipts, and bank statements
-  - `forecasting/`: Scenario modeling and runway projections with LangGraph workflows
-  - `qanda/`: Advisory Q&A assistant for policies and ledger context
-  - `reconciliations/`: Continuous bank feed matching and ledger adjustment proposals
-  - `workflow/`: Graph orchestrations across document, reconciliation, and compliance agents
+  - `analytics/`: Narrative-rich reporting with KPI annotations and exports ✅
+  - `ap/`: Accounts Payable agent for supplier bill management and payment automation ✅
+  - `ar/`: Accounts Receivable agent for customer invoice management and payment reminders ✅
+  - `docmanagement/`: AI-assisted intake for invoices, receipts, and bank statements ⚠️ Hybrid
+  - `forecasting/`: Scenario modeling and runway projections with Mastra workflows ✅
+  - `qanda/`: Advisory Q&A assistant for policies and ledger context ✅
+  - `workflow/`: Graph orchestrations across document and agent workflows ✅
   - `page.tsx`: Agent overview dashboard with automation metrics and health signals
 - `app/(settings)/`: User settings and management
   - `settings/personalisation/`: User preferences including default model and reasoning settings
@@ -234,25 +239,30 @@ Artifacts are special UI components that render AI-generated content in a side p
 - **Behavior**: Real-time updates visible to user during AI generation
 - **Important**: Never update documents immediately after creation - wait for user feedback
 
-### Agent Workspaces
+### Agent Workspaces (Mastra Framework)
 
-LedgerBot features specialized AI agent workspaces for accounting automation (`app/agents/`):
+LedgerBot features specialized AI agent workspaces for accounting automation built on **Mastra** (`app/agents/`).
 
-**Available Agents**:
-1. **Document Processing** (`/agents/docmanagement`): AI-assisted intake for invoices, receipts, and bank statements with automated OCR and validation queues
-2. **Reconciliations** (`/agents/reconciliations`): Continuous bank feed matching with fuzzy logic suggestions and ledger adjustment proposals
-3. **Compliance** (`/agents/compliance`): ATO-aware co-pilot for BAS, payroll, and super obligations with automatic reminders
-4. **Analytics** (`/agents/analytics`): Narrative-rich reporting with KPI annotations, drill-down tables, and presentation-ready exports
-5. **Forecasting** (`/agents/forecasting`): Scenario modeling and runway projections with LangGraph workflows
-6. **Advisory Q&A** (`/agents/qanda`): Regulatory-aware conversational assistant for Australian tax law, Fair Work awards, and compliance queries with citations and confidence scoring
-7. **Workflow Supervisor** (`/agents/workflow`): Graph orchestrations across document, reconciliation, and compliance agents with traceability
+**Framework**: Mastra ([mastra.ai](https://mastra.ai)) provides unified architecture, tool integration, and workflow orchestration.
+
+**Implemented Agents** (using Mastra):
+1. **Advisory Q&A** (`/agents/qanda`): Regulatory-aware conversational assistant for Australian tax law, Fair Work awards, and compliance queries with citations and confidence scoring ✅
+2. **Forecasting** (`/agents/forecasting`): Scenario modeling and runway projections with Mastra workflows ✅
+3. **Analytics** (`/agents/analytics`): Narrative-rich reporting with KPI annotations, drill-down tables, and presentation-ready exports ✅
+4. **Workflow Supervisor** (`/agents/workflow`): Graph orchestrations across document and agent workflows with traceability ✅
+5. **Accounts Payable (AP)** (`/agents/ap`): Supplier bill management with vendor validation, coding suggestions, and payment automation ✅
+6. **Accounts Receivable (AR)** (`/agents/ar`): Customer invoice management with payment reminders, late risk prediction, and DSO reduction ✅
+7. **Document Processing** (`/agents/docmanagement`): AI-assisted intake for invoices, receipts, and bank statements with automated OCR and validation queues ⚠️ Hybrid
+
+**Planned Agents** (not yet implemented):
+8. **Reconciliations** (`/agents/reconciliations`): Continuous bank feed matching with fuzzy logic suggestions and ledger adjustment proposals ❌
+9. **Compliance** (`/agents/compliance`): ATO-aware co-pilot for BAS, payroll, and super obligations with automatic reminders ❌
 
 **Agent Overview Dashboard** (`/agents`):
-- Displays automation coverage metrics (76% of workflows delegated)
-- Shows human review queue with escalations (28 items across validation, mismatches, clarifications)
-- Provides agent-specific metrics (docs processed, match rates, upcoming lodgments, etc.)
-- Includes change management tracking (releases, risk register, recommended actions)
+- Displays 7 agent cards (DocManagement, Analytics, Forecasting, AP, AR, Q&A, Workflow)
 - Links to individual agent workspace pages
+- Shows agent-specific metrics and health signals
+- Future: Automation coverage metrics, human review queue, change management tracking
 
 **Agent Components** (`components/agents/`):
 - `agent-summary-card.tsx`: Displays agent status and metrics on overview page
@@ -335,7 +345,7 @@ See `/docs/regulatory-system-summary.md` for complete implementation details and
   - Metadata: `description`, `tags`, `isPinned`
   - Usage timestamps: `createdAt`, `lastUsedAt`, `processedAt`
 - `UserSettings`: User preferences and customization
-  - Profile: `firstName`, `lastName`, `country`, `state`
+  - Profile: `country`, `state` (firstName/lastName removed - now managed by Clerk)
   - AI preferences: `defaultModel`, `defaultReasoning`
   - Custom prompts: `systemPrompt`, `codePrompt`, `sheetPrompt`
   - Customizable chat suggestions with enable/disable and ordering

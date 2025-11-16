@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-LedgerBot (officially "intellisync-chatbot" in package.json) is an AI-powered accounting and bookkeeping workspace application built on Next.js 15. The app features intelligent chat, document management, specialized accounting agents, and collaborative AI tools. It uses the Vercel AI SDK with multiple AI providers (Anthropic Claude, OpenAI GPT-5, Google Gemini) and provides both conversational AI and artifact-based content creation, with specialized agent workspaces for bookkeeping automation.
+LedgerBot (officially "intellisync-chatbot" in package.json) is an AI-powered accounting and bookkeeping workspace application built on Next.js 16. The app features intelligent chat, document management, specialized accounting agents, and collaborative AI tools. It uses the Vercel AI SDK with multiple AI providers (Anthropic Claude, OpenAI GPT-5, Google Gemini) and provides both conversational AI and artifact-based content creation, with specialized agent workspaces for bookkeeping automation.
 
 ## Key Technologies
 
@@ -81,12 +81,10 @@ Copy `.env.example` to `.env.local` and configure:
   - `analytics/`: Narrative-rich reporting with KPI annotations and exports
   - `ap/`: Accounts Payable agent for supplier bill management and payment automation
   - `ar/`: Accounts Receivable agent for customer invoice management and payment reminders
-  - `compliance/`: ATO-aware co-pilot for BAS, payroll, and super obligations
   - `docmanagement/`: AI-assisted intake for invoices, receipts, and bank statements
   - `forecasting/`: Scenario modeling and runway projections with Mastra workflows
   - `qanda/`: Advisory Q&A assistant for policies and ledger context
-  - `reconciliations/`: Continuous bank feed matching and ledger adjustment proposals
-  - `workflow/`: Graph orchestrations across document, reconciliation, and compliance agents
+  - `workflow/`: Graph orchestrations across document and agent workflows
   - `page.tsx`: Agent overview dashboard with automation metrics and health signals
 - `app/(settings)/`: User settings and management
   - `settings/personalisation/`: User preferences including default model and reasoning settings
@@ -253,65 +251,86 @@ LedgerBot features specialized AI agent workspaces for accounting automation bui
 - Type-safe agent access via `mastra.getAgent(name)`
 - Shared tools and integrations
 - Built-in observability and monitoring
+- **Currently registered**: 6 agents (qanda, forecasting, analytics, workflow, ap, ar)
 
 **Mastra Studio**: For local development and debugging, use [Mastra Studio](https://mastra.ai/docs/getting-started/studio) - an interactive UI for testing agents, workflows, and tools. See `/docs/mastra-studio-integration-guide.md` for complete setup instructions. Quick start: `pnpm studio` (opens at http://localhost:4111).
 
-**Available Agents** (all using Mastra):
-1. **Document Processing** (`/agents/docmanagement`): AI-assisted intake for invoices, receipts, and bank statements with automated OCR and validation queues
-   - **Status**: ✅ Fully implemented with Mastra
-   - **Tools**: PDF load, RAG search, citation extraction, optional Xero query
-   - **Features**: Document caching, chunk-based search, citation scoring
+## Agent Implementation Status Matrix
 
-2. **Reconciliations** (`/agents/reconciliations`): Continuous bank feed matching with fuzzy logic and ledger adjustment proposals
-   - **Status**: ✅ Fully implemented with Mastra
-   - **Tools**: `matchTransactions`, `proposeAdjustment`, `identifyExceptions`, Xero bank transactions
-   - **Features**: Levenshtein distance matching, auto-approval (≥80% score), severity classification
-   - **API**: `POST /api/agents/reconciliations`
+| Agent | Mastra | API Route | UI Page | Tools | DB Schema | Status |
+|-------|--------|-----------|---------|-------|-----------|--------|
+| Q&A | ✅ | ✅ | ✅ | ✅ | ✅ | **Complete** |
+| Forecasting | ✅ | ✅ | ✅ | ✅ | ❌ | **Complete** |
+| Analytics | ✅ | ✅ | ✅ | ✅ | ❌ | **Complete** |
+| Workflow | ✅ | ✅ | ✅ | ✅ | ❌ | **Complete** |
+| AP | ✅ | ✅ | ✅ | ✅ | ❌ | **Complete** |
+| AR | ✅ | ✅ | ✅ | ✅ | ✅ | **Complete** |
+| DocManagement | ⚠️ Hybrid | ✅ | ✅ | ✅ | ❌ | **Partial Mastra** |
+| Reconciliations | ❌ | ❌ | ❌ | ❌ | ❌ | **Planned** |
+| Compliance | ❌ | ❌ | ❌ | ❌ | ❌ | **Planned** |
 
-3. **Compliance** (`/agents/compliance`): ATO-aware co-pilot for BAS, payroll, and super obligations with automatic reminders
-   - **Status**: ✅ Fully implemented with Mastra
-   - **Tools**: `checkDeadlines`, `getAtoReferences`, Xero GST report
-   - **Features**: Deadline tracking, ATO ruling search, professional disclaimer management
-   - **API**: `POST /api/agents/compliance`
+**Implemented Agents** (using Mastra):
 
-4. **Analytics** (`/agents/analytics`): Narrative-rich reporting with KPI annotations and presentation-ready insights
+1. **Advisory Q&A** (`/agents/qanda`): Regulatory-aware conversational assistant for Australian tax law and compliance
+   - **Status**: ✅ Fully implemented with Mastra
+   - **Tools**: `regulatorySearch`, conditional Xero tools
+   - **Features**: Confidence scoring, citation system, human review escalation, regulatory knowledge base with full-text search
+   - **API**: `POST /api/agents/qanda`
+
+2. **Forecasting** (`/agents/forecasting`): Scenario modeling and runway projections with multiple financial models
+   - **Status**: ✅ Fully implemented with Mastra
+   - **Tools**: Xero P&L and Balance Sheet integration
+   - **Features**: Base/Upside/Downside scenarios, memory system, 4 model types
+   - **API**: `POST /api/agents/forecasting`
+
+3. **Analytics** (`/agents/analytics`): Narrative-rich reporting with KPI annotations and presentation-ready insights
    - **Status**: ✅ Fully implemented with Mastra
    - **Tools**: `calculateKpis`, `generateNarrative`, Xero P&L/Balance Sheet
    - **Features**: Gross margin, burn rate, runway calculation, executive summaries
    - **API**: `POST /api/agents/analytics`
 
-5. **Forecasting** (`/agents/forecasting`): Scenario modeling and runway projections with multiple financial models
-   - **Status**: ✅ Enhanced with Mastra (maintains backward compatibility)
-   - **Tools**: Xero P&L and Balance Sheet integration
-   - **Features**: Base/Upside/Downside scenarios, memory system, 4 model types
-   - **API**: `POST /api/agents/forecasting`
+4. **Workflow Supervisor** (`/agents/workflow`): Multi-agent workflow orchestration with Mastra workflows
+   - **Status**: ✅ Fully implemented with Mastra workflows
+   - **Tools**: `executeMonthEndClose`, `executeInvestorUpdate`, `executeAtoAuditPack`
+   - **Workflows**:
+     - Month-End Close: Documents → Analytics (Reconciliations and Compliance planned)
+     - Investor Update: Analytics → Forecasting → Q&A
+     - ATO Audit Pack: Documents → Workflow (Compliance planned)
+   - **API**: `POST /api/agents/workflow`
 
-6. **Advisory Q&A** (`/agents/qanda`): Regulatory-aware conversational assistant for Australian tax law and compliance
-   - **Status**: ✅ Refactored to Mastra Agent
-   - **Tools**: `regulatorySearch`, conditional Xero tools
-   - **Features**: Confidence scoring, citation system, human review escalation
-   - **API**: `POST /api/agents/qanda`
-
-7. **Accounts Payable (AP)** (`/agents/ap`): Supplier bill management with vendor validation, coding suggestions, and payment automation
+5. **Accounts Payable (AP)** (`/agents/ap`): Supplier bill management with vendor validation, coding suggestions, and payment automation
    - **Status**: ✅ Fully implemented with Mastra
    - **Tools**: `validateABN`, `suggestBillCoding`, `checkDuplicateBills`, `generatePaymentProposal`, `assessPaymentRisk`, `generateEmailDraft`, conditional Xero tools
    - **Features**: Australian ABN validation, GST-aware bill coding, duplicate detection, approval workflow tracking, payment run proposals with risk assessment, vendor communication drafts
    - **API**: `POST /api/agents/ap`
 
-8. **Accounts Receivable (AR)** (`/agents/ar`): Customer invoice management with payment reminders, late risk prediction, and DSO reduction
+6. **Accounts Receivable (AR)** (`/agents/ar`): Customer invoice management with payment reminders, late risk prediction, and DSO reduction
    - **Status**: ✅ Fully implemented with Mastra
    - **Tools**: `getInvoicesDue`, `predictLateRisk`, `buildEmailReminder`, `buildSmsReminder`, `reconcilePayment`, `postNote`, `syncXero`
    - **Features**: Overdue invoice tracking, late payment risk prediction, customizable payment reminder generation (email/SMS), payment reconciliation, customer note management, Xero synchronization
+   - **Note**: AR tools are located in `lib/tools/ar/messaging.ts` (separate from agent directory pattern)
    - **API**: `POST /api/agents/ar`
 
-9. **Workflow Supervisor** (`/agents/workflow`): Multi-agent workflow orchestration with Mastra workflows
-   - **Status**: ✅ Fully implemented with Mastra workflows
-   - **Tools**: `executeMonthEndClose`, `executeInvestorUpdate`, `executeAtoAuditPack`
-   - **Workflows**:
-     - Month-End Close: Documents → Reconciliations → Compliance → Analytics
-     - Investor Update: Analytics → Forecasting → Q&A
-     - ATO Audit Pack: Documents → Compliance → Workflow
-   - **API**: `POST /api/agents/workflow`
+7. **Document Processing** (`/agents/docmanagement`): AI-assisted intake for invoices, receipts, and bank statements with automated OCR and validation queues
+   - **Status**: ⚠️ Hybrid implementation (legacy standalone + Mastra workflow)
+   - **Implementation**: Legacy agent in `lib/agents/docmanagement.ts` (not registered in Mastra)
+   - **Tools**: PDF load, RAG search, citation extraction, optional Xero query
+   - **Features**: Document caching, chunk-based search, citation scoring
+   - **API**: `POST /api/agents/docmanagement`
+
+**Planned Agents** (not yet implemented):
+
+8. **Reconciliations** (`/agents/reconciliations`): Continuous bank feed matching with fuzzy logic and ledger adjustment proposals
+   - **Status**: ❌ Planned (not implemented)
+   - **Planned Tools**: `matchTransactions`, `proposeAdjustment`, `identifyExceptions`, Xero bank transactions
+   - **Planned Features**: Levenshtein distance matching, auto-approval (≥80% score), severity classification
+   - **Note**: Referenced in workflow supervisor but not implemented as standalone agent
+
+9. **Compliance** (`/agents/compliance`): ATO-aware co-pilot for BAS, payroll, and super obligations with automatic reminders
+   - **Status**: ❌ Planned (not implemented)
+   - **Planned Tools**: `checkDeadlines`, `getAtoReferences`, Xero GST report
+   - **Planned Features**: Deadline tracking, ATO ruling search, professional disclaimer management
+   - **Note**: Referenced in workflow supervisor but not implemented as standalone agent
 
 **Agent Architecture Pattern**:
 ```
@@ -360,11 +379,10 @@ export async function POST(req: Request) {
 - ✅ Type-safe Zod schemas
 
 **Agent Overview Dashboard** (`/agents`):
-- Displays automation coverage metrics
-- Shows human review queue with escalations
-- Provides agent-specific metrics
-- Includes change management tracking
+- Displays 7 agent cards (DocManagement, Analytics, Forecasting, AP, AR, Q&A, Workflow)
 - Links to individual agent workspace pages
+- Shows agent-specific metrics and health signals
+- Future: Automation coverage metrics, human review queue, change management tracking
 
 **Agent Components** (`components/agents/`):
 - `agent-summary-card.tsx`: Displays agent status and metrics on overview page
@@ -450,7 +468,7 @@ See `/docs/regulatory-system-summary.md` for complete implementation details and
   - Metadata: `description`, `tags`, `isPinned`
   - Usage timestamps: `createdAt`, `lastUsedAt`, `processedAt`
 - `UserSettings`: User preferences and customization
-  - Profile: `country`, `state` (firstName/lastName managed by Clerk)
+  - Profile: `country`, `state` (firstName/lastName removed - now managed by Clerk)
   - AI preferences: `defaultModel`, `defaultReasoning`
   - Custom prompts: `systemPrompt`, `codePrompt`, `sheetPrompt`
   - Customizable chat suggestions with enable/disable and ordering
@@ -539,37 +557,34 @@ See `/docs/regulatory-system-summary.md` for complete implementation details and
 
 **`lib/` Directory Organization**:
 - `mastra/`: **Mastra framework configuration** (unified agent system)
-  - `index.ts`: Shared Mastra instance with 8 agents registered (qanda, forecasting, reconciliation, compliance, analytics, ap, ar, workflow)
+  - `index.ts`: Shared Mastra instance with 6 agents registered (qanda, forecasting, analytics, ap, ar, workflow)
 - `agents/`: **Agent implementations using Mastra**
-  - `qanda/`: Q&A agent (regulatory RAG, confidence scoring)
+  - `qanda/`: Q&A agent (regulatory RAG, confidence scoring) ✅
     - `agent.ts`: Mastra Agent with regulatory and Xero tools
     - `tools.ts`: Regulatory search and Xero tool wrappers
     - `types.ts`: Type definitions
-  - `forecasting/`: Forecasting agent (scenario modeling)
+  - `forecasting/`: Forecasting agent (scenario modeling) ✅
     - `agent.ts`: Mastra Agent + legacy function
     - `tools.ts`: Xero P&L and balance sheet tools
     - `config.ts`, `memory.ts`, `utils.ts`: Supporting modules
-  - `reconciliations/`: Reconciliation agent (bank matching)
-    - `agent.ts`: Mastra Agent with matching logic
-    - `tools.ts`: Match, adjustment, and exception tools
-    - `types.ts`: Match and exception types
-  - `compliance/`: Compliance agent (ATO obligations)
-    - `agent.ts`: Mastra Agent with deadline tracking
-  - `analytics/`: Analytics agent (KPI calculation)
+  - `analytics/`: Analytics agent (KPI calculation) ✅
     - `agent.ts`: Mastra Agent with KPI and narrative tools
-  - `ap/`: Accounts Payable agent (supplier bill management)
+  - `ap/`: Accounts Payable agent (supplier bill management) ✅
     - `agent.ts`: Mastra Agent with bill coding and payment tools
     - `tools.ts`: ABN validation, bill coding, payment proposals, email drafts
     - `types.ts`: Type definitions for bills and payments
-  - `ar/`: Accounts Receivable agent (invoice management)
+  - `ar/`: Accounts Receivable agent (invoice management) ✅
     - `agent.ts`: Mastra Agent with reminder and risk tools (imports from lib/tools/ar)
-    - Note: AR tools are in `lib/tools/ar/messaging.ts` (separate location)
-  - `workflow/`: Workflow supervisor
+    - `workflow.ts`: AR workflow definitions
+    - Note: AR tools are in `lib/tools/ar/messaging.ts` (separate location - architectural inconsistency)
+  - `workflow/`: Workflow supervisor ✅
     - `supervisor.ts`: Mastra Agent for orchestration
     - `workflows.ts`: Mastra workflow definitions (Month-End Close, Investor Update, ATO Audit Pack)
-  - `docmanagement/`: Document management agent
-    - `docmanagement.ts`: Mastra Agent with PDF processing
-    - `workflow.ts`, `types.ts`: Supporting modules
+  - `docmanagement/`: Document management agent ⚠️ Hybrid
+    - `docmanagement.ts`: Legacy standalone agent (19,992 bytes) - NOT registered in Mastra
+    - `workflow.ts`, `types.ts`: Mastra workflow modules
+    - Note: Hybrid architecture - legacy file exists alongside Mastra workflow
+  - **Missing**: `reconciliations/` and `compliance/` directories do not exist
 - `ai/`: AI provider configuration, models, prompts, tools, and context management
   - `providers.ts`: AI Gateway configuration
   - `models.ts`: Available chat models with reasoning flags

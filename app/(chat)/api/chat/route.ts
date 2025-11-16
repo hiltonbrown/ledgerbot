@@ -366,9 +366,10 @@ export async function POST(request: Request) {
 
     let finalMergedUsage: AppUsage | undefined;
 
-    const sendReasoning = isReasoningModelId(selectedChatModel)
-      ? true
-      : (streamReasoning ?? false);
+    // Always send reasoning parts to the client for all models
+    // Reasoning models (Claude with <think> tags) will have reasoning extracted by middleware
+    // Non-reasoning models won't have reasoning parts, but sendReasoning should still be true
+    const sendReasoning = true;
     const preferenceForDisplay = showReasoningPreference ?? true;
 
     const respondWithManualStream = async (
