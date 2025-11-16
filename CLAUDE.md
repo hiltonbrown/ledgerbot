@@ -115,7 +115,7 @@ Copy `.env.example` to `.env.local` and configure:
 - Available chat models (defined in `lib/ai/models.ts`):
   - `anthropic-claude-sonnet-4-5`: Claude Sonnet 4.5 (default, balanced general-purpose)
   - `anthropic-claude-haiku-4-5`: Claude Haiku 4.5 (lightweight, fast general-purpose)
-  - `openai-gpt-5`: GPT-5 (flagship OpenAI model)
+  - `openai-gpt-5-chat`: GPT-5.1 (flagship OpenAI model)
   - `openai-gpt-5-mini`: GPT-5 Mini (fast, cost-efficient)
   - `google-gemini-2-5-flash`: Gemini 2.5 Flash (speed-optimized with reasoning)
 - Reasoning models use `extractReasoningMiddleware` with `<think>` tags

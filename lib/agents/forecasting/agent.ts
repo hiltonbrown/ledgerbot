@@ -263,7 +263,7 @@ Return ONLY valid JSON that matches the schema described above.
 `;
 
   const { text } = await generateText({
-    model: myProvider.languageModel("openai-gpt-5"),
+    model: myProvider.languageModel("openai-gpt-5-chat"),
     system:
       "You are the Mastra financial modeling agent for LedgerBot. Create rigorous financial forecasts blending provided inputs with accounting best practice. Tie recommendations back to revenue, cost, and cash flow levers. Maintain Australian accounting tone when discussing compliance or GST.",
     prompt,
@@ -331,7 +331,7 @@ Output requirements:
 export const forecastingAgent = new Agent({
   name: "forecasting-agent",
   instructions: FORECASTING_INSTRUCTIONS,
-  model: myProvider.languageModel("openai-gpt-5"),
+  model: myProvider.languageModel("openai-gpt-5-chat"),
 });
 
 /**
@@ -343,7 +343,7 @@ export function createForecastingAgentWithXero(userId: string) {
   return new Agent({
     name: "forecasting-agent-with-xero",
     instructions: FORECASTING_INSTRUCTIONS,
-    model: myProvider.languageModel("openai-gpt-5"),
+    model: myProvider.languageModel("openai-gpt-5-chat"),
     tools: {
       ...xeroTools,
     },
