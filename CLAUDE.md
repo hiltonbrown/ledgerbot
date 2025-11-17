@@ -149,7 +149,7 @@ Copy `.env.example` to `.env.local` and configure:
   - `xero_get_invoice`: Get detailed invoice information by ID
   - `xero_list_contacts`: Search contacts (customers/suppliers) by name or email
   - `xero_get_contact`: Get detailed contact information by ID
-  - `xero_list_accounts`: Get chart of accounts with optional type filtering
+  - `xero_list_accounts`: Get chart of accounts from **database cache** (synced on connection and manual refresh) with optional type filtering - **no API calls**
   - `xero_list_journal_entries`: Get manual journal entries with date filtering
   - `xero_get_bank_transactions`: Get bank transactions with account and date filters
   - `xero_get_organisation`: Get connected Xero organisation information
@@ -179,6 +179,11 @@ LedgerBot includes built-in Xero accounting integration using Model Context Prot
 - Encrypted OAuth tokens (access and refresh)
 - Token expiry tracking and scope storage
 - Active connection status flag
+- **Chart of Accounts Cache**:
+  - `chartOfAccounts`: JSONB storage for account data (complete account list per tenant)
+  - `chartOfAccountsSyncedAt`: Timestamp tracking last sync
+  - `chartOfAccountsVersion`: Xero API version used for sync
+  - `chartOfAccountsHash`: SHA-256 hash for change detection
 
 **OAuth Flow** (`app/api/xero/`):
 - `/api/xero/auth`: Initialize OAuth flow with state verification
@@ -203,11 +208,20 @@ XERO_ENCRYPTION_KEY=32_byte_hex_key_for_aes256
 - `accounting.attachments`: File attachments
 - `payroll.employees`, `payroll.payruns`, `payroll.timesheets`: Payroll data
 
+**Chart of Accounts Caching Architecture**:
+- **Auto-sync on connection**: Chart synced automatically when OAuth connection is established (non-blocking background task)
+- **Database-first approach**: `xero_list_accounts` AI tool retrieves from database cache, **not** live Xero API
+- **Manual refresh**: Users can sync via Settings > Chart of Accounts > "Sync Now" button
+- **Multi-tenant support**: Each Xero organisation has its own cached chart of accounts
+- **Performance benefit**: Database queries are ~10x faster than Xero API calls, eliminates rate limit concerns
+- **Implementation**: `lib/xero/chart-of-accounts-sync.ts` handles sync logic and formatting
+
 **Integration with Chat** (`app/(chat)/api/chat/route.ts`):
 - Checks for active Xero connection before each chat request
 - Conditionally includes Xero tools in available tools list
 - Tools are automatically available when user has connected Xero
 - No configuration needed - tools are added dynamically
+- Chart of accounts included in system prompt via template variables (loaded from database cache)
 
 **Settings UI** (`app/(settings)/settings/integrations/page.tsx`):
 - Server-rendered Xero connection status
