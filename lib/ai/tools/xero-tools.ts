@@ -1,6 +1,9 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { executeXeroMCPTool, xeroMCPTools } from "@/lib/ai/xero-mcp-client";
+import type { XeroAccount } from "@/lib/db/schema";
+import { getChartOfAccounts } from "@/lib/xero/chart-of-accounts-sync";
+import { getDecryptedConnection } from "@/lib/xero/connection-manager";
 
 /**
  * Xero Tools for AI SDK
@@ -113,7 +116,7 @@ export function createXeroTools(userId: string) {
 
     xero_list_accounts: tool({
       description:
-        "Get the chart of accounts from Xero. Use this to view available accounts for transactions and reporting.",
+        "Get the chart of accounts from cached Xero data. This retrieves accounts from the local database cache (synced when connection was established). Use this to view available accounts for transactions and reporting. For the latest data, users can manually sync via settings.",
       inputSchema: z.object({
         type: z
           .string()
@@ -123,12 +126,64 @@ export function createXeroTools(userId: string) {
           ),
       }),
       execute: async (args) => {
-        const result = await executeXeroMCPTool(
-          userId,
-          "xero_list_accounts",
-          args
-        );
-        return result.content[0].text;
+        try {
+          // Get the active connection for this user
+          const connection = await getDecryptedConnection(userId);
+
+          if (!connection) {
+            return JSON.stringify({
+              error: "No active Xero connection found",
+              message: "Please connect to Xero first",
+            });
+          }
+
+          // Retrieve chart of accounts from database cache
+          const chartData = await getChartOfAccounts(connection.id);
+
+          if (!chartData || !chartData.accounts) {
+            return JSON.stringify({
+              error: "Chart of accounts not synced",
+              message:
+                "Chart of accounts has not been synced yet. Please sync your Xero connection in settings.",
+              connectionId: connection.id,
+              organisationName: connection.tenantName,
+            });
+          }
+
+          // Filter by type if specified
+          let accounts = chartData.accounts as XeroAccount[];
+
+          if (args.type) {
+            accounts = accounts.filter(
+              (account) =>
+                account.type?.toLowerCase() === args.type?.toLowerCase()
+            );
+          }
+
+          // Filter out deleted accounts and format response
+          const activeAccounts = accounts.filter(
+            (account) => account.status !== "DELETED"
+          );
+
+          return JSON.stringify({
+            accounts: activeAccounts,
+            totalCount: activeAccounts.length,
+            syncedAt: chartData.syncedAt,
+            organisationName: connection.tenantName,
+            source: "database_cache",
+            note: "Data retrieved from local cache. Use manual sync in settings to refresh from Xero.",
+          });
+        } catch (error) {
+          console.error(
+            "Error retrieving chart of accounts from cache:",
+            error
+          );
+          return JSON.stringify({
+            error: "Failed to retrieve chart of accounts",
+            message:
+              error instanceof Error ? error.message : "Unknown error occurred",
+          });
+        }
       },
     }),
 
@@ -815,4 +870,4 @@ export function createXeroTools(userId: string) {
 /**
  * Get list of Xero tool names for experimental_activeTools
  */
-export const xeroToolNames = xeroMCPTools.map((tool) => tool.name);
+export const xeroToolNames = xeroMCPTools.map((t) => t.name);
