@@ -3,9 +3,13 @@ import {
   IntegrationCard,
 } from "@/components/settings/integration-card";
 import { XeroIntegrationCard } from "@/components/settings/xero-integration-card";
+import { MyobIntegrationCard } from "@/components/settings/myob-integration-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
-import { getXeroConnectionsByUserId } from "@/lib/db/queries";
+import {
+  getActiveMyobConnection,
+  getXeroConnectionsByUserId,
+} from "@/lib/db/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -18,15 +22,16 @@ const xeroIntegration: Integration = {
   docsUrl: "https://developer.xero.com/documentation/",
 };
 
+const myobIntegration: Integration = {
+  id: "myob",
+  name: "MYOB Business",
+  description:
+    "Connect accounts payable and receivable. Import transactions and export journals seamlessly.",
+  status: "available",
+  docsUrl: "https://developer.myob.com/api/myob-business-api/",
+};
+
 const accountingIntegrations: Integration[] = [
-  {
-    id: "myob",
-    name: "MYOB Business",
-    description:
-      "Connect accounts payable and receivable. Import transactions and export journals seamlessly.",
-    status: "coming-soon",
-    docsUrl: "https://developer.myob.com/api/accountright/",
-  },
   {
     id: "quickbooks",
     name: "QuickBooks",
@@ -99,6 +104,7 @@ const payrollIntegrations: Integration[] = [
 export default async function IntegrationsPage() {
   const user = await getAuthUser();
   const xeroConnections = user ? await getXeroConnectionsByUserId(user.id) : [];
+  const myobConnection = user ? await getActiveMyobConnection(user.id) : null;
 
   return (
     <div className="space-y-6">
@@ -125,6 +131,10 @@ export default async function IntegrationsPage() {
             <XeroIntegrationCard
               initialConnections={xeroConnections}
               integration={xeroIntegration}
+            />
+            <MyobIntegrationCard
+              initialConnection={myobConnection}
+              integration={myobIntegration}
             />
             {accountingIntegrations.map((integration) => (
               <IntegrationCard integration={integration} key={integration.id} />

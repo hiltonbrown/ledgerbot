@@ -29,6 +29,7 @@ import { getWeather } from "@/lib/ai/tools/get-weather";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
 import { updateDocument } from "@/lib/ai/tools/update-document";
 import { createXeroTools, xeroToolNames } from "@/lib/ai/tools/xero-tools";
+import { createMyobTools, myobToolNames } from "@/lib/ai/tools/myob-tools";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import {
   DEFAULT_CHAT_VISIBILITY,
@@ -39,6 +40,7 @@ import { isProductionEnvironment } from "@/lib/constants";
 import {
   createStreamId,
   deleteChatById,
+  getActiveMyobConnection,
   getActiveXeroConnection,
   getChatById,
   getMessageCountByUserId,
@@ -691,20 +693,27 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check if user has Xero connection
+    // Check if user has Xero or MYOB connections
     const xeroConnection = await getActiveXeroConnection(user.id);
+    const myobConnection = await getActiveMyobConnection(user.id);
     const xeroTools = xeroConnection ? createXeroTools(user.id) : {};
+    const myobTools = myobConnection ? createMyobTools(user.id) : {};
 
     const stream = createUIMessageStream({
       execute: ({ writer: dataStream }) => {
         // Always use all default tools
         const activeTools: ToolId[] = defaultSelectedTools;
 
-        // Add Xero tool names to active tools if connection exists
-        // Cast to string[] since Xero tools are dynamically added
-        const finalActiveTools: string[] = xeroConnection
-          ? [...activeTools, ...xeroToolNames]
-          : activeTools;
+        // Add Xero and MYOB tool names to active tools if connections exist
+        // Cast to string[] since integration tools are dynamically added
+        const integrationToolNames = [
+          ...(xeroConnection ? xeroToolNames : []),
+          ...(myobConnection ? myobToolNames : []),
+        ];
+        const finalActiveTools: string[] = [
+          ...activeTools,
+          ...integrationToolNames,
+        ];
 
         console.log(
           "[debug] Starting streamText with model:",
@@ -742,6 +751,7 @@ export async function POST(request: Request) {
               modelId: selectedChatModel,
             }),
             ...xeroTools,
+            ...myobTools,
           },
           experimental_telemetry: {
             isEnabled: isProductionEnvironment,
