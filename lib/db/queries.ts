@@ -30,6 +30,8 @@ import {
   type DBMessage,
   document,
   message,
+  type MyobConnection,
+  myobConnection,
   type RegulatoryDocument,
   type RegulatoryScrapeJob,
   regulatoryDocument,
@@ -1610,5 +1612,282 @@ export async function updateRateLimitInfo(
   } catch (_error) {
     // Don't throw error - rate limit tracking shouldn't break API calls
     console.error("Failed to update rate limit info:", _error);
+  }
+}
+
+// MYOB Connection Queries
+
+export async function getActiveMyobConnection(
+  userId: string
+): Promise<MyobConnection | null> {
+  try {
+    const [connection] = await db
+      .select()
+      .from(myobConnection)
+      .where(
+        and(eq(myobConnection.userId, userId), eq(myobConnection.isActive, true))
+      )
+      .orderBy(desc(myobConnection.createdAt))
+      .limit(1);
+
+    return connection ?? null;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get active MYOB connection"
+    );
+  }
+}
+
+export async function getMyobConnectionById(
+  connectionId: string
+): Promise<MyobConnection | null> {
+  try {
+    const [connection] = await db
+      .select()
+      .from(myobConnection)
+      .where(eq(myobConnection.id, connectionId))
+      .limit(1);
+
+    return connection ?? null;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get MYOB connection by ID"
+    );
+  }
+}
+
+export async function getMyobConnectionsByUserId(
+  userId: string
+): Promise<MyobConnection[]> {
+  try {
+    return await db
+      .select()
+      .from(myobConnection)
+      .where(eq(myobConnection.userId, userId))
+      .orderBy(desc(myobConnection.createdAt));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get MYOB connections"
+    );
+  }
+}
+
+export async function createMyobConnection({
+  userId,
+  businessId,
+  businessName,
+  accessToken,
+  refreshToken,
+  expiresAt,
+  scopes,
+  cfUsername,
+  cfPassword,
+}: {
+  userId: string;
+  businessId: string;
+  businessName?: string;
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: Date;
+  scopes: string[];
+  cfUsername?: string;
+  cfPassword?: string;
+}): Promise<MyobConnection> {
+  try {
+    const now = new Date();
+    const businessNameValue = businessName?.trim() ?? null;
+
+    console.log("createMyobConnection called with:", {
+      userId,
+      businessId,
+      businessName: businessNameValue,
+      accessTokenLength: accessToken?.length,
+      refreshTokenLength: refreshToken?.length,
+      expiresAt: expiresAt.toISOString(),
+      scopes: scopes,
+      hasCfCredentials: !!(cfUsername && cfPassword),
+    });
+
+    // Deactivate any existing active connections for this user
+    const existingConnections = await db
+      .select()
+      .from(myobConnection)
+      .where(
+        and(eq(myobConnection.userId, userId), eq(myobConnection.isActive, true))
+      );
+
+    if (existingConnections.length > 0) {
+      console.log(
+        `Deactivating ${existingConnections.length} existing active MYOB connection(s) for user ${userId}`
+      );
+      await db
+        .update(myobConnection)
+        .set({
+          isActive: false,
+          connectionStatus: "disconnected",
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(myobConnection.userId, userId),
+            eq(myobConnection.isActive, true)
+          )
+        );
+    }
+
+    // Create new connection
+    const [newConnection] = await db
+      .insert(myobConnection)
+      .values({
+        userId,
+        businessId,
+        businessName: businessNameValue,
+        accessToken,
+        refreshToken,
+        refreshTokenIssuedAt: now,
+        expiresAt,
+        scopes,
+        cfUsername: cfUsername || null,
+        cfPassword: cfPassword || null,
+        isActive: true,
+        connectionStatus: "connected",
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+
+    if (!newConnection) {
+      throw new Error("Failed to create MYOB connection - no record returned");
+    }
+
+    console.log(
+      `Created new active MYOB connection ${newConnection.id} for user ${userId} (business: ${businessId})`
+    );
+
+    return newConnection;
+  } catch (_error) {
+    console.error("createMyobConnection error:", _error);
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to create MYOB connection"
+    );
+  }
+}
+
+export async function updateMyobTokens({
+  id,
+  accessToken,
+  refreshToken,
+  expiresAt,
+}: {
+  id: string;
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: Date;
+}): Promise<MyobConnection> {
+  try {
+    const [updatedConnection] = await db
+      .update(myobConnection)
+      .set({
+        accessToken,
+        refreshToken,
+        expiresAt,
+        connectionStatus: "connected",
+        lastError: null,
+        errorType: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(myobConnection.id, id))
+      .returning();
+
+    if (!updatedConnection) {
+      throw new Error("Failed to update MYOB tokens - connection not found");
+    }
+
+    return updatedConnection;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to update MYOB tokens"
+    );
+  }
+}
+
+export async function deactivateMyobConnection(
+  connectionId: string
+): Promise<void> {
+  try {
+    await db
+      .update(myobConnection)
+      .set({
+        isActive: false,
+        connectionStatus: "disconnected",
+        updatedAt: new Date(),
+      })
+      .where(eq(myobConnection.id, connectionId));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to deactivate MYOB connection"
+    );
+  }
+}
+
+export async function deleteMyobConnection(
+  connectionId: string
+): Promise<void> {
+  try {
+    await db
+      .delete(myobConnection)
+      .where(eq(myobConnection.id, connectionId));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to delete MYOB connection"
+    );
+  }
+}
+
+export async function updateMyobConnectionError(
+  connectionId: string,
+  error: string,
+  errorType?: string
+): Promise<void> {
+  try {
+    await db
+      .update(myobConnection)
+      .set({
+        connectionStatus: "error",
+        lastError: error,
+        errorType: errorType || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(myobConnection.id, connectionId));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to update MYOB connection error"
+    );
+  }
+}
+
+export async function updateMyobLastApiCall(
+  connectionId: string
+): Promise<void> {
+  try {
+    await db
+      .update(myobConnection)
+      .set({
+        lastApiCall: new Date(),
+        connectionStatus: "connected",
+        updatedAt: new Date(),
+      })
+      .where(eq(myobConnection.id, connectionId));
+  } catch (_error) {
+    // Don't throw error - this is just tracking, shouldn't break API calls
+    console.error("Failed to update MYOB last API call timestamp:", _error);
   }
 }

@@ -310,6 +310,33 @@ export type XeroAccount = {
   addToWatchlist?: boolean;
 };
 
+export const myobConnection = pgTable("MyobConnection", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  userId: uuid("userId")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  businessId: varchar("businessId", { length: 255 }).notNull(), // MYOB's businessId (cf_uri)
+  businessName: varchar("businessName", { length: 255 }),
+  accessToken: text("accessToken").notNull(), // Encrypted
+  refreshToken: text("refreshToken").notNull(), // Encrypted
+  refreshTokenIssuedAt: timestamp("refreshTokenIssuedAt").notNull(), // When refresh token was first issued
+  expiresAt: timestamp("expiresAt").notNull(),
+  scopes: jsonb("scopes").$type<string[]>().notNull(),
+  cfUsername: text("cfUsername"), // Encrypted company file username (optional)
+  cfPassword: text("cfPassword"), // Encrypted company file password (optional)
+  isActive: boolean("isActive").notNull().default(true),
+  connectionStatus: varchar("connectionStatus", { length: 50 }).default(
+    "connected"
+  ), // connected, disconnected, error
+  lastApiCall: timestamp("lastApiCall"),
+  lastError: text("lastError"),
+  errorType: varchar("errorType", { length: 50 }),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+});
+
+export type MyobConnection = InferSelectModel<typeof myobConnection>;
+
 export const regulatoryDocument = pgTable(
   "RegulatoryDocument",
   {
