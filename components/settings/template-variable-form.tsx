@@ -170,7 +170,8 @@ export function TemplateVariableForm({
   const [formState, setFormState] = useState({
     country: data.personalisation.country,
     state: data.personalisation.state,
-    companyName: data.personalisation.companyName || "",
+    companyName:
+      xeroConnection?.tenantName || data.personalisation.companyName || "",
     industryContext: data.personalisation.industryContext || "",
     chartOfAccounts: data.personalisation.chartOfAccounts || "",
     customVariables: data.personalisation.customVariables || {},
@@ -230,7 +231,9 @@ export function TemplateVariableForm({
     ) =>
     (variableName: string) => {
       const textarea = ref.current;
-      if (!textarea) return;
+      if (!textarea) {
+        return;
+      }
 
       const start = textarea.selectionStart;
       const end = textarea.selectionEnd;
@@ -279,9 +282,11 @@ export function TemplateVariableForm({
           // Location and template variables (Business Information)
           country: formState.country,
           state: formState.state,
-          companyName: formState.companyName,
+          // Only save manual company name if no Xero connection
+          companyName: xeroConnection ? "" : formState.companyName,
           industryContext: formState.industryContext,
-          chartOfAccounts: formState.chartOfAccounts,
+          // Only save manual chart if no Xero connection
+          chartOfAccounts: xeroConnection ? "" : formState.chartOfAccounts,
           customVariables: formState.customVariables,
         }),
       });
@@ -382,15 +387,43 @@ export function TemplateVariableForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="companyName">Company Name</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="companyName">Company Name</Label>
+                {xeroConnection && (
+                  <Badge className="gap-1" variant="secondary">
+                    <ExternalLink className="h-3 w-3" />
+                    From Xero
+                  </Badge>
+                )}
+              </div>
               <Input
-                disabled={data.personalisation.isLocked || isSaving}
+                disabled={
+                  data.personalisation.isLocked || isSaving || !!xeroConnection
+                }
                 id="companyName"
                 onChange={handleInputChange("companyName")}
-                placeholder="e.g., Acme Pty Ltd"
+                placeholder={
+                  xeroConnection
+                    ? "Company name is automatically synced from Xero"
+                    : "e.g., Acme Pty Ltd"
+                }
                 value={formState.companyName}
               />
               <p className="text-muted-foreground text-xs">
+                {xeroConnection ? (
+                  "Company name is automatically populated from your active Xero organization. To use a manual entry, disconnect Xero or switch organizations."
+                ) : (
+                  <>
+                    Your company or business name. Or{" "}
+                    <Link
+                      className="text-primary hover:underline"
+                      href="/settings/integrations"
+                    >
+                      connect to Xero
+                    </Link>{" "}
+                    to sync automatically.
+                  </>
+                )}{" "}
                 Available in prompts as{" "}
                 <code className="rounded bg-muted px-1 py-0.5">
                   {"{"}
@@ -560,11 +593,7 @@ export function TemplateVariableForm({
               )}
               <p className="text-muted-foreground text-xs">
                 {xeroConnection ? (
-                  <>
-                    Your chart of accounts is automatically populated from your
-                    active Xero connection. To use a manual chart, disconnect
-                    Xero or switch to a different organization.
-                  </>
+                  "Your chart of accounts is automatically populated from your active Xero connection. To use a manual chart, disconnect Xero or switch to a different organization."
                 ) : (
                   <>
                     Paste your chart of accounts here for more accurate coding
@@ -610,7 +639,10 @@ export function TemplateVariableForm({
                   setFormState({
                     country: data.personalisation.country,
                     state: data.personalisation.state,
-                    companyName: data.personalisation.companyName || "",
+                    companyName:
+                      xeroConnection?.tenantName ||
+                      data.personalisation.companyName ||
+                      "",
                     industryContext: data.personalisation.industryContext || "",
                     chartOfAccounts: data.personalisation.chartOfAccounts || "",
                     customVariables: data.personalisation.customVariables || {},

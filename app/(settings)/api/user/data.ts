@@ -173,11 +173,15 @@ export async function getUserSettings(): Promise<UserSettings> {
   const lastName =
     clerkUser?.lastName || USER_SETTINGS.personalisation.lastName;
 
-  // Fetch chart of accounts from active Xero connection
+  // Fetch chart of accounts and company name from active Xero connection
   let chartOfAccountsText = "";
+  let companyName = "";
   try {
     const xeroConnection = await getDecryptedConnection(user.id);
     if (xeroConnection) {
+      // Use Xero organization name as company name
+      companyName = xeroConnection.tenantName || "";
+
       const chartData = await getChartOfAccounts(xeroConnection.id);
       if (chartData && chartData.accounts.length > 0) {
         // Format chart for AI prompt (grouped by type, active accounts only)
@@ -192,19 +196,22 @@ export async function getUserSettings(): Promise<UserSettings> {
       }
     }
   } catch (error) {
-    console.error("Error fetching chart of accounts from Xero:", error);
+    console.error("Error fetching data from Xero connection:", error);
   }
 
-  // Fallback to manual chart of accounts if no Xero data available
+  // Fallback to manual entries if no Xero data available
   if (!chartOfAccountsText && dbSettings?.chartOfAccounts) {
     chartOfAccountsText = dbSettings.chartOfAccounts;
+  }
+  if (!companyName && dbSettings?.companyName) {
+    companyName = dbSettings.companyName;
   }
 
   // Build template variables for substitution
   const templateVars: TemplateVariables = {
     FIRST_NAME: firstName,
     LAST_NAME: lastName,
-    COMPANY_NAME: dbSettings?.companyName || "",
+    COMPANY_NAME: companyName,
     INDUSTRY_CONTEXT: dbSettings?.industryContext || "",
     CHART_OF_ACCOUNTS: chartOfAccountsText,
     // Custom instructions (user-editable additions to locked base prompts)

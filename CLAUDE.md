@@ -216,12 +216,19 @@ XERO_ENCRYPTION_KEY=32_byte_hex_key_for_aes256
 - **Performance benefit**: Database queries are ~10x faster than Xero API calls, eliminates rate limit concerns
 - **Implementation**: `lib/xero/chart-of-accounts-sync.ts` handles sync logic and formatting
 
+**Company Name Integration**:
+- **Auto-populated from Xero**: Company name (`COMPANY_NAME` template variable) uses `XeroConnection.tenantName` when connected
+- **Fallback to manual entry**: If no Xero connection, uses manual entry from user settings
+- **Priority**: Xero tenant name > manual user entry
+- **UI behavior**: Company name field is read-only when Xero is connected (shown in `/settings/personalisation`)
+- **Implementation**: `app/(settings)/api/user/data.ts` prioritizes Xero connection's tenant name
+
 **Integration with Chat** (`app/(chat)/api/chat/route.ts`):
 - Checks for active Xero connection before each chat request
 - Conditionally includes Xero tools in available tools list
 - Tools are automatically available when user has connected Xero
 - No configuration needed - tools are added dynamically
-- Chart of accounts included in system prompt via template variables (loaded from database cache)
+- Chart of accounts and company name included in system prompt via template variables (both loaded from database cache)
 
 **Settings UI** (`app/(settings)/settings/integrations/page.tsx`):
 - Server-rendered Xero connection status
