@@ -3,7 +3,7 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { CreditCard } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { InvoiceUploadZone } from "@/components/agents/ap/invoice-upload-zone";
 import { InvoiceViewer } from "@/components/agents/ap/invoice-viewer";
 import { InvoiceDetailsForm } from "@/components/agents/ap/invoice-details-form";
@@ -18,11 +18,25 @@ export default function AccountsPayableAgentPage() {
   } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [extractedData, setExtractedData] = useState<ExtractedInvoiceData | null>(null);
+  const [selectedModel, setSelectedModel] = useState<string>("anthropic-claude-sonnet-4-5");
+
+  // Load model preference from localStorage on mount
+  useEffect(() => {
+    const savedModel = localStorage.getItem("apAgentModel");
+    if (savedModel) {
+      setSelectedModel(savedModel);
+    }
+  }, []);
 
   const { sendMessage } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/agents/ap",
     }),
+    body: {
+      settings: {
+        model: selectedModel,
+      },
+    },
     onFinish: (message) => {
       // Check if the response contains extracted invoice data
       // This would be returned from the extractInvoiceData tool

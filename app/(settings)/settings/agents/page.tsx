@@ -12,7 +12,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   AgentConfigCard,
   SettingRow,
@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { chatModels } from "@/lib/ai/models";
 
 export default function AgentSettingsPage() {
   const [systemEnabled, setSystemEnabled] = useState(false);
@@ -67,6 +68,7 @@ export default function AgentSettingsPage() {
 
   // Accounts Payable Agent state
   const [apEnabled, setApEnabled] = useState(true);
+  const [apModel, setApModel] = useState("anthropic-claude-sonnet-4-5");
   const [invoiceProcessing, setInvoiceProcessing] = useState("auto");
   const [approvalWorkflows, setApprovalWorkflows] = useState(true);
   const [paymentRuns, setPaymentRuns] = useState("manual");
@@ -110,9 +112,24 @@ export default function AgentSettingsPage() {
   const [loggingLevel, setLoggingLevel] = useState("info");
   const [fallbackBehavior, setFallbackBehavior] = useState("retry");
 
+  // Load AP model from localStorage on mount
+  useEffect(() => {
+    const savedApModel = localStorage.getItem("apAgentModel");
+    if (savedApModel) {
+      setApModel(savedApModel);
+    }
+  }, []);
+
   const handleSaveChanges = () => {
+    // Save AP agent model preference to localStorage
+    localStorage.setItem("apAgentModel", apModel);
+
     // Placeholder for save functionality
     console.log("Saving agent configurations...");
+    console.log("AP Agent Model:", apModel);
+
+    // TODO: Save to database via API
+    alert("Agent settings saved successfully!");
   };
 
   return (
@@ -500,12 +517,36 @@ export default function AgentSettingsPage() {
             }}
             onEnabledChange={setApEnabled}
             onReset={() => {
+              setApModel("anthropic-claude-sonnet-4-5");
               setInvoiceProcessing("auto");
               setApprovalWorkflows(true);
               setPaymentRuns("manual");
               setVendorManagement(true);
             }}
           >
+            <SettingRow
+              description="AI model to use for invoice processing and analysis"
+              label="Model"
+            >
+              <Select onValueChange={setApModel} value={apModel}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {chatModels.map((model) => (
+                    <SelectItem key={model.id} value={model.id}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{model.name}</span>
+                        <span className="text-muted-foreground text-xs">
+                          {model.description}
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </SettingRow>
+
             <SettingRow
               description="How to process incoming invoices"
               label="Invoice processing"
