@@ -153,6 +153,13 @@ Copy `.env.example` to `.env.local` and configure:
   - `xero_list_journal_entries`: Get manual journal entries with date filtering
   - `xero_get_bank_transactions`: Get bank transactions with account and date filters
   - `xero_get_organisation`: Get connected Xero organisation information
+- MYOB accounting tools (when connected):
+  - `myob_list_invoices`: Get invoices (Item/Service/Professional/Miscellaneous types) with date filtering
+  - `myob_get_invoice`: Get detailed invoice information by UID
+  - `myob_list_contacts`: Search contacts (Customer/Supplier/Personal) by name or company
+  - `myob_get_contact`: Get detailed contact information by UID
+  - `myob_list_accounts`: Get chart of accounts with optional classification filtering
+  - `myob_get_company_file`: Get connected MYOB company file information
 
 ### Xero Integration
 
@@ -231,6 +238,141 @@ Users can query their Xero data naturally in chat:
 - "What's my organisation name and address?"
 
 The AI automatically uses the appropriate Xero tools based on user intent when a connection is active.
+
+### MYOB Business Integration
+
+LedgerBot includes built-in MYOB Business accounting integration using Model Context Protocol (MCP) for real-time access to financial data.
+
+**OAuth2 Flow**: Uses **Authorization Code Flow** (standard flow with client secret)
+- Recommended by MYOB for web server applications that can securely store client secrets
+- LedgerBot is a Next.js server-side application with secure environment variable storage
+- Client secret provides stronger authentication than PKCE (designed for native apps)
+- CRITICAL: Uses `prompt=consent` parameter to receive `businessId` in OAuth callback
+
+**Architecture** (`lib/myob/`, `lib/ai/myob-*`):
+- **OAuth2 Authorization Code Flow** with client secret
+- State parameter CSRF protection (Base64-encoded userId + timestamp)
+- AES-256-GCM encrypted token storage in database
+- Automatic token refresh when expiring within 5 minutes
+- **30-day refresh token lifecycle** (shorter than Xero's 60 days)
+- MCP-compatible tool interfaces for MYOB API operations
+- AI SDK tool wrappers for seamless chat integration
+- Support for single business file per user (one active connection)
+- Direct fetch-based API client (no official Node.js SDK available)
+
+**Database Schema** (`MyobConnection` table):
+- User ID and business ID (serves as cf_uri for API calls)
+- Business name and organisation information
+- Encrypted OAuth tokens (access and refresh)
+- Token expiry tracking and scope storage
+- Optional company file credentials (cfUsername/cfPassword for x-myobapi-cftoken header)
+- Active connection status flag
+- Connection error tracking
+
+**OAuth Flow** (`app/api/myob/`):
+- `/api/myob/auth`: Initialize OAuth flow with state verification and `prompt=consent`
+- `/api/myob/callback`: Handle OAuth callback, extract businessId, exchange tokens, store encrypted connection
+- `/api/myob/disconnect`: Deactivate and delete MYOB connection
+- `/api/myob/status`: Check connection health and metadata
+
+**Environment Variables**:
+```bash
+MYOB_CLIENT_ID=your_myob_client_id
+MYOB_CLIENT_SECRET=your_myob_client_secret
+MYOB_API_KEY=your_myob_api_key
+MYOB_REDIRECT_URI=http://localhost:3000/api/myob/callback
+MYOB_ENCRYPTION_KEY=32_byte_hex_key_for_aes256  # Optional: falls back to XERO_ENCRYPTION_KEY
+```
+
+**MYOB Scopes** (space-separated, not array format):
+- `CompanyFile`: Legacy scope for backward compatibility
+- `sme-company-file`: Company file access (required, new post-March 2025)
+- `sme-general-ledger`: GL accounts, journals
+- `sme-sales`: Invoices, quotes
+- `sme-purchases`: Bills, purchase orders
+- `sme-banking`: Bank accounts, transactions
+- `sme-contacts-customer`: Customer contacts
+- `sme-contacts-supplier`: Supplier contacts
+- `sme-inventory`: Inventory items
+- `sme-payroll`: Payroll data (optional)
+- `sme-timebilling`: Time billing (optional)
+
+**API Request Headers** (required for all MYOB API calls):
+```typescript
+{
+  'Authorization': `Bearer ${accessToken}`,
+  'x-myobapi-key': process.env.MYOB_API_KEY,
+  'x-myobapi-version': 'v2',
+  'x-myobapi-cftoken': Base64(cfUsername:cfPassword), // Optional
+  'Content-Type': 'application/json'
+}
+```
+
+**API Endpoint Structure**:
+- Base URL: `https://api.myob.com/accountright`
+- Full endpoint: `https://api.myob.com/accountright/{businessId}/{resource}`
+- Example: `https://api.myob.com/accountright/{businessId}/Sale/Invoice/Item`
+- **businessId** captured from OAuth callback serves as `cf_uri` for all API calls
+
+**OData Query Support**:
+- `$filter`: Filter expressions (e.g., `Date ge datetime'2025-01-01'`)
+- `$orderby`: Sort results (e.g., `Date desc`)
+- `$top`: Limit results (max 1000 per MYOB limit)
+- `$skip`: Pagination offset
+- Example: `/Sale/Invoice/Item?$filter=Date ge datetime'2025-01-01'&$top=100`
+
+**Integration with Chat** (`app/(chat)/api/chat/route.ts`):
+- Checks for active MYOB connection before each chat request
+- Conditionally includes MYOB tools in available tools list
+- Tools are automatically available when user has connected MYOB
+- Works alongside Xero tools - both can be active simultaneously
+- No configuration needed - tools are added dynamically
+
+**Settings UI** (`app/(settings)/settings/integrations/page.tsx`):
+- Server-rendered MYOB connection status
+- Connect/disconnect functionality with OAuth flow
+- Displays business name and business ID
+- Success/error messages for connection status
+- Simpler than Xero (no multi-org switching, single business file)
+
+**Key Implementation Files**:
+- `lib/myob/connection-manager.ts`: OAuth client, token refresh, connection retrieval
+- `lib/myob/encryption.ts`: AES-256-GCM encryption for OAuth tokens (reusable with Xero)
+- `lib/myob/types.ts`: TypeScript type definitions for OAuth and API responses
+- `lib/myob/error-handler.ts`: MYOB-specific error parsing and user-friendly messages
+- `lib/ai/myob-mcp-client.ts`: MCP tool definitions and direct fetch API execution
+- `lib/ai/tools/myob-tools.ts`: AI SDK tool wrappers with Zod schemas
+- `components/settings/myob-integration-card.tsx`: React component for connection UI
+
+**Available MYOB Tools**:
+- `myob_list_invoices`: Get invoices (Item/Service/Professional/Miscellaneous types)
+- `myob_get_invoice`: Get detailed invoice information by UID
+- `myob_list_contacts`: Search contacts (Customer/Supplier/Personal) by name
+- `myob_get_contact`: Get detailed contact information by UID
+- `myob_list_accounts`: Get chart of accounts with classification filter
+- `myob_get_company_file`: Get connected company file information
+
+**Usage in Chat**:
+Users can query their MYOB data naturally in chat:
+- "Show me all invoices from October 2024"
+- "Get details for invoice number INV-001"
+- "List all my MYOB customers"
+- "What is my MYOB company name?"
+- "Show me the chart of accounts"
+- "List all expense accounts from MYOB"
+
+The AI automatically uses the appropriate MYOB tools based on user intent when a connection is active.
+
+**MYOB vs Xero Key Differences**:
+- **businessId**: MYOB uses businessId (from OAuth callback) as cf_uri, vs Xero's tenantId
+- **Token Exchange**: MYOB requires form-encoded body, Xero uses xero-node SDK
+- **Scopes Format**: MYOB uses space-separated strings, Xero uses array
+- **Refresh Token Lifecycle**: MYOB 30 days, Xero 60 days
+- **Multi-Org**: MYOB single business file, Xero supports multiple tenants/orgs
+- **SDK**: MYOB uses direct fetch calls (no official SDK), Xero uses xero-node SDK
+- **Additional Headers**: MYOB requires x-myobapi-key and x-myobapi-version
+- **Company File Auth**: MYOB optionally supports x-myobapi-cftoken, Xero doesn't need it
+- **Token Revocation**: MYOB has no revocation endpoint, Xero supports revocation
 
 ### Artifact System
 
