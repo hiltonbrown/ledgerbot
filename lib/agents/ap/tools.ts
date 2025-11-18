@@ -58,6 +58,15 @@ export async function extractInvoiceData(
       throw new Error(`Failed to fetch file: ${fileResponse.statusText}`);
     }
 
+    // Validate file size before loading into memory
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    const contentLengthHeader = fileResponse.headers.get("content-length");
+    if (contentLengthHeader) {
+      const contentLength = parseInt(contentLengthHeader, 10);
+      if (contentLength > MAX_FILE_SIZE) {
+        throw new Error(`File size (${contentLength} bytes) exceeds maximum allowed size of ${MAX_FILE_SIZE} bytes.`);
+      }
+    }
     // Convert to base64 for vision API
     const arrayBuffer = await fileResponse.arrayBuffer();
     const base64 = Buffer.from(arrayBuffer).toString("base64");
