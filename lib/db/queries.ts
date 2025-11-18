@@ -1492,8 +1492,9 @@ export async function getExpiringXeroConnections(
   daysThreshold: number
 ): Promise<XeroConnection[]> {
   try {
-    const thresholdDate = new Date();
-    thresholdDate.setDate(thresholdDate.getDate() + daysThreshold);
+    // Calculate threshold date using milliseconds to properly handle fractional days
+    // e.g., 0.25 days = 6 hours
+    const thresholdDate = new Date(Date.now() + daysThreshold * 24 * 60 * 60 * 1000);
 
     return await db
       .select()
