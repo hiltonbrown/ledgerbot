@@ -247,7 +247,7 @@ LedgerBot includes built-in MYOB Business accounting integration using Model Con
 - Recommended by MYOB for web server applications that can securely store client secrets
 - LedgerBot is a Next.js server-side application with secure environment variable storage
 - Client secret provides stronger authentication than PKCE (designed for native apps)
-- CRITICAL: Uses `prompt=consent` parameter to receive `businessId` in OAuth callback
+- CRITICAL: Uses `prompt=consent` parameter to receive `cf_uri` parameter (mapped to `businessId`) in OAuth callback
 
 **Architecture** (`lib/myob/`, `lib/ai/myob-*`):
 - **OAuth2 Authorization Code Flow** with client secret
