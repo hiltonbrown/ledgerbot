@@ -44,24 +44,29 @@ export default function AccountsPayableAgentPage() {
       },
     }),
     onFinish: ({ message }) => {
-      // Check if the response contains extracted invoice data
-      // This would be returned from the extractInvoiceData tool
+      // Extract invoice data from tool results
       try {
-        const content = message.parts
-          ?.map((part) => (part.type === "text" ? part.text : null))
-          .filter(Boolean)
-          .join("");
+        // Look for extractInvoiceData tool result in message parts
+        const toolResultPart = message.parts?.find(
+          (part) =>
+            part.type === "tool-result" &&
+            part.toolName === "extractInvoiceData"
+        );
 
-        // Parse for JSON data in the response
-        const jsonMatch = content?.match(/\{[\s\S]*"invoiceData"[\s\S]*\}/);
-        if (jsonMatch) {
-          const data = JSON.parse(jsonMatch[0]);
-          if (data.invoiceData) {
-            setExtractedData(data.invoiceData);
+        if (toolResultPart && toolResultPart.type === "tool-result") {
+          const result = toolResultPart.result;
+
+          // The tool returns { success: true, invoiceData: {...} }
+          if (result && typeof result === "object" && "invoiceData" in result) {
+            const data = result.invoiceData;
+            if (data) {
+              console.log("[AP Agent] Invoice data extracted:", data);
+              setExtractedData(data as ExtractedInvoiceData);
+            }
           }
         }
       } catch (error) {
-        console.error("Failed to parse invoice data:", error);
+        console.error("[AP Agent] Failed to extract invoice data:", error);
       } finally {
         setIsProcessing(false);
       }
@@ -82,7 +87,28 @@ export default function AccountsPayableAgentPage() {
     setExtractedData(null);
 
     // Auto-trigger invoice processing
-    const processingMessage = `I've uploaded an invoice file: ${fileData.fileName}. Please extract the invoice data using the extractInvoiceData tool, match the vendor using matchVendor, validate the ABN, check for duplicates, suggest GL coding with suggestBillCoding, and provide a risk assessment. File URL: ${fileData.fileUrl}, File Type: ${fileData.fileType}`;
+    const processingMessage = `Please process this invoice:
+
+File: ${fileData.fileName}
+URL: ${fileData.fileUrl}
+Type: ${fileData.fileType}
+
+Steps to complete:
+1. Use the extractInvoiceData tool to extract all invoice details from the file
+2. Validate the supplier ABN if provided
+3. Check for duplicate invoices
+4. Suggest GL account coding for line items
+
+Please start by calling the extractInvoiceData tool with:
+- fileUrl: ${fileData.fileUrl}
+- fileType: ${fileData.fileType}
+
+Extract all available fields including:
+- Supplier details (name, ABN, address, contact info)
+- Invoice metadata (number, dates, PO number)
+- Financial details (subtotal, GST, total)
+- Line items with descriptions and amounts
+- Payment terms and bank details if available`;
 
     sendMessage({
       role: "user",

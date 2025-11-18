@@ -773,38 +773,76 @@ export const extractInvoiceDataTool = createTool({
       );
 
       // TODO: In production, use AI vision model or OCR service to extract data
-      // For now, return a mock extraction result
+      // For now, return a mock extraction result following Xero best practices
       // This would integrate with Anthropic Claude with vision or similar service
 
       const warnings: string[] = [];
 
-      // Mock extraction - in production this would use AI/OCR
+      // Generate realistic dates following Xero best practices
+      const today = new Date();
+      const invoiceDate = new Date(today);
+      invoiceDate.setDate(today.getDate() - 5); // Invoice from 5 days ago
+
+      const dueDate = new Date(invoiceDate);
+      dueDate.setDate(invoiceDate.getDate() + 30); // 30 days payment terms
+
+      // Mock extraction with comprehensive data following Xero best practices
+      // https://developer.xero.com/documentation/guides/how-to-guides/integration-best-practices/#invoices
       const invoiceData = {
-        supplierName: "Example Supplier Pty Ltd",
-        supplierABN: "12345678901",
-        supplierAddress: "123 Business Street, Sydney NSW 2000",
-        invoiceNumber: "INV-2024-001",
-        invoiceDate: new Date().toISOString().split("T")[0],
-        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-          .toISOString()
-          .split("T")[0],
-        subtotal: 1000.0,
-        gstAmount: 100.0,
-        totalAmount: 1100.0,
+        supplierName: "ABC Office Supplies Pty Ltd",
+        supplierABN: "51824753556", // Valid Australian ABN format (11 digits)
+        supplierAddress: "Level 3, 45 Collins Street, Melbourne VIC 3000",
+        supplierEmail: "accounts@abcoffice.com.au",
+        supplierPhone: "+61 3 9123 4567",
+        invoiceNumber: `INV-${today.getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000).padStart(4, "0")}`,
+        invoiceDate: invoiceDate.toISOString().split("T")[0], // YYYY-MM-DD format
+        dueDate: dueDate.toISOString().split("T")[0],
+        purchaseOrderNumber: `PO-${today.getFullYear()}-${String(Math.floor(Math.random() * 900) + 100)}`,
+        subtotal: 2450.0,
+        gstAmount: 245.0, // 10% GST
+        totalAmount: 2695.0,
         lineItems: [
           {
-            description: "Professional services",
+            description: "Office Stationery - Premium Paper A4 (10 reams)",
+            quantity: 10,
+            unitPrice: 45.0,
+            amount: 450.0,
+            gstIncluded: false,
+          },
+          {
+            description: "Printer Toner Cartridges - HP LaserJet (4 units)",
+            quantity: 4,
+            unitPrice: 275.0,
+            amount: 1100.0,
+            gstIncluded: false,
+          },
+          {
+            description: "Office Desk Organizers (5 sets)",
+            quantity: 5,
+            unitPrice: 80.0,
+            amount: 400.0,
+            gstIncluded: false,
+          },
+          {
+            description: "Delivery Fee",
             quantity: 1,
-            unitPrice: 1000.0,
-            amount: 1000.0,
+            unitPrice: 500.0,
+            amount: 500.0,
             gstIncluded: false,
           },
         ],
-        paymentTerms: "30 days",
-        confidence: 0.75,
+        paymentTerms: "Net 30 days",
+        bankDetails: {
+          accountName: "ABC Office Supplies Pty Ltd",
+          bsb: "063-000",
+          accountNumber: "12345678",
+        },
+        rawText: `Tax Invoice from ${fileUrl}`,
+        confidence: 0.85,
         warnings: [
-          "This is a mock extraction - integrate with AI vision or OCR service for production use",
-          "Some fields may not be detected from scanned invoices",
+          "DEMO MODE: This is mock data for testing. In production, integrate with Claude Vision API or OCR service.",
+          "Verify supplier ABN before processing payment",
+          "Confirm line item account codes match your chart of accounts",
         ],
       };
 
