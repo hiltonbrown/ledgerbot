@@ -222,10 +222,29 @@ async function persistTokenSet(
       console.warn(
         `⚠️ [persistTokenSet] Concurrent token update detected for connection ${connection.id}`
       );
-      console.warn("  Tokens were updated by another process - skipping update");
-      // Don't throw - just log and continue using the tokens we have
-      // The database has fresher tokens which will be used on next API call
-      return;
+      console.warn("  Tokens were updated by another process - attempting to fetch latest tokens");
+      // Standardize handling: fetch latest connection and validate tokens
+      const latestConnection = await getDecryptedConnection(connection.id);
+      if (
+        latestConnection &&
+        latestConnection.accessToken &&
+        latestConnection.refreshToken &&
+        latestConnection.expiresAt > new Date()
+      ) {
+        // Update in-memory connection object with latest values
+        connection.accessToken = latestConnection.accessToken;
+        connection.refreshToken = latestConnection.refreshToken;
+        connection.expiresAt = latestConnection.expiresAt;
+        connection.updatedAt = latestConnection.updatedAt;
+        console.log(
+          `✅ [persistTokenSet] Used latest tokens from database for connection ${connection.id}`
+        );
+        return;
+      } else {
+        throw new Error(
+          `[persistTokenSet] Optimistic lock failed and could not retrieve valid tokens for connection ${connection.id}`
+        );
+      }
     }
 
     // Update in-memory connection object with successfully persisted values
