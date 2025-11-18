@@ -1229,7 +1229,14 @@ export async function updateXeroTokens({
 }): Promise<XeroConnection | null> {
   try {
     const now = new Date();
-    const updates: any = {
+    const updates: {
+      accessToken: string;
+      refreshToken: string;
+      expiresAt: Date;
+      authenticationEventId?: string;
+      updatedAt: Date;
+      refreshTokenIssuedAt?: Date;
+    } = {
       accessToken,
       refreshToken,
       expiresAt,
