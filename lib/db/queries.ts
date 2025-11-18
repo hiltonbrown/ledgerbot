@@ -1238,15 +1238,14 @@ export async function updateXeroTokens({
       .where(whereConditions)
       .returning();
 
-    // If no rows were updated (optimistic lock failure), return null
-    if (!connection && expectedUpdatedAt) {
-      console.warn(
-        `⚠️ [updateXeroTokens] Optimistic lock failure for connection ${id} - another process updated the token concurrently`
-      );
-      return null;
-    }
-
+    // If no rows were updated, handle optimistic lock failure or not found
     if (!connection) {
+      if (expectedUpdatedAt) {
+        console.warn(
+          `⚠️ [updateXeroTokens] Optimistic lock failure for connection ${id} - another process updated the token concurrently`
+        );
+        return null;
+      }
       throw new ChatSDKError(
         "bad_request:database",
         "Xero connection not found"
