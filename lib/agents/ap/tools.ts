@@ -1,7 +1,9 @@
 import "server-only";
 
 import { createTool } from "@mastra/core/tools";
+import { generateObject } from "ai";
 import { z } from "zod";
+import { myProvider } from "@/lib/ai/providers";
 import { executeXeroMCPTool } from "@/lib/ai/xero-mcp-client";
 import type {
   ABNValidation,
@@ -14,6 +16,232 @@ import type {
   PaymentRiskFlag,
   SupplierRiskLevel,
 } from "@/types/ap";
+
+/**
+ * Extract invoice data from a file URL
+ * This is the core extraction function that can be called directly or via tool
+ */
+export async function extractInvoiceData(
+  fileUrl: string,
+  fileType: "pdf" | "image",
+  modelId = "anthropic-claude-sonnet-4-5"
+) {
+  try {
+    console.log(
+      `[AP Agent] Extracting invoice data from ${fileType} at ${fileUrl} using model ${modelId}`
+    );
+
+    // Fetch the file from the URL
+    const fileResponse = await fetch(fileUrl);
+    if (!fileResponse.ok) {
+      throw new Error(`Failed to fetch file: ${fileResponse.statusText}`);
+    }
+
+    // Convert to base64 for vision API
+    const arrayBuffer = await fileResponse.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString("base64");
+
+    // Determine media type from response headers or file type
+    const contentType = fileResponse.headers.get("content-type");
+    let mediaType = contentType || "image/jpeg";
+
+    // Fallback based on fileType if content-type not available
+    if (!contentType) {
+      if (fileType === "pdf") {
+        mediaType = "application/pdf";
+      } else {
+        // For images, default to jpeg but could be png, webp, etc.
+        mediaType = "image/jpeg";
+      }
+    }
+
+    // Define the extraction schema
+    const invoiceSchema = z.object({
+      supplierName: z
+        .string()
+        .optional()
+        .describe("Business name of the supplier/vendor"),
+      supplierABN: z
+        .string()
+        .optional()
+        .describe("Australian Business Number (11 digits)"),
+      supplierAddress: z
+        .string()
+        .optional()
+        .describe("Full address of the supplier"),
+      supplierEmail: z.string().email().optional().describe("Email address"),
+      supplierPhone: z.string().optional().describe("Phone number"),
+      invoiceNumber: z
+        .string()
+        .optional()
+        .describe("Invoice or tax invoice number"),
+      invoiceDate: z
+        .string()
+        .optional()
+        .describe("Invoice date in YYYY-MM-DD format"),
+      dueDate: z
+        .string()
+        .optional()
+        .describe("Payment due date in YYYY-MM-DD format"),
+      purchaseOrderNumber: z
+        .string()
+        .optional()
+        .describe("PO number if present"),
+      subtotal: z.number().optional().describe("Subtotal amount before GST"),
+      gstAmount: z
+        .number()
+        .optional()
+        .describe("GST/tax amount (10% for Australian invoices)"),
+      totalAmount: z.number().optional().describe("Total amount including GST"),
+      lineItems: z
+        .array(
+          z.object({
+            description: z.string().describe("Item description"),
+            quantity: z.number().optional().describe("Quantity"),
+            unitPrice: z.number().optional().describe("Unit price"),
+            amount: z.number().describe("Line item total amount"),
+            gstIncluded: z
+              .boolean()
+              .optional()
+              .describe("Whether GST is included"),
+          })
+        )
+        .optional()
+        .describe("Line items from the invoice"),
+      paymentTerms: z
+        .string()
+        .optional()
+        .describe("Payment terms (e.g., Net 30)"),
+      bankDetails: z
+        .object({
+          accountName: z.string().optional(),
+          bsb: z.string().optional(),
+          accountNumber: z.string().optional(),
+        })
+        .optional()
+        .describe("Bank account details for payment"),
+      confidence: z
+        .number()
+        .min(0)
+        .max(1)
+        .describe("Confidence score of the extraction (0-1)"),
+      warnings: z.array(z.string()).describe("Any warnings or issues found"),
+    });
+
+    // Create data URL for the image
+    const dataUrl = `data:${mediaType};base64,${base64}`;
+
+    // Use specified AI model with vision to extract invoice data
+    const result = await generateObject({
+      model: myProvider.languageModel(modelId),
+      schema: invoiceSchema,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image",
+              image: dataUrl,
+            },
+            {
+              type: "text",
+              text: `Analyze this invoice image and extract all relevant information following Australian tax invoice requirements.
+
+Extract the following information:
+- Supplier/vendor details (name, ABN, address, contact info)
+- Invoice metadata (invoice number, dates, PO number if present)
+- Financial details (subtotal, GST at 10%, total)
+- All line items with descriptions, quantities, unit prices, and amounts
+- Payment terms and bank details if visible
+
+Important guidelines:
+- Dates must be in YYYY-MM-DD format
+- ABN should be 11 digits (remove spaces if present)
+- GST for Australian invoices is 10% of subtotal
+- Line items should include all products/services listed
+- Provide a confidence score (0-1) based on image quality and data completeness
+- List any warnings or issues (missing info, unclear text, etc.)
+
+If any field is not clearly visible or not present on the invoice, leave it as undefined.`,
+            },
+          ],
+        },
+      ],
+    });
+
+    const invoiceData = result.object;
+
+    // Validate and enhance the extracted data
+    const warnings = invoiceData.warnings || [];
+
+    // Validate ABN format if present
+    if (invoiceData.supplierABN) {
+      const abnDigits = invoiceData.supplierABN.replace(/\s/g, "");
+      if (abnDigits.length !== 11 || !/^\d+$/.test(abnDigits)) {
+        warnings.push("ABN format appears invalid - should be 11 digits");
+      }
+    } else {
+      warnings.push("ABN not found on invoice - manual verification required");
+    }
+
+    // Validate GST calculation if amounts are present
+    if (invoiceData.subtotal && invoiceData.gstAmount) {
+      const expectedGst = Math.round(invoiceData.subtotal * 0.1 * 100) / 100;
+      const actualGst = Math.round(invoiceData.gstAmount * 100) / 100;
+      if (Math.abs(expectedGst - actualGst) > 0.5) {
+        warnings.push(
+          `GST calculation may be incorrect - expected ~$${expectedGst.toFixed(2)} but found $${actualGst.toFixed(2)}`
+        );
+      }
+    }
+
+    // Validate total calculation
+    if (
+      invoiceData.subtotal &&
+      invoiceData.gstAmount &&
+      invoiceData.totalAmount
+    ) {
+      const expectedTotal =
+        Math.round((invoiceData.subtotal + invoiceData.gstAmount) * 100) / 100;
+      const actualTotal = Math.round(invoiceData.totalAmount * 100) / 100;
+      if (Math.abs(expectedTotal - actualTotal) > 0.5) {
+        warnings.push("Total amount calculation may be incorrect");
+      }
+    }
+
+    // Check for required fields
+    if (!invoiceData.supplierName) {
+      warnings.push("Supplier name not detected");
+    }
+    if (!invoiceData.invoiceNumber) {
+      warnings.push("Invoice number not detected");
+    }
+    if (!invoiceData.invoiceDate) {
+      warnings.push("Invoice date not detected");
+    }
+    if (!invoiceData.lineItems || invoiceData.lineItems.length === 0) {
+      warnings.push("No line items detected - may require manual entry");
+    }
+
+    return {
+      success: true,
+      invoiceData: {
+        ...invoiceData,
+        warnings,
+        rawText: `Extracted from ${fileUrl}`,
+      },
+    };
+  } catch (error) {
+    console.error("[AP Agent] Invoice extraction error:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to extract invoice data",
+    };
+  }
+}
 
 /**
  * Validate Australian Business Number (ABN)
@@ -721,6 +949,12 @@ export const extractInvoiceDataTool = createTool({
   inputSchema: z.object({
     fileUrl: z.string().describe("Public URL to the PDF or image file"),
     fileType: z.enum(["pdf", "image"]).describe("Type of file being processed"),
+    model: z
+      .string()
+      .optional()
+      .describe(
+        "AI model to use for extraction (defaults to anthropic-claude-sonnet-4-5)"
+      ),
   }),
   outputSchema: z.object({
     success: z.boolean(),
@@ -765,63 +999,8 @@ export const extractInvoiceDataTool = createTool({
     error: z.string().optional(),
   }),
   execute: async ({ context }) => {
-    const { fileUrl, fileType } = context;
-
-    try {
-      console.log(
-        `[AP Agent] Extracting invoice data from ${fileType} at ${fileUrl}`
-      );
-
-      // TODO: In production, use AI vision model or OCR service to extract data
-      // For now, return a mock extraction result
-      // This would integrate with Anthropic Claude with vision or similar service
-
-      const warnings: string[] = [];
-
-      // Mock extraction - in production this would use AI/OCR
-      const invoiceData = {
-        supplierName: "Example Supplier Pty Ltd",
-        supplierABN: "12345678901",
-        supplierAddress: "123 Business Street, Sydney NSW 2000",
-        invoiceNumber: "INV-2024-001",
-        invoiceDate: new Date().toISOString().split("T")[0],
-        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-          .toISOString()
-          .split("T")[0],
-        subtotal: 1000.0,
-        gstAmount: 100.0,
-        totalAmount: 1100.0,
-        lineItems: [
-          {
-            description: "Professional services",
-            quantity: 1,
-            unitPrice: 1000.0,
-            amount: 1000.0,
-            gstIncluded: false,
-          },
-        ],
-        paymentTerms: "30 days",
-        confidence: 0.75,
-        warnings: [
-          "This is a mock extraction - integrate with AI vision or OCR service for production use",
-          "Some fields may not be detected from scanned invoices",
-        ],
-      };
-
-      return {
-        success: true,
-        invoiceData,
-      };
-    } catch (error) {
-      console.error("[AP Agent] Invoice extraction error:", error);
-      return {
-        success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to extract invoice data",
-      };
-    }
+    const { fileUrl, fileType, model } = context;
+    return extractInvoiceData(fileUrl, fileType, model);
   },
 });
 
