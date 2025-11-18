@@ -693,7 +693,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check if user has Xero or MYOB connections
+    // Check if user has active Xero and/or MYOB connections
     const xeroConnection = await getActiveXeroConnection(user.id);
     const myobConnection = await getActiveMyobConnection(user.id);
     const xeroTools = xeroConnection ? createXeroTools(user.id) : {};
