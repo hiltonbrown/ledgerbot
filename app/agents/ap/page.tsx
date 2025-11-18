@@ -46,22 +46,31 @@ export default function AccountsPayableAgentPage() {
     onFinish: ({ message }) => {
       // Extract invoice data from tool results
       try {
-        // Look for extractInvoiceData tool result in message parts
-        const toolResultPart = message.parts?.find(
+        // Look for extractInvoiceData tool call and its result
+        const extractToolCall = message.parts?.find(
           (part) =>
-            part.type === "tool-result" &&
+            part.type === "tool-call" &&
             part.toolName === "extractInvoiceData"
         );
 
-        if (toolResultPart && toolResultPart.type === "tool-result") {
-          const result = toolResultPart.result;
+        if (extractToolCall && extractToolCall.type === "tool-call") {
+          // Find the corresponding tool result by toolCallId
+          const toolResultPart = message.parts?.find(
+            (part) =>
+              part.type === "tool-result" &&
+              part.toolCallId === extractToolCall.toolCallId
+          );
 
-          // The tool returns { success: true, invoiceData: {...} }
-          if (result && typeof result === "object" && "invoiceData" in result) {
-            const data = result.invoiceData;
-            if (data) {
-              console.log("[AP Agent] Invoice data extracted:", data);
-              setExtractedData(data as ExtractedInvoiceData);
+          if (toolResultPart && toolResultPart.type === "tool-result") {
+            const result = toolResultPart.result;
+
+            // The tool returns { success: true, invoiceData: {...} }
+            if (result && typeof result === "object" && "invoiceData" in result) {
+              const data = result.invoiceData;
+              if (data) {
+                console.log("[AP Agent] Invoice data extracted:", data);
+                setExtractedData(data as ExtractedInvoiceData);
+              }
             }
           }
         }
