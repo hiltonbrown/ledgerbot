@@ -376,15 +376,24 @@ async function myobListInvoices(
   const dateTo = args.dateTo as string | undefined;
   const limit = (args.limit as number) || 100;
 
+  // Helper to validate ISO 8601 date (YYYY-MM-DD)
+  function isValidIsoDate(date: string): boolean {
+    return /^\d{4}-\d{2}-\d{2}$/.test(date);
+  }
+  // Escape single quotes for OData
+  function escapeODataString(str: string): string {
+    return str.replace(/'/g, "''");
+  }
+
   // Build OData filter
   const filters: string[] = [];
 
-  if (dateFrom) {
-    filters.push(`Date ge datetime'${dateFrom}'`);
+  if (dateFrom && isValidIsoDate(dateFrom)) {
+    filters.push(`Date ge datetime'${escapeODataString(dateFrom)}'`);
   }
 
-  if (dateTo) {
-    filters.push(`Date le datetime'${dateTo}'`);
+  if (dateTo && isValidIsoDate(dateTo)) {
+    filters.push(`Date le datetime'${escapeODataString(dateTo)}'`);
   }
 
   const queryString = buildODataQuery({
