@@ -35,27 +35,34 @@ interface XeroIntegrationCardProps {
   initialConnections: XeroConnection[];
 }
 
+// The refresh token expires after 60 days.
+// Thresholds for warning and critical status:
+// - CRITICAL_THRESHOLD_DAYS: 5 days before expiry (ageDays > 55)
+// - WARNING_THRESHOLD_DAYS: 10 days before expiry (ageDays > 50)
+const REFRESH_TOKEN_EXPIRY_DAYS = 60;
+const CRITICAL_THRESHOLD_DAYS = 55; // 5 days before expiry
+const WARNING_THRESHOLD_DAYS = 50;  // 10 days before expiry
+
 function getRefreshTokenStatus(refreshTokenIssuedAt: Date) {
   const now = Date.now();
   const issuedTime = new Date(refreshTokenIssuedAt).getTime();
   const ageMs = now - issuedTime;
   const ageDays = Math.floor(ageMs / (24 * 60 * 60 * 1000));
-  const SIXTY_DAYS = 60;
-  const daysRemaining = SIXTY_DAYS - ageDays;
+  const daysRemaining = REFRESH_TOKEN_EXPIRY_DAYS - ageDays;
 
   let statusColor = "text-green-600";
   let statusText = "Healthy";
   let bgColor = "bg-green-500";
 
-  if (ageDays >= SIXTY_DAYS) {
+  if (ageDays >= REFRESH_TOKEN_EXPIRY_DAYS) {
     statusColor = "text-red-600";
     statusText = "Expired";
     bgColor = "bg-red-500";
-  } else if (ageDays > 55) {
+  } else if (ageDays > CRITICAL_THRESHOLD_DAYS) {
     statusColor = "text-orange-600";
     statusText = "Expiring Soon";
     bgColor = "bg-orange-500";
-  } else if (ageDays > 50) {
+  } else if (ageDays > WARNING_THRESHOLD_DAYS) {
     statusColor = "text-yellow-600";
     statusText = "Good";
     bgColor = "bg-yellow-500";
