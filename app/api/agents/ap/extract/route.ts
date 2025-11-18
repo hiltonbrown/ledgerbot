@@ -28,6 +28,9 @@ export async function POST(req: Request) {
     if (!fileUrl || !fileType) {
       return new NextResponse("Missing fileUrl or fileType", { status: 400 });
     }
+    if (fileType !== "pdf" && fileType !== "image") {
+      return new NextResponse("Invalid fileType. Must be 'pdf' or 'image'.", { status: 400 });
+    }
 
     console.log(`[AP Extract] Extracting invoice data from ${fileType} at ${fileUrl}`);
 
