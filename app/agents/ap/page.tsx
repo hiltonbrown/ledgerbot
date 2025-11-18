@@ -48,26 +48,26 @@ export default function AccountsPayableAgentPage() {
       try {
         // Look for extractInvoiceData tool call and its result
         const extractToolCall = message.parts?.find((part) => {
-          if (part.type === "tool-call") {
-            // Type narrowing: now TypeScript knows this is a tool-call part
-            return (part as { type: "tool-call"; toolName: string; toolCallId: string }).toolName === "extractInvoiceData";
-          }
-          return false;
+          return (
+            part.type === "tool-call" &&
+            "toolName" in part &&
+            part.toolName === "extractInvoiceData"
+          );
         });
 
-        if (extractToolCall && extractToolCall.type === "tool-call") {
-          // Cast to access toolCallId safely
-          const toolCallId = (extractToolCall as { toolCallId: string }).toolCallId;
+        if (extractToolCall && "toolCallId" in extractToolCall) {
+          const toolCallId = extractToolCall.toolCallId;
 
           // Find the corresponding tool result by toolCallId
           const toolResultPart = message.parts?.find(
             (part) =>
               part.type === "tool-result" &&
-              (part as { toolCallId: string }).toolCallId === toolCallId
+              "toolCallId" in part &&
+              part.toolCallId === toolCallId
           );
 
-          if (toolResultPart && toolResultPart.type === "tool-result") {
-            const result = (toolResultPart as { result: unknown }).result;
+          if (toolResultPart && "result" in toolResultPart) {
+            const result = toolResultPart.result;
 
             // The tool returns { success: true, invoiceData: {...} }
             if (result && typeof result === "object" && "invoiceData" in result) {
