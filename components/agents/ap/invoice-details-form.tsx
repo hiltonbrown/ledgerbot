@@ -104,7 +104,24 @@ export function InvoiceDetailsForm({
   };
 
   const handleRemoveLineItem = (index: number) => {
-    setLineItems(lineItems.filter((_, i) => i !== index));
+    const updatedLineItems = lineItems.filter((_, i) => i !== index);
+    setLineItems(updatedLineItems);
+    // Recalculate totals
+    const newSubtotal = updatedLineItems.reduce(
+      (sum, item) => sum + (typeof item.amount === "number" ? item.amount : 0),
+      0
+    );
+    setSubtotal(newSubtotal);
+    // GST calculation: sum GST for items with taxType "INPUT2"
+    const newGstAmount = updatedLineItems.reduce(
+      (sum, item) =>
+        item.taxType === "INPUT2"
+          ? sum + (typeof item.amount === "number" ? item.amount * 0.1 : 0)
+          : sum,
+      0
+    );
+    setGstAmount(newGstAmount);
+    setTotalAmount(newSubtotal + newGstAmount);
   };
 
   const handleLineItemChange = (
