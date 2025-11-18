@@ -70,7 +70,9 @@ export async function getDecryptedConnection(
   }
 
   // Check if refresh token has expired (Xero refresh tokens last 60 days from issuance)
-  // IMPORTANT: Refresh token expiry is based on ISSUANCE time, not last refresh
+  // IMPORTANT: Xero uses OAuth2 refresh token rotation - each refresh provides a NEW refresh token
+  // with a NEW 60-day expiry window. The refreshTokenIssuedAt timestamp is updated on every
+  // successful refresh to track the current token's age.
   const refreshTokenAge =
     Date.now() - new Date(connection.refreshTokenIssuedAt).getTime();
   const SIXTY_DAYS = 60 * 24 * 60 * 60 * 1000; // 60 days in milliseconds
@@ -83,7 +85,7 @@ export async function getDecryptedConnection(
   if (refreshTokenAge >= SIXTY_DAYS) {
     // Refresh token is definitely expired - deactivate immediately
     console.error(
-      `❌ [Xero Token] Refresh token expired for user ${userId} - issued ${refreshTokenAgeDays} days ago (limit: 60 days)`
+      `❌ [Xero Token] Refresh token expired for user ${userId} - last refreshed ${refreshTokenAgeDays} days ago (limit: 60 days)`
     );
     console.error(
       "  Connection will be deactivated. User must reconnect in Settings > Integrations."
@@ -92,7 +94,7 @@ export async function getDecryptedConnection(
     try {
       await deactivateXeroConnection(connection.id);
       console.log(
-        `Deactivated connection ${connection.id} due to expired refresh token (${refreshTokenAgeDays} days old)`
+        `Deactivated connection ${connection.id} due to expired refresh token (${refreshTokenAgeDays} days since last refresh)`
       );
     } catch (deactivateError) {
       console.error(
@@ -102,7 +104,7 @@ export async function getDecryptedConnection(
     }
 
     throw new Error(
-      `Xero refresh token expired (${refreshTokenAgeDays} days old, limit 60 days). Please reconnect your Xero account in Settings > Integrations.`
+      `Xero refresh token expired (${refreshTokenAgeDays} days since last refresh, limit 60 days). Please reconnect your Xero account in Settings > Integrations.`
     );
   }
 
@@ -369,13 +371,19 @@ async function performTokenRefresh(
       `✅ Successfully refreshed Xero token for connection ${connectionId}, expires at ${expiresAt.toISOString()}${authenticationEventId ? `, auth_event_id: ${authenticationEventId}` : ""}`
     );
 
+    const now = new Date();
     const updatedConnection = await updateXeroTokens({
       id: connectionId,
       accessToken: encryptToken(tokenSet.access_token),
       refreshToken: encryptToken(tokenSet.refresh_token),
       expiresAt,
       authenticationEventId,
+      resetRefreshTokenIssuedAt: true, // CRITICAL: Reset the 60-day window with new refresh token
     });
+
+    console.log(
+      `  ✓ Refresh token rotation complete - new 60-day window starts at ${now.toISOString()}`
+    );
 
     return {
       success: true,

@@ -213,6 +213,7 @@ async function persistTokenSet(
       refreshToken: encryptToken(tokenSet.refresh_token),
       expiresAt,
       authenticationEventId,
+      resetRefreshTokenIssuedAt: true, // CRITICAL: Reset 60-day window for new refresh token
     });
 
     // Update in-memory connection object

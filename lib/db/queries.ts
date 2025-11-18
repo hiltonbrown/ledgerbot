@@ -1194,23 +1194,35 @@ export async function updateXeroTokens({
   refreshToken,
   expiresAt,
   authenticationEventId,
+  resetRefreshTokenIssuedAt = true,
 }: {
   id: string;
   accessToken: string;
   refreshToken: string;
   expiresAt: Date;
   authenticationEventId?: string;
+  resetRefreshTokenIssuedAt?: boolean;
 }): Promise<XeroConnection> {
   try {
+    const now = new Date();
+    const updates: any = {
+      accessToken,
+      refreshToken,
+      expiresAt,
+      authenticationEventId,
+      updatedAt: now,
+    };
+
+    // CRITICAL: When refreshing tokens, Xero provides a NEW refresh token with a NEW 60-day expiry window
+    // This is standard OAuth2 refresh token rotation behavior
+    // We MUST reset the issuance timestamp to prevent incorrect expiry calculations
+    if (resetRefreshTokenIssuedAt) {
+      updates.refreshTokenIssuedAt = now;
+    }
+
     const [connection] = await db
       .update(xeroConnection)
-      .set({
-        accessToken,
-        refreshToken,
-        expiresAt,
-        authenticationEventId,
-        updatedAt: new Date(),
-      })
+      .set(updates)
       .where(eq(xeroConnection.id, id))
       .returning();
 
