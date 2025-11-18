@@ -287,6 +287,118 @@ Users can query their Xero data naturally in chat:
 
 The AI automatically uses the appropriate Xero tools based on user intent when a connection is active.
 
+### QuickBooks Integration
+
+LedgerBot includes built-in QuickBooks Online integration using Model Context Protocol (MCP) for real-time access to financial data.
+
+**OAuth2 Flow**: Uses **Authorization Code Flow** (standard flow with client secret)
+- Recommended by Intuit for web server applications that can securely store client secrets
+- LedgerBot is a Next.js server-side application with secure environment variable storage
+- Client secret provides stronger authentication than PKCE
+- QuickBooks Online API documentation: https://developer.intuit.com/app/developer/qbo/docs/get-started
+
+**QuickBooks API Implementation**:
+
+**Architecture** (`lib/quickbooks/`, `lib/ai/quickbooks-*`):
+- **OAuth2 Authorization Code Flow** with client secret
+- State parameter CSRF protection (Base64-encoded userId + timestamp)
+- AES-256-GCM encrypted token storage in database
+- Automatic token refresh when expiring within 5 minutes (access tokens last 60 minutes)
+- MCP-compatible tool interfaces for QuickBooks API operations
+- AI SDK tool wrappers for seamless chat integration
+- Support for sandbox and production environments
+
+**Database Schema** (`QuickBooksConnection` table):
+- User ID, realm ID (company ID), and company name
+- Encrypted OAuth tokens (access and refresh)
+- Token expiry tracking and scope storage (refresh tokens last 100 days)
+- Active connection status flag
+- Environment indicator (sandbox/production)
+- **Chart of Accounts Cache**:
+  - `chartOfAccounts`: JSONB storage for account data (complete account list per company)
+  - `chartOfAccountsSyncedAt`: Timestamp tracking last sync
+  - `chartOfAccountsHash`: SHA-256 hash for change detection
+
+**OAuth Flow** (`app/api/quickbooks/`):
+- `/api/quickbooks/auth`: Initialize OAuth flow with state verification
+- `/api/quickbooks/callback`: Handle OAuth callback, exchange tokens, store encrypted connection
+- `/api/quickbooks/disconnect`: Deactivate active QuickBooks connection
+
+**Environment Variables**:
+```bash
+QUICKBOOKS_CLIENT_ID=your_quickbooks_client_id
+QUICKBOOKS_CLIENT_SECRET=your_quickbooks_client_secret
+QUICKBOOKS_REDIRECT_URI=http://localhost:3000/api/quickbooks/callback
+QUICKBOOKS_ENVIRONMENT=production  # or "sandbox" for testing
+QUICKBOOKS_ENCRYPTION_KEY=32_byte_hex_key_for_aes256
+```
+
+**QuickBooks Scopes**:
+- `com.intuit.quickbooks.accounting`: Full accounting data access (invoices, customers, vendors, accounts, reports)
+
+**Token Expiration**:
+- **Access Token**: 60 minutes (1 hour)
+- **Refresh Token**: 100 days
+- Automatic token refresh when expiring within 5 minutes
+- 100-day refresh token window resets on each successful refresh (token rotation)
+
+**Chart of Accounts Caching Architecture**:
+- **Database-first approach**: `quickbooks_list_accounts` AI tool retrieves from database cache when available
+- **Manual refresh**: Users can sync via API calls or manual triggers
+- **Performance benefit**: Database queries eliminate API calls and rate limit concerns
+
+**Company Name Integration**:
+- **Auto-populated from QuickBooks**: Company name uses `QuickBooksConnection.companyName` when connected
+- **Fallback to manual entry**: If no QuickBooks connection, uses manual entry from user settings
+- **Priority**: QuickBooks company name > manual user entry
+- **Implementation**: `app/(settings)/api/user/data.ts` prioritizes QuickBooks connection's company name
+
+**Integration with Chat** (`app/(chat)/api/chat/route.ts`):
+- Checks for active QuickBooks connection before each chat request
+- Conditionally includes QuickBooks tools in available tools list
+- Tools are automatically available when user has connected QuickBooks
+- No configuration needed - tools are added dynamically
+- Chart of accounts and company name included in system prompt via template variables
+
+**Settings UI** (`app/(settings)/settings/integrations/page.tsx`):
+- Server-rendered QuickBooks connection status
+- Connect/disconnect functionality with OAuth flow
+- Displays company name, environment, and token expiry
+- Success/error messages for connection status
+- Token health monitoring (100-day refresh token lifecycle)
+
+**Key Implementation Files**:
+- `lib/quickbooks/connection-manager.ts`: OAuth client, token refresh, connection retrieval
+- `lib/quickbooks/encryption.ts`: AES-256-GCM encryption for OAuth tokens
+- `lib/quickbooks/types.ts`: TypeScript type definitions
+- `lib/ai/quickbooks-mcp-client.ts`: MCP tool definitions and execution
+- `lib/ai/tools/quickbooks-tools.ts`: AI SDK tool wrappers with Zod schemas
+- `components/settings/quickbooks-integration-card.tsx`: React component for connection UI
+
+**Available AI Tools**:
+- `quickbooks_list_invoices`: Get invoices with status, date range filters
+- `quickbooks_get_invoice`: Get detailed invoice information by ID
+- `quickbooks_list_customers`: Search customers with optional name filter
+- `quickbooks_get_customer`: Get detailed customer information by ID
+- `quickbooks_list_vendors`: Search vendors with optional name filter
+- `quickbooks_get_vendor`: Get detailed vendor information by ID
+- `quickbooks_list_accounts`: Get chart of accounts (cached) with optional type filter
+- `quickbooks_get_company_info`: Get connected QuickBooks company information
+- `quickbooks_list_bills`: Get bills with status and date filters
+- `quickbooks_get_profit_and_loss`: Get P&L report for specified date range
+- `quickbooks_get_balance_sheet`: Get balance sheet report as of specific date
+
+**Usage in Chat**:
+Users can query their QuickBooks data naturally in chat:
+- "Show me all unpaid invoices from last month"
+- "Get the details for invoice INV-001"
+- "List all my customers"
+- "What bills are due this week?"
+- "Show me my profit and loss for Q1 2025"
+- "What's my company information?"
+
+The AI automatically uses the appropriate QuickBooks tools based on user intent when a connection is active.
+
 ### Artifact System
 
 Artifacts are special UI components that render AI-generated content in a side panel:

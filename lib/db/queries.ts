@@ -42,6 +42,8 @@ import {
   vote,
   type XeroConnection,
   xeroConnection,
+  type QuickBooksConnection,
+  quickbooksConnection,
 } from "./schema";
 
 // biome-ignore lint: Forbidden non-null assertion.
@@ -1678,5 +1680,397 @@ export async function updateRateLimitInfo(
   } catch (_error) {
     // Don't throw error - rate limit tracking shouldn't break API calls
     console.error("Failed to update rate limit info:", _error);
+  }
+}
+
+// ================================
+// QuickBooks Connection Queries
+// ================================
+
+export async function getActiveQuickBooksConnection(
+  userId: string
+): Promise<QuickBooksConnection | null> {
+  try {
+    const [connection] = await db
+      .select()
+      .from(quickbooksConnection)
+      .where(
+        and(
+          eq(quickbooksConnection.userId, userId),
+          eq(quickbooksConnection.isActive, true)
+        )
+      )
+      .orderBy(desc(quickbooksConnection.updatedAt))
+      .limit(1);
+
+    return connection ?? null;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get active QuickBooks connection"
+    );
+  }
+}
+
+export async function getQuickBooksConnectionById(
+  id: string
+): Promise<QuickBooksConnection | null> {
+  try {
+    const [connection] = await db
+      .select()
+      .from(quickbooksConnection)
+      .where(eq(quickbooksConnection.id, id))
+      .limit(1);
+
+    return connection ?? null;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get QuickBooks connection"
+    );
+  }
+}
+
+export async function getQuickBooksConnectionsByUserId(
+  userId: string
+): Promise<QuickBooksConnection[]> {
+  try {
+    return await db
+      .select()
+      .from(quickbooksConnection)
+      .where(eq(quickbooksConnection.userId, userId))
+      .orderBy(
+        desc(quickbooksConnection.isActive),
+        desc(quickbooksConnection.updatedAt)
+      );
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get QuickBooks connections"
+    );
+  }
+}
+
+export async function removeDuplicateQuickBooksConnectionsForUser(
+  userId: string
+): Promise<void> {
+  try {
+    const connections = await db
+      .select({
+        id: quickbooksConnection.id,
+        realmId: quickbooksConnection.realmId,
+        isActive: quickbooksConnection.isActive,
+        updatedAt: quickbooksConnection.updatedAt,
+      })
+      .from(quickbooksConnection)
+      .where(eq(quickbooksConnection.userId, userId))
+      .orderBy(
+        desc(quickbooksConnection.isActive),
+        desc(quickbooksConnection.updatedAt),
+        desc(quickbooksConnection.createdAt)
+      );
+
+    const seenRealmIds = new Set<string>();
+    const duplicateIds: string[] = [];
+
+    for (const connection of connections) {
+      if (seenRealmIds.has(connection.realmId)) {
+        duplicateIds.push(connection.id);
+      } else {
+        seenRealmIds.add(connection.realmId);
+      }
+    }
+
+    if (duplicateIds.length === 0) {
+      return;
+    }
+
+    await db
+      .delete(quickbooksConnection)
+      .where(inArray(quickbooksConnection.id, duplicateIds));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      `Failed to remove duplicate QuickBooks connections: ${_error instanceof Error ? _error.message : String(_error)}`
+    );
+  }
+}
+
+export async function createQuickBooksConnection({
+  userId,
+  realmId,
+  companyName,
+  companyId,
+  legalName,
+  baseCurrency,
+  country,
+  fiscalYearStartMonth,
+  environment,
+  accessToken,
+  refreshToken,
+  expiresAt,
+  scopes,
+}: {
+  userId: string;
+  realmId: string;
+  companyName?: string;
+  companyId?: string;
+  legalName?: string;
+  baseCurrency?: string;
+  country?: string;
+  fiscalYearStartMonth?: string;
+  environment: "sandbox" | "production";
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: Date;
+  scopes: string[];
+}): Promise<QuickBooksConnection> {
+  try {
+    const now = new Date();
+    const companyNameValue = companyName?.trim() ?? null;
+
+    // Log input parameters for debugging
+    console.log("createQuickBooksConnection called with:", {
+      userId,
+      realmId,
+      companyName: companyNameValue,
+      accessTokenLength: accessToken?.length,
+      refreshTokenLength: refreshToken?.length,
+      expiresAt,
+      scopes,
+      environment,
+    });
+
+    // First, deactivate all existing connections for this user
+    // QuickBooks follows single active connection pattern like Xero
+    await db
+      .update(quickbooksConnection)
+      .set({ isActive: false, updatedAt: now })
+      .where(eq(quickbooksConnection.userId, userId));
+
+    // Check if a connection already exists for this realmId
+    const [existingConnection] = await db
+      .select()
+      .from(quickbooksConnection)
+      .where(
+        and(
+          eq(quickbooksConnection.userId, userId),
+          eq(quickbooksConnection.realmId, realmId)
+        )
+      )
+      .limit(1);
+
+    if (existingConnection) {
+      // Update existing connection
+      const [updatedConnection] = await db
+        .update(quickbooksConnection)
+        .set({
+          companyName: companyNameValue || existingConnection.companyName,
+          companyId: companyId || existingConnection.companyId,
+          legalName: legalName || existingConnection.legalName,
+          baseCurrency: baseCurrency || existingConnection.baseCurrency,
+          country: country || existingConnection.country,
+          fiscalYearStartMonth:
+            fiscalYearStartMonth || existingConnection.fiscalYearStartMonth,
+          environment,
+          accessToken,
+          refreshToken,
+          refreshTokenIssuedAt: now, // Reset 100-day window
+          expiresAt,
+          scopes,
+          isActive: true, // Reactivate
+          connectionStatus: "connected",
+          lastError: null,
+          lastErrorDetails: null,
+          lastErrorType: null,
+          updatedAt: now,
+        })
+        .where(eq(quickbooksConnection.id, existingConnection.id))
+        .returning();
+
+      return updatedConnection;
+    }
+
+    // Create new connection
+    const [newConnection] = await db
+      .insert(quickbooksConnection)
+      .values({
+        userId,
+        realmId,
+        companyName: companyNameValue,
+        companyId,
+        legalName,
+        baseCurrency,
+        country,
+        fiscalYearStartMonth,
+        environment,
+        accessToken,
+        refreshToken,
+        refreshTokenIssuedAt: now,
+        expiresAt,
+        scopes,
+        isActive: true,
+        connectionStatus: "connected",
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+
+    return newConnection;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to create QuickBooks connection"
+    );
+  }
+}
+
+export async function updateQuickBooksTokens({
+  id,
+  accessToken,
+  refreshToken,
+  expiresAt,
+  resetRefreshTokenIssuedAt = true,
+  expectedUpdatedAt,
+}: {
+  id: string;
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: Date;
+  resetRefreshTokenIssuedAt?: boolean;
+  expectedUpdatedAt?: Date; // For optimistic locking
+}): Promise<QuickBooksConnection | null> {
+  try {
+    const now = new Date();
+    const updates: {
+      accessToken: string;
+      refreshToken: string;
+      expiresAt: Date;
+      updatedAt: Date;
+      refreshTokenIssuedAt?: Date;
+    } = {
+      accessToken,
+      refreshToken,
+      expiresAt,
+      updatedAt: now,
+    };
+
+    // CRITICAL: When refreshing tokens, QuickBooks provides a NEW refresh token with a NEW 100-day expiry window
+    // This is standard OAuth2 refresh token rotation behavior
+    if (resetRefreshTokenIssuedAt) {
+      updates.refreshTokenIssuedAt = now;
+    }
+
+    // Optimistic Locking: Prevent race conditions
+    const whereConditions = expectedUpdatedAt
+      ? and(
+          eq(quickbooksConnection.id, id),
+          eq(quickbooksConnection.updatedAt, expectedUpdatedAt)
+        )
+      : eq(quickbooksConnection.id, id);
+
+    const [connection] = await db
+      .update(quickbooksConnection)
+      .set(updates)
+      .where(whereConditions)
+      .returning();
+
+    // If no rows were updated, handle optimistic lock failure
+    if (!connection) {
+      if (expectedUpdatedAt) {
+        console.warn(
+          `⚠️ [updateQuickBooksTokens] Optimistic lock failure for connection ${id} - another process updated the token concurrently`
+        );
+        return null;
+      }
+      throw new ChatSDKError(
+        "bad_request:database",
+        "QuickBooks connection not found"
+      );
+    }
+
+    return connection;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to update QuickBooks tokens"
+    );
+  }
+}
+
+export async function deleteQuickBooksConnection(id: string): Promise<void> {
+  try {
+    await db
+      .delete(quickbooksConnection)
+      .where(eq(quickbooksConnection.id, id));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to delete QuickBooks connection"
+    );
+  }
+}
+
+export async function deactivateQuickBooksConnection(
+  id: string
+): Promise<void> {
+  try {
+    await db
+      .update(quickbooksConnection)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(quickbooksConnection.id, id));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to deactivate QuickBooks connection"
+    );
+  }
+}
+
+export async function activateQuickBooksConnection(
+  id: string,
+  userId: string
+): Promise<void> {
+  try {
+    await db.transaction(async (tx) => {
+      // Get the connection to activate and validate ownership
+      const [connection] = await tx
+        .select()
+        .from(quickbooksConnection)
+        .where(
+          and(
+            eq(quickbooksConnection.id, id),
+            eq(quickbooksConnection.userId, userId)
+          )
+        )
+        .limit(1);
+
+      if (!connection) {
+        throw new ChatSDKError(
+          "not_found:database",
+          "QuickBooks connection not found or does not belong to user"
+        );
+      }
+
+      // First, deactivate all connections for the user
+      await tx
+        .update(quickbooksConnection)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(eq(quickbooksConnection.userId, connection.userId));
+
+      // Then, activate the specific connection
+      await tx
+        .update(quickbooksConnection)
+        .set({ isActive: true, updatedAt: new Date() })
+        .where(eq(quickbooksConnection.id, id));
+    });
+  } catch (error) {
+    if (error instanceof ChatSDKError) {
+      throw error;
+    }
+    throw new ChatSDKError(
+      "bad_request:database",
+      `Failed to activate QuickBooks connection: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 }

@@ -3,9 +3,13 @@ import {
   IntegrationCard,
 } from "@/components/settings/integration-card";
 import { XeroIntegrationCard } from "@/components/settings/xero-integration-card";
+import { QuickBooksIntegrationCard } from "@/components/settings/quickbooks-integration-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
-import { getXeroConnectionsByUserId } from "@/lib/db/queries";
+import {
+  getXeroConnectionsByUserId,
+  getActiveQuickBooksConnection,
+} from "@/lib/db/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +22,15 @@ const xeroIntegration: Integration = {
   docsUrl: "https://developer.xero.com/documentation/",
 };
 
+const quickbooksIntegration: Integration = {
+  id: "quickbooks",
+  name: "QuickBooks",
+  description:
+    "Access chart of accounts, customers, and vendors. Create invoices and track payments in real-time.",
+  status: "available",
+  docsUrl: "https://developer.intuit.com/app/developer/qbo/docs/get-started",
+};
+
 const accountingIntegrations: Integration[] = [
   {
     id: "myob",
@@ -26,14 +39,6 @@ const accountingIntegrations: Integration[] = [
       "Connect accounts payable and receivable. Import transactions and export journals seamlessly.",
     status: "coming-soon",
     docsUrl: "https://developer.myob.com/api/accountright/",
-  },
-  {
-    id: "quickbooks",
-    name: "QuickBooks",
-    description:
-      "Access chart of accounts, customers, and vendors. Create invoices and track payments in real-time.",
-    status: "coming-soon",
-    docsUrl: "https://developer.intuit.com/app/developer/qbo/docs/get-started",
   },
   {
     id: "zoho",
@@ -99,6 +104,9 @@ const payrollIntegrations: Integration[] = [
 export default async function IntegrationsPage() {
   const user = await getAuthUser();
   const xeroConnections = user ? await getXeroConnectionsByUserId(user.id) : [];
+  const quickbooksConnection = user
+    ? await getActiveQuickBooksConnection(user.id)
+    : null;
 
   return (
     <div className="space-y-6">
@@ -125,6 +133,10 @@ export default async function IntegrationsPage() {
             <XeroIntegrationCard
               initialConnections={xeroConnections}
               integration={xeroIntegration}
+            />
+            <QuickBooksIntegrationCard
+              initialConnection={quickbooksConnection}
+              integration={quickbooksIntegration}
             />
             {accountingIntegrations.map((integration) => (
               <IntegrationCard integration={integration} key={integration.id} />

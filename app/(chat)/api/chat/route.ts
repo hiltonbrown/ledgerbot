@@ -29,6 +29,10 @@ import { getWeather } from "@/lib/ai/tools/get-weather";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
 import { updateDocument } from "@/lib/ai/tools/update-document";
 import { createXeroTools, xeroToolNames } from "@/lib/ai/tools/xero-tools";
+import {
+  createQuickBooksTools,
+  quickbooksToolNames,
+} from "@/lib/ai/tools/quickbooks-tools";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import {
   DEFAULT_CHAT_VISIBILITY,
@@ -40,6 +44,7 @@ import {
   createStreamId,
   deleteChatById,
   getActiveXeroConnection,
+  getActiveQuickBooksConnection,
   getChatById,
   getMessageCountByUserId,
   getMessagesByChatId,
@@ -695,16 +700,24 @@ export async function POST(request: Request) {
     const xeroConnection = await getActiveXeroConnection(user.id);
     const xeroTools = xeroConnection ? createXeroTools(user.id) : {};
 
+    // Check if user has QuickBooks connection
+    const quickbooksConnection = await getActiveQuickBooksConnection(user.id);
+    const quickbooksTools = quickbooksConnection
+      ? createQuickBooksTools(user.id)
+      : {};
+
     const stream = createUIMessageStream({
       execute: ({ writer: dataStream }) => {
         // Always use all default tools
         const activeTools: ToolId[] = defaultSelectedTools;
 
-        // Add Xero tool names to active tools if connection exists
-        // Cast to string[] since Xero tools are dynamically added
-        const finalActiveTools: string[] = xeroConnection
-          ? [...activeTools, ...xeroToolNames]
-          : activeTools;
+        // Add Xero and QuickBooks tool names to active tools if connections exist
+        // Cast to string[] since tools are dynamically added
+        const finalActiveTools: string[] = [
+          ...activeTools,
+          ...(xeroConnection ? xeroToolNames : []),
+          ...(quickbooksConnection ? quickbooksToolNames : []),
+        ];
 
         console.log(
           "[debug] Starting streamText with model:",
@@ -742,6 +755,7 @@ export async function POST(request: Request) {
               modelId: selectedChatModel,
             }),
             ...xeroTools,
+            ...quickbooksTools,
           },
           experimental_telemetry: {
             isEnabled: isProductionEnvironment,

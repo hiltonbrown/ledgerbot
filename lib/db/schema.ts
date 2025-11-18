@@ -316,6 +316,74 @@ export type XeroAccount = {
   addToWatchlist?: boolean;
 };
 
+export const quickbooksConnection = pgTable("QuickBooksConnection", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  userId: uuid("userId")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  realmId: varchar("realmId", { length: 255 }).notNull(), // QuickBooks company ID
+  companyName: varchar("companyName", { length: 255 }),
+  // Company metadata from CompanyInfo endpoint (QuickBooks best practice)
+  companyId: varchar("companyId", { length: 255 }), // QuickBooks company ID (same as realmId typically)
+  legalName: varchar("legalName", { length: 255 }),
+  baseCurrency: varchar("baseCurrency", { length: 3 }), // ISO 4217 currency code (e.g., USD, AUD)
+  country: varchar("country", { length: 2 }), // ISO 3166-1 alpha-2 country code
+  fiscalYearStartMonth: varchar("fiscalYearStartMonth", { length: 20 }), // e.g., "January"
+  environment: varchar("environment", { length: 20 }).notNull().default("production"), // sandbox or production
+  accessToken: text("accessToken").notNull(), // Encrypted
+  refreshToken: text("refreshToken").notNull(), // Encrypted
+  refreshTokenIssuedAt: timestamp("refreshTokenIssuedAt").notNull(), // When refresh token was first issued (for 100-day expiry tracking)
+  expiresAt: timestamp("expiresAt").notNull(),
+  scopes: jsonb("scopes").$type<string[]>().notNull(),
+  isActive: boolean("isActive").notNull().default(true),
+  connectionStatus: varchar("connectionStatus", { length: 50 }).default(
+    "connected"
+  ), // connected, disconnected, error
+  lastError: text("lastError"), // User-friendly error message for display
+  lastErrorDetails: text("lastErrorDetails"), // Technical error details for debugging (JSON string)
+  lastErrorType: varchar("lastErrorType", { length: 50 }), // validation, authorization, token, rate_limit, server, network
+  lastApiCallAt: timestamp("lastApiCallAt"), // Track last successful API call for cleanup
+  // Chart of Accounts
+  chartOfAccounts: jsonb("chartOfAccounts").$type<QuickBooksAccount[]>(), // Structured chart of accounts data from QuickBooks API
+  chartOfAccountsSyncedAt: timestamp("chartOfAccountsSyncedAt"), // Last time chart was synced from QuickBooks
+  chartOfAccountsHash: varchar("chartOfAccountsHash", { length: 64 }), // SHA-256 hash for change detection
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+});
+
+export type QuickBooksConnection = InferSelectModel<typeof quickbooksConnection>;
+
+// QuickBooks Account structure from QuickBooks API
+export type QuickBooksAccount = {
+  Id: string;
+  Name: string;
+  AcctNum?: string; // Account number
+  AccountType: string; // Bank, Accounts Receivable, Other Current Asset, Fixed Asset, Other Asset, Accounts Payable, Credit Card, Long Term Liability, Other Current Liability, Equity, Income, Cost of Goods Sold, Expense, Other Income, Other Expense
+  AccountSubType?: string; // More specific type (e.g., CashOnHand, Checking, Savings)
+  Classification?: string; // Asset, Liability, Equity, Revenue, Expense
+  Description?: string;
+  Active?: boolean;
+  CurrentBalance?: number;
+  CurrentBalanceWithSubAccounts?: number;
+  CurrencyRef?: {
+    value: string;
+    name: string;
+  };
+  ParentRef?: {
+    value: string;
+    name: string;
+  };
+  SubAccount?: boolean;
+  FullyQualifiedName?: string;
+  TaxCodeRef?: {
+    value: string;
+  };
+  MetaData?: {
+    CreateTime?: string;
+    LastUpdatedTime?: string;
+  };
+};
+
 export const regulatoryDocument = pgTable(
   "RegulatoryDocument",
   {
