@@ -165,6 +165,33 @@ LedgerBot includes built-in Xero accounting integration using Model Context Prot
 - See `/docs/xero-oauth-flow-comparison.md` for detailed comparison with PKCE flow
 - See `/docs/xero-authentication-guide.md` for complete OAuth implementation details
 
+**Xero API Best Practices** (implemented following official Xero developer guidelines):
+
+1. **Pagination** (`lib/ai/xero-mcp-client.ts:268-410`):
+   - Uses `page` and `pageSize` parameters (page starts at 1)
+   - Default pageSize: 100, maximum: 1000 (per Xero limits)
+   - Detects last page when receiving fewer records than pageSize
+   - Supports both single-page requests and automatic multi-page iteration
+   - Applied to: invoices, contacts, bank transactions, journal entries, payments, quotes, credit notes
+   - Reference: https://developer.xero.com/documentation/best-practices/integration-health/paging
+
+2. **If-Modified-Since** (`lib/ai/xero-mcp-client.ts:49-77`):
+   - Retrieves only records modified since a specific date/time
+   - Reduces API calls and improves performance for incremental syncing
+   - Format: ISO 8601 (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)
+   - Recommended for endpoints with large datasets (invoices, contacts, etc.)
+   - Supported on: invoices, contacts, items, journals, manual journals, bank transactions, credit notes, employees, payments, purchase orders, overpayments, prepayments, quotes, users
+   - Example: `ifModifiedSince: "2025-01-01T00:00:00"` retrieves only records modified since that timestamp
+   - Reference: https://developer.xero.com/documentation/best-practices/integration-health/if-modified-since
+
+3. **Rate Limit Handling** (`lib/xero/rate-limit-handler.ts`):
+   - Tracks X-MinLimit-Remaining and X-DayLimit-Remaining headers
+   - Limits: 60 calls/minute per tenant, 5000 calls/day per tenant
+   - Implements exponential backoff with jitter for 429 errors
+   - Proactive throttling when approaching limits (2 calls/minute, 50 calls/day)
+   - Database tracking of rate limit status per connection
+   - Reference: https://developer.xero.com/documentation/best-practices/integration-health/rate-limits
+
 **Architecture** (`lib/xero/`, `lib/ai/xero-*`):
 - **OAuth2 Authorization Code Flow** with client secret (not PKCE)
 - State parameter CSRF protection (Base64-encoded userId + timestamp)

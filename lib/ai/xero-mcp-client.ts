@@ -46,6 +46,36 @@ function formatXeroDate(isoDate: string): string {
   return datePart.replace(/-/g, ",");
 }
 
+/**
+ * Format if-modified-since parameter for Xero API
+ * Converts ISO date string to Date object for Xero SDK
+ * @param ifModifiedSince - ISO 8601 date string (e.g., "2025-01-01" or "2025-01-01T00:00:00")
+ * @returns Date object or undefined if not provided
+ */
+function formatIfModifiedSince(ifModifiedSince?: string): Date | undefined {
+  if (!ifModifiedSince) {
+    return undefined;
+  }
+
+  try {
+    const date = new Date(ifModifiedSince);
+    // Validate the date is valid
+    if (Number.isNaN(date.getTime())) {
+      console.warn(
+        `[formatIfModifiedSince] Invalid date format: ${ifModifiedSince}`
+      );
+      return undefined;
+    }
+    return date;
+  } catch (error) {
+    console.warn(
+      `[formatIfModifiedSince] Error parsing date: ${ifModifiedSince}`,
+      error
+    );
+    return undefined;
+  }
+}
+
 export type XeroMCPTool = {
   name: string;
   description: string;
@@ -267,9 +297,17 @@ async function persistTokenSet(
 
 /**
  * Generic pagination helper for Xero API calls with rate limit tracking
- * Fetches pages up to the specified limit, handling pagination and rate limits
+ * Implements Xero pagination best practices:
+ * - Uses page and pageSize parameters (page starts at 1)
+ * - Default pageSize: 100, maximum: 1000
+ * - Stops when receiving fewer records than pageSize (indicates last page)
+ * - Tracks rate limits from response headers
+ * - Handles partial pages due to filters, permissions, or data gaps
+ *
+ * Reference: https://developer.xero.com/documentation/best-practices/integration-health/paging
+ *
  * @param fetchPage - Function to fetch a page of results
- * @param limit - Maximum number of results to return
+ * @param limit - Maximum number of results to return (optional, defaults to all)
  * @param pageSize - Number of records per page (default 100, max 1000)
  * @param connectionId - Connection ID for rate limit tracking
  */
@@ -288,9 +326,10 @@ async function paginateXeroAPI<T>(
   const allResults: T[] = [];
   let currentPage = 1;
   const effectiveLimit = limit && limit > 0 ? limit : Number.POSITIVE_INFINITY;
-  const effectivePageSize = Math.min(Math.max(pageSize, 1), 1000); // Clamp between 1 and 1000
+  // Xero recommends pageSize between 1 and 1000 for optimal performance
+  const effectivePageSize = Math.min(Math.max(pageSize, 1), 1000);
   let consecutiveEmptyPages = 0;
-  const MAX_CONSECUTIVE_EMPTY = 2; // Stop only after 2 consecutive empty pages
+  const MAX_CONSECUTIVE_EMPTY = 2; // Stop after 2 consecutive empty pages (safety mechanism)
 
   console.log(
     `[paginateXeroAPI] Starting pagination: limit=${effectiveLimit}, pageSize=${effectivePageSize}`
@@ -335,8 +374,8 @@ async function paginateXeroAPI<T>(
       }
     }
 
-    // CRITICAL FIX: Only increment empty page counter if we get NO results
-    // Xero can return fewer than pageSize results even when more data exists
+    // Xero Best Practice: Stop when receiving fewer records than pageSize
+    // This indicates we've reached the last page of results
     if (!pageResults || pageResults.length === 0) {
       consecutiveEmptyPages++;
       console.log(
@@ -373,14 +412,19 @@ async function paginateXeroAPI<T>(
         break;
       }
 
-      // IMPORTANT: Continue pagination even if we got fewer than pageSize
-      // Xero may return partial pages due to filters, permissions, or data gaps
-      // Only stop after consecutive empty pages (checked above)
+      // Check if this is the last page (received fewer than pageSize)
+      // This is Xero's recommended way to detect end of pagination
+      if (pageResults.length < effectivePageSize) {
+        console.log(
+          `[paginateXeroAPI] Received ${pageResults.length} < ${effectivePageSize} - last page reached`
+        );
+        break;
+      }
     }
 
     currentPage++;
 
-    // Safety limit to prevent infinite loops
+    // Safety limit to prevent infinite loops (100 pages = up to 100,000 records at max pageSize)
     if (currentPage > 100) {
       console.warn(
         `[paginateXeroAPI] Safety limit reached: 100 pages, returning ${allResults.length} results`
@@ -402,7 +446,7 @@ export const xeroMCPTools: XeroMCPTool[] = [
   {
     name: "xero_list_invoices",
     description:
-      "Get a list of invoices from Xero. Can retrieve SALES INVOICES (sent TO customers, Type=ACCREC) or BILLS (received FROM suppliers, Type=ACCPAY). IMPORTANT NOTES: (1) Filters by INVOICE DATE (the date the invoice was created), NOT payment date. (2) When filtering by month/year, you MUST provide BOTH dateFrom and dateTo to define the complete date range. For example, for 'October 2025' use dateFrom='2025-10-01' and dateTo='2025-10-31'. (3) Use invoiceType parameter to specify which type: 'ACCREC' for sales invoices (default), 'ACCPAY' for bills/supplier invoices. (4) Uses pagination for efficient data retrieval. (5) This returns only invoice records - P&L reports may include additional transactions like bank transactions, journal entries, and credit notes that won't appear in this list.",
+      "Get a list of invoices from Xero. Can retrieve SALES INVOICES (sent TO customers, Type=ACCREC) or BILLS (received FROM suppliers, Type=ACCPAY). IMPORTANT NOTES: (1) Filters by INVOICE DATE (the date the invoice was created), NOT payment date. (2) When filtering by month/year, you MUST provide BOTH dateFrom and dateTo to define the complete date range. For example, for 'October 2025' use dateFrom='2025-10-01' and dateTo='2025-10-31'. (3) Use invoiceType parameter to specify which type: 'ACCREC' for sales invoices (default), 'ACCPAY' for bills/supplier invoices. (4) Uses pagination for efficient data retrieval. (5) This returns only invoice records - P&L reports may include additional transactions like bank transactions, journal entries, and credit notes that won't appear in this list. (6) Use ifModifiedSince to retrieve only invoices modified since a specific date (recommended for large datasets).",
     inputSchema: {
       type: "object",
       properties: {
@@ -431,6 +475,11 @@ export const xeroMCPTools: XeroMCPTool[] = [
         contactId: {
           type: "string",
           description: "Filter by contact ID",
+        },
+        ifModifiedSince: {
+          type: "string",
+          description:
+            "Retrieve only invoices modified since this date (ISO 8601 format YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS). Recommended for incremental syncing and reducing API calls. Example: '2025-01-01' or '2025-01-01T00:00:00'",
         },
         limit: {
           type: "number",
@@ -464,7 +513,7 @@ export const xeroMCPTools: XeroMCPTool[] = [
   },
   {
     name: "xero_list_contacts",
-    description: "Get a list of contacts (customers/suppliers) from Xero.",
+    description: "Get a list of contacts (customers/suppliers) from Xero. Use if-modified-since for incremental syncing to reduce API calls.",
     inputSchema: {
       type: "object",
       properties: {
@@ -472,9 +521,23 @@ export const xeroMCPTools: XeroMCPTool[] = [
           type: "string",
           description: "Search contacts by name or email",
         },
+        ifModifiedSince: {
+          type: "string",
+          description:
+            "Retrieve only contacts modified since this date (ISO 8601 format YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS). Recommended for incremental syncing.",
+        },
         limit: {
           type: "number",
           description: "Maximum number of contacts to return (default: 100)",
+        },
+        page: {
+          type: "number",
+          description:
+            "Page number to retrieve (starts at 1). If specified, returns only this page.",
+        },
+        pageSize: {
+          type: "number",
+          description: "Number of records per page (default: 100, max: 1000)",
         },
       },
     },
@@ -1428,10 +1491,14 @@ async function executeXeroToolOperation(
           dateFrom,
           dateTo,
           contactId,
+          ifModifiedSince,
           limit,
           page,
           pageSize,
         } = args;
+
+        // Format if-modified-since parameter
+        const modifiedSince = formatIfModifiedSince(ifModifiedSince as string | undefined);
 
         // Build where clause
         const whereClauses: string[] = [];
@@ -1463,7 +1530,7 @@ async function executeXeroToolOperation(
 
         // Log the query for debugging
         console.log(
-          `[xero_list_invoices] Type: ${type}, WHERE clause: ${where || "(none)"}, limit: ${limit || 100}`
+          `[xero_list_invoices] Type: ${type}, WHERE clause: ${where || "(none)"}, ifModifiedSince: ${modifiedSince?.toISOString() || "(none)"}, limit: ${limit || 100}`
         );
 
         // If specific page requested, fetch that page only
@@ -1475,7 +1542,7 @@ async function executeXeroToolOperation(
 
           const response = await client.accountingApi.getInvoices(
             connection.tenantId,
-            undefined, // ifModifiedSince
+            modifiedSince, // ifModifiedSince - Best practice for incremental sync
             where, // where clause
             undefined, // order
             undefined, // IDs
@@ -1510,7 +1577,7 @@ async function executeXeroToolOperation(
           async (currentPage, currentPageSize) => {
             const response = await client.accountingApi.getInvoices(
               connection.tenantId,
-              undefined, // ifModifiedSince
+              modifiedSince, // ifModifiedSince - Best practice for incremental sync
               where, // where clause
               undefined, // order
               undefined, // IDs
@@ -1585,7 +1652,10 @@ async function executeXeroToolOperation(
       }
 
       case "xero_list_contacts": {
-        const { searchTerm, limit, page, pageSize } = args;
+        const { searchTerm, ifModifiedSince, limit, page, pageSize } = args;
+
+        // Format if-modified-since parameter
+        const modifiedSince = formatIfModifiedSince(ifModifiedSince as string | undefined);
 
         const where = searchTerm
           ? `Name.Contains("${searchTerm}") OR EmailAddress.Contains("${searchTerm}")`
@@ -1600,7 +1670,7 @@ async function executeXeroToolOperation(
 
           const response = await client.accountingApi.getContacts(
             connection.tenantId,
-            undefined, // ifModifiedSince
+            modifiedSince, // ifModifiedSince - Best practice for incremental sync
             where, // where clause
             undefined, // order
             undefined, // IDs
@@ -1631,7 +1701,7 @@ async function executeXeroToolOperation(
           async (currentPage, currentPageSize) => {
             const response = await client.accountingApi.getContacts(
               connection.tenantId,
-              undefined, // ifModifiedSince
+              modifiedSince, // ifModifiedSince - Best practice for incremental sync
               where, // where clause
               undefined, // order
               undefined, // IDs
