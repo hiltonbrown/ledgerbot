@@ -28,7 +28,7 @@ export default function AccountsPayableAgentPage() {
     }
   }, []);
 
-  const { sendMessage } = useChat({
+  const { sendMessage, messages } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/agents/ap",
       fetch,
@@ -43,11 +43,22 @@ export default function AccountsPayableAgentPage() {
         };
       },
     }),
-    onFinish: ({ message }) => {
-      // Extract invoice data from tool results
+    onFinish: () => {
+      setIsProcessing(false);
+    },
+  });
+
+  // Watch for tool results in messages and extract invoice data
+  useEffect(() => {
+    if (!messages || messages.length === 0) return;
+
+    // Look through all messages for extractInvoiceData tool results
+    for (const message of messages) {
+      if (!message.parts || message.parts.length === 0) continue;
+
       try {
-        // Look for extractInvoiceData tool call and its result
-        const extractToolCall = message.parts?.find((part) => {
+        // Find extractInvoiceData tool call
+        const extractToolCall = message.parts.find((part) => {
           return (
             part.type === "tool-call" &&
             "toolName" in part &&
@@ -58,8 +69,8 @@ export default function AccountsPayableAgentPage() {
         if (extractToolCall && "toolCallId" in extractToolCall) {
           const toolCallId = extractToolCall.toolCallId;
 
-          // Find the corresponding tool result by toolCallId
-          const toolResultPart = message.parts?.find(
+          // Find the corresponding tool result
+          const toolResultPart = message.parts.find(
             (part) =>
               part.type === "tool-result" &&
               "toolCallId" in part &&
@@ -69,23 +80,23 @@ export default function AccountsPayableAgentPage() {
           if (toolResultPart && "result" in toolResultPart) {
             const result = toolResultPart.result;
 
-            // The tool returns { success: true, invoiceData: {...} }
+            // Extract invoice data from tool result
             if (result && typeof result === "object" && "invoiceData" in result) {
               const data = result.invoiceData;
               if (data) {
                 console.log("[AP Agent] Invoice data extracted:", data);
                 setExtractedData(data as ExtractedInvoiceData);
+                setIsProcessing(false);
+                return; // Stop after finding the first result
               }
             }
           }
         }
       } catch (error) {
-        console.error("[AP Agent] Failed to extract invoice data:", error);
-      } finally {
-        setIsProcessing(false);
+        console.error("[AP Agent] Error extracting invoice data:", error);
       }
-    },
-  });
+    }
+  }, [messages]);
 
   const handleFileUploaded = (fileData: {
     fileUrl: string;
