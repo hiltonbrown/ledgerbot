@@ -70,9 +70,9 @@ export async function getDecryptedConnection(
   }
 
   // Check if refresh token has expired (Xero refresh tokens last 60 days from issuance)
-  // IMPORTANT: Xero uses OAuth2 refresh token rotation - each refresh provides a NEW refresh token
-  // with a NEW 60-day expiry window. The refreshTokenIssuedAt timestamp is updated on every
-  // successful refresh to track the current token's age.
+  // IMPORTANT: Xero uses OAuth2 refresh token rotation.
+  // Each refresh provides a NEW refresh token with a NEW 60-day expiry window.
+  // The refreshTokenIssuedAt timestamp is updated on every successful refresh to track the current token's age.
   const refreshTokenAge =
     Date.now() - new Date(connection.refreshTokenIssuedAt).getTime();
   const SIXTY_DAYS = 60 * 24 * 60 * 60 * 1000; // 60 days in milliseconds
