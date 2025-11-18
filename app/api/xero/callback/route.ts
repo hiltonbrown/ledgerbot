@@ -127,7 +127,7 @@ export async function GET(request: Request) {
           tenant.tenantId
         );
         console.log(
-          `[OAuth Callback] Fetched organisation details for ${tenant.tenantName} (${tenant.tenantId}):`,
+          `✅ [OAuth Callback] Fetched organisation details for ${tenant.tenantName} (${tenant.tenantId}):`,
           {
             organisationId: orgDetails.OrganisationID,
             shortCode: orgDetails.ShortCode,
@@ -141,11 +141,21 @@ export async function GET(request: Request) {
           orgDetails,
         };
       } catch (error) {
+        // Log detailed error but continue with graceful degradation
         console.error(
-          `Failed to fetch organisation details for ${tenant.tenantId}:`,
-          error
+          `⚠️ [OAuth Callback] Failed to fetch organisation details for ${tenant.tenantName} (${tenant.tenantId}):`,
+          {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+            tenantId: tenant.tenantId,
+            timestamp: new Date().toISOString(),
+          }
+        );
+        console.warn(
+          `[OAuth Callback] Continuing with connection creation without organisation metadata for ${tenant.tenantId}`
         );
         // Return tenant without org details if fetch fails (graceful degradation)
+        // Connection will still be created but without the metadata fields
         return {
           tenant,
           orgDetails: null,

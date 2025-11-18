@@ -13,6 +13,12 @@ export type TemplateVariables = {
   INDUSTRY_CONTEXT?: string;
   CHART_OF_ACCOUNTS?: string;
 
+  // From Xero connection (organisation metadata - Xero best practice fields)
+  BASE_CURRENCY?: string; // ISO 4217 currency code (e.g., AUD, GBP, NZD)
+  ORGANISATION_TYPE?: string; // COMPANY, ACCOUNTING_PRACTICE, etc.
+  IS_DEMO_COMPANY?: string; // "true" or "false" - identifies demo organisations
+  XERO_SHORT_CODE?: string; // For deep linking (e.g., !TJ7Tb)
+
   // Custom instructions (user-editable additions to locked base prompts)
   CUSTOM_SYSTEM_INSTRUCTIONS?: string;
   CUSTOM_CODE_INSTRUCTIONS?: string;
@@ -112,6 +118,12 @@ export function getStandardTemplateVariables(): string[] {
     "COMPANY_NAME",
     "INDUSTRY_CONTEXT",
     "CHART_OF_ACCOUNTS",
+    // Xero organisation metadata (Xero best practice fields)
+    "BASE_CURRENCY",
+    "ORGANISATION_TYPE",
+    "IS_DEMO_COMPANY",
+    "XERO_SHORT_CODE",
+    // Custom instructions
     "CUSTOM_SYSTEM_INSTRUCTIONS",
     "CUSTOM_CODE_INSTRUCTIONS",
     "CUSTOM_SHEET_INSTRUCTIONS",

@@ -173,30 +173,59 @@ export async function getUserSettings(): Promise<UserSettings> {
   const lastName =
     clerkUser?.lastName || USER_SETTINGS.personalisation.lastName;
 
-  // Fetch chart of accounts and company name from active Xero connection
+  // Fetch chart of accounts and organisation metadata from active Xero connection
   let chartOfAccountsText = "";
   let companyName = "";
+  let baseCurrency = "";
+  let organisationType = "";
+  let isDemoCompany = false;
+  let shortCode = "";
   try {
     const xeroConnection = await getDecryptedConnection(user.id);
     if (xeroConnection) {
-      // Use Xero organization name as company name
-      companyName = xeroConnection.tenantName || "";
+      // Use Xero organization name as company name (with validation)
+      companyName = xeroConnection.tenantName?.trim() || "";
 
-      const chartData = await getChartOfAccounts(xeroConnection.id);
-      if (chartData && chartData.accounts.length > 0) {
-        // Format chart for AI prompt (grouped by type, active accounts only)
-        chartOfAccountsText = formatChartOfAccountsForPrompt(
-          chartData.accounts,
-          {
-            includeArchived: false,
-            groupByType: true,
-            includeDescriptions: false,
-          }
+      // Xero organisation metadata (best practice fields) with defensive null checks
+      // Normalize currency code to uppercase for consistency
+      baseCurrency = xeroConnection.baseCurrency?.trim().toUpperCase() || "";
+      organisationType = xeroConnection.organisationType?.trim() || "";
+      isDemoCompany = Boolean(xeroConnection.isDemoCompany); // Ensure boolean type
+      shortCode = xeroConnection.shortCode?.trim() || "";
+
+      // Fetch and format chart of accounts
+      try {
+        const chartData = await getChartOfAccounts(xeroConnection.id);
+        if (chartData?.accounts && Array.isArray(chartData.accounts) && chartData.accounts.length > 0) {
+          // Format chart for AI prompt (grouped by type, active accounts only)
+          chartOfAccountsText = formatChartOfAccountsForPrompt(
+            chartData.accounts,
+            {
+              includeArchived: false,
+              groupByType: true,
+              includeDescriptions: false,
+            }
+          );
+        }
+      } catch (chartError) {
+        // Log chart fetch error separately but don't fail the entire request
+        console.error(
+          `[getUserSettings] Failed to fetch chart of accounts for connection ${xeroConnection.id}:`,
+          chartError instanceof Error ? chartError.message : String(chartError)
         );
       }
     }
   } catch (error) {
-    console.error("Error fetching data from Xero connection:", error);
+    // Enhanced error logging with context
+    console.error(
+      `[getUserSettings] Error fetching data from Xero connection for user ${user.id}:`,
+      {
+        error: error instanceof Error ? error.message : String(error),
+        userId: user.id,
+        timestamp: new Date().toISOString(),
+      }
+    );
+    // Continue execution - Xero connection failures should not prevent user settings from loading
   }
 
   // Fallback to manual entries if no Xero data available
@@ -214,6 +243,11 @@ export async function getUserSettings(): Promise<UserSettings> {
     COMPANY_NAME: companyName,
     INDUSTRY_CONTEXT: dbSettings?.industryContext || "",
     CHART_OF_ACCOUNTS: chartOfAccountsText,
+    // Xero organisation metadata (Xero best practice fields)
+    BASE_CURRENCY: baseCurrency,
+    ORGANISATION_TYPE: organisationType,
+    IS_DEMO_COMPANY: isDemoCompany ? "true" : "false",
+    XERO_SHORT_CODE: shortCode,
     // Custom instructions (user-editable additions to locked base prompts)
     CUSTOM_SYSTEM_INSTRUCTIONS: dbSettings?.customSystemInstructions || "",
     CUSTOM_CODE_INSTRUCTIONS: dbSettings?.customCodeInstructions || "",
