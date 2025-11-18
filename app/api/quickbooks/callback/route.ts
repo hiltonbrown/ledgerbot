@@ -87,7 +87,9 @@ export async function GET(request: Request) {
         config.environment
       );
       console.log(
-        `✅ [OAuth Callback] Fetched company info for ${companyInfo.CompanyName} (${realmId}):`,
+        "✅ [OAuth Callback] Fetched company info for %s (%s):",
+        companyInfo.CompanyName,
+        realmId,
         {
           companyName: companyInfo.CompanyName,
           legalName: companyInfo.LegalName,
