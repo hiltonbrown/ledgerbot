@@ -49,43 +49,46 @@ export function InvoiceUploadZone({
     e.stopPropagation();
   }, []);
 
-  const uploadFile = async (file: File) => {
-    setIsUploading(true);
-    setUploadStatus("idle");
-    setErrorMessage("");
+  const uploadFile = useCallback(
+    async (file: File) => {
+      setIsUploading(true);
+      setUploadStatus("idle");
+      setErrorMessage("");
 
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
 
-      const response = await fetch("/api/agents/ap/upload", {
-        method: "POST",
-        body: formData,
-      });
+        const response = await fetch("/api/agents/ap/upload", {
+          method: "POST",
+          body: formData,
+        });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to upload file");
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Failed to upload file");
+        }
+
+        const data = await response.json();
+        setUploadStatus("success");
+        setUploadedFileName(file.name);
+        onFileUploaded({
+          fileUrl: data.fileUrl,
+          fileName: data.fileName,
+          fileType: data.fileType,
+          mimeType: data.mimeType,
+        });
+      } catch (error) {
+        setUploadStatus("error");
+        setErrorMessage(
+          error instanceof Error ? error.message : "Failed to upload file"
+        );
+      } finally {
+        setIsUploading(false);
       }
-
-      const data = await response.json();
-      setUploadStatus("success");
-      setUploadedFileName(file.name);
-      onFileUploaded({
-        fileUrl: data.fileUrl,
-        fileName: data.fileName,
-        fileType: data.fileType,
-        mimeType: data.mimeType,
-      });
-    } catch (error) {
-      setUploadStatus("error");
-      setErrorMessage(
-        error instanceof Error ? error.message : "Failed to upload file"
-      );
-    } finally {
-      setIsUploading(false);
-    }
-  };
+    },
+    [onFileUploaded]
+  );
 
   const handleDrop = useCallback(
     async (e: React.DragEvent<HTMLDivElement>) => {
