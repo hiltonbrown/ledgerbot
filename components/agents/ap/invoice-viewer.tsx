@@ -100,6 +100,7 @@ export function InvoiceViewer({
                   height: `${(zoom / 100) * 800}px`,
                 }}
                 title="Invoice PDF"
+                sandbox="allow-same-origin"
               />
             ) : (
               <img
