@@ -79,7 +79,7 @@ export function InvoiceViewer({
             >
               <ZoomIn className="h-4 w-4" />
             </Button>
-            <Button onClick={handleDownload} size="sm" variant="outline">
+            <Button onClick={handleDownload} size="sm" variant="outline" aria-label="Download invoice">
               <Download className="h-4 w-4" />
             </Button>
           </div>
