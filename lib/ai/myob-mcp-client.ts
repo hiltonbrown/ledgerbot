@@ -472,6 +472,9 @@ async function myobListContacts(
   let filter: string | undefined;
   if (searchTerm) {
     // Search in both CompanyName and LastName (for individuals)
+    // NOTE: The 'substringof' function is valid for OData v2/v3 only.
+    // If MYOB upgrades to OData v4, change this to:
+    //   filter = `contains(CompanyName,'${searchTerm}') or contains(LastName,'${searchTerm}')`;
     filter = `substringof('${searchTerm}',CompanyName) or substringof('${searchTerm}',LastName)`;
   }
 
