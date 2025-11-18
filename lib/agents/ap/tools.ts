@@ -99,7 +99,7 @@ export async function extractInvoiceData(
         .string()
         .optional()
         .describe("Full address of the supplier"),
-      supplierEmail: z.string().email().optional().describe("Email address"),
+      supplierEmail: z.string().optional().describe("Email address"),
       supplierPhone: z.string().optional().describe("Phone number"),
       invoiceNumber: z
         .string()
@@ -212,6 +212,17 @@ If any field is not clearly visible or not present on the invoice, leave it as u
       }
     } else {
       warnings.push("ABN not found on invoice - manual verification required");
+    }
+
+    // Validate email format if present
+    if (invoiceData.supplierEmail) {
+      // Use a lenient regex that checks for basic email structure
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(invoiceData.supplierEmail)) {
+        warnings.push(
+          "Email format appears invalid - please verify supplier email address"
+        );
+      }
     }
 
     // Validate GST calculation if amounts are present
