@@ -556,10 +556,24 @@ async function myobListAccounts(
   const accountType = args.accountType as string | undefined;
   const limit = (args.limit as number) || 100;
 
+  // Allowed MYOB account classifications
+  const allowedClassifications = [
+    "Asset",
+    "Liability",
+    "Equity",
+    "Income",
+    "Expense",
+    "Other Income",
+    "Other Expense"
+  ];
+
   // Build OData filter
   let filter: string | undefined;
   if (accountType) {
-    filter = `Classification eq '${accountType}'`;
+    if (!allowedClassifications.includes(accountType)) {
+      throw new Error(`Invalid accountType: ${accountType}`);
+    }
+    filter = `Classification eq '${accountType.replace(/'/g, "''")}'`;
   }
 
   const queryString = buildODataQuery({
