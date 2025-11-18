@@ -148,6 +148,13 @@
       "when": 1763162918660,
       "tag": "0020_square_exodus",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1763453986761,
+      "tag": "0021_freezing_sentry",
+      "breakpoints": true
     }
   ]
 }

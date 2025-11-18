@@ -22,6 +22,8 @@ interface XeroConnection {
   isActive: boolean;
   createdAt: Date;
   expiresAt: Date;
+  refreshTokenIssuedAt: Date;
+  updatedAt: Date;
   connectionStatus: string | null;
   lastError: string | null;
   lastErrorType: string | null;
@@ -31,6 +33,65 @@ interface XeroConnection {
 interface XeroIntegrationCardProps {
   integration: Integration;
   initialConnections: XeroConnection[];
+}
+
+// The refresh token expires after 60 days.
+// Thresholds for warning and critical status:
+// - CRITICAL_THRESHOLD_DAYS: 5 days before expiry (ageDays > 55)
+// - WARNING_THRESHOLD_DAYS: 10 days before expiry (ageDays > 50)
+const REFRESH_TOKEN_EXPIRY_DAYS = 60;
+const CRITICAL_THRESHOLD_DAYS = 55; // 5 days before expiry
+const WARNING_THRESHOLD_DAYS = 50;  // 10 days before expiry
+
+function getRefreshTokenStatus(refreshTokenIssuedAt: Date) {
+  const now = Date.now();
+  const issuedTime = new Date(refreshTokenIssuedAt).getTime();
+  const ageMs = now - issuedTime;
+  const ageDays = Math.floor(ageMs / (24 * 60 * 60 * 1000));
+  const daysRemaining = REFRESH_TOKEN_EXPIRY_DAYS - ageDays;
+
+  let statusColor = "text-green-600";
+  let statusText = "Healthy";
+  let bgColor = "bg-green-500";
+
+  if (ageDays >= REFRESH_TOKEN_EXPIRY_DAYS) {
+    statusColor = "text-red-600";
+    statusText = "Expired";
+    bgColor = "bg-red-500";
+  } else if (ageDays > CRITICAL_THRESHOLD_DAYS) {
+    statusColor = "text-orange-600";
+    statusText = "Expiring Soon";
+    bgColor = "bg-orange-500";
+  } else if (ageDays > WARNING_THRESHOLD_DAYS) {
+    statusColor = "text-yellow-600";
+    statusText = "Good";
+    bgColor = "bg-yellow-500";
+  }
+
+  return {
+    ageDays,
+    daysRemaining,
+    statusColor,
+    statusText,
+    bgColor,
+  };
+}
+
+function formatLastRefresh(updatedAt: Date): string {
+  const now = Date.now();
+  const updatedTime = new Date(updatedAt).getTime();
+  const diffMs = now - updatedTime;
+  const diffMins = Math.floor(diffMs / (60 * 1000));
+  const diffHours = Math.floor(diffMs / (60 * 60 * 1000));
+  const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? "s" : ""} ago`;
+  if (diffHours < 24)
+    return `${diffHours} hour${diffHours !== 1 ? "s" : ""} ago`;
+  if (diffDays < 30) return `${diffDays} day${diffDays !== 1 ? "s" : ""} ago`;
+
+  return new Date(updatedAt).toLocaleDateString();
 }
 
 export function XeroIntegrationCard({
@@ -271,6 +332,57 @@ export function XeroIntegrationCard({
                 {connectionStatusLabel}
               </span>
             </div>
+
+            {/* Refresh Token Status */}
+            {(() => {
+              const tokenStatus = getRefreshTokenStatus(
+                activeConnection.refreshTokenIssuedAt
+              );
+              const lastRefresh = formatLastRefresh(
+                activeConnection.updatedAt
+              );
+
+              return (
+                <div className="mt-3 space-y-1.5 border-t pt-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">
+                      Refresh Token
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={`inline-block h-2 w-2 rounded-full ${tokenStatus.bgColor}`}
+                      />
+                      <span className={`font-medium ${tokenStatus.statusColor}`}>
+                        {tokenStatus.statusText}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <span>Token Age</span>
+                    <span className="font-medium text-foreground">
+                      {tokenStatus.ageDays} day
+                      {tokenStatus.ageDays !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <span>Expires In</span>
+                    <span
+                      className={`font-medium ${tokenStatus.daysRemaining <= 5 ? "text-red-600" : tokenStatus.daysRemaining <= 10 ? "text-orange-600" : "text-foreground"}`}
+                    >
+                      {tokenStatus.daysRemaining > 0
+                        ? `${tokenStatus.daysRemaining} day${tokenStatus.daysRemaining !== 1 ? "s" : ""}`
+                        : "Expired"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <span>Last Refresh</span>
+                    <span className="font-medium text-foreground">
+                      {lastRefresh}
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Error Details Section - Only show if connection status is error */}

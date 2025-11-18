@@ -70,7 +70,9 @@ export async function getDecryptedConnection(
   }
 
   // Check if refresh token has expired (Xero refresh tokens last 60 days from issuance)
-  // IMPORTANT: Refresh token expiry is based on ISSUANCE time, not last refresh
+  // IMPORTANT: Xero uses OAuth2 refresh token rotation.
+  // Each refresh provides a NEW refresh token with a NEW 60-day expiry window.
+  // The refreshTokenIssuedAt timestamp is updated on every successful refresh to track the current token's age.
   const refreshTokenAge =
     Date.now() - new Date(connection.refreshTokenIssuedAt).getTime();
   const SIXTY_DAYS = 60 * 24 * 60 * 60 * 1000; // 60 days in milliseconds
@@ -83,7 +85,7 @@ export async function getDecryptedConnection(
   if (refreshTokenAge >= SIXTY_DAYS) {
     // Refresh token is definitely expired - deactivate immediately
     console.error(
-      `❌ [Xero Token] Refresh token expired for user ${userId} - issued ${refreshTokenAgeDays} days ago (limit: 60 days)`
+      `❌ [Xero Token] Refresh token expired for user ${userId} - last refreshed ${refreshTokenAgeDays} days ago (limit: 60 days)`
     );
     console.error(
       "  Connection will be deactivated. User must reconnect in Settings > Integrations."
@@ -92,7 +94,7 @@ export async function getDecryptedConnection(
     try {
       await deactivateXeroConnection(connection.id);
       console.log(
-        `Deactivated connection ${connection.id} due to expired refresh token (${refreshTokenAgeDays} days old)`
+        `Deactivated connection ${connection.id} due to expired refresh token (${refreshTokenAgeDays} days since last refresh)`
       );
     } catch (deactivateError) {
       console.error(
@@ -102,7 +104,7 @@ export async function getDecryptedConnection(
     }
 
     throw new Error(
-      `Xero refresh token expired (${refreshTokenAgeDays} days old, limit 60 days). Please reconnect your Xero account in Settings > Integrations.`
+      `Xero refresh token expired (${refreshTokenAgeDays} days since last refresh, limit 60 days). Please reconnect your Xero account in Settings > Integrations.`
     );
   }
 
@@ -369,13 +371,63 @@ async function performTokenRefresh(
       `✅ Successfully refreshed Xero token for connection ${connectionId}, expires at ${expiresAt.toISOString()}${authenticationEventId ? `, auth_event_id: ${authenticationEventId}` : ""}`
     );
 
+    const now = new Date();
     const updatedConnection = await updateXeroTokens({
       id: connectionId,
       accessToken: encryptToken(tokenSet.access_token),
       refreshToken: encryptToken(tokenSet.refresh_token),
       expiresAt,
       authenticationEventId,
+      resetRefreshTokenIssuedAt: true, // CRITICAL: Reset the 60-day window with new refresh token
+      expectedUpdatedAt: connection.updatedAt, // Optimistic locking to prevent race conditions
     });
+
+    // Handle optimistic lock failure (another process updated the token concurrently)
+    if (!updatedConnection) {
+      console.warn(
+        `⚠️ [refreshXeroToken] Concurrent token update detected for connection ${connectionId}`
+      );
+      console.warn(
+        "  Another process already refreshed this token - fetching latest version"
+      );
+
+      // Fetch the latest connection (which has the newer token)
+      const latestConnection = await getXeroConnectionById(connectionId);
+
+      if (!latestConnection) {
+        return {
+          success: false,
+          error: "Connection not found after concurrent update",
+          isPermanentFailure: false,
+        };
+      }
+
+      // Check if the latest token is still valid
+      const latestExpiresAt = new Date(latestConnection.expiresAt);
+      if (latestExpiresAt > now) {
+        console.log(
+          `  ✓ Using concurrently refreshed token (expires: ${latestExpiresAt.toISOString()})`
+        );
+        return {
+          success: true,
+          connection: latestConnection,
+        };
+      }
+
+      // Latest token is also expired - this is unexpected
+      console.error(
+        `  ❌ Concurrently updated token is also expired - this should not happen`
+      );
+      return {
+        success: false,
+        error: "Concurrent token update produced expired token",
+        isPermanentFailure: false,
+      };
+    }
+
+    console.log(
+      `  ✓ Refresh token rotation complete - new 60-day window starts at ${now.toISOString()}`
+    );
 
     return {
       success: true,
@@ -669,4 +721,146 @@ export interface XeroConnectionInfo {
   tenantName: string | null;
   createdDateUtc: string;
   updatedDateUtc: string;
+}
+
+/**
+ * Type definition for Xero organisation info from GET /organisation endpoint
+ */
+export interface XeroOrganisationInfo {
+  OrganisationID: string;
+  Name: string;
+  LegalName?: string;
+  ShortCode: string;
+  BaseCurrency: string;
+  OrganisationType: "COMPANY" | "ACCOUNTING_PRACTICE" | "TRUST" | "PARTNERSHIP" | "SOLE_TRADER" | "NOT_FOR_PROFIT";
+  IsDemoCompany: boolean;
+  CountryCode?: string;
+  OrganisationStatus?: string;
+  TaxNumber?: string;
+  FinancialYearEndDay?: number;
+  FinancialYearEndMonth?: number;
+}
+
+/**
+ * Fetch organisation details from Xero API
+ * This implements Xero best practice to store organisation metadata
+ * See: https://developer.xero.com/documentation/best-practices/data-integrity/managing-tokens/#get-organisation
+ *
+ * @throws {Error} If the API request fails or returns invalid data
+ */
+export async function fetchXeroOrganisation(
+  accessToken: string,
+  tenantId: string
+): Promise<XeroOrganisationInfo> {
+  // Input validation
+  if (!accessToken || typeof accessToken !== "string") {
+    throw new Error("Invalid access token provided to fetchXeroOrganisation");
+  }
+  if (!tenantId || typeof tenantId !== "string") {
+    throw new Error("Invalid tenant ID provided to fetchXeroOrganisation");
+  }
+
+  try {
+    const response = await fetch("https://api.xero.com/api.xro/2.0/Organisation", {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "xero-tenant-id": tenantId,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      // Add timeout to prevent hanging requests
+      signal: AbortSignal.timeout(10000), // 10 second timeout
+    });
+
+    if (!response.ok) {
+      // Detailed error handling based on status code
+      const errorBody = await response.text().catch(() => "Unable to read error response");
+
+      if (response.status === 401) {
+        throw new Error(
+          `Xero authentication failed (401). Access token may be expired or invalid.`
+        );
+      }
+      if (response.status === 403) {
+        throw new Error(
+          `Xero access forbidden (403). Missing required scopes for organisation endpoint.`
+        );
+      }
+      if (response.status === 404) {
+        throw new Error(
+          `Xero organisation not found (404) for tenant ${tenantId}.`
+        );
+      }
+      if (response.status >= 500) {
+        throw new Error(
+          `Xero server error (${response.status}). Please try again later.`
+        );
+      }
+
+      throw new Error(
+        `Failed to fetch Xero organisation: ${response.status} ${response.statusText}. ${errorBody.substring(0, 200)}`
+      );
+    }
+
+    const data = await response.json();
+
+    // Validate response structure
+    if (!data || typeof data !== "object") {
+      throw new Error("Invalid response format from Xero API");
+    }
+
+    if (!Array.isArray(data.Organisations) || data.Organisations.length === 0) {
+      throw new Error("No organisation data returned from Xero API");
+    }
+
+    const org = data.Organisations[0];
+
+    // Validate critical required fields
+    if (!org.OrganisationID) {
+      throw new Error("Missing OrganisationID in Xero API response");
+    }
+    if (!org.Name) {
+      throw new Error("Missing Name in Xero API response");
+    }
+    if (!org.ShortCode) {
+      throw new Error("Missing ShortCode in Xero API response");
+    }
+    if (!org.BaseCurrency) {
+      throw new Error("Missing BaseCurrency in Xero API response");
+    }
+
+    // Validate and normalize OrganisationType
+    const validOrgTypes = ["COMPANY", "ACCOUNTING_PRACTICE", "TRUST", "PARTNERSHIP", "SOLE_TRADER", "NOT_FOR_PROFIT"] as const;
+    const orgType = String(org.OrganisationType).toUpperCase();
+    const normalizedOrgType = validOrgTypes.includes(orgType as typeof validOrgTypes[number])
+      ? (orgType as typeof validOrgTypes[number])
+      : "COMPANY"; // Default to COMPANY if invalid type
+
+    // Return validated organisation info with safe defaults for optional fields
+    return {
+      OrganisationID: String(org.OrganisationID),
+      Name: String(org.Name),
+      LegalName: org.LegalName ? String(org.LegalName) : undefined,
+      ShortCode: String(org.ShortCode),
+      BaseCurrency: String(org.BaseCurrency).toUpperCase(), // Normalize currency code
+      OrganisationType: normalizedOrgType,
+      IsDemoCompany: Boolean(org.IsDemoCompany),
+      CountryCode: org.CountryCode ? String(org.CountryCode) : undefined,
+      OrganisationStatus: org.OrganisationStatus ? String(org.OrganisationStatus) : undefined,
+      TaxNumber: org.TaxNumber ? String(org.TaxNumber) : undefined,
+      FinancialYearEndDay: org.FinancialYearEndDay ? Number(org.FinancialYearEndDay) : undefined,
+      FinancialYearEndMonth: org.FinancialYearEndMonth ? Number(org.FinancialYearEndMonth) : undefined,
+    };
+  } catch (error) {
+    // Enhanced error logging with context
+    console.error(
+      `[fetchXeroOrganisation] Failed for tenant ${tenantId}:`,
+      {
+        error: error instanceof Error ? error.message : String(error),
+        tenantId,
+        timestamp: new Date().toISOString(),
+      }
+    );
+    throw error;
+  }
 }

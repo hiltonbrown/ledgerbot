@@ -255,6 +255,12 @@ export const xeroConnection = pgTable("XeroConnection", {
   tenantId: varchar("tenantId", { length: 255 }).notNull(),
   tenantName: varchar("tenantName", { length: 255 }),
   tenantType: varchar("tenantType", { length: 50 }), // ORGANISATION, PRACTICEMANAGER, PRACTICE
+  // Organisation metadata from GET /organisation endpoint (Xero best practice)
+  organisationId: varchar("organisationId", { length: 255 }), // Xero's organisation UUID
+  shortCode: varchar("shortCode", { length: 10 }), // For deep linking (e.g., !TJ7Tb)
+  baseCurrency: varchar("baseCurrency", { length: 3 }), // ISO 4217 currency code (e.g., GBP, AUD, NZD)
+  organisationType: varchar("organisationType", { length: 50 }), // COMPANY, ACCOUNTING_PRACTICE
+  isDemoCompany: boolean("isDemoCompany").default(false), // True if demo organisation (data resets regularly)
   accessToken: text("accessToken").notNull(), // Encrypted
   refreshToken: text("refreshToken").notNull(), // Encrypted
   refreshTokenIssuedAt: timestamp("refreshTokenIssuedAt").notNull(), // When refresh token was first issued (for 60-day expiry tracking)
