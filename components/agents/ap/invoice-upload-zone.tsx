@@ -101,7 +101,7 @@ export function InvoiceUploadZone({
       const file = files[0];
       await uploadFile(file);
     },
-    [disabled]
+    [disabled, uploadFile]
   );
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
