@@ -1021,6 +1021,11 @@ export async function createXeroConnection({
   tenantId,
   tenantName,
   tenantType,
+  organisationId,
+  shortCode,
+  baseCurrency,
+  organisationType,
+  isDemoCompany,
   accessToken,
   refreshToken,
   expiresAt,
@@ -1031,6 +1036,11 @@ export async function createXeroConnection({
   tenantId: string;
   tenantName?: string;
   tenantType?: string;
+  organisationId?: string;
+  shortCode?: string;
+  baseCurrency?: string;
+  organisationType?: string;
+  isDemoCompany?: boolean;
   accessToken: string;
   refreshToken: string;
   expiresAt: Date;
@@ -1084,6 +1094,12 @@ export async function createXeroConnection({
                 ? tenantNameValue
                 : existingConnection.tenantName,
             tenantType: tenantType || existingConnection.tenantType,
+            // Update organisation metadata (Xero best practice)
+            organisationId: organisationId || existingConnection.organisationId,
+            shortCode: shortCode || existingConnection.shortCode,
+            baseCurrency: baseCurrency || existingConnection.baseCurrency,
+            organisationType: organisationType || existingConnection.organisationType,
+            isDemoCompany: isDemoCompany ?? existingConnection.isDemoCompany,
             accessToken,
             refreshToken,
             refreshTokenIssuedAt: now, // Reset refresh token issuance time on re-auth
@@ -1130,6 +1146,12 @@ export async function createXeroConnection({
             tenantId,
             tenantName: tenantNameValue,
             tenantType,
+            // Organisation metadata (Xero best practice)
+            organisationId,
+            shortCode,
+            baseCurrency,
+            organisationType,
+            isDemoCompany,
             accessToken,
             refreshToken,
             refreshTokenIssuedAt: now, // Track when refresh token was first issued

@@ -4,6 +4,7 @@ import { createXeroConnection } from "@/lib/db/queries";
 import { syncActiveConnectionChartOfAccounts } from "@/lib/xero/chart-of-accounts-sync";
 import {
   createXeroClient,
+  fetchXeroOrganisation,
   getXeroScopes,
   getXeroTenants,
 } from "@/lib/xero/connection-manager";
@@ -115,13 +116,59 @@ export async function GET(request: Request) {
     const encryptedAccessToken = encryptToken(tokenSet.access_token);
     const encryptedRefreshToken = encryptToken(tokenSet.refresh_token);
 
+    // Fetch organisation details for each tenant (Xero best practice)
+    // This provides important metadata like shortCode (for deep linking), baseCurrency, organisationType
+    // See: https://developer.xero.com/documentation/best-practices/data-integrity/managing-tokens/#get-organisation
+    const tenantDetailsPromises = tenants.map(async (tenant) => {
+      try {
+        // tokenSet.access_token is guaranteed to be defined by the check above
+        const orgDetails = await fetchXeroOrganisation(
+          tokenSet.access_token!,
+          tenant.tenantId
+        );
+        console.log(
+          `[OAuth Callback] Fetched organisation details for ${tenant.tenantName} (${tenant.tenantId}):`,
+          {
+            organisationId: orgDetails.OrganisationID,
+            shortCode: orgDetails.ShortCode,
+            baseCurrency: orgDetails.BaseCurrency,
+            organisationType: orgDetails.OrganisationType,
+            isDemoCompany: orgDetails.IsDemoCompany,
+          }
+        );
+        return {
+          tenant,
+          orgDetails,
+        };
+      } catch (error) {
+        console.error(
+          `Failed to fetch organisation details for ${tenant.tenantId}:`,
+          error
+        );
+        // Return tenant without org details if fetch fails (graceful degradation)
+        return {
+          tenant,
+          orgDetails: null,
+        };
+      }
+    });
+
+    const tenantDetailsResults = await Promise.all(tenantDetailsPromises);
+
+    // Create connections with organisation metadata
     await Promise.all(
-      tenants.map((tenant) =>
+      tenantDetailsResults.map(({ tenant, orgDetails }) =>
         createXeroConnection({
           userId: user.id,
           tenantId: tenant.tenantId,
           tenantName: tenant.tenantName,
           tenantType: tenant.tenantType,
+          // Organisation metadata (Xero best practice fields)
+          organisationId: orgDetails?.OrganisationID,
+          shortCode: orgDetails?.ShortCode,
+          baseCurrency: orgDetails?.BaseCurrency,
+          organisationType: orgDetails?.OrganisationType,
+          isDemoCompany: orgDetails?.IsDemoCompany ?? false,
           accessToken: encryptedAccessToken,
           refreshToken: encryptedRefreshToken,
           expiresAt,

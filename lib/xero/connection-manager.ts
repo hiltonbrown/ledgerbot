@@ -722,3 +722,76 @@ export interface XeroConnectionInfo {
   createdDateUtc: string;
   updatedDateUtc: string;
 }
+
+/**
+ * Type definition for Xero organisation info from GET /organisation endpoint
+ */
+export interface XeroOrganisationInfo {
+  OrganisationID: string;
+  Name: string;
+  LegalName?: string;
+  ShortCode: string;
+  BaseCurrency: string;
+  OrganisationType: "COMPANY" | "ACCOUNTING_PRACTICE" | "TRUST" | "PARTNERSHIP" | "SOLE_TRADER" | "NOT_FOR_PROFIT";
+  IsDemoCompany: boolean;
+  CountryCode?: string;
+  OrganisationStatus?: string;
+  TaxNumber?: string;
+  FinancialYearEndDay?: number;
+  FinancialYearEndMonth?: number;
+}
+
+/**
+ * Fetch organisation details from Xero API
+ * This implements Xero best practice to store organisation metadata
+ * See: https://developer.xero.com/documentation/best-practices/data-integrity/managing-tokens/#get-organisation
+ */
+export async function fetchXeroOrganisation(
+  accessToken: string,
+  tenantId: string
+): Promise<XeroOrganisationInfo> {
+  try {
+    const response = await fetch("https://api.xero.com/api.xro/2.0/Organisation", {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "xero-tenant-id": tenantId,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch Xero organisation: ${response.status} ${response.statusText}`
+      );
+    }
+
+    const data = await response.json();
+
+    if (!data.Organisations || data.Organisations.length === 0) {
+      throw new Error("No organisation data returned from Xero API");
+    }
+
+    const org = data.Organisations[0];
+    return {
+      OrganisationID: org.OrganisationID,
+      Name: org.Name,
+      LegalName: org.LegalName,
+      ShortCode: org.ShortCode,
+      BaseCurrency: org.BaseCurrency,
+      OrganisationType: org.OrganisationType,
+      IsDemoCompany: org.IsDemoCompany,
+      CountryCode: org.CountryCode,
+      OrganisationStatus: org.OrganisationStatus,
+      TaxNumber: org.TaxNumber,
+      FinancialYearEndDay: org.FinancialYearEndDay,
+      FinancialYearEndMonth: org.FinancialYearEndMonth,
+    };
+  } catch (error) {
+    console.error(
+      `Failed to fetch Xero organisation for tenant ${tenantId}:`,
+      error
+    );
+    throw error;
+  }
+}
