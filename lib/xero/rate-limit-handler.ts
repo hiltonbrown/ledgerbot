@@ -16,18 +16,18 @@
  * Reference: https://developer.xero.com/documentation/best-practices/integration-health/rate-limits
  */
 
-export interface RateLimitInfo {
+export type RateLimitInfo = {
   minuteRemaining?: number; // X-MinLimit-Remaining
   dayRemaining?: number; // X-DayLimit-Remaining
   retryAfter?: number; // Retry-After (seconds)
   problem?: "minute" | "day"; // X-Rate-Limit-Problem
   resetAt?: Date; // Calculated from retryAfter
-}
+};
 
-export interface PaginationParams {
+export type PaginationParams = {
   page?: number; // Page number (starts at 1)
   pageSize?: number; // Records per page (max 1000, default 100)
-}
+};
 
 /**
  * Extract rate limit information from response headers
@@ -37,7 +37,9 @@ export function extractRateLimitInfo(
   headers: Headers | Record<string, any> | any
 ): RateLimitInfo {
   const getHeader = (name: string): string | null => {
-    if (!headers) return null;
+    if (!headers) {
+      return null;
+    }
 
     // Native Headers API
     if (headers instanceof Headers) {
@@ -47,7 +49,9 @@ export function extractRateLimitInfo(
     // Axios headers or plain object
     if (typeof headers === "object") {
       // Try exact match
-      if (headers[name]) return String(headers[name]);
+      if (headers[name]) {
+        return String(headers[name]);
+      }
 
       // Try case-insensitive match (Axios can normalize headers)
       const lowerName = name.toLowerCase();

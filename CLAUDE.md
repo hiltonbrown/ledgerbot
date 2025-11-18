@@ -116,8 +116,7 @@ Copy `.env.example` to `.env.local` and configure:
   - `openai-gpt-5-chat`: GPT-5.1 (flagship OpenAI model)
   - `openai-gpt-5-mini`: GPT-5 Mini (fast, cost-efficient)
   - `google-gemini-2-5-flash`: Gemini 2.5 Flash (speed-optimized with reasoning)
-- Reasoning models use `extractReasoningMiddleware` with `<think>` tags
-- Title generation and artifact creation use the user's selected chat model (passed dynamically)
+- All models marked with `isReasoning: true` use `extractReasoningMiddleware` with `<think>` tags
 - **TokenLens Integration**: Uses cached model catalog (`unstable_cache`) with 24h revalidation
   - `getTokenlensCatalog()` fetches model pricing and capabilities from TokenLens API
   - Falls back to default catalog if fetch fails
@@ -184,12 +183,20 @@ LedgerBot includes built-in Xero accounting integration using Model Context Prot
    - Example: `ifModifiedSince: "2025-01-01T00:00:00"` retrieves only records modified since that timestamp
    - Reference: https://developer.xero.com/documentation/best-practices/integration-health/if-modified-since
 
-3. **Rate Limit Handling** (`lib/xero/rate-limit-handler.ts`):
-   - Tracks X-MinLimit-Remaining and X-DayLimit-Remaining headers
-   - Limits: 60 calls/minute per tenant, 5000 calls/day per tenant
-   - Implements exponential backoff with jitter for 429 errors
-   - Proactive throttling when approaching limits (2 calls/minute, 50 calls/day)
-   - Database tracking of rate limit status per connection
+3. **Rate Limit Handling** (`lib/xero/rate-limit-handler.ts`, `lib/ai/xero-mcp-client.ts:97-166`):
+   - **Proactive Checks**: Validates rate limits before making API calls
+   - **Concurrent Limiting**: Enforces max 5 concurrent requests per tenant (Xero requirement)
+   - **Retry Logic**: Automatic retry with exponential backoff for 429 errors (max 3 attempts)
+   - **Retry-After Header**: Uses Xero's Retry-After header as primary wait time (best practice)
+   - **Header Tracking**: Monitors X-MinLimit-Remaining (60/min) and X-DayLimit-Remaining (5000/day)
+   - **Proactive Throttling**: Automatically waits when approaching limits (≤2 calls/min, ≤50 calls/day)
+   - **Database Persistence**: Stores rate limit status per connection for cross-request awareness
+   - **User-Friendly Errors**: Generates clear messages when limits are exceeded
+   - Rate Limits:
+     * Concurrent: 5 calls at once per tenant
+     * Per Minute: 60 calls per tenant
+     * Per Day: 5000 calls per tenant
+     * App Minute: 10,000 calls across all tenants
    - Reference: https://developer.xero.com/documentation/best-practices/integration-health/rate-limits
 
 **Architecture** (`lib/xero/`, `lib/ai/xero-*`):
@@ -528,31 +535,43 @@ See `/docs/regulatory-system-summary.md` for complete implementation details and
   - Multi-organisation support (one active connection per user)
 
 **Accounts Receivable Tables** (`lib/db/schema/ar.ts`):
-- `ArContact`: Customer/contact records for AR operations
+- `arContact`: Customer/contact records for AR operations
   - Customer details: name, email, phone
   - Xero integration via `externalRef` field
   - User-scoped with cascade deletion
-- `ArInvoice`: Customer invoices with payment tracking
+- `arInvoice`: Customer invoices with payment tracking
   - Invoice details: number, dates, amounts (subtotal, tax, total)
   - Payment tracking: `amountPaid`, `status`
   - Status values: awaiting_payment, paid, overdue
-  - Xero synchronization support
+  - Xero synchronization support via `externalRef`
   - Indexed by user, contact, status, due date
-- `ArPayment`: Payment records linked to invoices
+- `arPayment`: Payment records linked to invoices
   - Payment details: amount, date, method, reference
   - Supports partial payments
   - Automatic invoice reconciliation
-- `ArReminder`: Payment reminder tracking
+- `arReminder`: Payment reminder tracking
   - Reminder history with type, channel, content
   - Send status tracking
   - Links to invoice and contact
-- `ArNote`: Customer notes and communication history
+- `arNote`: Customer notes and communication history
   - User-authored notes about customers/invoices
   - Timestamp tracking
-- `ArCommsArtefact`: Communication templates and drafts
+- `arCommsArtefact`: Communication templates and drafts
   - Email and SMS templates
   - Generated reminder content for copy-paste
   - Type field: email, sms
+
+**Regulatory Tables** (`lib/db/schema.ts`):
+- `regulatoryDocument`: Scraped regulatory content with full-text search
+  - Source details: category, title, URL, last updated
+  - Content: summary, full text, search vector (tsvector)
+  - GIN index on `searchVector` for fast full-text search
+- `regulatoryScrapeJob`: Job tracking for scraping operations
+  - Job status: pending, running, completed, failed
+  - Progress tracking and error logging
+- `qaReviewRequest`: Human review tracking for low-confidence Q&A responses
+  - Response content and confidence score
+  - Review status and resolution
 
 **Migration Strategy**:
 - Old message/vote tables are deprecated but retained (Message, Vote)

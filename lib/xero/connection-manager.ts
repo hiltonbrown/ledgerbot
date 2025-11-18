@@ -229,12 +229,12 @@ export async function getDecryptedConnection(
   };
 }
 
-export interface TokenRefreshResult {
+export type TokenRefreshResult = {
   success: boolean;
   connection?: XeroConnection;
   error?: string;
   isPermanentFailure?: boolean; // True if refresh token is expired (needs re-auth)
-}
+};
 
 export async function refreshXeroToken(
   connectionId: string,
@@ -416,7 +416,7 @@ async function performTokenRefresh(
 
       // Latest token is also expired - this is unexpected
       console.error(
-        `  ❌ Concurrently updated token is also expired - this should not happen`
+        "  ❌ Concurrently updated token is also expired - this should not happen"
       );
       return {
         success: false,
@@ -713,7 +713,7 @@ export async function deleteXeroConnection(
 /**
  * Type definition for Xero connection info from /connections endpoint
  */
-export interface XeroConnectionInfo {
+export type XeroConnectionInfo = {
   id: string;
   authEventId: string;
   tenantId: string;
@@ -721,25 +721,31 @@ export interface XeroConnectionInfo {
   tenantName: string | null;
   createdDateUtc: string;
   updatedDateUtc: string;
-}
+};
 
 /**
  * Type definition for Xero organisation info from GET /organisation endpoint
  */
-export interface XeroOrganisationInfo {
+export type XeroOrganisationInfo = {
   OrganisationID: string;
   Name: string;
   LegalName?: string;
   ShortCode: string;
   BaseCurrency: string;
-  OrganisationType: "COMPANY" | "ACCOUNTING_PRACTICE" | "TRUST" | "PARTNERSHIP" | "SOLE_TRADER" | "NOT_FOR_PROFIT";
+  OrganisationType:
+    | "COMPANY"
+    | "ACCOUNTING_PRACTICE"
+    | "TRUST"
+    | "PARTNERSHIP"
+    | "SOLE_TRADER"
+    | "NOT_FOR_PROFIT";
   IsDemoCompany: boolean;
   CountryCode?: string;
   OrganisationStatus?: string;
   TaxNumber?: string;
   FinancialYearEndDay?: number;
   FinancialYearEndMonth?: number;
-}
+};
 
 /**
  * Fetch organisation details from Xero API
@@ -761,29 +767,34 @@ export async function fetchXeroOrganisation(
   }
 
   try {
-    const response = await fetch("https://api.xero.com/api.xro/2.0/Organisation", {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "xero-tenant-id": tenantId,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      // Add timeout to prevent hanging requests
-      signal: AbortSignal.timeout(10000), // 10 second timeout
-    });
+    const response = await fetch(
+      "https://api.xero.com/api.xro/2.0/Organisation",
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "xero-tenant-id": tenantId,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        // Add timeout to prevent hanging requests
+        signal: AbortSignal.timeout(10_000), // 10 second timeout
+      }
+    );
 
     if (!response.ok) {
       // Detailed error handling based on status code
-      const errorBody = await response.text().catch(() => "Unable to read error response");
+      const errorBody = await response
+        .text()
+        .catch(() => "Unable to read error response");
 
       if (response.status === 401) {
         throw new Error(
-          `Xero authentication failed (401). Access token may be expired or invalid.`
+          "Xero authentication failed (401). Access token may be expired or invalid."
         );
       }
       if (response.status === 403) {
         throw new Error(
-          `Xero access forbidden (403). Missing required scopes for organisation endpoint.`
+          "Xero access forbidden (403). Missing required scopes for organisation endpoint."
         );
       }
       if (response.status === 404) {
@@ -830,10 +841,19 @@ export async function fetchXeroOrganisation(
     }
 
     // Validate and normalize OrganisationType
-    const validOrgTypes = ["COMPANY", "ACCOUNTING_PRACTICE", "TRUST", "PARTNERSHIP", "SOLE_TRADER", "NOT_FOR_PROFIT"] as const;
+    const validOrgTypes = [
+      "COMPANY",
+      "ACCOUNTING_PRACTICE",
+      "TRUST",
+      "PARTNERSHIP",
+      "SOLE_TRADER",
+      "NOT_FOR_PROFIT",
+    ] as const;
     const orgType = String(org.OrganisationType).toUpperCase();
-    const normalizedOrgType = validOrgTypes.includes(orgType as typeof validOrgTypes[number])
-      ? (orgType as typeof validOrgTypes[number])
+    const normalizedOrgType = validOrgTypes.includes(
+      orgType as (typeof validOrgTypes)[number]
+    )
+      ? (orgType as (typeof validOrgTypes)[number])
       : "COMPANY"; // Default to COMPANY if invalid type
 
     // Return validated organisation info with safe defaults for optional fields
@@ -846,21 +866,24 @@ export async function fetchXeroOrganisation(
       OrganisationType: normalizedOrgType,
       IsDemoCompany: Boolean(org.IsDemoCompany),
       CountryCode: org.CountryCode ? String(org.CountryCode) : undefined,
-      OrganisationStatus: org.OrganisationStatus ? String(org.OrganisationStatus) : undefined,
+      OrganisationStatus: org.OrganisationStatus
+        ? String(org.OrganisationStatus)
+        : undefined,
       TaxNumber: org.TaxNumber ? String(org.TaxNumber) : undefined,
-      FinancialYearEndDay: org.FinancialYearEndDay ? Number(org.FinancialYearEndDay) : undefined,
-      FinancialYearEndMonth: org.FinancialYearEndMonth ? Number(org.FinancialYearEndMonth) : undefined,
+      FinancialYearEndDay: org.FinancialYearEndDay
+        ? Number(org.FinancialYearEndDay)
+        : undefined,
+      FinancialYearEndMonth: org.FinancialYearEndMonth
+        ? Number(org.FinancialYearEndMonth)
+        : undefined,
     };
   } catch (error) {
     // Enhanced error logging with context
-    console.error(
-      `[fetchXeroOrganisation] Failed for tenant ${tenantId}:`,
-      {
-        error: error instanceof Error ? error.message : String(error),
-        tenantId,
-        timestamp: new Date().toISOString(),
-      }
-    );
+    console.error(`[fetchXeroOrganisation] Failed for tenant ${tenantId}:`, {
+      error: error instanceof Error ? error.message : String(error),
+      tenantId,
+      timestamp: new Date().toISOString(),
+    });
     throw error;
   }
 }

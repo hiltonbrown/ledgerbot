@@ -116,10 +116,7 @@ Copy `.env.example` to `.env.local` and configure:
   - `openai-gpt-5-chat`: GPT-5.1 (flagship OpenAI model)
   - `openai-gpt-5-mini`: GPT-5 Mini (fast, cost-efficient)
   - `google-gemini-2-5-flash`: Gemini 2.5 Flash (speed-optimized with reasoning)
-- Reasoning models use `extractReasoningMiddleware` with `<think>` tags
-- Additional specialized models:
-  - `title-model`: xAI Grok 2 (`xai/grok-2-1212`) for chat title generation
-  - `artifact-model`: xAI Grok 2 (`xai/grok-2-1212`) for document generation
+- All models marked with `isReasoning: true` use `extractReasoningMiddleware` with `<think>` tags
 - **TokenLens Integration**: Uses cached model catalog (`unstable_cache`) with 24h revalidation
   - `getTokenlensCatalog()` fetches model pricing and capabilities from TokenLens API
   - Falls back to default catalog if fetch fails
@@ -148,7 +145,7 @@ Copy `.env.example` to `.env.local` and configure:
   - `xero_get_invoice`: Get detailed invoice information by ID
   - `xero_list_contacts`: Search contacts (customers/suppliers) by name or email
   - `xero_get_contact`: Get detailed contact information by ID
-  - `xero_list_accounts`: Get chart of accounts with optional type filtering
+  - `xero_list_accounts`: Get chart of accounts from **database cache** (no API calls)
   - `xero_list_journal_entries`: Get manual journal entries with date filtering
   - `xero_get_bank_transactions`: Get bank transactions with account and date filters
   - `xero_get_organisation`: Get connected Xero organisation information
@@ -178,6 +175,11 @@ LedgerBot includes built-in Xero accounting integration using Model Context Prot
 - Encrypted OAuth tokens (access and refresh)
 - Token expiry tracking and scope storage
 - Active connection status flag
+- **Chart of Accounts Cache**:
+  - `chartOfAccounts`: JSONB storage for account data
+  - `chartOfAccountsSyncedAt`: Timestamp tracking last sync
+  - `chartOfAccountsVersion`: Xero API version used
+  - `chartOfAccountsHash`: SHA-256 hash for change detection
 
 **OAuth Flow** (`app/api/xero/`):
 - `/api/xero/auth`: Initialize OAuth flow with state verification
@@ -207,6 +209,7 @@ XERO_ENCRYPTION_KEY=32_byte_hex_key_for_aes256
 - Conditionally includes Xero tools in available tools list
 - Tools are automatically available when user has connected Xero
 - No configuration needed - tools are added dynamically
+- Chart of accounts and company name included in system prompt via template variables
 
 **Settings UI** (`app/(settings)/settings/integrations/page.tsx`):
 - Server-rendered Xero connection status
@@ -355,6 +358,15 @@ See `/docs/regulatory-system-summary.md` for complete implementation details and
   - Token expiry tracking and automatic refresh
   - OAuth scopes and active connection status
   - Multi-organisation support (one active connection per user)
+
+**Accounts Receivable Tables** (`lib/db/schema/ar.ts`):
+- `arContact`, `arInvoice`, `arPayment`, `arReminder`, `arNote`, `arCommsArtefact`
+- Full payment tracking, reminders, and Xero synchronization
+
+**Regulatory Tables** (`lib/db/schema.ts`):
+- `regulatoryDocument`: Full-text searchable regulatory content
+- `regulatoryScrapeJob`: Scraping job tracking
+- `qaReviewRequest`: Human review for low-confidence responses
 
 **Migration Strategy**:
 - Old message/vote tables are deprecated but retained (Message, Vote)
@@ -640,139 +652,6 @@ Follow these steps to add a new third-party API integration with OAuth:
 - Document environment variables and OAuth flow
 - Add tool usage examples for chat interface
 
-# Using Gemini CLI for LedgerBot Codebase Analysis
-
-When analyzing your LedgerBot codebase or multiple files that might exceed context limits, use the Gemini CLI with its massive context window. Use `gemini -p` to leverage Google Gemini's large context capacity for your Next.js TypeScript AI application.
-
-## File and Directory Inclusion Syntax for LedgerBot
-
-Use the `@` syntax to include files and directories in your Gemini prompts. The paths should be relative to your LedgerBot project root:
-
-### LedgerBot-Specific Examples:
-
-**Single file analysis:**
-```bash
-gemini -p "@package.json Explain the dependencies and project configuration for this AI chatbot"
-
-gemini -p "@next.config.ts Analyze the Next.js configuration and any AI-specific settings"
-
-gemini -p "@middleware.ts Review the middleware implementation for authentication and routing"
-```
-
-**Multiple configuration files:**
-```bash
-gemini -p "@package.json @tsconfig.json @next.config.ts Analyze the complete TypeScript and Next.js setup"
-
-gemini -p "@drizzle.config.ts @lib/ Review the database configuration and schema implementation"
-```
-
-**Core application directories:**
-```bash
-gemini -p "@app/ Summarize the Next.js app router structure and API routes"
-
-gemini -p "@components/ Analyze the React component architecture and UI patterns"
-
-gemini -p "@lib/ Review the utility functions, database connections, and AI integrations"
-
-gemini -p "@hooks/ Examine the custom React hooks and state management"
-```
-
-**Full project analysis:**
-```bash
-gemini -p "@./ Give me a complete overview of this AI chatbot project structure"
-
-# Or use --all_files flag:
-gemini --all_files -p "Analyze the entire LedgerBot project architecture and AI integrations"
-```
-
-## LedgerBot Feature Verification Examples
-
-**Check AI/Chat implementation:**
-```bash
-gemini -p "@app/ @components/ @lib/ Is the AI chat functionality fully implemented? Show me the chat components and API routes"
-
-gemini -p "@app/api/ @lib/ Are the AI SDK integrations properly configured? List all AI provider connections"
-```
-
-**Verify agent workspaces:**
-```bash
-gemini -p "@app/agents/ Show me all the agent workspaces and their purposes"
-
-gemini -p "@app/agents/ @components/agents/ Are agent dashboards properly implemented with metrics and navigation?"
-```
-
-**Verify authentication system:**
-```bash
-gemini -p "@middleware.ts @app/ @lib/ Is Clerk authentication implemented? Show all auth-related middleware and API routes"
-
-gemini -p "@app/ @components/ Are protected routes and user sessions properly handled throughout the application?"
-
-gemini -p "@lib/auth/ @lib/db/schema.ts Review Clerk integration and user synchronization logic"
-```
-
-**Database and ORM verification:**
-```bash
-gemini -p "@lib/db/ @drizzle.config.ts Is the Drizzle ORM setup complete? Show the database schema and migration files"
-
-gemini -p "@lib/ @app/api/ Are database queries properly implemented with error handling?"
-```
-
-**UI/UX component analysis:**
-```bash
-gemini -p "@components/ @app/ Are Radix UI components properly integrated? Show the component library usage"
-
-gemini -p "@components/ @lib/ Is dark mode and theming implemented consistently across the application?"
-```
-
-**Development workflow verification:**
-```bash
-gemini -p "@tests/ @playwright.config.ts Is end-to-end testing properly set up with Playwright?"
-
-gemini -p "@biome.jsonc @package.json Are linting and formatting tools (Biome) configured correctly?"
-```
-
-**Security and middleware checks:**
-```bash
-gemini -p "@middleware.ts @app/api/ Are proper security headers and CORS policies implemented?"
-
-gemini -p "@lib/ @app/ Is input validation and sanitization implemented for user inputs and file uploads?"
-```
-
-**Performance and optimization:**
-```bash
-gemini -p "@app/ @components/ @lib/ Are Next.js performance optimizations (caching, streaming) properly implemented?"
-
-gemini -p "@package.json @next.config.ts Are bundle size optimizations and tree-shaking configured?"
-```
-
-## LedgerBot-Specific Use Cases
-
-Use gemini -p when:
-- Analyzing the complete AI accounting application architecture across app/, components/, and lib/
-- Reviewing specialized agent workspaces and their bookkeeping automation features
-- Understanding Next.js 15 app router implementation and API routes
-- Checking the Drizzle ORM database integration and schema (including ContextFile and UserSettings)
-- Verifying Vercel AI SDK and provider configurations
-- Analyzing TypeScript types and configurations across the project
-- Reviewing the React component hierarchy and state management
-- Understanding Clerk authentication flows and user synchronization
-- Checking context file processing and RAG implementation
-- Reviewing test coverage and Playwright e2e test setup
-
-## Important Notes for LedgerBot
-
-- Paths in @ syntax are relative to your LedgerBot project root directory
-- The CLI will include file contents directly in the context for analysis
-- Perfect for analyzing the complex Next.js/TypeScript/AI SDK integration
-- Gemini's context window can handle your entire codebase including large files like pnpm-lock.yaml
-- Ideal for understanding the interaction between AI providers, database, UI components, and agent workspaces
-- When checking implementations, reference the specific LedgerBot features like:
-  - Chat functionality with multi-model support and reasoning
-  - Agent workspaces for accounting automation (document processing, reconciliations, compliance, etc.)
-  - Context file uploads and RAG implementation
-  - User settings and personalization (default model, reasoning preferences, custom prompts)
-  - Usage accounting and entitlement enforcement
-
 # Using MCP Servers for Updated Documentation
 
 When working with external libraries or needing up-to-date documentation, leverage Model Context Protocol (MCP) servers to access current information beyond static docs.
@@ -789,18 +668,6 @@ Example workflow:
 2. Then use `get-library-docs` to obtain the latest documentation with practical examples.
 
 This ensures you have current, accurate information rather than relying on potentially outdated cached docs.
-
-## GitHub MCP Server
-
-For accessing GitHub repositories, issues, pull requests, and code:
-
-- Use GitHub MCP server tools to search repositories, view issues, browse code, or check recent commits.
-- Particularly useful for:
-  - Staying updated on dependency repositories
-  - Researching implementation patterns from open-source projects
-  - Checking for recent bug fixes or feature additions
-
-Note: Ensure MCP servers are properly configured and connected in your development environment. If GitHub MCP server is not available, consider setting it up for enhanced documentation access.
 
 # Engineering Practices
 ⚠️ Preserve integrity of external dependencies.

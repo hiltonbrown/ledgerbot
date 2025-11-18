@@ -24,8 +24,12 @@ import {
 } from "@/lib/xero/error-handler";
 import {
   buildPaginationParams,
+  calculateBackoffDelay,
   extractRateLimitInfo,
+  generateRateLimitUserMessage,
   logRateLimitStatus,
+  type RateLimitInfo,
+  shouldWaitForRateLimit,
 } from "@/lib/xero/rate-limit-handler";
 import type { DecryptedXeroConnection } from "@/lib/xero/types";
 
@@ -54,7 +58,7 @@ function formatXeroDate(isoDate: string): string {
  */
 function formatIfModifiedSince(ifModifiedSince?: string): Date | undefined {
   if (!ifModifiedSince) {
-    return undefined;
+    return;
   }
 
   try {
@@ -64,7 +68,7 @@ function formatIfModifiedSince(ifModifiedSince?: string): Date | undefined {
       console.warn(
         `[formatIfModifiedSince] Invalid date format: ${ifModifiedSince}`
       );
-      return undefined;
+      return;
     }
     return date;
   } catch (error) {
@@ -72,7 +76,7 @@ function formatIfModifiedSince(ifModifiedSince?: string): Date | undefined {
       `[formatIfModifiedSince] Error parsing date: ${ifModifiedSince}`,
       error
     );
-    return undefined;
+    return;
   }
 }
 
@@ -94,8 +98,85 @@ export type XeroMCPToolResult = {
   isError?: boolean;
 };
 
+// Concurrent request limiter - Xero allows max 5 concurrent calls
+const concurrentRequestLimiter = new Map<string, number>(); // connectionId -> active request count
+const MAX_CONCURRENT_REQUESTS = 5;
+
 /**
- * Get an authenticated Xero client for a user
+ * Acquire a concurrent request slot for rate limiting
+ * Implements Xero's 5 concurrent call limit per tenant
+ * @param connectionId - Connection ID to track concurrent requests
+ * @returns Promise that resolves when a slot is available
+ */
+async function acquireConcurrentSlot(
+  connectionId: string
+): Promise<() => void> {
+  // Wait until we have a slot available
+  while (
+    (concurrentRequestLimiter.get(connectionId) || 0) >= MAX_CONCURRENT_REQUESTS
+  ) {
+    console.log(
+      `[RateLimit] Connection ${connectionId} at max concurrent requests (${MAX_CONCURRENT_REQUESTS}), waiting...`
+    );
+    await new Promise((resolve) => setTimeout(resolve, 100)); // Wait 100ms and check again
+  }
+
+  // Increment counter
+  const current = concurrentRequestLimiter.get(connectionId) || 0;
+  concurrentRequestLimiter.set(connectionId, current + 1);
+
+  console.log(
+    `[RateLimit] Connection ${connectionId} acquired slot (${current + 1}/${MAX_CONCURRENT_REQUESTS})`
+  );
+
+  // Return release function
+  return () => {
+    const updated = (concurrentRequestLimiter.get(connectionId) || 1) - 1;
+    concurrentRequestLimiter.set(connectionId, Math.max(0, updated));
+    console.log(
+      `[RateLimit] Connection ${connectionId} released slot (${updated}/${MAX_CONCURRENT_REQUESTS})`
+    );
+  };
+}
+
+/**
+ * Check rate limits before making API call
+ * Implements Xero best practice: check limits proactively and wait if needed
+ * @param connection - Xero connection with rate limit data
+ * @throws Error if rate limit is exceeded and retry time is too long
+ */
+async function checkRateLimits(
+  connection: DecryptedXeroConnection
+): Promise<void> {
+  const rateLimitStatus = {
+    rateLimitResetAt: connection.rateLimitResetAt,
+    rateLimitProblem: connection.rateLimitProblem,
+    rateLimitMinuteRemaining: connection.rateLimitMinuteRemaining,
+    rateLimitDayRemaining: connection.rateLimitDayRemaining,
+  };
+
+  const result = shouldWaitForRateLimit(rateLimitStatus);
+
+  if (result.wait && result.waitMs) {
+    const waitSeconds = Math.ceil(result.waitMs / 1000);
+    console.warn(
+      `⚠️ [RateLimit] ${result.reason} - waiting ${waitSeconds}s before API call`
+    );
+
+    // Only wait up to 5 minutes automatically - longer waits should return error to user
+    if (result.waitMs > 300_000) {
+      throw new Error(
+        `Xero rate limit exceeded. ${result.reason}. Please try again later.`
+      );
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, result.waitMs));
+    console.log("✓ [RateLimit] Wait complete, proceeding with API call");
+  }
+}
+
+/**
+ * Get an authenticated Xero client for a user with rate limit checking
  */
 async function getXeroClient(
   userId: string
@@ -114,6 +195,9 @@ async function getXeroClient(
       "Xero connection is missing tenant ID. Please reconnect to Xero."
     );
   }
+
+  // Check rate limits before creating client
+  await checkRateLimits(connection);
 
   const client = new XeroClient({
     clientId: process.env.XERO_CLIENT_ID || "",
@@ -252,12 +336,13 @@ async function persistTokenSet(
       console.warn(
         `⚠️ [persistTokenSet] Concurrent token update detected for connection ${connection.id}`
       );
-      console.warn("  Tokens were updated by another process - attempting to fetch latest tokens");
+      console.warn(
+        "  Tokens were updated by another process - attempting to fetch latest tokens"
+      );
       // Standardize handling: fetch latest connection and validate tokens
       const latestConnection = await getDecryptedConnection(connection.id);
       if (
-        latestConnection &&
-        latestConnection.accessToken &&
+        latestConnection?.accessToken &&
         latestConnection.refreshToken &&
         latestConnection.expiresAt > new Date()
       ) {
@@ -270,11 +355,10 @@ async function persistTokenSet(
           `✅ [persistTokenSet] Used latest tokens from database for connection ${connection.id}`
         );
         return;
-      } else {
-        throw new Error(
-          `[persistTokenSet] Optimistic lock failed and could not retrieve valid tokens for connection ${connection.id}`
-        );
       }
+      throw new Error(
+        `[persistTokenSet] Optimistic lock failed and could not retrieve valid tokens for connection ${connection.id}`
+      );
     }
 
     // Update in-memory connection object with successfully persisted values
@@ -313,8 +397,8 @@ async function persistTokenSet(
  */
 async function paginateXeroAPI<T>(
   fetchPage: (
-    page: number,
-    pageSize: number
+    currentPage: number,
+    currentPageSize: number
   ) => Promise<{
     results: T[];
     headers?: any;
@@ -513,7 +597,8 @@ export const xeroMCPTools: XeroMCPTool[] = [
   },
   {
     name: "xero_list_contacts",
-    description: "Get a list of contacts (customers/suppliers) from Xero. Use if-modified-since for incremental syncing to reduce API calls.",
+    description:
+      "Get a list of contacts (customers/suppliers) from Xero. Use if-modified-since for incremental syncing to reduce API calls.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1381,73 +1466,149 @@ export const xeroMCPTools: XeroMCPTool[] = [
 ];
 
 /**
- * Execute a Xero MCP tool
+ * Execute a Xero MCP tool with rate limiting, concurrent slot management, and retry logic
  */
 export async function executeXeroMCPTool(
   userId: string,
   toolName: string,
   args: Record<string, unknown>
 ): Promise<XeroMCPToolResult> {
-  let _connectionId: string | undefined;
   let parsedError: ParsedXeroError | undefined;
+  const MAX_RETRIES = 3; // Maximum retry attempts for 429 errors
 
   try {
     const { client, connection } = await getXeroClient(userId);
-    _connectionId = connection.id;
+
+    // Acquire concurrent request slot (implements 5 concurrent call limit)
+    const releaseSlot = await acquireConcurrentSlot(connection.id);
 
     try {
-      // Execute the Xero API operation
-      const result = await executeXeroToolOperation(
-        client,
-        connection,
-        toolName,
-        args
-      );
+      // Retry loop for 429 rate limit errors
+      let attempt = 0;
+      let lastError: any;
 
-      // Track successful API call for connection management
-      await updateLastApiCall(connection.id);
+      while (attempt <= MAX_RETRIES) {
+        try {
+          // Execute the Xero API operation
+          const result = await executeXeroToolOperation(
+            client,
+            connection,
+            toolName,
+            args
+          );
 
-      return result;
-    } catch (operationError) {
-      // Extract X-Correlation-Id if available from the error response
-      let correlationId: string | undefined;
-      if (
-        operationError &&
-        typeof operationError === "object" &&
-        "response" in operationError
-      ) {
-        const response = (operationError as any).response;
-        if (response?.headers) {
-          correlationId = extractCorrelationId(response.headers);
+          // Track successful API call for connection management
+          await updateLastApiCall(connection.id);
+
+          return result;
+        } catch (operationError) {
+          lastError = operationError;
+
+          // Extract X-Correlation-Id and rate limit info from error response
+          let correlationId: string | undefined;
+          let rateLimitInfo: RateLimitInfo | undefined;
+
+          if (
+            operationError &&
+            typeof operationError === "object" &&
+            "response" in operationError
+          ) {
+            const response = (operationError as any).response;
+            if (response?.headers) {
+              correlationId = extractCorrelationId(response.headers);
+              rateLimitInfo = extractRateLimitInfo(response.headers);
+            }
+
+            // Check if this is a 429 rate limit error
+            if (response?.status === 429) {
+              attempt++;
+
+              // Update rate limit info in database immediately
+              if (
+                rateLimitInfo?.minuteRemaining !== undefined ||
+                rateLimitInfo?.dayRemaining !== undefined
+              ) {
+                await updateRateLimitInfo(connection.id, rateLimitInfo);
+              }
+
+              // If we have retries left, wait and retry
+              if (attempt <= MAX_RETRIES) {
+                const retryAfter = rateLimitInfo?.retryAfter;
+                let waitMs: number;
+
+                if (retryAfter) {
+                  // Use Retry-After header from Xero (best practice)
+                  waitMs = retryAfter * 1000;
+                  console.warn(
+                    `⚠️ [RateLimit] 429 error on attempt ${attempt}/${MAX_RETRIES} - Retry-After: ${retryAfter}s`
+                  );
+                } else {
+                  // Fallback to exponential backoff
+                  waitMs = calculateBackoffDelay(attempt - 1);
+                  console.warn(
+                    `⚠️ [RateLimit] 429 error on attempt ${attempt}/${MAX_RETRIES} - exponential backoff: ${Math.ceil(waitMs / 1000)}s`
+                  );
+                }
+
+                // Wait before retrying
+                await new Promise((resolve) => setTimeout(resolve, waitMs));
+                console.log(
+                  `🔄 [RateLimit] Retrying after ${Math.ceil(waitMs / 1000)}s...`
+                );
+                continue; // Retry
+              }
+
+              // Max retries exceeded - create user-friendly message
+              const userMessage = rateLimitInfo
+                ? generateRateLimitUserMessage(rateLimitInfo)
+                : "Xero rate limit exceeded. Please try again in a few moments.";
+
+              parsedError = {
+                type: "rate_limit",
+                message: `Rate limit exceeded after ${MAX_RETRIES} retries`,
+                userMessage,
+                statusCode: 429,
+                correlationId,
+              };
+
+              throw operationError;
+            }
+          }
+
+          // Not a 429 error - parse and throw immediately
+          parsedError = parseXeroError(operationError, correlationId);
+
+          // Log detailed error information for debugging
+          console.error(
+            `Xero API operation ${toolName} failed:`,
+            formatErrorForLogging(parsedError)
+          );
+
+          // Update connection error status with all details
+          await updateConnectionError(
+            connection.id,
+            parsedError.userMessage,
+            parsedError.type,
+            parsedError.correlationId,
+            JSON.stringify(parsedError)
+          );
+
+          // If error requires reconnection, log warning
+          if (requiresReconnection(parsedError)) {
+            console.warn(
+              `Xero connection ${connection.id} requires reconnection due to ${parsedError.type} error`
+            );
+          }
+
+          throw operationError;
         }
       }
 
-      // Parse Xero API error with best practices
-      parsedError = parseXeroError(operationError, correlationId);
-
-      // Log detailed error information for debugging
-      console.error(
-        `Xero API operation ${toolName} failed:`,
-        formatErrorForLogging(parsedError)
-      );
-
-      // Update connection error status with all details
-      await updateConnectionError(
-        connection.id,
-        parsedError.userMessage, // User-friendly message for display
-        parsedError.type,
-        parsedError.correlationId,
-        JSON.stringify(parsedError) // Technical details for debugging
-      );
-
-      // If error requires reconnection, update status to disconnected
-      if (requiresReconnection(parsedError)) {
-        console.warn(
-          `Xero connection ${connection.id} requires reconnection due to ${parsedError.type} error`
-        );
-      }
-
-      throw operationError;
+      // Should never reach here, but throw last error just in case
+      throw lastError;
+    } finally {
+      // Always release the concurrent slot
+      releaseSlot();
     }
   } catch (error) {
     // If we haven't parsed the error yet, parse it now
@@ -1498,7 +1659,9 @@ async function executeXeroToolOperation(
         } = args;
 
         // Format if-modified-since parameter
-        const modifiedSince = formatIfModifiedSince(ifModifiedSince as string | undefined);
+        const modifiedSince = formatIfModifiedSince(
+          ifModifiedSince as string | undefined
+        );
 
         // Build where clause
         const whereClauses: string[] = [];
@@ -1655,7 +1818,9 @@ async function executeXeroToolOperation(
         const { searchTerm, ifModifiedSince, limit, page, pageSize } = args;
 
         // Format if-modified-since parameter
-        const modifiedSince = formatIfModifiedSince(ifModifiedSince as string | undefined);
+        const modifiedSince = formatIfModifiedSince(
+          ifModifiedSince as string | undefined
+        );
 
         const where = searchTerm
           ? `Name.Contains("${searchTerm}") OR EmailAddress.Contains("${searchTerm}")`
