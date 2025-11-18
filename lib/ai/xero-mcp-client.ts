@@ -207,19 +207,32 @@ async function persistTokenSet(
       `  Minutes until expiry: ${Math.floor((expiresAt.getTime() - Date.now()) / (60 * 1000))}`
     );
 
-    await updateXeroTokens({
+    const updatedConnection = await updateXeroTokens({
       id: connection.id,
       accessToken: encryptToken(tokenSet.access_token),
       refreshToken: encryptToken(tokenSet.refresh_token),
       expiresAt,
       authenticationEventId,
       resetRefreshTokenIssuedAt: true, // CRITICAL: Reset 60-day window for new refresh token
+      expectedUpdatedAt: connection.updatedAt, // Optimistic locking to prevent race conditions
     });
 
-    // Update in-memory connection object
+    // Handle optimistic lock failure (another process updated the token concurrently)
+    if (!updatedConnection) {
+      console.warn(
+        `⚠️ [persistTokenSet] Concurrent token update detected for connection ${connection.id}`
+      );
+      console.warn("  Tokens were updated by another process - skipping update");
+      // Don't throw - just log and continue using the tokens we have
+      // The database has fresher tokens which will be used on next API call
+      return;
+    }
+
+    // Update in-memory connection object with successfully persisted values
     connection.accessToken = tokenSet.access_token;
     connection.refreshToken = tokenSet.refresh_token;
     connection.expiresAt = expiresAt;
+    connection.updatedAt = updatedConnection.updatedAt; // Update the timestamp for future optimistic locks
 
     console.log(
       `✅ [persistTokenSet] Successfully persisted tokens for connection ${connection.id}`

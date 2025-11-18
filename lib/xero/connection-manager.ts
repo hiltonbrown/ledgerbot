@@ -379,7 +379,51 @@ async function performTokenRefresh(
       expiresAt,
       authenticationEventId,
       resetRefreshTokenIssuedAt: true, // CRITICAL: Reset the 60-day window with new refresh token
+      expectedUpdatedAt: connection.updatedAt, // Optimistic locking to prevent race conditions
     });
+
+    // Handle optimistic lock failure (another process updated the token concurrently)
+    if (!updatedConnection) {
+      console.warn(
+        `⚠️ [refreshXeroToken] Concurrent token update detected for connection ${connectionId}`
+      );
+      console.warn(
+        "  Another process already refreshed this token - fetching latest version"
+      );
+
+      // Fetch the latest connection (which has the newer token)
+      const latestConnection = await getXeroConnectionById(connectionId);
+
+      if (!latestConnection) {
+        return {
+          success: false,
+          error: "Connection not found after concurrent update",
+          isPermanentFailure: false,
+        };
+      }
+
+      // Check if the latest token is still valid
+      const latestExpiresAt = new Date(latestConnection.expiresAt);
+      if (latestExpiresAt > now) {
+        console.log(
+          `  ✓ Using concurrently refreshed token (expires: ${latestExpiresAt.toISOString()})`
+        );
+        return {
+          success: true,
+          connection: latestConnection,
+        };
+      }
+
+      // Latest token is also expired - this is unexpected
+      console.error(
+        `  ❌ Concurrently updated token is also expired - this should not happen`
+      );
+      return {
+        success: false,
+        error: "Concurrent token update produced expired token",
+        isPermanentFailure: false,
+      };
+    }
 
     console.log(
       `  ✓ Refresh token rotation complete - new 60-day window starts at ${now.toISOString()}`

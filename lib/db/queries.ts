@@ -1195,6 +1195,7 @@ export async function updateXeroTokens({
   expiresAt,
   authenticationEventId,
   resetRefreshTokenIssuedAt = true,
+  expectedUpdatedAt,
 }: {
   id: string;
   accessToken: string;
@@ -1202,7 +1203,8 @@ export async function updateXeroTokens({
   expiresAt: Date;
   authenticationEventId?: string;
   resetRefreshTokenIssuedAt?: boolean;
-}): Promise<XeroConnection> {
+  expectedUpdatedAt?: Date; // For optimistic locking to prevent race conditions
+}): Promise<XeroConnection | null> {
   try {
     const now = new Date();
     const updates: any = {
@@ -1220,11 +1222,36 @@ export async function updateXeroTokens({
       updates.refreshTokenIssuedAt = now;
     }
 
+    // Optimistic Locking: Prevent race conditions where an older token overwrites a newer one
+    // If expectedUpdatedAt is provided, only update if the current updatedAt matches
+    // This ensures we don't overwrite tokens that were updated by another process
+    const whereConditions = expectedUpdatedAt
+      ? and(
+          eq(xeroConnection.id, id),
+          eq(xeroConnection.updatedAt, expectedUpdatedAt)
+        )
+      : eq(xeroConnection.id, id);
+
     const [connection] = await db
       .update(xeroConnection)
       .set(updates)
-      .where(eq(xeroConnection.id, id))
+      .where(whereConditions)
       .returning();
+
+    // If no rows were updated (optimistic lock failure), return null
+    if (!connection && expectedUpdatedAt) {
+      console.warn(
+        `⚠️ [updateXeroTokens] Optimistic lock failure for connection ${id} - another process updated the token concurrently`
+      );
+      return null;
+    }
+
+    if (!connection) {
+      throw new ChatSDKError(
+        "bad_request:database",
+        "Xero connection not found"
+      );
+    }
 
     return connection;
   } catch (_error) {

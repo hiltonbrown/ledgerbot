@@ -19,11 +19,17 @@ export async function GET(request: Request) {
   console.log("⏰ Scheduled Xero token refresh started");
 
   try {
-    // Get connections expiring within 7 days
-    const expiringConnections = await getExpiringXeroConnections(7);
+    // Best Practice: Only refresh when necessary (during API usage)
+    // Changed from 7 days to 6 hours to be less aggressive
+    // Access tokens last 30 minutes, so 6 hours catches tokens about to expire
+    // without refreshing inactive connections unnecessarily
+    const SIX_HOURS_IN_DAYS = 6 / 24; // 0.25 days
+    const expiringConnections = await getExpiringXeroConnections(
+      SIX_HOURS_IN_DAYS
+    );
 
     console.log(
-      `Found ${expiringConnections.length} Xero connections expiring within 7 days`
+      `Found ${expiringConnections.length} Xero connections expiring within 6 hours`
     );
 
     if (expiringConnections.length === 0) {
