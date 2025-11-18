@@ -70,6 +70,7 @@ export default function AccountsPayableAgentPage() {
         body: JSON.stringify({
           fileUrl: fileData.fileUrl,
           fileType: fileData.fileType,
+          model: selectedModel,
         }),
       });
 
