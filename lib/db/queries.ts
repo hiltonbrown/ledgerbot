@@ -1194,25 +1194,63 @@ export async function updateXeroTokens({
   refreshToken,
   expiresAt,
   authenticationEventId,
+  resetRefreshTokenIssuedAt = true,
+  expectedUpdatedAt,
 }: {
   id: string;
   accessToken: string;
   refreshToken: string;
   expiresAt: Date;
   authenticationEventId?: string;
-}): Promise<XeroConnection> {
+  resetRefreshTokenIssuedAt?: boolean;
+  expectedUpdatedAt?: Date; // For optimistic locking to prevent race conditions
+}): Promise<XeroConnection | null> {
   try {
+    const now = new Date();
+    const updates: any = {
+      accessToken,
+      refreshToken,
+      expiresAt,
+      authenticationEventId,
+      updatedAt: now,
+    };
+
+    // CRITICAL: When refreshing tokens, Xero provides a NEW refresh token with a NEW 60-day expiry window
+    // This is standard OAuth2 refresh token rotation behavior
+    // We MUST reset the issuance timestamp to prevent incorrect expiry calculations
+    if (resetRefreshTokenIssuedAt) {
+      updates.refreshTokenIssuedAt = now;
+    }
+
+    // Optimistic Locking: Prevent race conditions where an older token overwrites a newer one
+    // If expectedUpdatedAt is provided, only update if the current updatedAt matches
+    // This ensures we don't overwrite tokens that were updated by another process
+    const whereConditions = expectedUpdatedAt
+      ? and(
+          eq(xeroConnection.id, id),
+          eq(xeroConnection.updatedAt, expectedUpdatedAt)
+        )
+      : eq(xeroConnection.id, id);
+
     const [connection] = await db
       .update(xeroConnection)
-      .set({
-        accessToken,
-        refreshToken,
-        expiresAt,
-        authenticationEventId,
-        updatedAt: new Date(),
-      })
-      .where(eq(xeroConnection.id, id))
+      .set(updates)
+      .where(whereConditions)
       .returning();
+
+    // If no rows were updated, handle optimistic lock failure or not found
+    if (!connection) {
+      if (expectedUpdatedAt) {
+        console.warn(
+          `⚠️ [updateXeroTokens] Optimistic lock failure for connection ${id} - another process updated the token concurrently`
+        );
+        return null;
+      }
+      throw new ChatSDKError(
+        "bad_request:database",
+        "Xero connection not found"
+      );
+    }
 
     return connection;
   } catch (_error) {
@@ -1453,8 +1491,9 @@ export async function getExpiringXeroConnections(
   daysThreshold: number
 ): Promise<XeroConnection[]> {
   try {
-    const thresholdDate = new Date();
-    thresholdDate.setDate(thresholdDate.getDate() + daysThreshold);
+    // Calculate threshold date using milliseconds to properly handle fractional days
+    // e.g., 0.25 days = 6 hours
+    const thresholdDate = new Date(Date.now() + daysThreshold * 24 * 60 * 60 * 1000);
 
     return await db
       .select()

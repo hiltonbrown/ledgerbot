@@ -207,18 +207,51 @@ async function persistTokenSet(
       `  Minutes until expiry: ${Math.floor((expiresAt.getTime() - Date.now()) / (60 * 1000))}`
     );
 
-    await updateXeroTokens({
+    const updatedConnection = await updateXeroTokens({
       id: connection.id,
       accessToken: encryptToken(tokenSet.access_token),
       refreshToken: encryptToken(tokenSet.refresh_token),
       expiresAt,
       authenticationEventId,
+      resetRefreshTokenIssuedAt: true, // CRITICAL: Reset 60-day window for new refresh token
+      expectedUpdatedAt: connection.updatedAt, // Optimistic locking to prevent race conditions
     });
 
-    // Update in-memory connection object
+    // Handle optimistic lock failure (another process updated the token concurrently)
+    if (!updatedConnection) {
+      console.warn(
+        `⚠️ [persistTokenSet] Concurrent token update detected for connection ${connection.id}`
+      );
+      console.warn("  Tokens were updated by another process - attempting to fetch latest tokens");
+      // Standardize handling: fetch latest connection and validate tokens
+      const latestConnection = await getDecryptedConnection(connection.id);
+      if (
+        latestConnection &&
+        latestConnection.accessToken &&
+        latestConnection.refreshToken &&
+        latestConnection.expiresAt > new Date()
+      ) {
+        // Update in-memory connection object with latest values
+        connection.accessToken = latestConnection.accessToken;
+        connection.refreshToken = latestConnection.refreshToken;
+        connection.expiresAt = latestConnection.expiresAt;
+        connection.updatedAt = latestConnection.updatedAt;
+        console.log(
+          `✅ [persistTokenSet] Used latest tokens from database for connection ${connection.id}`
+        );
+        return;
+      } else {
+        throw new Error(
+          `[persistTokenSet] Optimistic lock failed and could not retrieve valid tokens for connection ${connection.id}`
+        );
+      }
+    }
+
+    // Update in-memory connection object with successfully persisted values
     connection.accessToken = tokenSet.access_token;
     connection.refreshToken = tokenSet.refresh_token;
     connection.expiresAt = expiresAt;
+    connection.updatedAt = updatedConnection.updatedAt; // Update the timestamp for future optimistic locks
 
     console.log(
       `✅ [persistTokenSet] Successfully persisted tokens for connection ${connection.id}`
