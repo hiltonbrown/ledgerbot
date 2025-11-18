@@ -31,12 +31,18 @@ export default function AccountsPayableAgentPage() {
   const { sendMessage } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/agents/ap",
-    }),
-    body: {
-      settings: {
-        model: selectedModel,
+      fetch,
+      prepareSendMessagesRequest(request: any) {
+        return {
+          body: {
+            messages: request.messages,
+            settings: {
+              model: selectedModel,
+            },
+          },
+        };
       },
-    },
+    }),
     onFinish: (message) => {
       // Check if the response contains extracted invoice data
       // This would be returned from the extractInvoiceData tool
