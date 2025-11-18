@@ -21,10 +21,14 @@ import type {
  * Extract invoice data from a file URL
  * This is the core extraction function that can be called directly or via tool
  */
-export async function extractInvoiceData(fileUrl: string, fileType: "pdf" | "image") {
+export async function extractInvoiceData(
+  fileUrl: string,
+  fileType: "pdf" | "image",
+  modelId = "anthropic-claude-sonnet-4-5"
+) {
   try {
     console.log(
-      `[AP Agent] Extracting invoice data from ${fileType} at ${fileUrl}`
+      `[AP Agent] Extracting invoice data from ${fileType} at ${fileUrl} using model ${modelId}`
     );
 
     // Fetch the file from the URL
@@ -53,41 +57,83 @@ export async function extractInvoiceData(fileUrl: string, fileType: "pdf" | "ima
 
     // Define the extraction schema
     const invoiceSchema = z.object({
-      supplierName: z.string().optional().describe("Business name of the supplier/vendor"),
-      supplierABN: z.string().optional().describe("Australian Business Number (11 digits)"),
-      supplierAddress: z.string().optional().describe("Full address of the supplier"),
+      supplierName: z
+        .string()
+        .optional()
+        .describe("Business name of the supplier/vendor"),
+      supplierABN: z
+        .string()
+        .optional()
+        .describe("Australian Business Number (11 digits)"),
+      supplierAddress: z
+        .string()
+        .optional()
+        .describe("Full address of the supplier"),
       supplierEmail: z.string().email().optional().describe("Email address"),
       supplierPhone: z.string().optional().describe("Phone number"),
-      invoiceNumber: z.string().optional().describe("Invoice or tax invoice number"),
-      invoiceDate: z.string().optional().describe("Invoice date in YYYY-MM-DD format"),
-      dueDate: z.string().optional().describe("Payment due date in YYYY-MM-DD format"),
-      purchaseOrderNumber: z.string().optional().describe("PO number if present"),
+      invoiceNumber: z
+        .string()
+        .optional()
+        .describe("Invoice or tax invoice number"),
+      invoiceDate: z
+        .string()
+        .optional()
+        .describe("Invoice date in YYYY-MM-DD format"),
+      dueDate: z
+        .string()
+        .optional()
+        .describe("Payment due date in YYYY-MM-DD format"),
+      purchaseOrderNumber: z
+        .string()
+        .optional()
+        .describe("PO number if present"),
       subtotal: z.number().optional().describe("Subtotal amount before GST"),
-      gstAmount: z.number().optional().describe("GST/tax amount (10% for Australian invoices)"),
+      gstAmount: z
+        .number()
+        .optional()
+        .describe("GST/tax amount (10% for Australian invoices)"),
       totalAmount: z.number().optional().describe("Total amount including GST"),
-      lineItems: z.array(z.object({
-        description: z.string().describe("Item description"),
-        quantity: z.number().optional().describe("Quantity"),
-        unitPrice: z.number().optional().describe("Unit price"),
-        amount: z.number().describe("Line item total amount"),
-        gstIncluded: z.boolean().optional().describe("Whether GST is included"),
-      })).optional().describe("Line items from the invoice"),
-      paymentTerms: z.string().optional().describe("Payment terms (e.g., Net 30)"),
-      bankDetails: z.object({
-        accountName: z.string().optional(),
-        bsb: z.string().optional(),
-        accountNumber: z.string().optional(),
-      }).optional().describe("Bank account details for payment"),
-      confidence: z.number().min(0).max(1).describe("Confidence score of the extraction (0-1)"),
+      lineItems: z
+        .array(
+          z.object({
+            description: z.string().describe("Item description"),
+            quantity: z.number().optional().describe("Quantity"),
+            unitPrice: z.number().optional().describe("Unit price"),
+            amount: z.number().describe("Line item total amount"),
+            gstIncluded: z
+              .boolean()
+              .optional()
+              .describe("Whether GST is included"),
+          })
+        )
+        .optional()
+        .describe("Line items from the invoice"),
+      paymentTerms: z
+        .string()
+        .optional()
+        .describe("Payment terms (e.g., Net 30)"),
+      bankDetails: z
+        .object({
+          accountName: z.string().optional(),
+          bsb: z.string().optional(),
+          accountNumber: z.string().optional(),
+        })
+        .optional()
+        .describe("Bank account details for payment"),
+      confidence: z
+        .number()
+        .min(0)
+        .max(1)
+        .describe("Confidence score of the extraction (0-1)"),
       warnings: z.array(z.string()).describe("Any warnings or issues found"),
     });
 
     // Create data URL for the image
     const dataUrl = `data:${mediaType};base64,${base64}`;
 
-    // Use Claude Sonnet with vision to extract invoice data
+    // Use specified AI model with vision to extract invoice data
     const result = await generateObject({
-      model: myProvider.languageModel("anthropic-claude-sonnet-4-5"),
+      model: myProvider.languageModel(modelId),
       schema: invoiceSchema,
       messages: [
         {
@@ -143,16 +189,23 @@ If any field is not clearly visible or not present on the invoice, leave it as u
       const expectedGst = Math.round(invoiceData.subtotal * 0.1 * 100) / 100;
       const actualGst = Math.round(invoiceData.gstAmount * 100) / 100;
       if (Math.abs(expectedGst - actualGst) > 0.5) {
-        warnings.push(`GST calculation may be incorrect - expected ~$${expectedGst.toFixed(2)} but found $${actualGst.toFixed(2)}`);
+        warnings.push(
+          `GST calculation may be incorrect - expected ~$${expectedGst.toFixed(2)} but found $${actualGst.toFixed(2)}`
+        );
       }
     }
 
     // Validate total calculation
-    if (invoiceData.subtotal && invoiceData.gstAmount && invoiceData.totalAmount) {
-      const expectedTotal = Math.round((invoiceData.subtotal + invoiceData.gstAmount) * 100) / 100;
+    if (
+      invoiceData.subtotal &&
+      invoiceData.gstAmount &&
+      invoiceData.totalAmount
+    ) {
+      const expectedTotal =
+        Math.round((invoiceData.subtotal + invoiceData.gstAmount) * 100) / 100;
       const actualTotal = Math.round(invoiceData.totalAmount * 100) / 100;
       if (Math.abs(expectedTotal - actualTotal) > 0.5) {
-        warnings.push(`Total amount calculation may be incorrect`);
+        warnings.push("Total amount calculation may be incorrect");
       }
     }
 
@@ -896,6 +949,12 @@ export const extractInvoiceDataTool = createTool({
   inputSchema: z.object({
     fileUrl: z.string().describe("Public URL to the PDF or image file"),
     fileType: z.enum(["pdf", "image"]).describe("Type of file being processed"),
+    model: z
+      .string()
+      .optional()
+      .describe(
+        "AI model to use for extraction (defaults to anthropic-claude-sonnet-4-5)"
+      ),
   }),
   outputSchema: z.object({
     success: z.boolean(),
@@ -940,8 +999,8 @@ export const extractInvoiceDataTool = createTool({
     error: z.string().optional(),
   }),
   execute: async ({ context }) => {
-    const { fileUrl, fileType } = context;
-    return extractInvoiceData(fileUrl, fileType);
+    const { fileUrl, fileType, model } = context;
+    return extractInvoiceData(fileUrl, fileType, model);
   },
 });
 
