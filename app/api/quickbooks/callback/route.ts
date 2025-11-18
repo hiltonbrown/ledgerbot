@@ -102,7 +102,8 @@ export async function GET(request: Request) {
       );
     } catch (error) {
       console.error(
-        `⚠️ [OAuth Callback] Failed to fetch company info for ${realmId}:`,
+        "⚠️ [OAuth Callback] Failed to fetch company info for %s:",
+        realmId,
         {
           error: error instanceof Error ? error.message : String(error),
           stack: error instanceof Error ? error.stack : undefined,
