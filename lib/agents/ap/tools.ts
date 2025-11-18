@@ -27,6 +27,27 @@ export async function extractInvoiceData(
   modelId = "anthropic-claude-sonnet-4-5"
 ) {
   try {
+    // Restrict fileUrl to trusted origins to prevent SSRF
+    const TRUSTED_FILE_HOSTNAMES = [
+      "cdn.example.com",
+      "storage.googleapis.com",
+      // add any additional trusted hostnames here
+    ];
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(fileUrl);
+    } catch (e) {
+      throw new Error("Invalid fileUrl format");
+    }
+    // Ensure protocol and hostname match allow-list
+    if (
+      parsedUrl.protocol !== "https:" ||
+      !TRUSTED_FILE_HOSTNAMES.includes(parsedUrl.hostname)
+    ) {
+      throw new Error(
+        `fileUrl must use HTTPS and be on a trusted host: ${parsedUrl.hostname}`,
+      );
+    }
     console.log(
       `[AP Agent] Extracting invoice data from ${fileType} at ${fileUrl} using model ${modelId}`
     );
