@@ -28,7 +28,7 @@ export default function AccountsPayableAgentPage() {
     }
   }, []);
 
-  const { sendMessage, messages } = useChat({
+  const { sendMessage } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/agents/ap",
       fetch,
@@ -43,62 +43,9 @@ export default function AccountsPayableAgentPage() {
         };
       },
     }),
-    onFinish: () => {
-      setIsProcessing(false);
-    },
   });
 
-  // Watch for tool results in messages and extract invoice data
-  useEffect(() => {
-    if (!messages || messages.length === 0) return;
-
-    // Look through all messages for extractInvoiceData tool results
-    for (const message of messages) {
-      if (!message.parts || message.parts.length === 0) continue;
-
-      try {
-        // Find extractInvoiceData tool call
-        const extractToolCall = message.parts.find((part) => {
-          return (
-            part.type === "tool-call" &&
-            "toolName" in part &&
-            part.toolName === "extractInvoiceData"
-          );
-        });
-
-        if (extractToolCall && "toolCallId" in extractToolCall) {
-          const toolCallId = extractToolCall.toolCallId;
-
-          // Find the corresponding tool result
-          const toolResultPart = message.parts.find(
-            (part) =>
-              part.type === "tool-result" &&
-              "toolCallId" in part &&
-              part.toolCallId === toolCallId
-          );
-
-          if (toolResultPart && "result" in toolResultPart) {
-            const result = toolResultPart.result;
-
-            // Extract invoice data from tool result
-            if (result && typeof result === "object" && "invoiceData" in result) {
-              const data = result.invoiceData;
-              if (data) {
-                console.log("[AP Agent] Invoice data extracted:", data);
-                setExtractedData(data as ExtractedInvoiceData);
-                setIsProcessing(false);
-                return; // Stop after finding the first result
-              }
-            }
-          }
-        }
-      } catch (error) {
-        console.error("[AP Agent] Error extracting invoice data:", error);
-      }
-    }
-  }, [messages]);
-
-  const handleFileUploaded = (fileData: {
+  const handleFileUploaded = async (fileData: {
     fileUrl: string;
     fileName: string;
     fileType: string;
@@ -111,39 +58,47 @@ export default function AccountsPayableAgentPage() {
     setIsProcessing(true);
     setExtractedData(null);
 
-    // Auto-trigger invoice processing
-    const processingMessage = `Please process this invoice:
+    try {
+      console.log("[AP Agent] Calling extraction API for file:", fileData.fileName);
 
-File: ${fileData.fileName}
-URL: ${fileData.fileUrl}
-Type: ${fileData.fileType}
+      // Call the extraction API directly
+      const response = await fetch("/api/agents/ap/extract", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          fileUrl: fileData.fileUrl,
+          fileType: fileData.fileType,
+        }),
+      });
 
-Steps to complete:
-1. Use the extractInvoiceData tool to extract all invoice details from the file
-2. Validate the supplier ABN if provided
-3. Check for duplicate invoices
-4. Suggest GL account coding for line items
+      if (!response.ok) {
+        throw new Error(`Extraction failed: ${response.statusText}`);
+      }
 
-Please start by calling the extractInvoiceData tool with:
-- fileUrl: ${fileData.fileUrl}
-- fileType: ${fileData.fileType}
+      const result = await response.json();
+      console.log("[AP Agent] Extraction result:", result);
 
-Extract all available fields including:
-- Supplier details (name, ABN, address, contact info)
-- Invoice metadata (number, dates, PO number)
-- Financial details (subtotal, GST, total)
-- Line items with descriptions and amounts
-- Payment terms and bank details if available`;
-
-    sendMessage({
-      role: "user",
-      parts: [{ type: "text", text: processingMessage }],
-    } as any);
+      if (result.success && result.invoiceData) {
+        console.log("[AP Agent] Setting extracted data:", result.invoiceData);
+        setExtractedData(result.invoiceData);
+      } else {
+        console.error("[AP Agent] Extraction failed:", result.error);
+        // Show error to user
+        alert(`Failed to extract invoice data: ${result.error || "Unknown error"}`);
+      }
+    } catch (error) {
+      console.error("[AP Agent] Error during extraction:", error);
+      alert(`Error extracting invoice: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  const handleSaveToDraft = async (data: ExtractedInvoiceData) => {
-    // Trigger the agent to create a draft bill in Xero
-    const message = `Please create a draft bill in Xero with the following details:
+  const handleSyncToXero = async (data: ExtractedInvoiceData) => {
+    // Trigger the agent to create a bill in Xero
+    const message = `Please create a bill in Xero with the following details:
 Supplier: ${data.supplierName}
 ABN: ${data.supplierABN || "Not provided"}
 Invoice Number: ${data.invoiceNumber}
@@ -156,7 +111,10 @@ Total: $${data.totalAmount}
 Line Items:
 ${data.lineItems?.map((item, i) => `${i + 1}. ${item.description}: $${item.amount}`).join("\n")}
 
-Please match the vendor to an existing contact or create a new one, then create a draft bill in Xero.`;
+Steps:
+1. Match the vendor to an existing Xero contact or create a new one
+2. Create a draft bill in Xero with these details
+3. Confirm when complete`;
 
     sendMessage({
       role: "user",
@@ -206,7 +164,7 @@ Please match the vendor to an existing contact or create a new one, then create 
             fileType={uploadedFile?.fileType || null}
             fileUrl={uploadedFile?.fileUrl || null}
             isProcessing={isProcessing}
-            onSaveToDraft={handleSaveToDraft}
+            onSyncToXero={handleSyncToXero}
           />
         </div>
       </div>

@@ -27,7 +27,7 @@ interface InvoiceDetailsFormProps {
   fileType: "pdf" | "image" | null;
   isProcessing: boolean;
   extractedData: ExtractedInvoiceData | null;
-  onSaveToDraft: (data: ExtractedInvoiceData) => Promise<void>;
+  onSyncToXero: (data: ExtractedInvoiceData) => Promise<void>;
 }
 
 interface LineItem {
@@ -44,10 +44,10 @@ export function InvoiceDetailsForm({
   fileType,
   isProcessing,
   extractedData,
-  onSaveToDraft,
+  onSyncToXero,
 }: InvoiceDetailsFormProps) {
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">(
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<"idle" | "success" | "error">(
     "idle"
   );
 
@@ -137,12 +137,12 @@ export function InvoiceDetailsForm({
     setTotalAmount(newSubtotal * 1.1);
   };
 
-  const handleSaveToDraft = async () => {
-    setIsSaving(true);
-    setSaveStatus("idle");
+  const handleSyncToXero = async () => {
+    setIsSyncing(true);
+    setSyncStatus("idle");
 
     try {
-      await onSaveToDraft({
+      await onSyncToXero({
         supplierName,
         supplierABN,
         invoiceNumber,
@@ -159,13 +159,13 @@ export function InvoiceDetailsForm({
           gstIncluded: item.taxType === "INPUT2",
         })),
       });
-      setSaveStatus("success");
-      setTimeout(() => setSaveStatus("idle"), 3000);
+      setSyncStatus("success");
+      setTimeout(() => setSyncStatus("idle"), 3000);
     } catch (error) {
-      console.error("Failed to save draft:", error);
-      setSaveStatus("error");
+      console.error("Failed to sync to Xero:", error);
+      setSyncStatus("error");
     } finally {
-      setIsSaving(false);
+      setIsSyncing(false);
     }
   };
 
@@ -455,32 +455,32 @@ export function InvoiceDetailsForm({
             <div className="flex gap-2">
               <Button
                 className="flex-1"
-                disabled={isSaving || !supplierName || !invoiceNumber}
-                onClick={handleSaveToDraft}
+                disabled={isSyncing || !supplierName || !invoiceNumber}
+                onClick={handleSyncToXero}
               >
-                {isSaving ? (
+                {isSyncing ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
+                    Syncing...
                   </>
-                ) : saveStatus === "success" ? (
+                ) : syncStatus === "success" ? (
                   <>
                     <CheckCircle className="mr-2 h-4 w-4" />
-                    Saved!
+                    Synced!
                   </>
                 ) : (
                   <>
                     <Save className="mr-2 h-4 w-4" />
-                    Save as Draft
+                    Sync to Xero
                   </>
                 )}
               </Button>
             </div>
 
-            {saveStatus === "error" && (
+            {syncStatus === "error" && (
               <div className="rounded-md border border-red-500 bg-red-50 p-3 dark:bg-red-950">
                 <p className="text-red-900 text-sm dark:text-red-100">
-                  Failed to save draft. Please try again.
+                  Failed to sync to Xero. Please try again.
                 </p>
               </div>
             )}
