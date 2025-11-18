@@ -43,7 +43,7 @@ export default function AccountsPayableAgentPage() {
         };
       },
     }),
-    onFinish: (message) => {
+    onFinish: ({ message }) => {
       // Check if the response contains extracted invoice data
       // This would be returned from the extractInvoiceData tool
       try {
