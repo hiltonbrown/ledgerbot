@@ -175,7 +175,7 @@ export function InvoiceUploadZone({
                 or click to browse files
               </p>
               <input
-                accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,application/pdf"
+                accept="image/jpeg,image/jpg,image/png,image/webp,application/pdf"
                 className="hidden"
                 disabled={disabled}
                 id="invoice-upload"
