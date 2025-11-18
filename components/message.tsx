@@ -134,22 +134,6 @@ const PurePreviewMessage = ({
             }
 
             if (type === "text") {
-              // Check if this message has a sheet creation tool call
-              const hasSheetTool = message.parts.some(
-                (p) =>
-                  p.type === "tool-createDocument" &&
-                  p.input &&
-                  typeof p.input === "object" &&
-                  "kind" in p.input &&
-                  p.input.kind === "sheet"
-              );
-
-              // If there's a sheet tool, suppress ALL text content
-              // (the spreadsheet should speak for itself)
-              if (hasSheetTool && part.text && part.text.trim()) {
-                return null; // Don't render any text when sheet artifact is present
-              }
-
               if (mode === "view") {
                 return (
                   <div key={key}>
@@ -259,17 +243,6 @@ const PurePreviewMessage = ({
                     </ToolContent>
                   </Tool>
                 );
-              }
-
-              // For sheet artifacts, don't render the preview
-              // The artifact opens directly to full screen
-              if (
-                part.output &&
-                typeof part.output === "object" &&
-                "kind" in part.output &&
-                part.output.kind === "sheet"
-              ) {
-                return null;
               }
 
               return (

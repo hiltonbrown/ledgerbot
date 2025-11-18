@@ -9,7 +9,7 @@ export function DataStreamHandler() {
   const { dataStream, setDataStream } = useDataStream();
 
   const { artifact, setArtifact, setMetadata } = useArtifact();
-  const lastProcessedIndex = useRef(-1);
+  const _lastProcessedIndex = useRef(-1);
 
   useEffect(() => {
     if (!dataStream?.length) {
@@ -20,19 +20,7 @@ export function DataStreamHandler() {
     setDataStream([]);
 
     for (const delta of newDeltas) {
-      const artifactDefinition = artifactDefinitions.find(
-        (currentArtifactDefinition) =>
-          currentArtifactDefinition.kind === artifact.kind
-      );
-
-      if (artifactDefinition?.onStreamPart) {
-        artifactDefinition.onStreamPart({
-          streamPart: delta,
-          setArtifact,
-          setMetadata,
-        });
-      }
-
+      // First, update artifact state to ensure kind is set
       setArtifact((draftArtifact) => {
         if (!draftArtifact) {
           return { ...initialArtifactData, status: "streaming" };
@@ -77,8 +65,25 @@ export function DataStreamHandler() {
             return draftArtifact;
         }
       });
+
+      // Then, find artifact definition using current artifact state
+      // For data-kind events, we need to use the delta data directly
+      const artifactKind =
+        delta.type === "data-kind" ? delta.data : artifact.kind;
+      const artifactDefinition = artifactDefinitions.find(
+        (currentArtifactDefinition) =>
+          currentArtifactDefinition.kind === artifactKind
+      );
+
+      if (artifactDefinition?.onStreamPart) {
+        artifactDefinition.onStreamPart({
+          streamPart: delta,
+          setArtifact,
+          setMetadata,
+        });
+      }
     }
-  }, [dataStream, setArtifact, setMetadata, artifact]);
+  }, [dataStream, setArtifact, setMetadata, artifact, setDataStream]);
 
   return null;
 }
