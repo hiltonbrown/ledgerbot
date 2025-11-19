@@ -46,9 +46,11 @@ async function makeQuickBooksRequest<T>(
     );
   }
 
-  const baseUrl =
-    QB_API_URLS[connection.environment || "production"] +
-    `/${connection.realmId}`;
+  // Ensure environment is valid (sandbox or production)
+  const environment: "sandbox" | "production" =
+    connection.environment === "sandbox" ? "sandbox" : "production";
+
+  const baseUrl = QB_API_URLS[environment] + `/${connection.realmId}`;
 
   // Build query string
   const queryParams = new URLSearchParams(options.query || {});

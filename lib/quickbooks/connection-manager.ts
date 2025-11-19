@@ -284,7 +284,10 @@ async function performTokenRefresh(
   }
 
   const config = getQuickBooksConfig();
-  const endpoints = OAUTH_ENDPOINTS[connection.environment || "production"];
+  // Ensure environment is valid (sandbox or production)
+  const environment: "sandbox" | "production" =
+    connection.environment === "sandbox" ? "sandbox" : "production";
+  const endpoints = OAUTH_ENDPOINTS[environment];
 
   try {
     console.log(
@@ -574,7 +577,10 @@ export async function revokeQuickBooksToken(
     }
 
     const config = getQuickBooksConfig();
-    const endpoints = OAUTH_ENDPOINTS[connection.environment || "production"];
+    // Ensure environment is valid (sandbox or production)
+    const environment: "sandbox" | "production" =
+      connection.environment === "sandbox" ? "sandbox" : "production";
+    const endpoints = OAUTH_ENDPOINTS[environment];
 
     try {
       const decryptedRefreshToken = decryptToken(connection.refreshToken);
