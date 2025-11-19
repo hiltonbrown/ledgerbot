@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   ChevronDown,
   ChevronUp,
+  Clock,
   DollarSign,
   FileText,
   Mail,
@@ -472,6 +473,138 @@ export default function CustomerDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Communication Timeline */}
+      {(() => {
+        // Collect all notes and artefacts from all invoices
+        const allCommunications: Array<{
+          type: "note" | "artefact";
+          date: Date;
+          invoiceNumber: string;
+          data:
+            | {
+                id: string;
+                body: string;
+                createdAt: string;
+                visibility: string;
+              }
+            | {
+                id: string;
+                channel: string;
+                subject: string | null;
+                body: string;
+                tone: string;
+                createdAt: string;
+              };
+        }> = [];
+
+        for (const invoice of data.invoices) {
+          for (const note of invoice.notes) {
+            allCommunications.push({
+              type: "note",
+              date: new Date(note.createdAt),
+              invoiceNumber: invoice.number,
+              data: note,
+            });
+          }
+          for (const artefact of invoice.artefacts) {
+            allCommunications.push({
+              type: "artefact",
+              date: new Date(artefact.createdAt),
+              invoiceNumber: invoice.number,
+              data: artefact,
+            });
+          }
+        }
+
+        // Sort by date (newest first)
+        allCommunications.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+        if (allCommunications.length === 0) {
+          return null;
+        }
+
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Clock className="h-5 w-5 text-primary" />
+                Communication Timeline ({allCommunications.length})
+              </CardTitle>
+              <p className="text-muted-foreground text-sm">
+                All notes and communication history across all invoices
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {allCommunications.map((comm, _index) => {
+                  if (comm.type === "note") {
+                    const note = comm.data as {
+                      id: string;
+                      body: string;
+                      createdAt: string;
+                      visibility: string;
+                    };
+                    return (
+                      <div
+                        className="border-muted-foreground/20 border-l-2 pl-4"
+                        key={`${comm.type}-${note.id}`}
+                      >
+                        <div className="mb-1 flex items-center gap-2">
+                          <StickyNote className="h-4 w-4 text-muted-foreground" />
+                          <Badge variant="outline">Note</Badge>
+                          <span className="text-muted-foreground text-xs">
+                            Invoice {comm.invoiceNumber}
+                          </span>
+                          <Badge variant="secondary">{note.visibility}</Badge>
+                        </div>
+                        <p className="my-2 text-sm">{note.body}</p>
+                        <p className="text-muted-foreground text-xs">
+                          {formatDate(note.createdAt)}
+                        </p>
+                      </div>
+                    );
+                  }
+                  const artefact = comm.data as {
+                    id: string;
+                    channel: string;
+                    subject: string | null;
+                    body: string;
+                    tone: string;
+                    createdAt: string;
+                  };
+                  return (
+                    <div
+                      className="border-muted-foreground/20 border-l-2 pl-4"
+                      key={`${comm.type}-${artefact.id}`}
+                    >
+                      <div className="mb-1 flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                        <Badge variant="outline">{artefact.channel}</Badge>
+                        <span className="text-muted-foreground text-xs">
+                          Invoice {comm.invoiceNumber}
+                        </span>
+                        <Badge variant="secondary">{artefact.tone}</Badge>
+                      </div>
+                      {artefact.subject && (
+                        <p className="my-1 font-semibold text-sm">
+                          {artefact.subject}
+                        </p>
+                      )}
+                      <p className="my-2 line-clamp-3 text-sm">
+                        {artefact.body}
+                      </p>
+                      <p className="text-muted-foreground text-xs">
+                        {formatDate(artefact.createdAt)}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
     </div>
   );
 }

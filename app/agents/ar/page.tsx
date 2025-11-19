@@ -2,10 +2,14 @@
 
 import {
   AlertTriangle,
+  ChevronDown,
+  ChevronUp,
   Clock,
   DollarSign,
+  Eye,
   FileText,
   Loader2,
+  MessageSquare,
   Phone,
   RefreshCw,
   TrendingUp,
@@ -69,6 +73,23 @@ type SyncStatus = {
   isUsingMock: boolean;
 };
 
+type Invoice = {
+  id: string;
+  number: string;
+  issueDate: string;
+  dueDate: string;
+  total: string;
+  amountPaid: string;
+  amountDue: string;
+  status: string;
+  daysOverdue: number;
+  currency: string;
+};
+
+type ContactInvoicesData = {
+  invoices: Invoice[];
+};
+
 export default function AccountsReceivableAgentPage() {
   const [ageingReport, setAgeingReport] = useState<AgeingReport | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({
@@ -80,6 +101,12 @@ export default function AccountsReceivableAgentPage() {
   });
   const [isLoadingReport, setIsLoadingReport] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [expandedContacts, setExpandedContacts] = useState<Set<string>>(
+    new Set()
+  );
+  const [contactInvoices, setContactInvoices] = useState<
+    Map<string, ContactInvoicesData>
+  >(new Map());
 
   const loadAgeingReport = useCallback(async () => {
     setIsLoadingReport(true);
@@ -145,27 +172,84 @@ export default function AccountsReceivableAgentPage() {
     loadAgeingReport();
   }, [loadAgeingReport]);
 
-  const formatCurrency = (amount: number) => {
+  const toggleContactExpanded = useCallback(
+    async (contactId: string) => {
+      const isExpanded = expandedContacts.has(contactId);
+
+      if (isExpanded) {
+        // Collapse
+        setExpandedContacts((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(contactId);
+          return newSet;
+        });
+      } else {
+        // Expand and fetch invoices if not already loaded
+        setExpandedContacts((prev) => new Set(prev).add(contactId));
+
+        if (!contactInvoices.has(contactId)) {
+          try {
+            const response = await fetch(
+              `/api/agents/ar/customer/${contactId}`
+            );
+
+            if (response.ok) {
+              const data = await response.json();
+              setContactInvoices((prev) => {
+                const newMap = new Map(prev);
+                newMap.set(contactId, { invoices: data.invoices });
+                return newMap;
+              });
+            }
+          } catch (err) {
+            console.error("Failed to load invoices:", err);
+          }
+        }
+      }
+    },
+    [expandedContacts, contactInvoices]
+  );
+
+  const formatCurrency = (amount: number | string) => {
+    const value =
+      typeof amount === "string" ? Number.parseFloat(amount) : amount;
     return new Intl.NumberFormat("en-AU", {
       style: "currency",
       currency: "AUD",
-    }).format(amount);
+    }).format(value);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-AU", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
   };
 
   const getRiskColor = (daysOverdue: number) => {
-    if (daysOverdue <= 30) return "text-yellow-600";
-    if (daysOverdue <= 60) return "text-orange-600";
-    if (daysOverdue <= 90) return "text-red-600";
+    if (daysOverdue <= 30) {
+      return "text-yellow-600";
+    }
+    if (daysOverdue <= 60) {
+      return "text-orange-600";
+    }
+    if (daysOverdue <= 90) {
+      return "text-red-600";
+    }
     return "text-red-800";
   };
 
   const getRiskBadge = (daysOverdue: number) => {
-    if (daysOverdue <= 30)
+    if (daysOverdue <= 30) {
       return { label: "Low", variant: "secondary" as const };
-    if (daysOverdue <= 60)
+    }
+    if (daysOverdue <= 60) {
       return { label: "Medium", variant: "default" as const };
-    if (daysOverdue <= 90)
+    }
+    if (daysOverdue <= 90) {
       return { label: "High", variant: "destructive" as const };
+    }
     return { label: "Critical", variant: "destructive" as const };
   };
 
@@ -343,14 +427,15 @@ export default function AccountsReceivableAgentPage() {
               Debtors ({ageingReport.contacts.length})
             </CardTitle>
             <p className="text-muted-foreground text-sm">
-              Click on a debtor name to start a collection conversation with AI
-              assistance
+              Click the arrow to view invoice details, or click actions to draft
+              reminders
             </p>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[50px]" />
                   <TableHead>Debtor</TableHead>
                   <TableHead>Contact</TableHead>
                   <TableHead className="text-right">Outstanding</TableHead>
@@ -363,58 +448,193 @@ export default function AccountsReceivableAgentPage() {
               <TableBody>
                 {ageingReport.contacts.map((contact) => {
                   const risk = getRiskBadge(contact.oldestInvoiceDays);
+                  const isExpanded = expandedContacts.has(contact.contactId);
+                  const invoicesData = contactInvoices.get(contact.contactId);
+
                   return (
-                    <TableRow key={contact.contactId}>
-                      <TableCell>
-                        <Link
-                          className="font-medium hover:underline"
-                          href={`/?ar_contact=${contact.contactId}&ar_name=${encodeURIComponent(contact.contactName)}`}
-                        >
-                          {contact.contactName}
-                        </Link>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {contact.email && (
-                          <div className="max-w-[200px] truncate">
-                            {contact.email}
-                          </div>
-                        )}
-                        {contact.phone && (
-                          <div className="flex items-center gap-1 text-xs">
-                            <Phone className="h-3 w-3" />
-                            {contact.phone}
-                          </div>
-                        )}
-                        {!contact.email && !contact.phone && (
-                          <span className="text-muted-foreground text-xs">
-                            No contact info
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right font-semibold">
-                        {formatCurrency(contact.totalOutstanding)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {contact.invoiceCount}
-                      </TableCell>
-                      <TableCell
-                        className={`text-right font-semibold ${getRiskColor(contact.oldestInvoiceDays)}`}
-                      >
-                        {contact.oldestInvoiceDays}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Badge variant={risk.variant}>{risk.label}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Link
-                          href={`/?ar_contact=${contact.contactId}&ar_name=${encodeURIComponent(contact.contactName)}`}
-                        >
-                          <Button size="sm" variant="outline">
-                            Contact
+                    <>
+                      <TableRow key={contact.contactId}>
+                        <TableCell>
+                          <Button
+                            onClick={() =>
+                              toggleContactExpanded(contact.contactId)
+                            }
+                            size="sm"
+                            variant="ghost"
+                          >
+                            {isExpanded ? (
+                              <ChevronUp className="h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" />
+                            )}
                           </Button>
-                        </Link>
-                      </TableCell>
-                    </TableRow>
+                        </TableCell>
+                        <TableCell>
+                          <Link
+                            className="font-medium hover:underline"
+                            href={`/agents/ar/customer/${contact.contactId}`}
+                          >
+                            {contact.contactName}
+                          </Link>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {contact.email && (
+                            <div className="max-w-[200px] truncate">
+                              {contact.email}
+                            </div>
+                          )}
+                          {contact.phone && (
+                            <div className="flex items-center gap-1 text-xs">
+                              <Phone className="h-3 w-3" />
+                              {contact.phone}
+                            </div>
+                          )}
+                          {!contact.email && !contact.phone && (
+                            <span className="text-muted-foreground text-xs">
+                              No contact info
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right font-semibold">
+                          {formatCurrency(contact.totalOutstanding)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {contact.invoiceCount}
+                        </TableCell>
+                        <TableCell
+                          className={`text-right font-semibold ${getRiskColor(contact.oldestInvoiceDays)}`}
+                        >
+                          {contact.oldestInvoiceDays}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Badge variant={risk.variant}>{risk.label}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Link
+                              href={`/agents/ar/customer/${contact.contactId}`}
+                            >
+                              <Button size="sm" variant="outline">
+                                <Eye className="mr-1 h-3 w-3" />
+                                View
+                              </Button>
+                            </Link>
+                            <Link
+                              href={`/?ar_contact=${contact.contactId}&ar_name=${encodeURIComponent(contact.contactName)}`}
+                            >
+                              <Button size="sm" variant="default">
+                                <MessageSquare className="mr-1 h-3 w-3" />
+                                Reminder
+                              </Button>
+                            </Link>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+
+                      {/* Expanded Invoice Details */}
+                      {isExpanded && (
+                        <TableRow>
+                          <TableCell colSpan={8}>
+                            <div className="bg-muted/30 p-4">
+                              {invoicesData ? (
+                                <div>
+                                  <h4 className="mb-3 font-semibold text-sm">
+                                    Invoice Breakdown
+                                  </h4>
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow>
+                                        <TableHead className="text-xs">
+                                          Invoice #
+                                        </TableHead>
+                                        <TableHead className="text-xs">
+                                          Issue Date
+                                        </TableHead>
+                                        <TableHead className="text-xs">
+                                          Due Date
+                                        </TableHead>
+                                        <TableHead className="text-right text-xs">
+                                          Total
+                                        </TableHead>
+                                        <TableHead className="text-right text-xs">
+                                          Paid
+                                        </TableHead>
+                                        <TableHead className="text-right text-xs">
+                                          Outstanding
+                                        </TableHead>
+                                        <TableHead className="text-right text-xs">
+                                          Days
+                                        </TableHead>
+                                        <TableHead className="text-right text-xs">
+                                          Status
+                                        </TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {invoicesData.invoices.map((invoice) => {
+                                        const statusVariant =
+                                          invoice.status === "paid"
+                                            ? "secondary"
+                                            : invoice.daysOverdue > 60
+                                              ? "destructive"
+                                              : "default";
+
+                                        return (
+                                          <TableRow key={invoice.id}>
+                                            <TableCell className="font-medium text-xs">
+                                              {invoice.number}
+                                            </TableCell>
+                                            <TableCell className="text-xs">
+                                              {formatDate(invoice.issueDate)}
+                                            </TableCell>
+                                            <TableCell className="text-xs">
+                                              {formatDate(invoice.dueDate)}
+                                            </TableCell>
+                                            <TableCell className="text-right text-xs">
+                                              {formatCurrency(invoice.total)}
+                                            </TableCell>
+                                            <TableCell className="text-right text-xs">
+                                              {formatCurrency(
+                                                invoice.amountPaid
+                                              )}
+                                            </TableCell>
+                                            <TableCell className="text-right font-semibold text-xs">
+                                              {formatCurrency(
+                                                invoice.amountDue
+                                              )}
+                                            </TableCell>
+                                            <TableCell
+                                              className={`text-right font-semibold text-xs ${getRiskColor(invoice.daysOverdue)}`}
+                                            >
+                                              {invoice.daysOverdue}
+                                            </TableCell>
+                                            <TableCell className="text-right text-xs">
+                                              <Badge
+                                                className="text-xs"
+                                                variant={statusVariant}
+                                              >
+                                                {invoice.status}
+                                              </Badge>
+                                            </TableCell>
+                                          </TableRow>
+                                        );
+                                      })}
+                                    </TableBody>
+                                  </Table>
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-center py-4">
+                                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                                  <span className="ml-2 text-muted-foreground text-sm">
+                                    Loading invoices...
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </>
                   );
                 })}
               </TableBody>
