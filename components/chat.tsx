@@ -117,10 +117,7 @@ export function Chat({
   }, [currentModelId, reasoningPreferences, initialDefaultReasoning]);
 
   const getReasoningPreferenceForModel = (modelId: string) => {
-    if (!isReasoningModelId(modelId)) {
-      return false;
-    }
-
+    // Always show reasoning for all models
     const storedPreference = reasoningPreferencesRef.current[modelId];
 
     return storedPreference ?? initialDefaultReasoning ?? true;

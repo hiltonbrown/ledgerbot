@@ -44,6 +44,14 @@ export async function generateTitleFromContent({
   kind: "text" | "code" | "sheet";
   modelId: string;
 }) {
+  // For text documents, try to extract the first heading
+  if (kind === "text") {
+    const headingMatch = content.match(/^#\s+(.+)$/m);
+    if (headingMatch && headingMatch[1]) {
+      return headingMatch[1].trim();
+    }
+  }
+
   const contentTypeMap = {
     text: "document",
     code: "code snippet",
@@ -61,7 +69,8 @@ export async function generateTitleFromContent({
 Rules:
 - Keep the title between 2-5 words (max 50 characters)
 - Make it descriptive and specific to the content
-- Do not use quotes or colons
+- Do not use quotes, colons, pipes (|), or any special characters
+- Return ONLY the title text, nothing else
 - Focus on the main topic or purpose
 - For spreadsheets: mention the data type (e.g., "Customer Invoices", "Sales Report")
 - For code: mention what it does (e.g., "GST Calculator", "Data Parser")
@@ -69,7 +78,10 @@ Rules:
     prompt: `Generate a title for this ${contentType}:\n\n${contentPreview}`,
   });
 
-  return title.trim();
+  // Extract short title if pipe character is present (safety fallback)
+  const cleanTitle = title.includes("|") ? title.split("|")[0].trim() : title.trim();
+
+  return cleanTitle;
 }
 
 export async function deleteTrailingMessages({ id }: { id: string }) {

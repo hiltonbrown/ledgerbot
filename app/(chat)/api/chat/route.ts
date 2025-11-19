@@ -370,7 +370,8 @@ export async function POST(request: Request) {
     // Reasoning models (Claude with <think> tags) will have reasoning extracted by middleware
     // Non-reasoning models won't have reasoning parts, but sendReasoning should still be true
     const sendReasoning = true;
-    const preferenceForDisplay = showReasoningPreference ?? true;
+    // Always show reasoning steps when available
+    const preferenceForDisplay = true;
 
     const respondWithManualStream = async (
       build: (

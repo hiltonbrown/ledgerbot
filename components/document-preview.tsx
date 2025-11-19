@@ -213,9 +213,6 @@ const PureDocumentHeader = ({
   kind: ArtifactKind;
   isStreaming: boolean;
 }) => {
-  // Extract short title (before pipe) or use full title
-  const displayTitle = title.includes("|") ? title.split("|")[0].trim() : title;
-
   return (
     <div className="flex flex-row items-start justify-between gap-2 rounded-t-2xl border border-b-0 p-4 sm:items-center dark:border-zinc-700 dark:bg-muted">
       <div className="flex flex-row items-start gap-3 sm:items-center">
@@ -231,7 +228,7 @@ const PureDocumentHeader = ({
           )}
         </div>
         <div className="-translate-y-1 font-medium sm:translate-y-0">
-          {displayTitle}
+          {title}
         </div>
       </div>
       <div className="w-8" />

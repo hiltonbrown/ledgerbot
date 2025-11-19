@@ -34,12 +34,17 @@ export function DataStreamHandler() {
               status: "streaming",
             };
 
-          case "data-title":
+          case "data-title": {
+            // Extract short title (before pipe) if present
+            const shortTitle = delta.data.includes("|")
+              ? delta.data.split("|")[0].trim()
+              : delta.data;
             return {
               ...draftArtifact,
-              title: delta.data,
+              title: shortTitle,
               status: "streaming",
             };
+          }
 
           case "data-kind":
             return {

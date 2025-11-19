@@ -77,7 +77,7 @@ function PureDocumentToolResult({
         ) : null}
       </div>
       <div className="text-left">
-        {`${getActionText(type, "past")} "${result.title.includes("|") ? result.title.split("|")[0].trim() : result.title}"`}
+        {`${getActionText(type, "past")} "${result.title}"`}
       </div>
     </button>
   );
@@ -149,7 +149,7 @@ function PureDocumentToolCall({
         <div className="text-left">
           {`${getActionText(type, "present")} ${
             type === "create" && "title" in args && args.title
-              ? `"${args.title.includes("|") ? args.title.split("|")[0].trim() : args.title}"`
+              ? `"${args.title}"`
               : type === "update" && "description" in args
                 ? `"${args.description}"`
                 : type === "request-suggestions"

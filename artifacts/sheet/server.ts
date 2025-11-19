@@ -1,6 +1,5 @@
 import { streamObject } from "ai";
 import { z } from "zod";
-import { generateTitleFromContent } from "@/app/(chat)/actions";
 import { sheetPrompt, updateDocumentPrompt } from "@/lib/ai/prompts";
 import { myProvider } from "@/lib/ai/providers";
 import { createDocumentHandler } from "@/lib/artifacts/server";
@@ -44,21 +43,8 @@ export const sheetDocumentHandler = createDocumentHandler<"sheet">({
       transient: true,
     });
 
-    // Generate a short, descriptive title from the spreadsheet content
-    const generatedTitle = await generateTitleFromContent({
-      content: draftContent,
-      kind: "sheet",
-      modelId,
-    });
-
-    // Update the title in the stream
-    dataStream.write({
-      type: "data-title",
-      data: generatedTitle,
-      transient: true,
-    });
-
-    return { content: draftContent, generatedTitle };
+    // Use the title provided by the AI tool call - no need to generate another one
+    return draftContent;
   },
   onUpdateDocument: async ({ document, description, dataStream, modelId }) => {
     let draftContent = "";

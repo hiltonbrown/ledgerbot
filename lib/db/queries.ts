@@ -494,12 +494,15 @@ export async function saveDocument({
   userId: string;
   chatId: string;
 }) {
+  // Extract short title (before pipe) if present
+  const shortTitle = title.includes("|") ? title.split("|")[0].trim() : title;
+
   try {
     return await db
       .insert(document)
       .values({
         id,
-        title,
+        title: shortTitle,
         kind,
         content,
         userId,
