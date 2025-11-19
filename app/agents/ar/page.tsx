@@ -2,25 +2,40 @@
 
 import {
   AlertTriangle,
+  Check,
   ChevronDown,
   ChevronUp,
   Clock,
   DollarSign,
+  Download,
   Eye,
   FileText,
+  Filter,
   Loader2,
   MessageSquare,
   Phone,
   RefreshCw,
+  Search,
   TrendingUp,
   Users,
+  X,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -107,6 +122,19 @@ export default function AccountsReceivableAgentPage() {
   const [contactInvoices, setContactInvoices] = useState<
     Map<string, ContactInvoicesData>
   >(new Map());
+
+  // Filtering and search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [riskFilter, setRiskFilter] = useState<string>("all");
+  const [bucketFilter, setBucketFilter] = useState<string>("all");
+  const [minAmount, setMinAmount] = useState("");
+  const [maxAmount, setMaxAmount] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Bulk selection state
+  const [selectedContacts, setSelectedContacts] = useState<Set<string>>(
+    new Set()
+  );
 
   const loadAgeingReport = useCallback(async () => {
     setIsLoadingReport(true);
@@ -252,6 +280,176 @@ export default function AccountsReceivableAgentPage() {
     }
     return { label: "Critical", variant: "destructive" as const };
   };
+
+  const getRiskLevel = useCallback((daysOverdue: number): string => {
+    if (daysOverdue <= 30) {
+      return "low";
+    }
+    if (daysOverdue <= 60) {
+      return "medium";
+    }
+    if (daysOverdue <= 90) {
+      return "high";
+    }
+    return "critical";
+  }, []);
+
+  // Filtered and searched contacts
+  const filteredContacts = useMemo(() => {
+    if (!ageingReport) {
+      return [];
+    }
+
+    let filtered = ageingReport.contacts;
+
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (contact) =>
+          contact.contactName.toLowerCase().includes(query) ||
+          contact.email?.toLowerCase().includes(query)
+      );
+    }
+
+    // Risk level filter
+    if (riskFilter !== "all") {
+      filtered = filtered.filter(
+        (contact) => getRiskLevel(contact.oldestInvoiceDays) === riskFilter
+      );
+    }
+
+    // Overdue bucket filter
+    if (bucketFilter !== "all") {
+      filtered = filtered.filter((contact) => {
+        const days = contact.oldestInvoiceDays;
+        switch (bucketFilter) {
+          case "0-30":
+            return days >= 0 && days <= 30;
+          case "31-60":
+            return days >= 31 && days <= 60;
+          case "61-90":
+            return days >= 61 && days <= 90;
+          case "90+":
+            return days > 90;
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Amount range filter
+    if (minAmount || maxAmount) {
+      filtered = filtered.filter((contact) => {
+        const amount = contact.totalOutstanding;
+        const min = minAmount ? Number.parseFloat(minAmount) : 0;
+        const max = maxAmount
+          ? Number.parseFloat(maxAmount)
+          : Number.POSITIVE_INFINITY;
+        return amount >= min && amount <= max;
+      });
+    }
+
+    return filtered;
+  }, [
+    ageingReport,
+    searchQuery,
+    riskFilter,
+    bucketFilter,
+    minAmount,
+    maxAmount,
+    getRiskLevel,
+  ]);
+
+  // Bulk selection handlers
+  const handleSelectAll = useCallback(() => {
+    if (selectedContacts.size === filteredContacts.length) {
+      setSelectedContacts(new Set());
+    } else {
+      setSelectedContacts(
+        new Set(filteredContacts.map((contact) => contact.contactId))
+      );
+    }
+  }, [selectedContacts, filteredContacts]);
+
+  const handleSelectContact = useCallback((contactId: string) => {
+    setSelectedContacts((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(contactId)) {
+        newSet.delete(contactId);
+      } else {
+        newSet.add(contactId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedContacts(new Set());
+  }, []);
+
+  // CSV Export function
+  const handleExportCSV = useCallback(() => {
+    if (!ageingReport) {
+      return;
+    }
+
+    const dataToExport =
+      selectedContacts.size > 0
+        ? filteredContacts.filter((c) => selectedContacts.has(c.contactId))
+        : filteredContacts;
+
+    const csvRows = [
+      [
+        "Customer Name",
+        "Email",
+        "Phone",
+        "Total Outstanding",
+        "Invoice Count",
+        "Oldest Invoice (Days)",
+        "Risk Level",
+        "0-30 Days",
+        "31-60 Days",
+        "61-90 Days",
+        "90+ Days",
+      ],
+      ...dataToExport.map((contact) => [
+        contact.contactName,
+        contact.email || "",
+        contact.phone || "",
+        contact.totalOutstanding.toString(),
+        contact.invoiceCount.toString(),
+        contact.oldestInvoiceDays.toString(),
+        getRiskLevel(contact.oldestInvoiceDays),
+        contact.buckets.current.toString(),
+        contact.buckets.thirtyDays.toString(),
+        contact.buckets.sixtyDays.toString(),
+        contact.buckets.ninetyPlus.toString(),
+      ]),
+    ];
+
+    const csvContent = csvRows.map((row) => row.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute(
+      "download",
+      `ar-ageing-report-${new Date().toISOString().split("T")[0]}.csv`
+    );
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, [ageingReport, filteredContacts, selectedContacts, getRiskLevel]);
+
+  const clearFilters = useCallback(() => {
+    setSearchQuery("");
+    setRiskFilter("all");
+    setBucketFilter("all");
+    setMinAmount("");
+    setMaxAmount("");
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -418,13 +616,168 @@ export default function AccountsReceivableAgentPage() {
         </Card>
       )}
 
-      {/* Debtor List */}
+      {/* Search and Filters */}
       {ageingReport && ageingReport.contacts.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="-translate-y-1/2 absolute top-1/2 left-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    className="pl-10"
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search by customer name or email..."
+                    value={searchQuery}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => setShowFilters(!showFilters)}
+                  size="default"
+                  variant="outline"
+                >
+                  <Filter className="mr-2 h-4 w-4" />
+                  Filters
+                  {(riskFilter !== "all" ||
+                    bucketFilter !== "all" ||
+                    minAmount ||
+                    maxAmount) && (
+                    <Badge className="ml-2" variant="destructive">
+                      Active
+                    </Badge>
+                  )}
+                </Button>
+                <Button
+                  onClick={handleExportCSV}
+                  size="default"
+                  variant="outline"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Export CSV
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+
+          {showFilters && (
+            <CardContent className="border-t">
+              <div className="grid gap-4 md:grid-cols-4">
+                <div className="space-y-2">
+                  <Label htmlFor="risk-filter">Risk Level</Label>
+                  <Select onValueChange={setRiskFilter} value={riskFilter}>
+                    <SelectTrigger id="risk-filter">
+                      <SelectValue placeholder="All risks" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Risks</SelectItem>
+                      <SelectItem value="low">Low (≤30 days)</SelectItem>
+                      <SelectItem value="medium">
+                        Medium (31-60 days)
+                      </SelectItem>
+                      <SelectItem value="high">High (61-90 days)</SelectItem>
+                      <SelectItem value="critical">
+                        Critical (90+ days)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="bucket-filter">Overdue Period</Label>
+                  <Select onValueChange={setBucketFilter} value={bucketFilter}>
+                    <SelectTrigger id="bucket-filter">
+                      <SelectValue placeholder="All periods" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Periods</SelectItem>
+                      <SelectItem value="0-30">0-30 days</SelectItem>
+                      <SelectItem value="31-60">31-60 days</SelectItem>
+                      <SelectItem value="61-90">61-90 days</SelectItem>
+                      <SelectItem value="90+">90+ days</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="min-amount">Min Amount</Label>
+                  <Input
+                    id="min-amount"
+                    onChange={(e) => setMinAmount(e.target.value)}
+                    placeholder="0"
+                    type="number"
+                    value={minAmount}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="max-amount">Max Amount</Label>
+                  <Input
+                    id="max-amount"
+                    onChange={(e) => setMaxAmount(e.target.value)}
+                    placeholder="No limit"
+                    type="number"
+                    value={maxAmount}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-4 flex items-center gap-2">
+                <Button onClick={clearFilters} size="sm" variant="outline">
+                  <X className="mr-2 h-4 w-4" />
+                  Clear Filters
+                </Button>
+                <p className="text-muted-foreground text-sm">
+                  Showing {filteredContacts.length} of{" "}
+                  {ageingReport.contacts.length} customers
+                </p>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+      )}
+
+      {/* Bulk Action Toolbar */}
+      {selectedContacts.size > 0 && (
+        <Card className="border-primary">
+          <CardContent className="flex items-center justify-between py-4">
+            <div className="flex items-center gap-4">
+              <Check className="h-5 w-5 text-primary" />
+              <span className="font-semibold">
+                {selectedContacts.size} customer
+                {selectedContacts.size !== 1 ? "s" : ""} selected
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/?ar_bulk=${Array.from(selectedContacts).join(",")}`}
+              >
+                <Button size="default">
+                  <MessageSquare className="mr-2 h-4 w-4" />
+                  Draft Bulk Reminders
+                </Button>
+              </Link>
+              <Button
+                onClick={handleClearSelection}
+                size="default"
+                variant="outline"
+              >
+                <X className="mr-2 h-4 w-4" />
+                Clear Selection
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Debtor List */}
+      {ageingReport && filteredContacts.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <FileText className="h-5 w-5 text-primary" />
-              Debtors ({ageingReport.contacts.length})
+              Debtors ({filteredContacts.length})
             </CardTitle>
             <p className="text-muted-foreground text-sm">
               Click the arrow to view invoice details, or click actions to draft
@@ -435,6 +788,15 @@ export default function AccountsReceivableAgentPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[50px]">
+                    <Checkbox
+                      checked={
+                        selectedContacts.size === filteredContacts.length &&
+                        filteredContacts.length > 0
+                      }
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
                   <TableHead className="w-[50px]" />
                   <TableHead>Debtor</TableHead>
                   <TableHead>Contact</TableHead>
@@ -446,7 +808,7 @@ export default function AccountsReceivableAgentPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {ageingReport.contacts.map((contact) => {
+                {filteredContacts.map((contact) => {
                   const risk = getRiskBadge(contact.oldestInvoiceDays);
                   const isExpanded = expandedContacts.has(contact.contactId);
                   const invoicesData = contactInvoices.get(contact.contactId);
@@ -454,6 +816,14 @@ export default function AccountsReceivableAgentPage() {
                   return (
                     <>
                       <TableRow key={contact.contactId}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedContacts.has(contact.contactId)}
+                            onCheckedChange={() =>
+                              handleSelectContact(contact.contactId)
+                            }
+                          />
+                        </TableCell>
                         <TableCell>
                           <Button
                             onClick={() =>
@@ -534,7 +904,7 @@ export default function AccountsReceivableAgentPage() {
                       {/* Expanded Invoice Details */}
                       {isExpanded && (
                         <TableRow>
-                          <TableCell colSpan={8}>
+                          <TableCell colSpan={9}>
                             <div className="bg-muted/30 p-4">
                               {invoicesData ? (
                                 <div>
