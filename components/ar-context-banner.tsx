@@ -96,7 +96,7 @@ export function ArContextBanner({
             </Button>
           </Link>
           {onClose && (
-            <Button onClick={onClose} size="sm" variant="ghost">
+            <Button aria-label="Close AR context banner" onClick={onClose} size="sm" variant="ghost">
               <X className="h-4 w-4" />
             </Button>
           )}
