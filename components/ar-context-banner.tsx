@@ -33,21 +33,24 @@ export function ArContextBanner({
     }).format(amount);
   };
 
-  const getRiskBadge = (daysOverdue: number) => {
-    if (daysOverdue <= 30) {
-      return { label: "Low Risk", variant: "secondary" as const };
-    }
-    if (daysOverdue <= 60) {
-      return { label: "Medium Risk", variant: "default" as const };
-    }
-    if (daysOverdue <= 90) {
-      return { label: "High Risk", variant: "destructive" as const };
-    }
-    return { label: "Critical Risk", variant: "destructive" as const };
+  // Canonical risk calculation function
+  const getRiskLevel = (daysOverdue: number): "low" | "medium" | "high" | "critical" => {
+    if (daysOverdue <= 30) return "low";
+    if (daysOverdue <= 60) return "medium";
+    if (daysOverdue <= 90) return "high";
+    return "critical";
   };
 
-  const risk = getRiskBadge(summary.oldestInvoiceDays);
+  // Mapping from risk level to label and badge variant
+  const riskLevelMap: Record<"low" | "medium" | "high" | "critical", { label: string; variant: "secondary" | "default" | "destructive" }> = {
+    low: { label: "Low Risk", variant: "secondary" },
+    medium: { label: "Medium Risk", variant: "default" },
+    high: { label: "High Risk", variant: "destructive" },
+    critical: { label: "Critical Risk", variant: "destructive" },
+  };
 
+  const riskLevel = getRiskLevel(summary.oldestInvoiceDays);
+  const risk = riskLevelMap[riskLevel];
   return (
     <Card className="border-primary/50 bg-primary/5">
       <CardContent className="flex items-center justify-between py-3">
