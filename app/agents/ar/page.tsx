@@ -441,6 +441,7 @@ export default function AccountsReceivableAgentPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   }, [ageingReport, filteredContacts, selectedContacts, getRiskLevel]);
 
   const clearFilters = useCallback(() => {
