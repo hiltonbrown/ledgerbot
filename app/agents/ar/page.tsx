@@ -340,14 +340,19 @@ export default function AccountsReceivableAgentPage() {
 
     // Amount range filter
     if (minAmount || maxAmount) {
-      filtered = filtered.filter((contact) => {
-        const amount = contact.totalOutstanding;
-        const min = minAmount ? Number.parseFloat(minAmount) : 0;
-        const max = maxAmount
-          ? Number.parseFloat(maxAmount)
-          : Number.POSITIVE_INFINITY;
-        return amount >= min && amount <= max;
-      });
+      // Validate minAmount and maxAmount
+      const min = minAmount ? Math.max(0, Number.parseFloat(minAmount)) : 0;
+      const max = maxAmount ? Math.max(0, Number.parseFloat(maxAmount)) : Number.POSITIVE_INFINITY;
+      // If invalid input, skip filtering (show all)
+      if (isNaN(min) || isNaN(max) || (maxAmount && min > max)) {
+        // Optionally, you could return [] here to show no results, or handle error UI
+        // For now, skip filtering
+      } else {
+        filtered = filtered.filter((contact) => {
+          const amount = contact.totalOutstanding;
+          return amount >= min && amount <= max;
+        });
+      }
     }
 
     return filtered;
