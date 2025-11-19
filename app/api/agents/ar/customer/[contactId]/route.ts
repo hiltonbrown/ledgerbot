@@ -47,7 +47,7 @@ type CustomerInvoiceResponse = {
   summary: {
     totalOutstanding: number;
     invoiceCount: number;
-    oldestInvoiceDays: number;
+    oldestInvoiceDays: number | null;
   };
 };
 
