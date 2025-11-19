@@ -404,6 +404,15 @@ export default function AccountsReceivableAgentPage() {
         ? filteredContacts.filter((c) => selectedContacts.has(c.contactId))
         : filteredContacts;
 
+    // Escape CSV fields according to RFC 4180
+    const escapeCSV = (value: string | number) => {
+      const str = String(value);
+      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
     const csvRows = [
       [
         "Customer Name",
@@ -433,7 +442,9 @@ export default function AccountsReceivableAgentPage() {
       ]),
     ];
 
-    const csvContent = csvRows.map((row) => row.join(",")).join("\n");
+    const csvContent = csvRows
+      .map((row) => row.map(escapeCSV).join(","))
+      .join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
