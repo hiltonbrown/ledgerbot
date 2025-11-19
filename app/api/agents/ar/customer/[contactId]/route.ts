@@ -136,7 +136,7 @@ export async function GET(
     const oldestInvoiceDays =
       unpaidInvoices.length > 0
         ? Math.max(...unpaidInvoices.map((inv) => inv.daysOverdue))
-        : 0;
+        : null;
 
     const response: CustomerInvoiceResponse = {
       customer: {
