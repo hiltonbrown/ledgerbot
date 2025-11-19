@@ -752,7 +752,7 @@ export default function AccountsReceivableAgentPage() {
             </div>
             <div className="flex items-center gap-2">
               <Link
-                href={`/?ar_bulk=${Array.from(selectedContacts).join(",")}`}
+                href={`/?ar_bulk=${Array.from(selectedContacts).map(encodeURIComponent).join(",")}`}
               >
                 <Button size="default">
                   <MessageSquare className="mr-2 h-4 w-4" />
