@@ -1,4 +1,4 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ArContextBanner } from "@/components/ar-context-banner";
 import { Chat } from "@/components/chat";
@@ -56,8 +56,12 @@ export default async function Page({ searchParams }: PageProps) {
 
   if (arContactId) {
     try {
-      const baseUrl =
-        process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      // Get host from headers for server-side fetch
+      const headersList = await headers();
+      const host = headersList.get("host") || "localhost:3000";
+      const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
+      const baseUrl = `${protocol}://${host}`;
+
       const response = await fetch(
         `${baseUrl}/api/agents/ar/customer/${arContactId}`,
         {
