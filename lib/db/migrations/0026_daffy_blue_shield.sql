@@ -1,0 +1,1 @@
+ALTER TABLE "UserSettings" ADD COLUMN "timezone" varchar(50) DEFAULT 'Australia/Sydney';

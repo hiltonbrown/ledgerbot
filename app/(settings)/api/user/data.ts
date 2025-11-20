@@ -59,6 +59,18 @@ const loadDefaultCodePrompt = () => {
   }
 };
 
+// Load default tone and grammar guide from markdown file
+const loadDefaultToneGrammar = () => {
+  try {
+    const promptPath = join(process.cwd(), "prompts", "default-tone-grammar.md");
+    return readFileSync(promptPath, "utf-8");
+  } catch (error) {
+    console.error("Failed to load default tone and grammar guide:", error);
+    // Fallback to basic guide if file can't be read
+    return "When writing business communications, use professional Australian English with clear, concise language. Adapt tone based on audience and context.";
+  }
+};
+
 export type UserSettings = {
   name: string;
   email: string;
@@ -72,12 +84,14 @@ export type UserSettings = {
     lastName: string;
     country: string;
     state: string;
+    timezone: string;
     defaultModel: string;
     defaultReasoning: boolean;
     // Template variables
     companyName?: string;
     industryContext?: string;
     chartOfAccounts?: string;
+    toneAndGrammar?: string;
     customVariables?: Record<string, string>;
     // Custom instructions
     customSystemInstructions?: string;
@@ -236,18 +250,34 @@ export async function getUserSettings(): Promise<UserSettings> {
     companyName = dbSettings.companyName;
   }
 
+  // Get user's timezone and current date in that timezone
+  const userTimezone = dbSettings?.timezone || "Australia/Sydney";
+  const todayDate = new Date().toLocaleString("en-AU", {
+    timeZone: userTimezone,
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "long",
+  });
+
   // Build template variables for substitution
   const templateVars: TemplateVariables = {
     FIRST_NAME: firstName,
     LAST_NAME: lastName,
+    USER_EMAIL: user.email,
     COMPANY_NAME: companyName,
     INDUSTRY_CONTEXT: dbSettings?.industryContext || "",
     CHART_OF_ACCOUNTS: chartOfAccountsText,
+    // Date and timezone context
+    TODAY_DATE: todayDate,
+    TIMEZONE: userTimezone,
     // Xero organisation metadata (Xero best practice fields)
     BASE_CURRENCY: baseCurrency,
     ORGANISATION_TYPE: organisationType,
     IS_DEMO_COMPANY: isDemoCompany ? "true" : "false",
     XERO_SHORT_CODE: shortCode,
+    // Tone and grammar guide (with fallback to default)
+    TONE_AND_GRAMMAR: dbSettings?.toneAndGrammar || loadDefaultToneGrammar(),
     // Custom instructions (user-editable additions to locked base prompts)
     CUSTOM_SYSTEM_INSTRUCTIONS: dbSettings?.customSystemInstructions || "",
     CUSTOM_CODE_INSTRUCTIONS: dbSettings?.customCodeInstructions || "",
@@ -277,7 +307,7 @@ export async function getUserSettings(): Promise<UserSettings> {
     email: user.email,
     jobTitle: USER_SETTINGS.jobTitle,
     language: USER_SETTINGS.language,
-    timezone: USER_SETTINGS.timezone,
+    timezone: dbSettings?.timezone || USER_SETTINGS.timezone,
     about: USER_SETTINGS.about,
     personalisation: {
       isLocked: dbSettings?.isLocked ?? USER_SETTINGS.personalisation.isLocked,
@@ -285,6 +315,7 @@ export async function getUserSettings(): Promise<UserSettings> {
       lastName,
       country: dbSettings?.country || USER_SETTINGS.personalisation.country,
       state: dbSettings?.state || USER_SETTINGS.personalisation.state,
+      timezone: dbSettings?.timezone || USER_SETTINGS.timezone,
       defaultModel:
         dbSettings?.defaultModel || USER_SETTINGS.personalisation.defaultModel,
       defaultReasoning:
@@ -294,6 +325,7 @@ export async function getUserSettings(): Promise<UserSettings> {
       companyName: dbSettings?.companyName || undefined,
       industryContext: dbSettings?.industryContext || undefined,
       chartOfAccounts: dbSettings?.chartOfAccounts || undefined,
+      toneAndGrammar: dbSettings?.toneAndGrammar || undefined,
       customVariables: dbSettings?.customVariables || undefined,
       // Custom instructions
       customSystemInstructions:

@@ -183,6 +183,20 @@
       "when": 1763632388885,
       "tag": "0025_wealthy_ender_wiggin",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1763636029925,
+      "tag": "0026_daffy_blue_shield",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1763638126857,
+      "tag": "0027_handy_rogue",
+      "breakpoints": true
     }
   ]
 }

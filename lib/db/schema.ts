@@ -216,6 +216,7 @@ export const userSettings = pgTable("UserSettings", {
   // firstName and lastName removed - now managed by Clerk
   country: varchar("country", { length: 10 }),
   state: varchar("state", { length: 10 }),
+  timezone: varchar("timezone", { length: 50 }).default("Australia/Sydney"),
   isLocked: boolean("isLocked").default(false),
   defaultModel: varchar("defaultModel", { length: 100 }),
   defaultReasoning: boolean("defaultReasoning").default(false),
@@ -230,6 +231,7 @@ export const userSettings = pgTable("UserSettings", {
   companyName: varchar("companyName", { length: 255 }),
   industryContext: text("industryContext"),
   chartOfAccounts: text("chartOfAccounts"),
+  toneAndGrammar: text("toneAndGrammar"),
   customVariables: jsonb("customVariables").$type<Record<string, string>>(),
   suggestions:
     jsonb("suggestions").$type<

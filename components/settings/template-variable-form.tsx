@@ -42,6 +42,31 @@ type XeroConnection = {
   chartOfAccountsSyncedAt: Date | null;
 };
 
+const TIMEZONE_OPTIONS = [
+  { value: "Australia/Sydney", label: "Sydney (AEDT/AEST)" },
+  { value: "Australia/Melbourne", label: "Melbourne (AEDT/AEST)" },
+  { value: "Australia/Brisbane", label: "Brisbane (AEST)" },
+  { value: "Australia/Perth", label: "Perth (AWST)" },
+  { value: "Australia/Adelaide", label: "Adelaide (ACDT/ACST)" },
+  { value: "Australia/Hobart", label: "Hobart (AEDT/AEST)" },
+  { value: "Australia/Darwin", label: "Darwin (ACST)" },
+  { value: "Australia/Canberra", label: "Canberra (AEDT/AEST)" },
+  { value: "Pacific/Auckland", label: "Auckland (NZDT/NZST)" },
+  { value: "America/New_York", label: "New York (EDT/EST)" },
+  { value: "America/Chicago", label: "Chicago (CDT/CST)" },
+  { value: "America/Denver", label: "Denver (MDT/MST)" },
+  { value: "America/Los_Angeles", label: "Los Angeles (PDT/PST)" },
+  { value: "America/Toronto", label: "Toronto (EDT/EST)" },
+  { value: "America/Vancouver", label: "Vancouver (PDT/PST)" },
+  { value: "Europe/London", label: "London (BST/GMT)" },
+  { value: "Europe/Paris", label: "Paris (CEST/CET)" },
+  { value: "Europe/Berlin", label: "Berlin (CEST/CET)" },
+  { value: "Asia/Singapore", label: "Singapore (SGT)" },
+  { value: "Asia/Hong_Kong", label: "Hong Kong (HKT)" },
+  { value: "Asia/Tokyo", label: "Tokyo (JST)" },
+  { value: "UTC", label: "UTC (Coordinated Universal Time)" },
+];
+
 const STATE_PROVINCE_OPTIONS: Record<
   string,
   { value: string; label: string }[]
@@ -170,10 +195,12 @@ export function TemplateVariableForm({
   const [formState, setFormState] = useState({
     country: data.personalisation.country,
     state: data.personalisation.state,
+    timezone: data.personalisation.timezone || "Australia/Sydney",
     companyName:
       xeroConnection?.tenantName || data.personalisation.companyName || "",
     industryContext: data.personalisation.industryContext || "",
     chartOfAccounts: data.personalisation.chartOfAccounts || "",
+    toneAndGrammar: data.personalisation.toneAndGrammar || "",
     customVariables: data.personalisation.customVariables || {},
   });
   const [isSaving, setIsSaving] = useState(false);
@@ -181,6 +208,7 @@ export function TemplateVariableForm({
 
   const industryContextRef = useRef<HTMLTextAreaElement>(null);
   const chartOfAccountsRef = useRef<HTMLTextAreaElement>(null);
+  const toneAndGrammarRef = useRef<HTMLTextAreaElement>(null);
 
   // Get all defined variables (standard + custom)
   const definedVariables = useMemo(() => {
@@ -209,7 +237,7 @@ export function TemplateVariableForm({
     };
 
   const handleSelectChange =
-    (field: "country" | "state") => (value: string) => {
+    (field: "country" | "state" | "timezone") => (value: string) => {
       setFormState((state) => ({
         ...state,
         [field]: value,
@@ -282,11 +310,13 @@ export function TemplateVariableForm({
           // Location and template variables (Business Information)
           country: formState.country,
           state: formState.state,
+          timezone: formState.timezone,
           // Only save manual company name if no Xero connection
           companyName: xeroConnection ? "" : formState.companyName,
           industryContext: formState.industryContext,
           // Only save manual chart if no Xero connection
           chartOfAccounts: xeroConnection ? "" : formState.chartOfAccounts,
+          toneAndGrammar: formState.toneAndGrammar,
           customVariables: formState.customVariables,
         }),
       });
@@ -384,6 +414,30 @@ export function TemplateVariableForm({
                   State or province for location-specific guidance
                 </p>
               </div>
+            </div>
+
+            {/* Timezone */}
+            <div className="space-y-2">
+              <Label htmlFor="timezone">Timezone</Label>
+              <Select
+                disabled={data.personalisation.isLocked || isSaving}
+                onValueChange={handleSelectChange("timezone")}
+                value={formState.timezone}
+              >
+                <SelectTrigger id="timezone">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TIMEZONE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-muted-foreground text-xs">
+                Your local timezone for date/time context in AI responses
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -616,6 +670,47 @@ export function TemplateVariableForm({
               </p>
             </div>
 
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="toneAndGrammar">
+                  Tone and Grammar
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="ml-1 inline h-3.5 w-3.5 text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-md">
+                        <p>
+                          Define your preferred writing style for business
+                          communications (emails, reports, correspondence). The
+                          AI will use these guidelines when generating content.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </Label>
+              </div>
+              <Textarea
+                className="font-mono text-sm"
+                disabled={data.personalisation.isLocked || isSaving}
+                id="toneAndGrammar"
+                onChange={handleInputChange("toneAndGrammar")}
+                placeholder="Example: Use formal, professional tone with British spelling conventions. Keep sentences concise and direct..."
+                ref={toneAndGrammarRef}
+                rows={12}
+                value={formState.toneAndGrammar}
+              />
+              <p className="text-muted-foreground text-xs">
+                Customize writing style, grammar, and tone preferences for
+                business communications. Available in prompts as{" "}
+                <code className="rounded bg-muted px-1 py-0.5">
+                  {"{"}
+                  {"{"}TONE_AND_GRAMMAR{"}"}
+                  {"}"}
+                </code>
+              </p>
+            </div>
+
             <CustomVariablesEditor
               disabled={data.personalisation.isLocked || isSaving}
               onChange={handleCustomVariablesChange}
@@ -639,12 +734,14 @@ export function TemplateVariableForm({
                   setFormState({
                     country: data.personalisation.country,
                     state: data.personalisation.state,
+                    timezone: data.personalisation.timezone || "Australia/Sydney",
                     companyName:
                       xeroConnection?.tenantName ||
                       data.personalisation.companyName ||
                       "",
                     industryContext: data.personalisation.industryContext || "",
                     chartOfAccounts: data.personalisation.chartOfAccounts || "",
+                    toneAndGrammar: data.personalisation.toneAndGrammar || "",
                     customVariables: data.personalisation.customVariables || {},
                   });
                 }}

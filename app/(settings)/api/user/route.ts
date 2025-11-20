@@ -20,6 +20,7 @@ export async function POST(request: Request) {
       // firstName and lastName are now managed by Clerk, not stored in userSettings
       country,
       state,
+      timezone,
       isLocked,
       defaultModel,
       defaultReasoning,
@@ -31,6 +32,7 @@ export async function POST(request: Request) {
       companyName,
       industryContext,
       chartOfAccounts,
+      toneAndGrammar,
       customVariables,
       // Custom instructions
       customSystemInstructions,
@@ -51,6 +53,7 @@ export async function POST(request: Request) {
         .set({
           country,
           state,
+          timezone,
           isLocked,
           defaultModel,
           defaultReasoning,
@@ -62,6 +65,7 @@ export async function POST(request: Request) {
           companyName,
           industryContext,
           chartOfAccounts,
+          toneAndGrammar,
           customVariables,
           // Custom instructions
           customSystemInstructions,
@@ -76,6 +80,7 @@ export async function POST(request: Request) {
         userId: user.id,
         country,
         state,
+        timezone,
         isLocked,
         defaultModel,
         defaultReasoning,
@@ -87,6 +92,7 @@ export async function POST(request: Request) {
         companyName,
         industryContext,
         chartOfAccounts,
+        toneAndGrammar,
         customVariables,
         // Custom instructions
         customSystemInstructions,
