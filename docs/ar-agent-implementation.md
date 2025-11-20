@@ -67,7 +67,7 @@ All deliverables have been implemented and are ready for testing.
   - `syncXeroTool` - Sync from Xero (or mock)
 
 ### Agent & Workflow
-- `/prompts/ar/system.md` - Comprehensive system prompt with:
+- `/prompts/ar-system-prompt.md` - Comprehensive system prompt with:
   - Role definition and objectives
   - Tone guidelines (polite/firm/final)
   - Workflow states documentation

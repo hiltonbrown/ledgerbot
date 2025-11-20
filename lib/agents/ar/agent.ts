@@ -17,7 +17,7 @@ import {
 } from "@/lib/tools/ar/messaging";
 
 // Load system prompt from markdown file
-const SYSTEM_PROMPT_PATH = join(process.cwd(), "prompts", "ar", "system.md");
+const SYSTEM_PROMPT_PATH = join(process.cwd(), "prompts", "ar-system-prompt.md");
 const SYSTEM_INSTRUCTIONS = readFileSync(SYSTEM_PROMPT_PATH, "utf-8");
 
 /**

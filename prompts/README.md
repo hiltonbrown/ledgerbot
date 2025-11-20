@@ -157,12 +157,71 @@ To update the default code prompt:
 If the file cannot be read for any reason, a simple fallback prompt is used:
 > "You are a Python code generator that creates self-contained, executable code snippets..."
 
+### ap-system-prompt.md
+
+The Accounts Payable (AP) agent system prompt for supplier bill management and payment automation.
+
+**Purpose:**
+- Defines the AP agent's role in managing vendor bills, payment workflows, and GST compliance
+- Provides comprehensive bill processing capabilities (extraction, coding, approval, payment)
+- Establishes Australian supplier validation and ABN checking requirements
+- Includes payment risk assessment and duplicate detection
+- Defines email draft generation for supplier communication (no direct sending)
+
+**Key Features:**
+- Invoice data extraction from PDFs and images
+- Vendor matching and creation
+- GST-aware bill coding suggestions
+- Payment run proposals with risk assessment
+- Approval workflow tracking
+- Xero integration for real-time financial data
+
+**Usage:**
+This file is automatically loaded by `lib/agents/ap/agent.ts` at runtime.
+
+**Location:** `/prompts/ap-system-prompt.md`
+
+### ar-system-prompt.md
+
+The Accounts Receivable (AR) agent system prompt for customer invoice management and payment reminders.
+
+**Purpose:**
+- Defines the AR agent's role in managing receivables, reducing DSO, and maintaining customer relationships
+- Provides invoice tracking, late payment risk prediction, and reminder generation
+- Establishes communication tone guidelines (polite, firm, final) based on overdue periods
+- Includes payment reconciliation and customer note management
+- Defines artifact creation for payment reminders (no direct sending)
+
+**Key Features:**
+- Overdue invoice tracking with risk scores
+- Payment reminder generation (email/SMS) with tone customization
+- Late payment probability prediction
+- Payment reconciliation and status updates
+- Customer communication history tracking
+- Xero synchronization for real-time invoice data
+
+**Usage:**
+This file is automatically loaded by `lib/agents/ar/agent.ts` at runtime.
+
+**Location:** `/prompts/ar-system-prompt.md`
+
+## Prompt File Naming Convention
+
+All system prompts follow a consistent naming convention:
+- **Default prompts**: `default-{purpose}-prompt.md` (e.g., `default-system-prompt.md`, `default-code-prompt.md`)
+- **Agent prompts**: `{agent-code}-system-prompt.md` (e.g., `ap-system-prompt.md`, `ar-system-prompt.md`)
+
+This ensures:
+- Easy identification of prompt purpose
+- Consistent maintenance and updates
+- Clear alphabetical sorting in directory listings
+
 ## Adding New Prompts
 
 To add new prompt templates:
-1. Create a new `.md` file in this directory
-2. Update the relevant code to load the new prompt
-3. Document the new prompt in this README
+1. Create a new `.md` file in this directory following the naming convention
+2. Update the relevant code to load the new prompt (typically in `lib/agents/{agent-name}/agent.ts`)
+3. Document the new prompt in this README with purpose, features, usage, and location
 
 ## File Format
 

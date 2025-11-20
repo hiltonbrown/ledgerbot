@@ -1,0 +1,2 @@
+DROP INDEX "ar_invoice_external_ref_user_id_unique";--> statement-breakpoint
+CREATE UNIQUE INDEX "ar_invoice_external_ref_user_id_unique" ON "ArInvoice" USING btree ("externalRef","userId") WHERE "ArInvoice"."externalRef" IS NOT NULL;

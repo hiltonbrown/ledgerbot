@@ -1,14 +1,13 @@
 import type { InferSelectModel } from "drizzle-orm";
 import {
   boolean,
-  foreignKey,
   index,
-  integer,
   jsonb,
   numeric,
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
@@ -61,7 +60,7 @@ export const arInvoice = pgTable(
     status: varchar("status", { length: 20 })
       .notNull()
       .default("awaiting_payment"),
-    externalRef: varchar("externalRef", { length: 255 }), // Xero invoice ID
+    externalRef: varchar("externalRef", { length: 255 }).notNull(), // Xero invoice ID
     metadata: jsonb("metadata").$type<Record<string, unknown>>(),
     createdAt: timestamp("createdAt").notNull().defaultNow(),
     updatedAt: timestamp("updatedAt").notNull().defaultNow(),
@@ -72,6 +71,10 @@ export const arInvoice = pgTable(
     statusIdx: index("ar_invoice_status_idx").on(table.status),
     dueDateIdx: index("ar_invoice_due_date_idx").on(table.dueDate),
     externalRefIdx: index("ar_invoice_external_ref_idx").on(table.externalRef),
+    externalRefUserIdUnique: uniqueIndex("ar_invoice_external_ref_user_id_unique").on(
+      table.externalRef,
+      table.userId
+    ),
   })
 );
 

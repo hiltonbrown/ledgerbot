@@ -405,3 +405,5 @@ export const qaReviewRequest = pgTable(
 
 export type QaReviewRequest = InferSelectModel<typeof qaReviewRequest>;
 export type QaReviewRequestInsert = typeof qaReviewRequest.$inferInsert;
+
+export * from "./schema/ar";

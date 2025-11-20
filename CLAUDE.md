@@ -134,9 +134,9 @@ Copy `.env.example` to `.env.local` and configure:
   - Template placeholders for industry-specific customization: `{{INDUSTRY_CONTEXT}}`, `{{CHART_OF_ACCOUNTS}}`
   - Users can override in personalisation settings (`/settings/personalisation`)
   - See `prompts/README.md` for maintenance documentation
-- **Agent-Specific Prompts**: Specialized instructions for accounting agents
+- **Agent-Specific Prompts**: Specialized instructions for accounting agents (all in `prompts/` directory)
   - `ap-system-prompt.md`: Accounts Payable agent instructions (vendor validation, bill coding, payment workflows)
-  - `ar/system.md`: Accounts Receivable agent instructions (invoice tracking, reminder generation, DSO management)
+  - `ar-system-prompt.md`: Accounts Receivable agent instructions (invoice tracking, reminder generation, DSO management)
 
 **AI Tools** (`lib/ai/tools/`):
 - `createDocument`: Creates text, code, image, or sheet artifacts

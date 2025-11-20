@@ -240,7 +240,28 @@ function getRealXeroProvider(
             100 // pageSize
           );
 
-          return (response.body.invoices || []) as XeroInvoice[];
+          // Transform Xero API invoices to our format
+          return (response.body.invoices || []).map((inv: any) => ({
+            invoiceID: inv.invoiceID || "",
+            invoiceNumber: inv.invoiceNumber || "",
+            type: inv.type || "",
+            contact: {
+              contactID: inv.contact?.contactID || "",
+              name: inv.contact?.name || "",
+              emailAddress: inv.contact?.emailAddress,
+              phones: inv.contact?.phones,
+            },
+            dateString: inv.date ? new Date(inv.date).toISOString().split("T")[0] : "",
+            dueDateString: inv.dueDate ? new Date(inv.dueDate).toISOString().split("T")[0] : "",
+            status: inv.status || "",
+            lineAmountTypes: inv.lineAmountTypes || "",
+            subTotal: inv.subTotal || 0,
+            totalTax: inv.totalTax || 0,
+            total: inv.total || 0,
+            amountDue: inv.amountDue || 0,
+            amountPaid: inv.amountPaid || 0,
+            currencyCode: inv.currencyCode || "AUD",
+          }));
         });
 
         console.log(`[AR Xero] Retrieved ${allInvoices.length} total invoices`);

@@ -61,14 +61,32 @@ export async function POST(req: Request) {
           return null;
         }
 
+        // Validate dates
+        const issueDate = new Date(inv.dateString);
+        const dueDate = new Date(inv.dueDateString);
+
+        if (Number.isNaN(issueDate.getTime())) {
+          console.warn(
+            `[AR Sync] Invalid issueDate for invoice ${inv.invoiceNumber}: ${inv.dateString}`
+          );
+          return null;
+        }
+
+        if (Number.isNaN(dueDate.getTime())) {
+          console.warn(
+            `[AR Sync] Invalid dueDate for invoice ${inv.invoiceNumber}: ${inv.dueDateString}`
+          );
+          return null;
+        }
+
         const amountDue = Number.parseFloat(inv.amountDue.toFixed(2));
         const hasAmountDue = amountDue > 0;
 
         return {
           contactId,
           number: inv.invoiceNumber,
-          issueDate: new Date(inv.dateString),
-          dueDate: new Date(inv.dueDateString),
+          issueDate,
+          dueDate,
           currency: inv.currencyCode,
           subtotal: inv.subTotal.toFixed(2),
           tax: inv.totalTax.toFixed(2),
@@ -78,7 +96,7 @@ export async function POST(req: Request) {
           externalRef: inv.invoiceID,
         };
       })
-      .filter((inv) => inv !== null);
+      .filter((inv): inv is NonNullable<typeof inv> => inv !== null);
 
     const invoices = await upsertInvoices(user.id, invoicesToUpsert);
 

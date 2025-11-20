@@ -4,12 +4,12 @@ This file provides guidance to Google's Gemini when working with code in this re
 
 ## Project Overview
 
-LedgerBot (officially "intellisync-chatbot" in package.json) is an AI-powered accounting and bookkeeping workspace application built on Next.js 15. The app features intelligent chat, document management, specialized accounting agents, and collaborative AI tools. It uses the Vercel AI SDK with multiple AI providers (Anthropic Claude, OpenAI GPT-5, Google Gemini) and provides both conversational AI and artifact-based content creation, with specialized agent workspaces for bookkeeping automation.
+LedgerBot (officially "intellisync-chatbot" in package.json) is an AI-powered accounting and bookkeeping workspace application built on Next.js 16. The app features intelligent chat, document management, specialized accounting agents, and collaborative AI tools. It uses the Vercel AI SDK with multiple AI providers (Anthropic Claude, OpenAI GPT-5, Google Gemini) and provides both conversational AI and artifact-based content creation, with specialized agent workspaces for bookkeeping automation.
 
 ## Key Technologies
 
-- **Framework**: Next.js 15 with experimental PPR (Partial Prerendering)
-- **AI SDK**: Vercel AI SDK with multiple providers (Anthropic Claude, OpenAI GPT-5, Google Gemini, xAI Grok) via AI Gateway
+- **Framework**: Next.js 16 with experimental PPR (Partial Prerendering)
+- **AI SDK**: Vercel AI SDK with multiple providers (Anthropic Claude, OpenAI GPT-5, Google Gemini) via AI Gateway
 - **Database**: PostgreSQL with Drizzle ORM
 - **Authentication**: Clerk (clerk.com) - Modern authentication and user management
 - **Storage**: Vercel Blob for file uploads
@@ -18,6 +18,7 @@ LedgerBot (officially "intellisync-chatbot" in package.json) is an AI-powered ac
 - **Testing**: Playwright
 - **Monitoring**: TokenLens for token usage tracking with cached model catalog
 - **Integration**: Model Context Protocol (MCP) SDK for third-party service integrations
+- **Web Scraping**: Mastra ingestion pipeline for regulatory document scraping
 
 ## Setup & Maintenance Notes
 ⚠️ Avoid editing node_modules or dependency source files.
@@ -28,6 +29,8 @@ Any required changes should be handled through configuration overrides or adapte
 ```bash
 # Development
 pnpm dev                 # Start dev server with Turbo
+pnpm studio              # Start Mastra Studio (agent testing UI)
+pnpm studio:https        # Start Mastra Studio with HTTPS
 
 # Building & Production
 pnpm build              # Run migrations and build for production
@@ -58,6 +61,8 @@ Copy `.env.example` to `.env.local` and configure:
 - `AI_GATEWAY_API_KEY`: Required for non-Vercel deployments (OIDC used on Vercel)
 - `AI_GATEWAY_URL`: Optional, override when using a custom Gateway domain
 - `REDIS_URL`: Optional, enables resumable streams
+- `FIRECRAWL_API_KEY`: Required for regulatory document scraping (get from https://firecrawl.dev/)
+- `CRON_SECRET`: Required for securing cron job endpoints (generate with: `openssl rand -base64 32`)
 
 ## Architecture
 
@@ -73,13 +78,13 @@ Copy `.env.example` to `.env.local` and configure:
   - `api/suggestions/route.ts`: Document suggestion system
   - `api/vote/route.ts`: Message voting
 - `app/agents/`: Specialized AI agent workspaces for accounting automation
-  - `analytics/`: Narrative-rich reporting with KPI annotations and exports
-  - `compliance/`: ATO-aware co-pilot for BAS, payroll, and super obligations
-  - `docmanagement/`: AI-assisted intake for invoices, receipts, and bank statements
-  - `forecasting/`: Scenario modeling and runway projections with LangGraph workflows
-  - `qanda/`: Advisory Q&A assistant for policies and ledger context
-  - `reconciliations/`: Continuous bank feed matching and ledger adjustment proposals
-  - `workflow/`: Graph orchestrations across document, reconciliation, and compliance agents
+  - `analytics/`: Narrative-rich reporting with KPI annotations and exports ✅
+  - `ap/`: Accounts Payable agent for supplier bill management and payment automation ✅
+  - `ar/`: Accounts Receivable agent for customer invoice management and payment reminders ✅
+  - `docmanagement/`: AI-assisted intake for invoices, receipts, and bank statements ⚠️ Hybrid
+  - `forecasting/`: Scenario modeling and runway projections with Mastra workflows ✅
+  - `qanda/`: Advisory Q&A assistant for policies and ledger context ✅
+  - `workflow/`: Graph orchestrations across document and agent workflows ✅
   - `page.tsx`: Agent overview dashboard with automation metrics and health signals
 - `app/(settings)/`: User settings and management
   - `settings/personalisation/`: User preferences including default model and reasoning settings
@@ -111,20 +116,24 @@ Copy `.env.example` to `.env.local` and configure:
   - `openai-gpt-5-chat`: GPT-5.1 (flagship OpenAI model)
   - `openai-gpt-5-mini`: GPT-5 Mini (fast, cost-efficient)
   - `google-gemini-2-5-flash`: Gemini 2.5 Flash (speed-optimized with reasoning)
-- Reasoning models use `extractReasoningMiddleware` with `<think>` tags
-- Additional specialized models:
-  - `title-model`: xAI Grok 2 (`xai/grok-2-1212`) for chat title generation
-  - `artifact-model`: xAI Grok 2 (`xai/grok-2-1212`) for document generation
+- All models marked with `isReasoning: true` use `extractReasoningMiddleware` with `<think>` tags
 - **TokenLens Integration**: Uses cached model catalog (`unstable_cache`) with 24h revalidation
   - `getTokenlensCatalog()` fetches model pricing and capabilities from TokenLens API
   - Falls back to default catalog if fetch fails
   - Enriches token usage data with cost calculations in `onFinish` callback
 
-**System Prompts** (`lib/ai/prompts.ts`):
+**System Prompts** (`lib/ai/prompts.ts`, `prompts/`):
 - Reasoning models use regular prompt only
 - Non-reasoning models include artifacts system prompt for document creation
 - All prompts include geolocation hints from Vercel Functions (latitude, longitude, city, country)
 - Additional prompts: `codePrompt` (Python code generation), `sheetPrompt` (spreadsheet creation), `updateDocumentPrompt` (document improvement)
+- **Default System Prompt**: Stored as markdown file in `prompts/default-system-prompt.md`
+  - Loaded at runtime by `app/(settings)/api/user/data.ts`
+  - Defines LedgerBot's role as Australian business accounting assistant
+  - Includes comprehensive accounting capabilities, GST/BAS compliance, Australian terminology
+  - Template placeholders for industry-specific customization: `{{INDUSTRY_CONTEXT}}`, `{{CHART_OF_ACCOUNTS}}`
+  - Users can override in personalisation settings (`/settings/personalisation`)
+  - See `prompts/README.md` for maintenance documentation
 
 **AI Tools** (`lib/ai/tools/`):
 - `createDocument`: Creates text, code, image, or sheet artifacts
@@ -136,7 +145,7 @@ Copy `.env.example` to `.env.local` and configure:
   - `xero_get_invoice`: Get detailed invoice information by ID
   - `xero_list_contacts`: Search contacts (customers/suppliers) by name or email
   - `xero_get_contact`: Get detailed contact information by ID
-  - `xero_list_accounts`: Get chart of accounts with optional type filtering
+  - `xero_list_accounts`: Get chart of accounts from **database cache** (no API calls)
   - `xero_list_journal_entries`: Get manual journal entries with date filtering
   - `xero_get_bank_transactions`: Get bank transactions with account and date filters
   - `xero_get_organisation`: Get connected Xero organisation information
@@ -166,6 +175,11 @@ LedgerBot includes built-in Xero accounting integration using Model Context Prot
 - Encrypted OAuth tokens (access and refresh)
 - Token expiry tracking and scope storage
 - Active connection status flag
+- **Chart of Accounts Cache**:
+  - `chartOfAccounts`: JSONB storage for account data
+  - `chartOfAccountsSyncedAt`: Timestamp tracking last sync
+  - `chartOfAccountsVersion`: Xero API version used
+  - `chartOfAccountsHash`: SHA-256 hash for change detection
 
 **OAuth Flow** (`app/api/xero/`):
 - `/api/xero/auth`: Initialize OAuth flow with state verification
@@ -195,6 +209,7 @@ XERO_ENCRYPTION_KEY=32_byte_hex_key_for_aes256
 - Conditionally includes Xero tools in available tools list
 - Tools are automatically available when user has connected Xero
 - No configuration needed - tools are added dynamically
+- Chart of accounts and company name included in system prompt via template variables
 
 **Settings UI** (`app/(settings)/settings/integrations/page.tsx`):
 - Server-rendered Xero connection status
@@ -227,25 +242,30 @@ Artifacts are special UI components that render AI-generated content in a side p
 - **Behavior**: Real-time updates visible to user during AI generation
 - **Important**: Never update documents immediately after creation - wait for user feedback
 
-### Agent Workspaces
+### Agent Workspaces (Mastra Framework)
 
-LedgerBot features specialized AI agent workspaces for accounting automation (`app/agents/`):
+LedgerBot features specialized AI agent workspaces for accounting automation built on **Mastra** (`app/agents/`).
 
-**Available Agents**:
-1. **Document Processing** (`/agents/docmanagement`): AI-assisted intake for invoices, receipts, and bank statements with automated OCR and validation queues
-2. **Reconciliations** (`/agents/reconciliations`): Continuous bank feed matching with fuzzy logic suggestions and ledger adjustment proposals
-3. **Compliance** (`/agents/compliance`): ATO-aware co-pilot for BAS, payroll, and super obligations with automatic reminders
-4. **Analytics** (`/agents/analytics`): Narrative-rich reporting with KPI annotations, drill-down tables, and presentation-ready exports
-5. **Forecasting** (`/agents/forecasting`): Scenario modeling and runway projections with LangGraph workflows
-6. **Advisory Q&A** (`/agents/qanda`): Regulatory-aware conversational assistant for Australian tax law, Fair Work awards, and compliance queries with citations and confidence scoring
-7. **Workflow Supervisor** (`/agents/workflow`): Graph orchestrations across document, reconciliation, and compliance agents with traceability
+**Framework**: Mastra ([mastra.ai](https://mastra.ai)) provides unified architecture, tool integration, and workflow orchestration.
+
+**Implemented Agents** (using Mastra):
+1. **Advisory Q&A** (`/agents/qanda`): Regulatory-aware conversational assistant for Australian tax law, Fair Work awards, and compliance queries with citations and confidence scoring ✅
+2. **Forecasting** (`/agents/forecasting`): Scenario modeling and runway projections with Mastra workflows ✅
+3. **Analytics** (`/agents/analytics`): Narrative-rich reporting with KPI annotations, drill-down tables, and presentation-ready exports ✅
+4. **Workflow Supervisor** (`/agents/workflow`): Graph orchestrations across document and agent workflows with traceability ✅
+5. **Accounts Payable (AP)** (`/agents/ap`): Supplier bill management with vendor validation, coding suggestions, and payment automation ✅
+6. **Accounts Receivable (AR)** (`/agents/ar`): Customer invoice management with payment reminders, late risk prediction, and DSO reduction ✅
+7. **Document Processing** (`/agents/docmanagement`): AI-assisted intake for invoices, receipts, and bank statements with automated OCR and validation queues ⚠️ Hybrid
+
+**Planned Agents** (not yet implemented):
+8. **Reconciliations** (`/agents/reconciliations`): Continuous bank feed matching with fuzzy logic suggestions and ledger adjustment proposals ❌
+9. **Compliance** (`/agents/compliance`): ATO-aware co-pilot for BAS, payroll, and super obligations with automatic reminders ❌
 
 **Agent Overview Dashboard** (`/agents`):
-- Displays automation coverage metrics (76% of workflows delegated)
-- Shows human review queue with escalations (28 items across validation, mismatches, clarifications)
-- Provides agent-specific metrics (docs processed, match rates, upcoming lodgments, etc.)
-- Includes change management tracking (releases, risk register, recommended actions)
+- Displays 7 agent cards (DocManagement, Analytics, Forecasting, AP, AR, Q&A, Workflow)
 - Links to individual agent workspace pages
+- Shows agent-specific metrics and health signals
+- Future: Automation coverage metrics, human review queue, change management tracking
 
 **Agent Components** (`components/agents/`):
 - `agent-summary-card.tsx`: Displays agent status and metrics on overview page
@@ -254,7 +274,7 @@ LedgerBot features specialized AI agent workspaces for accounting automation (`a
 
 The Q&A agent provides regulatory-aware assistance for Australian tax law, employment law, and compliance obligations.
 
-**Implementation Status**: UI complete, backend RAG system planned for future implementation
+**Implementation Status**: **FULLY IMPLEMENTED** ✅
 
 **Key Features** (`/agents/qanda/page.tsx`):
 - **Interactive Chat Interface**: Full conversation history with real-time messaging
@@ -264,6 +284,23 @@ The Q&A agent provides regulatory-aware assistance for Australian tax law, emplo
 - **Human Review Escalation**: Flagging and escalation for low-confidence responses
 - **Suggested Questions**: Common Australian regulatory queries (minimum wage, super, payroll tax, BAS)
 - **Stream Controls**: Toggles for streaming responses and showing/hiding citations
+
+**Backend Implementation** (completed):
+- **Database schema**: `regulatoryDocument`, `regulatoryScrapeJob`, and `qaReviewRequest` tables with full-text search
+- **Configuration system**: Markdown-based source management (`config/regulatory-sources.md`) with 10 Australian sources
+- **Scraping infrastructure**: Mastra-powered ingestion that fetches sources directly, summarises obligations, and updates the Postgres RAG catalog
+- **Full-text search**: PostgreSQL tsvector with GIN indexes, relevance ranking, and context excerpts
+- **AI tool**: `regulatorySearch` tool for RAG retrieval with category filtering
+- **Confidence scoring**: Multi-factor algorithm analyzing citations, relevance, hedging language, and Xero integration
+- **API endpoints**:
+  - `/api/agents/qanda` - Streaming chat with regulatory + Xero tools
+  - `/api/regulatory/search` - Full-text search
+  - `/api/regulatory/scrape` - Manual scraping trigger
+  - `/api/regulatory/stats` - Knowledge base statistics
+  - `/api/agents/qanda/review` - Review request management
+  - `/api/cron/regulatory-sync` - Scheduled daily sync
+- **Cron job**: Daily scheduled sync via Vercel Cron (2:00 AM UTC) for high-priority sources
+- **Human review**: Review request system for low-confidence responses with database tracking
 
 **Settings Integration** (`/settings/agents`):
 - Response confidence threshold (0-100%)
@@ -278,20 +315,17 @@ The Q&A agent provides regulatory-aware assistance for Australian tax law, emplo
 - Citation display toggle
 - Human escalation toggle for low-confidence queries
 
-**API Routes**:
-- `/api/regulatory/stats`: Returns regulatory knowledge base statistics (placeholder implementation)
-- Future: `/api/agents/qanda`: Main Q&A agent endpoint with RAG integration
+**Usage**:
+Users can now ask regulatory questions directly in the Q&A agent at `/agents/qanda`:
+- "What is the current minimum wage in Australia?"
+- "What are my superannuation obligations?"
+- "What is the payroll tax threshold in NSW?"
+- "When are BAS lodgements due for quarterly reporters?"
+- "What Fair Work awards apply to hospitality workers?"
 
-**Planned Backend Integration**:
-The regulatory RAG system will include:
-- Database schema for `regulatoryDocument` and `regulatoryScrapeJob` tables
-- Automated regulatory scraping via Mastra ingestion workflows for Fair Work awards, ATO rulings, and state payroll tax guidance
-- Markdown-based configuration system (`/config/regulatory-sources.md`) for maintainable source management
-- PostgreSQL full-text search for regulatory document retrieval
-- Vercel Cron jobs for scheduled content updates
-- Citation extraction and confidence scoring in responses
+The agent searches the regulatory knowledge base using PostgreSQL full-text search and provides answers with citations to official government sources (Fair Work, ATO, state revenue offices). Responses include confidence scores and automatic review request creation for low-confidence answers.
 
-See `/docs/qanda-agent-ui-update.md` for detailed UI implementation notes.
+See `/docs/regulatory-system-summary.md` for complete implementation details and `/docs/qanda-agent-ui-update.md` for UI implementation notes.
 
 ### Database Schema
 
@@ -314,7 +348,7 @@ See `/docs/qanda-agent-ui-update.md` for detailed UI implementation notes.
   - Metadata: `description`, `tags`, `isPinned`
   - Usage timestamps: `createdAt`, `lastUsedAt`, `processedAt`
 - `UserSettings`: User preferences and customization
-  - Profile: `firstName`, `lastName`, `country`, `state`
+  - Profile: `country`, `state` (firstName/lastName removed - now managed by Clerk)
   - AI preferences: `defaultModel`, `defaultReasoning`
   - Custom prompts: `systemPrompt`, `codePrompt`, `sheetPrompt`
   - Customizable chat suggestions with enable/disable and ordering
@@ -324,6 +358,15 @@ See `/docs/qanda-agent-ui-update.md` for detailed UI implementation notes.
   - Token expiry tracking and automatic refresh
   - OAuth scopes and active connection status
   - Multi-organisation support (one active connection per user)
+
+**Accounts Receivable Tables** (`lib/db/schema/ar.ts`):
+- `arContact`, `arInvoice`, `arPayment`, `arReminder`, `arNote`, `arCommsArtefact`
+- Full payment tracking, reminders, and Xero synchronization
+
+**Regulatory Tables** (`lib/db/schema.ts`):
+- `regulatoryDocument`: Full-text searchable regulatory content
+- `regulatoryScrapeJob`: Scraping job tracking
+- `qaReviewRequest`: Human review for low-confidence responses
 
 **Migration Strategy**:
 - Old message/vote tables are deprecated but retained (Message, Vote)
@@ -509,15 +552,172 @@ Environment variable `PLAYWRIGHT=True` is set automatically by test script.
 4. Update `ArtifactKind` type in `components/artifact.tsx`
 5. Add rendering logic to artifact renderer
 
-### Adding a New Agent Workspace
+### Adding a New Mastra Agent
 
-1. Create new directory in `app/agents/your-agent/`
-2. Create `page.tsx` with agent-specific UI and metrics
-3. Add agent entry to `agentSnapshots` array in `app/agents/page.tsx`:
-   - Include title, description, href, icon, and metrics
-4. Create agent-specific components in `components/agents/` if needed
-5. Add agent settings page section in `app/(settings)/settings/agents/page.tsx`
-6. Update agent configuration management as needed
+**Step 1: Create Agent Directory Structure**
+```bash
+mkdir -p lib/agents/your-agent
+```
+
+**Step 2: Define Agent with Mastra** (`lib/agents/your-agent/agent.ts`)
+```typescript
+import { Agent } from "@mastra/core/agent";
+import { myProvider } from "@/lib/ai/providers";
+
+const INSTRUCTIONS = `You are [agent description]...`;
+
+export const yourAgent = new Agent({
+  name: "your-agent",
+  instructions: INSTRUCTIONS,
+  model: myProvider.languageModel("anthropic-claude-sonnet-4-5"),
+  tools: {
+    // Register your tools here
+  },
+});
+
+// Optional: Agent with conditional tools (e.g., Xero)
+export function createYourAgentWithXero(userId: string) {
+  const xeroTools = createYourAgentXeroTools(userId);
+
+  return new Agent({
+    name: "your-agent-with-xero",
+    instructions: INSTRUCTIONS,
+    model: myProvider.languageModel("anthropic-claude-sonnet-4-5"),
+    tools: {
+      // Base tools
+      ...xeroTools, // Conditional tools
+    },
+  });
+}
+```
+
+**Step 3: Create Tools** (`lib/agents/your-agent/tools.ts`)
+```typescript
+import { createTool } from "@mastra/core/tools";
+import { z } from "zod";
+
+export const yourToolName = createTool({
+  id: "yourToolName",
+  description: "Clear description of what this tool does",
+  inputSchema: z.object({
+    param: z.string().describe("Parameter description"),
+  }),
+  outputSchema: z.object({
+    result: z.string(),
+  }),
+  execute: async ({ context, inputData }) => {
+    // Tool logic here
+    return { result: "..." };
+  },
+});
+```
+
+**Step 4: Register Agent** (`lib/mastra/index.ts`)
+```typescript
+import { yourAgent } from "@/lib/agents/your-agent/agent";
+
+export const mastra = new Mastra({
+  agents: {
+    // ... existing agents
+    yourAgent: yourAgent,
+  },
+});
+```
+
+**Step 5: Create API Route** (`app/api/agents/your-agent/route.ts`)
+```typescript
+import { createUIMessageStream, JsonToSseTransformStream } from "ai";
+import { NextResponse } from "next/server";
+import type { CoreMessage } from "ai";
+import { yourAgent, createYourAgentWithXero } from "@/lib/agents/your-agent/agent";
+import { getAuthUser } from "@/lib/auth/clerk-helpers";
+import { getActiveXeroConnection, getChatById, saveChat, saveMessages } from "@/lib/db/queries";
+
+export const maxDuration = 60;
+
+export async function POST(req: Request) {
+  const user = await getAuthUser();
+  if (!user) return new NextResponse("Not authenticated", { status: 401 });
+
+  const { messages, settings } = await req.json();
+
+  // Conditional Xero integration
+  const xeroConnection = await getActiveXeroConnection(user.id);
+  const agent = xeroConnection ? createYourAgentWithXero(user.id) : yourAgent;
+
+  const stream = createUIMessageStream({
+    execute: ({ writer: dataStream }) => {
+      const result = agent.stream({
+        messages,
+        maxSteps: 5,
+        onFinish: async ({ text, toolCalls, usage }) => {
+          // Save messages to database
+        },
+      });
+      dataStream.merge(result.toUIMessageStream());
+    },
+  });
+
+  return new Response(stream.pipeThrough(new JsonToSseTransformStream()));
+}
+```
+
+**Step 6: Create UI Page** (`app/agents/your-agent/page.tsx`)
+1. Create agent-specific UI with metrics and chat interface
+2. Add agent entry to `agentSnapshots` in `app/agents/page.tsx`
+3. Create agent-specific components in `components/agents/` if needed
+
+**Step 7: Add Agent Settings** (optional)
+- Add configuration section in `app/(settings)/settings/agents/page.tsx`
+
+### Adding a New Mastra Workflow
+
+**Step 1: Define Workflow Steps** (`lib/agents/workflow/workflows.ts`)
+```typescript
+import { createWorkflow, createStep } from "@mastra/core";
+import { z } from "zod";
+
+const step1 = createStep({
+  id: "step-1",
+  inputSchema: z.object({ input: z.string() }),
+  outputSchema: z.object({ output: z.string() }),
+  execute: async ({ inputData }) => {
+    // Step logic
+    return { output: "result" };
+  },
+});
+
+export const yourWorkflow = createWorkflow({
+  id: "your-workflow",
+  inputSchema: z.object({ userId: z.string(), data: z.string() }),
+  outputSchema: z.object({ success: z.boolean() }),
+})
+  .then(step1)
+  .then(step2)  // Sequential
+  .commit();
+```
+
+**Step 2: Create Workflow Tool** (`lib/agents/workflow/supervisor.ts`)
+```typescript
+import { createTool } from "@mastra/core/tools";
+import { yourWorkflow } from "./workflows";
+
+const executeYourWorkflowTool = createTool({
+  id: "executeYourWorkflow",
+  description: "Execute your workflow",
+  inputSchema: z.object({ userId: z.string(), data: z.string() }),
+  outputSchema: z.object({ success: z.boolean() }),
+  execute: async ({ inputData }) => {
+    const result = await yourWorkflow.start(inputData);
+    return result;
+  },
+});
+
+// Register in workflowSupervisorAgent tools
+```
+
+**Step 3: Update Supervisor Instructions**
+Add workflow description to supervisor agent instructions
 
 ### Database Schema Changes
 
@@ -608,6 +808,39 @@ Follow these steps to add a new third-party API integration with OAuth:
 - Update CLAUDE.md with integration details
 - Document environment variables and OAuth flow
 - Add tool usage examples for chat interface
+
+# Using MCP Servers for Updated Documentation
+
+When working with external libraries or needing up-to-date documentation, leverage Model Context Protocol (MCP) servers to access current information beyond static docs.
+
+## Context7 MCP Server
+
+Use the Context7 server to retrieve up-to-date documentation and code examples for libraries:
+
+- **resolve-library-id**: Find the correct Context7-compatible library ID for a given package name.
+- **get-library-docs**: Fetch documentation, including code snippets and examples, for a resolved library ID.
+
+Example workflow:
+1. When implementing a feature requiring a new library, use `resolve-library-id` to get the library ID.
+2. Then use `get-library-docs` to obtain the latest documentation with practical examples.
+
+This ensures you have current, accurate information rather than relying on a potentially outdated cached docs.
+
+## GitHub MCP Server
+
+For accessing GitHub repositories, issues, pull requests, and code:
+
+- Use GitHub MCP server tools to search repositories, view issues, browse code, or check recent commits.
+- Particularly useful for:
+  - Staying updated on dependency repositories
+  - Researching implementation patterns from open-source projects
+  - Checking for recent bug fixes or feature additions
+
+Note: Ensure MCP servers are properly configured and connected in your development environment. If GitHub MCP server is not available, consider setting it up for enhanced documentation access.
+
+# Engineering Practices
+⚠️ Preserve integrity of external dependencies.
+Do not alter files inside node_modules or any installed packages. Instead, use wrappers, patching tools, or configuration hooks. This practice supports clean upgrades, auditability, and prevents regressions when dependencies are updated.
 
 # Using Gemini CLI for LedgerBot Codebase Analysis
 
@@ -741,36 +974,3 @@ Use gemini -p when:
   - Context file uploads and RAG implementation
   - User settings and personalization (default model, reasoning preferences, custom prompts)
   - Usage accounting and entitlement enforcement
-
-# Using MCP Servers for Updated Documentation
-
-When working with external libraries or needing up-to-date documentation, leverage Model Context Protocol (MCP) servers to access current information beyond static docs.
-
-## Context7 MCP Server
-
-Use the Context7 server to retrieve up-to-date documentation and code examples for libraries:
-
-- **resolve-library-id**: Find the correct Context7-compatible library ID for a given package name.
-- **get-library-docs**: Fetch documentation, including code snippets and examples, for a resolved library ID.
-
-Example workflow:
-1. When implementing a feature requiring a new library, use `resolve-library-id` to get the library ID.
-2. Then use `get-library-docs` to obtain the latest documentation with practical examples.
-
-This ensures you have current, accurate information rather than relying on potentially outdated cached docs.
-
-## GitHub MCP Server
-
-For accessing GitHub repositories, issues, pull requests, and code:
-
-- Use GitHub MCP server tools to search repositories, view issues, browse code, or check recent commits.
-- Particularly useful for:
-  - Staying updated on dependency repositories
-  - Researching implementation patterns from open-source projects
-  - Checking for recent bug fixes or feature additions
-
-Note: Ensure MCP servers are properly configured and connected in your development environment. If GitHub MCP server is not available, consider setting it up for enhanced documentation access.
-
-# Engineering Practices
-⚠️ Preserve integrity of external dependencies.
-Do not alter files inside node_modules or any installed packages. Instead, use wrappers, patching tools, or configuration hooks. This practice supports clean upgrades, auditability, and prevents regressions when dependencies are updated.

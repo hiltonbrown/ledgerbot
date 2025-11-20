@@ -203,58 +203,41 @@ export async function upsertInvoices(
   invoices: Omit<ArInvoiceInsert, "userId">[]
 ): Promise<ArInvoice[]> {
   try {
-    // Prepare all invoice values with userId
+    if (invoices.length === 0) {
+      return [];
+    }
+
     const invoiceValues = invoices.map((invoice) => ({
       ...invoice,
       userId,
       updatedAt: new Date(),
     }));
 
-    // Use raw SQL for bulk upsert with ON CONFLICT (externalRef, userId)
-    // This assumes arInvoice has columns: id, userId, externalRef, ...other fields
-    // and that externalRef + userId is a unique constraint
-    const columns = Object.keys(invoiceValues[0]);
-    const valuesSql = invoiceValues
-      .map(
-        (row) =>
-          `(${columns
-            .map((col) => sql`${row[col as keyof typeof row]}`)
-            .join(", ")})`
-      )
-      .join(", ");
+    const upsertedInvoices = await db
+      .insert(arInvoice)
+      .values(invoiceValues)
+      .onConflictDoUpdate({
+        target: [arInvoice.externalRef, arInvoice.userId],
+        set: {
+          contactId: sql`excluded."contactId"`,
+          number: sql`excluded."number"`,
+          issueDate: sql`excluded."issueDate"`,
+          dueDate: sql`excluded."dueDate"`,
+          currency: sql`excluded."currency"`,
+          subtotal: sql`excluded."subtotal"`,
+          tax: sql`excluded."tax"`,
+          total: sql`excluded."total"`,
+          amountPaid: sql`excluded."amountPaid"`,
+          status: sql`excluded."status"`,
+          metadata: sql`excluded."metadata"`,
+          updatedAt: sql`excluded."updatedAt"`,
+        },
+      })
+      .returning();
 
-    // Build the ON CONFLICT clause to update all fields except id, userId, externalRef
-    const updateColumns = columns.filter(
-      (col) => !["id", "userId", "externalRef"].includes(col)
-    );
-    const setSql = updateColumns
-      .map((col) => `${col} = EXCLUDED.${col}`)
-      .join(", ");
-
-    // Compose the SQL query
-    const query = sql`
-      INSERT INTO ${arInvoice} (${sql.raw(columns.join(", "))})
-      VALUES ${sql.raw(
-        invoiceValues
-          .map(
-            (row) =>
-              `(${columns
-                .map((col) => sql`${row[col as keyof typeof row]}`)
-                .join(", ")})`
-          )
-          .join(", ")
-      )}
-      ON CONFLICT (externalRef, userId)
-      DO UPDATE SET ${sql.raw(setSql)}
-      RETURNING *;
-    `;
-
-    // Execute the query
-    const upsertedInvoices = await db.execute(query);
-
-    // Return the result (cast through unknown due to Drizzle execute type)
-    return upsertedInvoices as unknown as ArInvoice[];
+    return upsertedInvoices;
   } catch (error) {
+    console.error("[AR] Upsert invoices error:", error);
     throw new ChatSDKError("bad_request:database", "Failed to upsert invoices");
   }
 }
