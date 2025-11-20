@@ -129,6 +129,7 @@ const USER_SETTINGS: UserSettings = {
     lastName: "",
     country: "au",
     state: "qld",
+    timezone: "Australia/Sydney",
     defaultModel: "anthropic-claude-haiku-4-5",
     defaultReasoning: false,
   },
