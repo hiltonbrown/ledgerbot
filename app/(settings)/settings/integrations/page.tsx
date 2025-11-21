@@ -1,3 +1,4 @@
+import { Plug } from "lucide-react";
 import {
   type Integration,
   IntegrationCard,
@@ -51,7 +52,7 @@ const payrollIntegrations: Integration[] = [
     name: "Employment Hero",
     description:
       "Sync employee data, timesheets, and leave balances. Automate payroll processing and superannuation.",
-    status: "available",
+    status: "coming-soon",
     docsUrl: "https://developer.employmenthero.com/",
   },
   {
@@ -59,7 +60,7 @@ const payrollIntegrations: Integration[] = [
     name: "Deputy",
     description:
       "Import rosters, timesheets, and attendance records. Export wage costs and labor compliance data.",
-    status: "available",
+    status: "coming-soon",
     docsUrl: "https://developer.deputy.com/",
   },
   {
@@ -101,14 +102,19 @@ export default async function IntegrationsPage() {
   const xeroConnections = user ? await getXeroConnectionsByUserId(user.id) : [];
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto space-y-6 p-6">
       {/* Header */}
-      <div>
-        <h1 className="font-semibold text-3xl">Integrations</h1>
-        <p className="text-muted-foreground">
-          Connect your accounting software and workforce management systems to
-          sync data and automate workflows
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="flex items-center gap-2 font-bold text-3xl">
+            <Plug className="h-8 w-8 text-primary" />
+            Integrations
+          </h1>
+          <p className="text-muted-foreground">
+            Connect your accounting software and workforce management systems to
+            sync data and automate workflows
+          </p>
+        </div>
       </div>
 
       {/* Accounting Integrations */}

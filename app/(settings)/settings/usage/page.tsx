@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { Info } from "lucide-react";
+import { Info, BarChart3 } from "lucide-react";
 import { ModelComparisonChart } from "@/components/settings/model-comparison-chart";
 import { ModelTokenUsage } from "@/components/settings/model-token-usage";
 import { SettingsSection } from "@/components/settings/settings-section";
@@ -26,12 +26,17 @@ export default async function UsagePage(props: PageProps) {
 
   if (!user) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="font-semibold text-3xl">Token Usage Tracking</h1>
-          <p className="text-muted-foreground">
-            Track token usage, costs, and performance across AI models
-          </p>
+      <div className="container mx-auto space-y-6 p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="flex items-center gap-2 font-bold text-3xl">
+              <BarChart3 className="h-8 w-8 text-primary" />
+              Token Usage Tracking
+            </h1>
+            <p className="text-muted-foreground">
+              Track token usage, costs, and performance across AI models
+            </p>
+          </div>
         </div>
 
         <Card>
@@ -50,11 +55,14 @@ export default async function UsagePage(props: PageProps) {
   const tokenSummary = await getTokenUsageSummary(user.id, period);
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto space-y-6 p-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-semibold text-3xl">Token Usage Tracking</h1>
+          <h1 className="flex items-center gap-2 font-bold text-3xl">
+            <BarChart3 className="h-8 w-8 text-primary" />
+            Token Usage Tracking
+          </h1>
           <p className="text-muted-foreground">
             Track token usage, costs, and performance across AI models
           </p>

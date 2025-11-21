@@ -1,4 +1,4 @@
-import { Info } from "lucide-react";
+import { Info, FileText } from "lucide-react";
 import { ContextFileList } from "@/components/settings/context-file-list";
 import { ContextFileUpload } from "@/components/settings/context-file-upload";
 import { SettingsSection } from "@/components/settings/settings-section";
@@ -16,12 +16,17 @@ export default async function FilesPage() {
 
   if (!user) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="font-semibold text-3xl">Context Files</h1>
-          <p className="text-muted-foreground">
-            Manage files for persistent AI context across conversations
-          </p>
+      <div className="container mx-auto space-y-6 p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="flex items-center gap-2 font-bold text-3xl">
+              <FileText className="h-8 w-8 text-primary" />
+              Context Files
+            </h1>
+            <p className="text-muted-foreground">
+              Manage files for persistent AI context across conversations
+            </p>
+          </div>
         </div>
 
         <Card>
@@ -48,13 +53,18 @@ export default async function FilesPage() {
   const usagePercentage = Math.round((usedBytes / maxStorage) * 100);
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto space-y-6 p-6">
       {/* Header */}
-      <div>
-        <h1 className="font-semibold text-3xl">Context Files</h1>
-        <p className="text-muted-foreground">
-          Manage files for persistent AI context across conversations
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="flex items-center gap-2 font-bold text-3xl">
+            <FileText className="h-8 w-8 text-primary" />
+            Context Files
+          </h1>
+          <p className="text-muted-foreground">
+            Manage files for persistent AI context across conversations
+          </p>
+        </div>
       </div>
 
       {/* Storage Usage Info */}
