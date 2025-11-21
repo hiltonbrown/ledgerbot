@@ -10,7 +10,9 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
-import { getChatsByUserId } from "@/lib/db/queries";
+import { db } from "@/lib/db";
+import { chat } from "@/lib/db/schema";
+import { eq, count } from "drizzle-orm";
 import { getFileSummary } from "../api/files/data";
 
 export const dynamic = "force-dynamic";
@@ -21,11 +23,14 @@ export default async function SettingsPage() {
     getFileSummary(),
   ]);
 
-  // Get actual chat/message count
+  // Get actual chat count
   let totalChats = 0;
   if (user) {
-    const chats = await getChatsByUserId({ id: user.id });
-    totalChats = chats.length;
+    const result = await db
+      .select({ count: count() })
+      .from(chat)
+      .where(eq(chat.userId, user.id));
+    totalChats = result[0]?.count ? Number(result[0].count) : 0;
   }
 
   const settingsSections = [
