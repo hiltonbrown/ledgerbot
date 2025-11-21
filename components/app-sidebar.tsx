@@ -111,6 +111,10 @@ export function AppSidebar({
       icon: Bot,
       items: [
         {
+          title: "Overview",
+          url: "/agents",
+        },
+        {
           title: "Document Processing",
           url: "/agents/docmanagement",
         },
