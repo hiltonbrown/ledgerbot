@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  Bot,
-  LifeBuoy,
-  Lightbulb,
-  MessageSquare,
-  Send,
-  Settings2,
-} from "lucide-react";
+import { Bot, LifeBuoy, Lightbulb, MessageSquare, Send } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -116,7 +109,6 @@ export function AppSidebar({
       title: "Agents",
       url: "/agents",
       icon: Bot,
-      isActive: true,
       items: [
         {
           title: "Document Processing",
@@ -145,29 +137,6 @@ export function AppSidebar({
         {
           title: "Workflow",
           url: "/agents/workflow",
-        },
-      ],
-    },
-    {
-      title: "Settings",
-      url: "/settings",
-      icon: Settings2,
-      items: [
-        {
-          title: "Personalisation",
-          url: "/settings/personalisation",
-        },
-        {
-          title: "Integrations",
-          url: "/settings/integrations",
-        },
-        {
-          title: "Files",
-          url: "/settings/files",
-        },
-        {
-          title: "Usage",
-          url: "/settings/usage",
         },
       ],
     },
