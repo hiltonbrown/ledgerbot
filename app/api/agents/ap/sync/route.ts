@@ -65,7 +65,8 @@ export async function POST() {
         name: supplier.name,
         email: supplier.emailAddress,
         phone: supplier.phone,
-        abn: supplier.taxNumber,
+        // Remove spaces from ABN (Xero formats as "11 000 111 000", we need "11000111000")
+        abn: supplier.taxNumber?.replace(/\s/g, ""),
         externalRef: supplier.contactID,
         status:
           supplier.contactStatus === "ACTIVE"
