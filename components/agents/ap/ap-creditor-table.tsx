@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Fragment } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,7 @@ import {
   ArrowUpDown,
 } from "lucide-react";
 import type { ApContact } from "@/lib/db/schema/ap";
+import { APCreditorDetails, type CreditorDetailsData } from "./ap-creditor-details";
 
 export type ContactWithStats = ApContact & {
   totalOutstanding: number;
@@ -34,6 +35,8 @@ interface APCreditorTableProps {
   creditors: ContactWithStats[];
   isLoading?: boolean;
   onRowExpand?: (creditor: ContactWithStats) => void;
+  expandedData?: Record<string, CreditorDetailsData | null>;
+  loadingStates?: Record<string, boolean>;
 }
 
 type SortField = "name" | "outstanding" | "overdue" | "dpo";
@@ -43,6 +46,8 @@ export function APCreditorTable({
   creditors,
   isLoading,
   onRowExpand,
+  expandedData = {},
+  loadingStates = {},
 }: APCreditorTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -225,73 +230,87 @@ export function APCreditorTable({
                 const isExpanded = expandedRows.has(creditor.id);
 
                 return (
-                  <TableRow key={creditor.id} className="group">
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleRow(creditor.id, creditor)}
-                        className="h-6 w-6 p-0"
-                      >
-                        {isExpanded ? (
-                          <ChevronDown className="h-4 w-4" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div>
-                          <div className="font-medium">{creditor.name}</div>
-                          <div className="text-muted-foreground text-sm">
-                            {creditor.billCount} {creditor.billCount === 1 ? "bill" : "bills"}
+                  <Fragment key={creditor.id}>
+                    <TableRow className="group">
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleRow(creditor.id, creditor)}
+                          className="h-6 w-6 p-0"
+                        >
+                          {isExpanded ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div>
+                            <div className="font-medium">{creditor.name}</div>
+                            <div className="text-muted-foreground text-sm">
+                              {creditor.billCount} {creditor.billCount === 1 ? "bill" : "bills"}
+                            </div>
                           </div>
+                          {creditor.hasBankChange && (
+                            <Banknote className="h-4 w-4 text-orange-500" title="Bank details changed" />
+                          )}
+                          {creditor.riskLevel === "high" || creditor.riskLevel === "critical" ? (
+                            <AlertTriangle className="h-4 w-4 text-red-500" title="High risk" />
+                          ) : null}
                         </div>
-                        {creditor.hasBankChange && (
-                          <Banknote className="h-4 w-4 text-orange-500" title="Bank details changed" />
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        ${creditor.totalOutstanding.toLocaleString("en-AU", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {creditor.totalOverdue > 0 ? (
+                          <span className="font-medium text-red-600">
+                            ${creditor.totalOverdue.toLocaleString("en-AU", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
                         )}
-                        {creditor.riskLevel === "high" || creditor.riskLevel === "critical" ? (
-                          <AlertTriangle className="h-4 w-4 text-red-500" title="High risk" />
-                        ) : null}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      ${creditor.totalOutstanding.toLocaleString("en-AU", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {creditor.totalOverdue > 0 ? (
-                        <span className="font-medium text-red-600">
-                          ${creditor.totalOverdue.toLocaleString("en-AU", {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-center text-muted-foreground text-sm">
-                      {creditor.oldestInvoiceDays > 0
-                        ? `${creditor.oldestInvoiceDays} days`
-                        : "-"}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {getRiskBadge(creditor.riskLevel)}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => toggleRow(creditor.id, creditor)}
-                      >
-                        {isExpanded ? "Collapse" : "View Details"}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
+                      </TableCell>
+                      <TableCell className="text-center text-muted-foreground text-sm">
+                        {creditor.oldestInvoiceDays > 0
+                          ? `${creditor.oldestInvoiceDays} days`
+                          : "-"}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {getRiskBadge(creditor.riskLevel)}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => toggleRow(creditor.id, creditor)}
+                        >
+                          {isExpanded ? "Collapse" : "View Details"}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+
+                    {/* Expanded Details Row */}
+                    {isExpanded && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="p-0">
+                          <APCreditorDetails
+                            data={expandedData[creditor.id] || null}
+                            isLoading={loadingStates[creditor.id] || false}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </Fragment>
                 );
               })
             )}

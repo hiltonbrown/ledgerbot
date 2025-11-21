@@ -8,6 +8,7 @@ import { APAgeingChart, type AgeingBucket } from "@/components/agents/ap/ap-agei
 import { APCreditorTable, type ContactWithStats } from "@/components/agents/ap/ap-creditor-table";
 import { APFilterTabs, type FilterType } from "@/components/agents/ap/ap-filter-tabs";
 import { APPaymentScheduleModal } from "@/components/agents/ap/ap-payment-schedule-modal";
+import { type CreditorDetailsData } from "@/components/agents/ap/ap-creditor-details";
 import { useToast } from "@/hooks/use-toast";
 
 export default function AccountsPayableAgentPage() {
@@ -20,6 +21,10 @@ export default function AccountsPayableAgentPage() {
   const [isLoadingCreditors, setIsLoadingCreditors] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [showPaymentSchedule, setShowPaymentSchedule] = useState(false);
+
+  // Expanded creditor data
+  const [expandedData, setExpandedData] = useState<Record<string, CreditorDetailsData | null>>({});
+  const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
 
   // Load KPIs
   const loadKPIs = async () => {
@@ -110,10 +115,45 @@ export default function AccountsPayableAgentPage() {
     loadCreditors(filter);
   };
 
-  // Handle row expansion (placeholder for future AI commentary)
+  // Handle row expansion with AI commentary
   const handleRowExpand = async (creditor: ContactWithStats) => {
-    console.log("Expanding creditor:", creditor.name);
-    // TODO: Load bill details and AI commentary
+    // Check if we already have data for this creditor
+    if (expandedData[creditor.id]) {
+      return; // Already loaded
+    }
+
+    try {
+      // Set loading state
+      setLoadingStates((prev) => ({ ...prev, [creditor.id]: true }));
+
+      const response = await fetch(`/api/agents/ap/creditors/${creditor.id}/commentary`);
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        setExpandedData((prev) => ({
+          ...prev,
+          [creditor.id]: result.data,
+        }));
+      } else {
+        console.error("Failed to load creditor commentary:", result.error);
+        toast({
+          title: "Failed to load details",
+          description: result.error || "Could not load creditor details",
+          variant: "destructive",
+        });
+        setExpandedData((prev) => ({ ...prev, [creditor.id]: null }));
+      }
+    } catch (error) {
+      console.error("Error loading creditor commentary:", error);
+      toast({
+        title: "Error",
+        description: "An error occurred while loading creditor details",
+        variant: "destructive",
+      });
+      setExpandedData((prev) => ({ ...prev, [creditor.id]: null }));
+    } finally {
+      setLoadingStates((prev) => ({ ...prev, [creditor.id]: false }));
+    }
   };
 
   // Initial load
@@ -185,6 +225,8 @@ export default function AccountsPayableAgentPage() {
         creditors={creditors}
         isLoading={isLoadingCreditors}
         onRowExpand={handleRowExpand}
+        expandedData={expandedData}
+        loadingStates={loadingStates}
       />
 
       {/* Payment Schedule Modal */}
