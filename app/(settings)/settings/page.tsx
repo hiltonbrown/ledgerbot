@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
-import { db } from "@/lib/db";
+import { db } from "@/lib/db/queries";
 import { chat } from "@/lib/db/schema";
 import { eq, count } from "drizzle-orm";
 import { getFileSummary } from "../api/files/data";
