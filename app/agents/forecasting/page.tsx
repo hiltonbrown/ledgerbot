@@ -181,12 +181,33 @@ export default function ForecastingAgentPage() {
   const runSummary = `Latest run ${latestRun.month}: base $${latestRun.base.toLocaleString()} · upside $${latestRun.best.toLocaleString()} · downside $${latestRun.worst.toLocaleString()}`;
 
   return (
-    <div className="space-y-10">
+    <div className="container mx-auto space-y-6 p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="flex items-center gap-2 font-bold text-3xl">
+            <CalendarRange className="h-8 w-8 text-primary" />
+            Forecasting Agent
+          </h1>
+          <p className="text-muted-foreground">
+            Scenario modeling and runway projections with multiple financial
+            models and Mastra workflow orchestration
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" disabled className="gap-2">
+            <RefreshCw className="h-4 w-4" />
+            Refresh Data
+          </Button>
+        </div>
+      </div>
+
+      {/* Launch Forecast Form */}
       <Card>
         <CardHeader className="flex flex-col gap-2">
           <CardTitle className="flex items-center gap-2 text-lg">
             <RefreshCw className="h-5 w-5 text-primary" />
-            Launch Mastra financial forecast
+            Launch Financial Forecast
           </CardTitle>
           <p className="text-muted-foreground text-sm">
             Provide the key drivers and we will spin up a dedicated forecasting

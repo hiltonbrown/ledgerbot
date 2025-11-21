@@ -198,7 +198,35 @@ export default function QandAAgentPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto space-y-6 p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="flex items-center gap-2 font-bold text-3xl">
+            <BookOpen className="h-8 w-8 text-primary" />
+            Advisory Q&A Agent
+          </h1>
+          <p className="text-muted-foreground">
+            Ask questions about Australian employment law, tax regulations, and
+            compliance obligations with regulatory citations and confidence
+            scoring
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handleManualRefresh}
+            disabled={isRefreshingSources}
+            className="gap-2"
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${isRefreshingSources ? "animate-spin" : ""}`}
+            />
+            Refresh Sources
+          </Button>
+        </div>
+      </div>
+
       {/* Regulatory Knowledge Base Stats */}
       <Card>
         <CardHeader>
@@ -256,19 +284,11 @@ export default function QandAAgentPage() {
               </p>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              disabled={isRefreshingSources}
-              onClick={handleManualRefresh}
-              size="sm"
-              variant="outline"
-            >
-              {isRefreshingSources ? "Refreshing..." : "Refresh with Mastra"}
-            </Button>
-            {refreshStatus && (
-              <p className="text-muted-foreground text-xs">{refreshStatus}</p>
-            )}
-          </div>
+          {refreshStatus && (
+            <div className="rounded-md border bg-muted/40 p-3 text-xs">
+              <p className="text-muted-foreground">{refreshStatus}</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

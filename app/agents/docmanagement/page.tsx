@@ -702,19 +702,34 @@ export default function DocumentManagementAgentPage() {
   );
   const disableUpload = isUploading || isSummarizing;
   return (
-    <div className="space-y-10">
-      <Card>
-        <CardHeader className="flex flex-col gap-2">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Sparkles className="h-5 w-5 text-primary" />
-            Intelligent intake workspace
-          </CardTitle>
-          <p className="text-muted-foreground text-sm">
-            Upload invoices, receipts, or statements to generate a
-            compliance-aware summary and chat with the document using LedgerBot.
+    <div className="container mx-auto space-y-6 p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="flex items-center gap-2 font-bold text-3xl">
+            <FileText className="h-8 w-8 text-primary" />
+            Document Management Agent
+          </h1>
+          <p className="text-muted-foreground">
+            Upload invoices, receipts, or statements to generate
+            compliance-aware summaries and chat with documents using LedgerBot
           </p>
-        </CardHeader>
-        <CardContent>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={resetWorkflow}
+            disabled={!contextFileId}
+            className="gap-2"
+          >
+            Reset
+          </Button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <Card>
+        <CardContent className="pt-6">
           <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
             <div className="space-y-4">
               <label
