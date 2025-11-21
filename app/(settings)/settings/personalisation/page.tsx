@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { Sparkles } from "lucide-react";
 import { AIPreferencesForm } from "@/components/settings/ai-preferences-form";
 import { ChatSuggestionsForm } from "@/components/settings/chat-suggestions-form";
 import { CustomInstructionsForm } from "@/components/settings/custom-instructions-form";
@@ -41,7 +42,20 @@ export default async function PersonalisationSettingsPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto space-y-6 p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="flex items-center gap-2 font-bold text-3xl">
+            <Sparkles className="h-8 w-8 text-primary" />
+            Personalisation
+          </h1>
+          <p className="text-muted-foreground">
+            Customize AI behavior, prompts, and preferences
+          </p>
+        </div>
+      </div>
+
       {/* Lock Settings Banner */}
       <LockSettingsBanner data={data} />
 

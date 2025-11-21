@@ -29,9 +29,7 @@ export default async function SettingsLayout({
       <SidebarInset>
         <div className="flex min-h-svh flex-col">
           <ChatHeader chatId="" isReadonly={false} />
-          <main className="flex-1 px-6 py-8">
-            <div className="mx-auto w-full max-w-5xl space-y-8">{children}</div>
-          </main>
+          <main className="flex-1">{children}</main>
         </div>
       </SidebarInset>
     </SidebarProvider>

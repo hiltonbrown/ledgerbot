@@ -1,148 +1,179 @@
 import Link from "next/link";
-import { CpuIcon, FileIcon, GlobeIcon, SparklesIcon } from "@/components/icons";
 import {
-  type Integration,
-  IntegrationCard,
-} from "@/components/settings/integration-card";
-import { QuickActions } from "@/components/settings/quick-actions";
-import { SettingsSection } from "@/components/settings/settings-section";
-import { UsageSummary as UsageSummaryComponent } from "@/components/settings/usage-summary";
+  Settings,
+  Sparkles,
+  BarChart3,
+  FileText,
+  Plug,
+  Users,
+  ChevronRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { getFileSummary } from "../api/files/data";
 import { getUsageSummary } from "../api/usage/data";
 
 export const dynamic = "force-dynamic";
 
-const integrations: Integration[] = [
-  {
-    id: "xero",
-    name: "Xero",
-    description:
-      "Sync invoices, expenses, and bank transactions. Automate reconciliation and generate financial reports.",
-    status: "connected",
-    docsUrl: "https://developer.xero.com/documentation/",
-  },
-  {
-    id: "myob",
-    name: "MYOB Business",
-    description:
-      "Connect accounts payable and receivable. Import transactions and export journals seamlessly.",
-    status: "available",
-    docsUrl: "https://developer.myob.com/api/accountright/",
-  },
-  {
-    id: "quickbooks",
-    name: "QuickBooks",
-    description:
-      "Access chart of accounts, customers, and vendors. Create invoices and track payments in real-time.",
-    status: "coming-soon",
-    docsUrl: "https://developer.intuit.com/app/developer/qbo/docs/get-started",
-  },
-  {
-    id: "zoho",
-    name: "Zoho Books",
-    description:
-      "Manage estimates, bills, and purchase orders. Sync contacts and automate expense tracking workflows.",
-    status: "coming-soon",
-    docsUrl: "https://www.zoho.com/books/api/v3/",
-  },
-];
-
 export default function SettingsPage() {
   const [usageSummary, fileSummary] = [getUsageSummary(), getFileSummary()];
 
-  const recentFiles = fileSummary.files.slice(0, 3);
-
-  const quickActions = [
+  const settingsSections = [
     {
-      label: "Customize AI Prompts",
+      title: "Personalisation",
+      description: "Customize AI behavior, prompts, and preferences",
+      icon: Sparkles,
       href: "/settings/personalisation",
-      description: "Personalize system, code, and sheet generation prompts",
-      icon: <SparklesIcon size={20} />,
+      iconColor: "text-purple-600",
+      iconBg: "bg-purple-500/10",
     },
     {
-      label: "View Usage Details",
+      title: "Usage & Analytics",
+      description: "Track token usage, costs, and performance metrics",
+      icon: BarChart3,
       href: "/settings/usage",
-      description: "Track AI token usage and conversation history",
-      icon: <CpuIcon size={20} />,
+      iconColor: "text-blue-600",
+      iconBg: "bg-blue-500/10",
     },
     {
-      label: "Manage Files",
+      title: "Context Files",
+      description: "Manage files for persistent AI context",
+      icon: FileText,
       href: "/settings/files",
-      description: "View and manage uploaded files and storage",
-      icon: <FileIcon size={20} />,
+      iconColor: "text-green-600",
+      iconBg: "bg-green-500/10",
     },
     {
-      label: "Configure Integrations",
+      title: "Integrations",
+      description: "Connect accounting and payroll systems",
+      icon: Plug,
       href: "/settings/integrations",
-      description: "Connect accounting tools and third-party services",
-      icon: <GlobeIcon size={20} />,
+      iconColor: "text-orange-600",
+      iconBg: "bg-orange-500/10",
+    },
+    {
+      title: "Agent Configuration",
+      description: "Configure specialized accounting agents",
+      icon: Users,
+      href: "/settings/agents",
+      iconColor: "text-indigo-600",
+      iconBg: "bg-indigo-500/10",
     },
   ];
 
   return (
-    <div className="space-y-8">
-      <QuickActions actions={quickActions} />
-
-      <SettingsSection
-        actions={
-          <Button asChild variant="outline">
-            <Link href="/settings/usage">View usage details</Link>
-          </Button>
-        }
-        description="Track plan consumption to avoid surprises at renewal time."
-        title="Usage snapshot"
-      >
-        <UsageSummaryComponent summary={usageSummary} />
-      </SettingsSection>
-
-      <SettingsSection
-        actions={
-          <Button asChild variant="outline">
-            <Link href="/settings/files">Open file manager</Link>
-          </Button>
-        }
-        description={`Using ${fileSummary.usage.used} GB of ${fileSummary.usage.capacity} GB storage.`}
-        title="Recent files"
-      >
-        <ul className="space-y-2">
-          {recentFiles.map((file) => (
-            <li
-              className="flex flex-col gap-2 rounded-lg border bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between"
-              key={file.id}
-            >
-              <div>
-                <p className="font-medium text-foreground text-sm">
-                  {file.name}
-                </p>
-                <p className="text-muted-foreground text-xs">
-                  {file.type} • {file.size} • Uploaded{" "}
-                  {new Date(file.uploadedAt).toLocaleDateString()}
-                </p>
-              </div>
-              <span className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-                {file.status}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </SettingsSection>
-
-      <SettingsSection
-        actions={
-          <Button asChild variant="outline">
-            <Link href="/settings/integrations">Manage integrations</Link>
-          </Button>
-        }
-        description="Connect your favorite tools to automate handoffs and sync context."
-        title="Integrations"
-      >
-        <div className="grid gap-4 md:grid-cols-2">
-          {integrations.map((integration) => (
-            <IntegrationCard integration={integration} key={integration.id} />
-          ))}
+    <div className="container mx-auto space-y-6 p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="flex items-center gap-2 font-bold text-3xl">
+            <Settings className="h-8 w-8 text-primary" />
+            Settings
+          </h1>
+          <p className="text-muted-foreground">
+            Manage your preferences, integrations, and AI configuration
+          </p>
         </div>
-      </SettingsSection>
+      </div>
+
+      {/* Overview Cards */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-muted-foreground text-sm">
+                Total Messages
+              </p>
+              <p className="mt-2 font-bold text-3xl">
+                {usageSummary.totalMessages}
+              </p>
+              <p className="mt-1 text-muted-foreground text-sm">
+                {usageSummary.period}
+              </p>
+            </div>
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+              <BarChart3 className="h-6 w-6 text-primary" />
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-muted-foreground text-sm">
+                Storage Used
+              </p>
+              <p className="mt-2 font-bold text-3xl">
+                {fileSummary.usage.used} GB
+              </p>
+              <p className="mt-1 text-muted-foreground text-sm">
+                of {fileSummary.usage.capacity} GB
+              </p>
+            </div>
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-500/10">
+              <FileText className="h-6 w-6 text-green-600" />
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-muted-foreground text-sm">
+                Total Files
+              </p>
+              <p className="mt-2 font-bold text-3xl">
+                {fileSummary.usage.fileCount}
+              </p>
+              <p className="mt-1 text-muted-foreground text-sm">
+                Context files uploaded
+              </p>
+            </div>
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-500/10">
+              <FileText className="h-6 w-6 text-blue-600" />
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Settings Sections */}
+      <Card className="p-6">
+        <div className="mb-6">
+          <h3 className="font-semibold text-lg">Configuration</h3>
+          <p className="text-muted-foreground text-sm">
+            Customize your LedgerBot experience
+          </p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          {settingsSections.map((section) => {
+            const Icon = section.icon;
+            return (
+              <Link href={section.href} key={section.title}>
+                <Card className="group cursor-pointer p-6 transition-colors hover:border-primary">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-4">
+                      <div
+                        className={`flex h-12 w-12 items-center justify-center rounded-full ${section.iconBg}`}
+                      >
+                        <Icon className={`h-6 w-6 ${section.iconColor}`} />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-base">
+                          {section.title}
+                        </h4>
+                        <p className="mt-1 text-muted-foreground text-sm">
+                          {section.description}
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground transition-transform group-hover:translate-x-1" />
+                  </div>
+                </Card>
+              </Link>
+            );
+          })}
+        </div>
+      </Card>
     </div>
   );
 }

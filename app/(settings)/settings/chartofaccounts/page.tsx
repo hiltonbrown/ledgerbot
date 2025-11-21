@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { ExternalLink, Info } from "lucide-react";
+import { ExternalLink, Info, Book } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ChartOfAccountsDisplay } from "@/components/settings/chart-of-accounts-display";
@@ -46,7 +46,20 @@ export default async function ChartOfAccountsPage() {
 
   if (connections.length === 0) {
     return (
-      <div className="mx-auto max-w-5xl space-y-6">
+      <div className="container mx-auto space-y-6 p-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="flex items-center gap-2 font-bold text-3xl">
+              <Book className="h-8 w-8 text-primary" />
+              Chart of Accounts
+            </h1>
+            <p className="text-muted-foreground">
+              Sync and manage your chart of accounts from Xero
+            </p>
+          </div>
+        </div>
+
         {/* No connections state */}
         <Card>
           <CardContent className="py-12 text-center">
@@ -69,7 +82,20 @@ export default async function ChartOfAccountsPage() {
 
   if (!activeConnection || !activeConnection.chartOfAccounts) {
     return (
-      <div className="mx-auto max-w-5xl space-y-6">
+      <div className="container mx-auto space-y-6 p-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="flex items-center gap-2 font-bold text-3xl">
+              <Book className="h-8 w-8 text-primary" />
+              Chart of Accounts
+            </h1>
+            <p className="text-muted-foreground">
+              Sync and manage your chart of accounts from Xero
+            </p>
+          </div>
+        </div>
+
         {/* Company Selector */}
         <Card>
           <CardHeader>
@@ -106,7 +132,20 @@ export default async function ChartOfAccountsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="container mx-auto space-y-6 p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="flex items-center gap-2 font-bold text-3xl">
+            <Book className="h-8 w-8 text-primary" />
+            Chart of Accounts
+          </h1>
+          <p className="text-muted-foreground">
+            Sync and manage your chart of accounts from Xero
+          </p>
+        </div>
+      </div>
+
       {/* Company Selector */}
       <Card>
         <CardHeader>

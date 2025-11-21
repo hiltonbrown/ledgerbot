@@ -10,6 +10,7 @@ import {
   Network,
   Scale,
   TrendingUp,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
@@ -173,15 +174,29 @@ export default function AgentSettingsPage() {
   };
 
   return (
-    <div className="space-y-8">
-      <SettingsSection
-        actions={
-          <Button onClick={handleSaveChanges} size="sm">
+    <div className="container mx-auto space-y-6 p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="flex items-center gap-2 font-bold text-3xl">
+            <Users className="h-8 w-8 text-primary" />
+            Agent Configuration
+          </h1>
+          <p className="text-muted-foreground">
+            Configure specialized AI agents to automate bookkeeping workflows
+            and provide intelligent assistance
+          </p>
+        </div>
+        <div>
+          <Button onClick={handleSaveChanges} size="default">
             Save changes
           </Button>
-        }
-        description="Configure specialized LangChain agents to automate bookkeeping workflows and provide intelligent assistance."
-        title="Agent configuration"
+        </div>
+      </div>
+
+      <SettingsSection
+        description=""
+        title=""
       >
         <div className="space-y-6">
           <div className="flex flex-col gap-3 rounded-lg border bg-muted/30 p-4 md:flex-row md:items-center md:justify-between">
