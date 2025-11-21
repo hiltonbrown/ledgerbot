@@ -24,7 +24,7 @@ export async function GET(
 
     const { id } = await params;
 
-    const billDetails = await getBillWithDetails(id);
+    const billDetails = await getBillWithDetails(id, user.id);
 
     if (!billDetails) {
       return NextResponse.json(

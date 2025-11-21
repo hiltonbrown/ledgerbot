@@ -156,7 +156,8 @@ export async function listBillsDue({
  * Get a single bill with full details
  */
 export async function getBillWithDetails(
-  billId: string
+  billId: string,
+  userId: string
 ): Promise<BillWithDetails | null> {
   try {
     const results = await db
@@ -166,7 +167,7 @@ export async function getBillWithDetails(
       })
       .from(apBill)
       .innerJoin(apContact, eq(apBill.contactId, apContact.id))
-      .where(eq(apBill.id, billId))
+      .where(and(eq(apBill.id, billId), eq(apBill.userId, userId)))
       .limit(1);
 
     if (results.length === 0) return null;
@@ -201,7 +202,9 @@ export async function getBillWithDetails(
     const bankChanges = await db
       .select()
       .from(apBankChange)
-      .where(eq(apBankChange.contactId, row.contact.id))
+      .where(
+        and(eq(apBankChange.contactId, row.contact.id), eq(apBankChange.userId, userId))
+      )
       .orderBy(desc(apBankChange.detectedAt));
 
     return {
@@ -486,13 +489,16 @@ export async function createRiskAssessment(
  * Get risk assessment for a bill
  */
 export async function getBillRiskAssessment(
-  billId: string
+  billId: string,
+  userId: string
 ): Promise<ApRiskAssessment | null> {
   try {
     const results = await db
       .select()
       .from(apRiskAssessment)
-      .where(eq(apRiskAssessment.billId, billId))
+      .where(
+        and(eq(apRiskAssessment.billId, billId), eq(apRiskAssessment.userId, userId))
+      )
       .orderBy(desc(apRiskAssessment.assessedAt))
       .limit(1);
 
@@ -531,13 +537,16 @@ export async function createCommsArtefact(
  * Get artefacts for a bill
  */
 export async function getBillArtefacts(
-  billId: string
+  billId: string,
+  userId: string
 ): Promise<ApCommsArtefact[]> {
   try {
     return await db
       .select()
       .from(apCommsArtefact)
-      .where(eq(apCommsArtefact.billId, billId))
+      .where(
+        and(eq(apCommsArtefact.billId, billId), eq(apCommsArtefact.userId, userId))
+      )
       .orderBy(desc(apCommsArtefact.createdAt));
   } catch (error) {
     console.error("[AP] Get bill artefacts error:", error);
@@ -564,12 +573,15 @@ export async function createNote(note: ApNoteInsert): Promise<ApNote> {
 /**
  * Get notes for a bill
  */
-export async function getBillNotes(billId: string): Promise<ApNote[]> {
+export async function getBillNotes(
+  billId: string,
+  userId: string
+): Promise<ApNote[]> {
   try {
     return await db
       .select()
       .from(apNote)
-      .where(eq(apNote.billId, billId))
+      .where(and(eq(apNote.billId, billId), eq(apNote.userId, userId)))
       .orderBy(desc(apNote.createdAt));
   } catch (error) {
     console.error("[AP] Get bill notes error:", error);
