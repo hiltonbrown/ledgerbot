@@ -409,3 +409,4 @@ export type QaReviewRequest = InferSelectModel<typeof qaReviewRequest>;
 export type QaReviewRequestInsert = typeof qaReviewRequest.$inferInsert;
 
 export * from "./schema/ar";
+export * from "./schema/ap";

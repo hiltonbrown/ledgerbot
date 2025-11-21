@@ -69,10 +69,17 @@ export default function AgentSettingsPage() {
   // Accounts Payable Agent state
   const [apEnabled, setApEnabled] = useState(true);
   const [apModel, setApModel] = useState("anthropic-claude-sonnet-4-5");
-  const [invoiceProcessing, setInvoiceProcessing] = useState("auto");
-  const [approvalWorkflows, setApprovalWorkflows] = useState(true);
-  const [paymentRuns, setPaymentRuns] = useState("manual");
-  const [vendorManagement, setVendorManagement] = useState(true);
+  const [duplicateThreshold, setDuplicateThreshold] = useState("80");
+  const [bankChangeMonitoring, setBankChangeMonitoring] = useState(true);
+  const [autoApproveRiskThreshold, setAutoApproveRiskThreshold] = useState("20");
+  const [riskWeights, setRiskWeights] = useState({
+    duplicateBills: true,
+    unusualAmounts: true,
+    newSuppliers: true,
+    bankChanges: true,
+    urgentRequests: true,
+    roundAmounts: false,
+  });
 
   // Reporting and Analytics Agent state
   const [reportingEnabled, setReportingEnabled] = useState(true);
@@ -112,21 +119,54 @@ export default function AgentSettingsPage() {
   const [loggingLevel, setLoggingLevel] = useState("info");
   const [fallbackBehavior, setFallbackBehavior] = useState("retry");
 
-  // Load AP model from localStorage on mount
+  // Load AP agent settings from localStorage on mount
   useEffect(() => {
     const savedApModel = localStorage.getItem("apAgentModel");
     if (savedApModel) {
       setApModel(savedApModel);
     }
+
+    const savedDuplicateThreshold = localStorage.getItem("apDuplicateThreshold");
+    if (savedDuplicateThreshold) {
+      setDuplicateThreshold(savedDuplicateThreshold);
+    }
+
+    const savedBankChangeMonitoring = localStorage.getItem("apBankChangeMonitoring");
+    if (savedBankChangeMonitoring) {
+      setBankChangeMonitoring(savedBankChangeMonitoring === "true");
+    }
+
+    const savedAutoApproveThreshold = localStorage.getItem("apAutoApproveRiskThreshold");
+    if (savedAutoApproveThreshold) {
+      setAutoApproveRiskThreshold(savedAutoApproveThreshold);
+    }
+
+    const savedRiskWeights = localStorage.getItem("apRiskWeights");
+    if (savedRiskWeights) {
+      try {
+        setRiskWeights(JSON.parse(savedRiskWeights));
+      } catch (error) {
+        console.error("Failed to parse saved risk weights:", error);
+      }
+    }
   }, []);
 
   const handleSaveChanges = () => {
-    // Save AP agent model preference to localStorage
+    // Save AP agent settings to localStorage
     localStorage.setItem("apAgentModel", apModel);
+    localStorage.setItem("apDuplicateThreshold", duplicateThreshold);
+    localStorage.setItem("apBankChangeMonitoring", String(bankChangeMonitoring));
+    localStorage.setItem("apAutoApproveRiskThreshold", autoApproveRiskThreshold);
+    localStorage.setItem("apRiskWeights", JSON.stringify(riskWeights));
 
-    // Placeholder for save functionality
     console.log("Saving agent configurations...");
-    console.log("AP Agent Model:", apModel);
+    console.log("AP Agent Settings:", {
+      model: apModel,
+      duplicateThreshold,
+      bankChangeMonitoring,
+      autoApproveRiskThreshold,
+      riskWeights,
+    });
 
     // TODO: Save to database via API
     alert("Agent settings saved successfully!");
@@ -511,21 +551,28 @@ export default function AgentSettingsPage() {
               id: "accounts-payable",
               name: "Accounts Payable Agent",
               description:
-                "Automates vendor bill management, approval workflows, and payment runs.",
+                "Manages supplier payments with duplicate detection, bank change monitoring, risk scoring, and cash flow forecasting.",
               enabled: apEnabled,
               icon: <CreditCard className="h-5 w-5" />,
             }}
             onEnabledChange={setApEnabled}
             onReset={() => {
               setApModel("anthropic-claude-sonnet-4-5");
-              setInvoiceProcessing("auto");
-              setApprovalWorkflows(true);
-              setPaymentRuns("manual");
-              setVendorManagement(true);
+              setDuplicateThreshold("80");
+              setBankChangeMonitoring(true);
+              setAutoApproveRiskThreshold("20");
+              setRiskWeights({
+                duplicateBills: true,
+                unusualAmounts: true,
+                newSuppliers: true,
+                bankChanges: true,
+                urgentRequests: true,
+                roundAmounts: false,
+              });
             }}
           >
             <SettingRow
-              description="AI model to use for invoice processing and analysis"
+              description="AI model to use for bill processing, risk analysis, and payment commentary"
               label="Model"
             >
               <Select onValueChange={setApModel} value={apModel}>
@@ -543,56 +590,137 @@ export default function AgentSettingsPage() {
             </SettingRow>
 
             <SettingRow
-              description="How to process incoming invoices"
-              label="Invoice processing"
+              description="Confidence threshold for duplicate bill detection (0-100%)"
+              label="Duplicate detection threshold"
             >
-              <Select
-                onValueChange={setInvoiceProcessing}
-                value={invoiceProcessing}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="auto">Automatic</SelectItem>
-                  <SelectItem value="manual">Manual</SelectItem>
-                </SelectContent>
-              </Select>
-            </SettingRow>
-
-            <SettingRow
-              description="Enable multi-step approval workflows"
-              label="Approval workflows"
-            >
-              <Switch
-                checked={approvalWorkflows}
-                onCheckedChange={setApprovalWorkflows}
+              <Input
+                max="100"
+                min="0"
+                onChange={(e) => setDuplicateThreshold(e.target.value)}
+                type="number"
+                value={duplicateThreshold}
               />
             </SettingRow>
 
             <SettingRow
-              description="How to handle payment runs"
-              label="Payment runs"
+              description="Monitor and alert on supplier bank account changes"
+              label="Bank change monitoring"
             >
-              <Select onValueChange={setPaymentRuns} value={paymentRuns}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="auto">Automatic</SelectItem>
-                  <SelectItem value="manual">Manual</SelectItem>
-                </SelectContent>
-              </Select>
+              <Switch
+                checked={bankChangeMonitoring}
+                onCheckedChange={setBankChangeMonitoring}
+              />
             </SettingRow>
 
             <SettingRow
-              description="Enable vendor management features"
-              label="Vendor management"
+              description="Maximum risk score for auto-approval (0-100)"
+              label="Auto-approve threshold"
             >
-              <Switch
-                checked={vendorManagement}
-                onCheckedChange={setVendorManagement}
+              <Input
+                max="100"
+                min="0"
+                onChange={(e) => setAutoApproveRiskThreshold(e.target.value)}
+                type="number"
+                value={autoApproveRiskThreshold}
               />
+            </SettingRow>
+
+            <SettingRow
+              description="Risk factors to consider during bill evaluation"
+              label="Risk scoring factors"
+            >
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="font-normal text-sm" htmlFor="risk-duplicate">
+                    Duplicate bills
+                  </Label>
+                  <Switch
+                    checked={riskWeights.duplicateBills}
+                    id="risk-duplicate"
+                    onCheckedChange={(checked) =>
+                      setRiskWeights((prev) => ({
+                        ...prev,
+                        duplicateBills: checked,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label className="font-normal text-sm" htmlFor="risk-unusual">
+                    Unusual amounts
+                  </Label>
+                  <Switch
+                    checked={riskWeights.unusualAmounts}
+                    id="risk-unusual"
+                    onCheckedChange={(checked) =>
+                      setRiskWeights((prev) => ({
+                        ...prev,
+                        unusualAmounts: checked,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label className="font-normal text-sm" htmlFor="risk-new-supplier">
+                    New suppliers
+                  </Label>
+                  <Switch
+                    checked={riskWeights.newSuppliers}
+                    id="risk-new-supplier"
+                    onCheckedChange={(checked) =>
+                      setRiskWeights((prev) => ({
+                        ...prev,
+                        newSuppliers: checked,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label className="font-normal text-sm" htmlFor="risk-bank-change">
+                    Bank account changes
+                  </Label>
+                  <Switch
+                    checked={riskWeights.bankChanges}
+                    id="risk-bank-change"
+                    onCheckedChange={(checked) =>
+                      setRiskWeights((prev) => ({
+                        ...prev,
+                        bankChanges: checked,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label className="font-normal text-sm" htmlFor="risk-urgent">
+                    Urgent payment requests
+                  </Label>
+                  <Switch
+                    checked={riskWeights.urgentRequests}
+                    id="risk-urgent"
+                    onCheckedChange={(checked) =>
+                      setRiskWeights((prev) => ({
+                        ...prev,
+                        urgentRequests: checked,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label className="font-normal text-sm" htmlFor="risk-round">
+                    Round number amounts
+                  </Label>
+                  <Switch
+                    checked={riskWeights.roundAmounts}
+                    id="risk-round"
+                    onCheckedChange={(checked) =>
+                      setRiskWeights((prev) => ({
+                        ...prev,
+                        roundAmounts: checked,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
             </SettingRow>
           </AgentConfigCard>
 
