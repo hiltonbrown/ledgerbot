@@ -1,126 +1,135 @@
 "use client";
 
-import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
-import { CreditCard } from "lucide-react";
-import { useState, useEffect } from "react";
-import { InvoiceUploadZone } from "@/components/agents/ap/invoice-upload-zone";
-import { InvoiceViewer } from "@/components/agents/ap/invoice-viewer";
-import { InvoiceDetailsForm } from "@/components/agents/ap/invoice-details-form";
-import type { ExtractedInvoiceData } from "@/types/ap";
+import { useEffect, useState } from "react";
+import { CreditCard, RefreshCw, Calendar } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { APKPICards, type APKPIs } from "@/components/agents/ap/ap-kpi-cards";
+import { APAgeingChart, type AgeingBucket } from "@/components/agents/ap/ap-ageing-chart";
+import { APCreditorTable, type ContactWithStats } from "@/components/agents/ap/ap-creditor-table";
+import { APFilterTabs, type FilterType } from "@/components/agents/ap/ap-filter-tabs";
+import { APPaymentScheduleModal } from "@/components/agents/ap/ap-payment-schedule-modal";
+import { useToast } from "@/hooks/use-toast";
 
 export default function AccountsPayableAgentPage() {
-  const [uploadedFile, setUploadedFile] = useState<{
-    fileUrl: string;
-    fileName: string;
-    fileType: "pdf" | "image";
-    mimeType: string;
-  } | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [extractedData, setExtractedData] = useState<ExtractedInvoiceData | null>(null);
-  const [selectedModel, setSelectedModel] = useState<string>("anthropic-claude-sonnet-4-5");
+  const { toast } = useToast();
+  const [kpis, setKpis] = useState<APKPIs | null>(null);
+  const [ageingSummary, setAgeingSummary] = useState<AgeingBucket[]>([]);
+  const [creditors, setCreditors] = useState<ContactWithStats[]>([]);
+  const [activeFilter, setActiveFilter] = useState<FilterType>("all");
+  const [isLoadingKPIs, setIsLoadingKPIs] = useState(true);
+  const [isLoadingCreditors, setIsLoadingCreditors] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [showPaymentSchedule, setShowPaymentSchedule] = useState(false);
 
-  // Load model preference from localStorage on mount
-  useEffect(() => {
-    const savedModel = localStorage.getItem("apAgentModel");
-    if (savedModel) {
-      setSelectedModel(savedModel);
-    }
-  }, []);
-
-  const { sendMessage } = useChat({
-    transport: new DefaultChatTransport({
-      api: "/api/agents/ap",
-      fetch,
-      prepareSendMessagesRequest(request: any) {
-        return {
-          body: {
-            messages: request.messages,
-            settings: {
-              model: selectedModel,
-            },
-          },
-        };
-      },
-    }),
-  });
-
-  const handleFileUploaded = async (fileData: {
-    fileUrl: string;
-    fileName: string;
-    fileType: string;
-    mimeType: string;
-  }) => {
-    setUploadedFile({
-      ...fileData,
-      fileType: fileData.fileType as "pdf" | "image",
-    });
-    setIsProcessing(true);
-    setExtractedData(null);
-
+  // Load KPIs
+  const loadKPIs = async () => {
     try {
-      console.log("[AP Agent] Calling extraction API for file:", fileData.fileName);
+      setIsLoadingKPIs(true);
+      const response = await fetch("/api/agents/ap/kpis");
+      const data = await response.json();
 
-      // Call the extraction API directly
-      const response = await fetch("/api/agents/ap/extract", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          fileUrl: fileData.fileUrl,
-          fileType: fileData.fileType,
-          model: selectedModel,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Extraction failed: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      console.log("[AP Agent] Extraction result:", result);
-
-      if (result.success && result.invoiceData) {
-        console.log("[AP Agent] Setting extracted data:", result.invoiceData);
-        setExtractedData(result.invoiceData);
+      if (data.success && data.kpis) {
+        setKpis(data.kpis);
+        setAgeingSummary(data.kpis.ageingSummary || []);
       } else {
-        console.error("[AP Agent] Extraction failed:", result.error);
-        // Show error to user
-        alert(`Failed to extract invoice data: ${result.error || "Unknown error"}`);
+        console.error("Failed to load KPIs:", data.error);
       }
     } catch (error) {
-      console.error("[AP Agent] Error during extraction:", error);
-      alert(`Error extracting invoice: ${error instanceof Error ? error.message : "Unknown error"}`);
+      console.error("Error loading KPIs:", error);
     } finally {
-      setIsProcessing(false);
+      setIsLoadingKPIs(false);
     }
   };
 
-  const handleSyncToXero = async (data: ExtractedInvoiceData) => {
-    // Trigger the agent to create a bill in Xero
-    const message = `Please create a bill in Xero with the following details:
-Supplier: ${data.supplierName}
-ABN: ${data.supplierABN || "Not provided"}
-Invoice Number: ${data.invoiceNumber}
-Invoice Date: ${data.invoiceDate}
-Due Date: ${data.dueDate}
-Subtotal: $${data.subtotal}
-GST: $${data.gstAmount}
-Total: $${data.totalAmount}
+  // Load creditors
+  const loadCreditors = async (filter: FilterType = "all") => {
+    try {
+      setIsLoadingCreditors(true);
+      const response = await fetch(
+        `/api/agents/ap/creditors?filter=${filter}`
+      );
+      const data = await response.json();
 
-Line Items:
-${data.lineItems?.map((item, i) => `${i + 1}. ${item.description}: $${item.amount}`).join("\n")}
+      if (data.success && data.creditors) {
+        setCreditors(data.creditors);
+      } else {
+        console.error("Failed to load creditors:", data.error);
+      }
+    } catch (error) {
+      console.error("Error loading creditors:", error);
+    } finally {
+      setIsLoadingCreditors(false);
+    }
+  };
 
-Steps:
-1. Match the vendor to an existing Xero contact or create a new one
-2. Create a draft bill in Xero with these details
-3. Confirm when complete`;
+  // Sync from Xero
+  const handleSyncFromXero = async () => {
+    try {
+      setIsSyncing(true);
+      toast({
+        title: "Syncing from Xero",
+        description: "Fetching bills and suppliers from Xero...",
+      });
 
-    sendMessage({
-      role: "user",
-      parts: [{ type: "text", text: message }],
-    } as any);
+      const response = await fetch("/api/agents/ap/sync", {
+        method: "POST",
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast({
+          title: "Sync completed",
+          description: `Synced ${data.summary.suppliersSync} suppliers and ${data.summary.billsSync} bills`,
+        });
+
+        // Reload data
+        await Promise.all([loadKPIs(), loadCreditors(activeFilter)]);
+      } else {
+        toast({
+          title: "Sync failed",
+          description: data.error || "Failed to sync from Xero",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error syncing from Xero:", error);
+      toast({
+        title: "Sync error",
+        description: "An error occurred while syncing from Xero",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Handle filter change
+  const handleFilterChange = (filter: FilterType) => {
+    setActiveFilter(filter);
+    loadCreditors(filter);
+  };
+
+  // Handle row expansion (placeholder for future AI commentary)
+  const handleRowExpand = async (creditor: ContactWithStats) => {
+    console.log("Expanding creditor:", creditor.name);
+    // TODO: Load bill details and AI commentary
+  };
+
+  // Initial load
+  useEffect(() => {
+    loadKPIs();
+    loadCreditors();
+  }, []);
+
+  // Calculate filter counts
+  const filterCounts = {
+    all: creditors.length,
+    highRisk: creditors.filter(
+      (c) => c.riskLevel === "high" || c.riskLevel === "critical"
+    ).length,
+    bankChanges: creditors.filter((c) => c.hasBankChange).length,
+    overdue: creditors.filter((c) => c.totalOverdue > 0).length,
   };
 
   return (
@@ -133,42 +142,56 @@ Steps:
             Accounts Payable Agent
           </h1>
           <p className="text-muted-foreground">
-            Upload invoices, extract data, match vendors, and create bills in
-            Xero
+            Manage supplier payments, detect risks, and track cash flow
           </p>
         </div>
-      </div>
-
-      {/* Three Column Layout */}
-      <div className="grid gap-6 lg:grid-cols-12">
-        {/* Left Column: Upload Zone */}
-        <div className="lg:col-span-3">
-          <InvoiceUploadZone
-            disabled={isProcessing}
-            onFileUploaded={handleFileUploaded}
-          />
-        </div>
-
-        {/* Center Column: Invoice Viewer */}
-        <div className="lg:col-span-5">
-          <InvoiceViewer
-            fileName={uploadedFile?.fileName || null}
-            fileType={uploadedFile?.fileType || null}
-            fileUrl={uploadedFile?.fileUrl || null}
-          />
-        </div>
-
-        {/* Right Column: Invoice Details Form */}
-        <div className="lg:col-span-4">
-          <InvoiceDetailsForm
-            extractedData={extractedData}
-            fileType={uploadedFile?.fileType || null}
-            fileUrl={uploadedFile?.fileUrl || null}
-            isProcessing={isProcessing}
-            onSyncToXero={handleSyncToXero}
-          />
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handleSyncFromXero}
+            disabled={isSyncing}
+            className="gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
+            Sync from Xero
+          </Button>
+          <Button
+            className="gap-2"
+            onClick={() => setShowPaymentSchedule(true)}
+          >
+            <Calendar className="h-4 w-4" />
+            Payment Schedule
+          </Button>
         </div>
       </div>
+
+      {/* KPI Cards */}
+      <APKPICards kpis={kpis} isLoading={isLoadingKPIs} />
+
+      {/* Ageing Summary */}
+      <APAgeingChart ageingSummary={ageingSummary} isLoading={isLoadingKPIs} />
+
+      {/* Filters */}
+      <div className="flex items-center justify-between">
+        <APFilterTabs
+          activeFilter={activeFilter}
+          onFilterChange={handleFilterChange}
+          counts={filterCounts}
+        />
+      </div>
+
+      {/* Creditor Table */}
+      <APCreditorTable
+        creditors={creditors}
+        isLoading={isLoadingCreditors}
+        onRowExpand={handleRowExpand}
+      />
+
+      {/* Payment Schedule Modal */}
+      <APPaymentScheduleModal
+        open={showPaymentSchedule}
+        onClose={() => setShowPaymentSchedule(false)}
+      />
     </div>
   );
 }
