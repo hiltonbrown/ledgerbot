@@ -218,7 +218,7 @@ export const apRiskAssessment = pgTable(
       .notNull()
       .default("low"), // low, medium, high, critical
     riskScore: numeric("riskScore", { precision: 5, scale: 2 }).notNull(), // 0-100
-    riskFlags: jsonb("riskFlags").$type<string[]>().notNull().default([]), // missing_abn, duplicate_bill, etc.
+    riskFlags: jsonb("riskFlags").$type<string[]>().notNull().default(sql`'[]'::jsonb`), // missing_abn, duplicate_bill, etc.
     isDuplicate: boolean("isDuplicate").default(false),
     duplicateConfidence: numeric("duplicateConfidence", { precision: 3, scale: 2 }), // 0-1 confidence score
     potentialDuplicates: jsonb("potentialDuplicates").$type<
