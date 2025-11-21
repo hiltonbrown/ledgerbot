@@ -18,6 +18,10 @@ export const dynamic = "force-dynamic";
 export default function SettingsPage() {
   const [usageSummary, fileSummary] = [getUsageSummary(), getFileSummary()];
 
+  // Extract metrics from usage summary
+  const apiCallsMetric = usageSummary.metrics.find((m) => m.id === "api");
+  const storageMetric = usageSummary.metrics.find((m) => m.id === "storage");
+
   const settingsSections = [
     {
       title: "Personalisation",
@@ -82,13 +86,13 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium text-muted-foreground text-sm">
-                Total Messages
+                API Calls
               </p>
               <p className="mt-2 font-bold text-3xl">
-                {usageSummary.totalMessages}
+                {apiCallsMetric?.used.toLocaleString() ?? "0"}
               </p>
               <p className="mt-1 text-muted-foreground text-sm">
-                {usageSummary.period}
+                of {apiCallsMetric?.limit.toLocaleString() ?? "0"} limit
               </p>
             </div>
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
