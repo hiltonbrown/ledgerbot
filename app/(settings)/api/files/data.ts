@@ -1,3 +1,9 @@
+import "server-only";
+
+import { entitlementsByUserType } from "@/lib/ai/entitlements";
+import { getAuthUser } from "@/lib/auth/clerk-helpers";
+import { getContextFilesByUserId, getUserStorageUsage } from "@/lib/db/queries";
+
 export type FileRecord = {
   id: string;
   name: string;
@@ -12,46 +18,87 @@ export type FileSummary = {
   usage: {
     used: number;
     capacity: number;
+    fileCount: number;
   };
   files: FileRecord[];
 };
 
-const FILE_SUMMARY: FileSummary = {
-  usage: {
-    used: 2.3,
-    capacity: 10,
-  },
-  files: [
-    {
-      id: "file_1",
-      name: "Quarterly Forecast.xlsx",
-      type: "Spreadsheet",
-      size: "1.2 MB",
-      uploadedAt: "2024-05-14T09:00:00.000Z",
-      owner: "alex.rivers@example.com",
-      status: "synced",
-    },
-    {
-      id: "file_2",
-      name: "Product Strategy.pdf",
-      type: "Document",
-      size: "3.4 MB",
-      uploadedAt: "2024-05-11T16:45:00.000Z",
-      owner: "morgan.lee@example.com",
-      status: "processing",
-    },
-    {
-      id: "file_3",
-      name: "Support Transcript.txt",
-      type: "Text",
-      size: "864 KB",
-      uploadedAt: "2024-05-09T12:10:00.000Z",
-      owner: "sasha.wong@example.com",
-      status: "synced",
-    },
-  ],
-};
+export async function getFileSummary(): Promise<FileSummary> {
+  try {
+    const user = await getAuthUser();
 
-export function getFileSummary(): FileSummary {
-  return FILE_SUMMARY;
+    if (!user) {
+      return {
+        usage: {
+          used: 0,
+          capacity: 10,
+          fileCount: 0,
+        },
+        files: [],
+      };
+    }
+
+    const [files, storageUsage] = await Promise.all([
+      getContextFilesByUserId({ userId: user.id }),
+      getUserStorageUsage(user.id),
+    ]);
+
+    const maxStorage = entitlementsByUserType[user.type].maxStorageBytes;
+    const usedBytes = storageUsage?.totalSize ?? 0;
+    const usedGb = usedBytes / (1024 * 1024 * 1024);
+    const capacityGb = maxStorage / (1024 * 1024 * 1024);
+
+    // Format files for display
+    const formattedFiles: FileRecord[] = files.slice(0, 5).map((file) => {
+      const sizeInMb = file.sizeBytes / (1024 * 1024);
+      const sizeStr = sizeInMb >= 1
+        ? `${sizeInMb.toFixed(1)} MB`
+        : `${(file.sizeBytes / 1024).toFixed(0)} KB`;
+
+      // Determine file type from filename
+      const ext = file.name.split('.').pop()?.toLowerCase() || '';
+      let type = "Document";
+      if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+        type = "Image";
+      } else if (['xlsx', 'xls', 'csv'].includes(ext)) {
+        type = "Spreadsheet";
+      } else if (['pdf'].includes(ext)) {
+        type = "PDF";
+      } else if (['docx', 'doc'].includes(ext)) {
+        type = "Document";
+      } else if (['txt', 'md'].includes(ext)) {
+        type = "Text";
+      }
+
+      return {
+        id: file.id,
+        name: file.name,
+        type,
+        size: sizeStr,
+        uploadedAt: file.createdAt.toISOString(),
+        owner: user.email || "",
+        status: file.status === "ready" ? "synced" : file.status === "processing" ? "processing" : "failed",
+      };
+    });
+
+    return {
+      usage: {
+        used: Number.parseFloat(usedGb.toFixed(2)),
+        capacity: Number.parseFloat(capacityGb.toFixed(0)),
+        fileCount: files.length,
+      },
+      files: formattedFiles,
+    };
+  } catch (error) {
+    console.error("Error fetching file summary:", error);
+    return {
+      usage: {
+        used: 0,
+        capacity: 10,
+        fileCount: 0,
+      },
+      files: [],
+    };
+  }
 }
+

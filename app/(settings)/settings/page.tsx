@@ -8,19 +8,25 @@ import {
   Users,
   ChevronRight,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { getAuthUser } from "@/lib/auth/clerk-helpers";
+import { getChatsByUserId } from "@/lib/db/queries";
 import { getFileSummary } from "../api/files/data";
-import { getUsageSummary } from "../api/usage/data";
 
 export const dynamic = "force-dynamic";
 
-export default function SettingsPage() {
-  const [usageSummary, fileSummary] = [getUsageSummary(), getFileSummary()];
+export default async function SettingsPage() {
+  const [user, fileSummary] = await Promise.all([
+    getAuthUser(),
+    getFileSummary(),
+  ]);
 
-  // Extract metrics from usage summary
-  const apiCallsMetric = usageSummary.metrics.find((m) => m.id === "api");
-  const storageMetric = usageSummary.metrics.find((m) => m.id === "storage");
+  // Get actual chat/message count
+  let totalChats = 0;
+  if (user) {
+    const chats = await getChatsByUserId({ id: user.id });
+    totalChats = chats.length;
+  }
 
   const settingsSections = [
     {
@@ -86,13 +92,13 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium text-muted-foreground text-sm">
-                API Calls
+                Total Chats
               </p>
               <p className="mt-2 font-bold text-3xl">
-                {apiCallsMetric?.used.toLocaleString() ?? "0"}
+                {totalChats.toLocaleString()}
               </p>
               <p className="mt-1 text-muted-foreground text-sm">
-                of {apiCallsMetric?.limit.toLocaleString() ?? "0"} limit
+                Conversation history
               </p>
             </div>
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">

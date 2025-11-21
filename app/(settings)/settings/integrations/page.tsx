@@ -52,7 +52,7 @@ const payrollIntegrations: Integration[] = [
     name: "Employment Hero",
     description:
       "Sync employee data, timesheets, and leave balances. Automate payroll processing and superannuation.",
-    status: "available",
+    status: "coming-soon",
     docsUrl: "https://developer.employmenthero.com/",
   },
   {
@@ -60,7 +60,7 @@ const payrollIntegrations: Integration[] = [
     name: "Deputy",
     description:
       "Import rosters, timesheets, and attendance records. Export wage costs and labor compliance data.",
-    status: "available",
+    status: "coming-soon",
     docsUrl: "https://developer.deputy.com/",
   },
   {
