@@ -9,10 +9,9 @@ import { APCreditorTable, type ContactWithStats } from "@/components/agents/ap/a
 import { APFilterTabs, type FilterType } from "@/components/agents/ap/ap-filter-tabs";
 import { APPaymentScheduleModal } from "@/components/agents/ap/ap-payment-schedule-modal";
 import { type CreditorDetailsData } from "@/components/agents/ap/ap-creditor-details";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/toast";
 
 export default function AccountsPayableAgentPage() {
-  const { toast } = useToast();
   const [kpis, setKpis] = useState<APKPIs | null>(null);
   const [ageingSummary, setAgeingSummary] = useState<AgeingBucket[]>([]);
   const [creditors, setCreditors] = useState<ContactWithStats[]>([]);
@@ -72,8 +71,8 @@ export default function AccountsPayableAgentPage() {
     try {
       setIsSyncing(true);
       toast({
-        title: "Syncing from Xero",
-        description: "Fetching bills and suppliers from Xero...",
+        type: "success",
+        description: "Syncing from Xero - Fetching bills and suppliers...",
       });
 
       const response = await fetch("/api/agents/ap/sync", {
@@ -84,7 +83,7 @@ export default function AccountsPayableAgentPage() {
 
       if (data.success) {
         toast({
-          title: "Sync completed",
+          type: "success",
           description: `Synced ${data.summary.suppliersSync} suppliers and ${data.summary.billsSync} bills`,
         });
 
@@ -92,17 +91,15 @@ export default function AccountsPayableAgentPage() {
         await Promise.all([loadKPIs(), loadCreditors(activeFilter)]);
       } else {
         toast({
-          title: "Sync failed",
+          type: "error",
           description: data.error || "Failed to sync from Xero",
-          variant: "destructive",
         });
       }
     } catch (error) {
       console.error("Error syncing from Xero:", error);
       toast({
-        title: "Sync error",
+        type: "error",
         description: "An error occurred while syncing from Xero",
-        variant: "destructive",
       });
     } finally {
       setIsSyncing(false);
@@ -137,18 +134,16 @@ export default function AccountsPayableAgentPage() {
       } else {
         console.error("Failed to load creditor commentary:", result.error);
         toast({
-          title: "Failed to load details",
+          type: "error",
           description: result.error || "Could not load creditor details",
-          variant: "destructive",
         });
         setExpandedData((prev) => ({ ...prev, [creditor.id]: null }));
       }
     } catch (error) {
       console.error("Error loading creditor commentary:", error);
       toast({
-        title: "Error",
+        type: "error",
         description: "An error occurred while loading creditor details",
-        variant: "destructive",
       });
       setExpandedData((prev) => ({ ...prev, [creditor.id]: null }));
     } finally {

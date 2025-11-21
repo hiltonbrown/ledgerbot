@@ -857,7 +857,7 @@ export async function getHighRiskBills(userId: string): Promise<BillWithContact[
           or(
             eq(apRiskAssessment.riskLevel, "high"),
             eq(apRiskAssessment.riskLevel, "critical")
-          ) as typeof apRiskAssessment.riskLevel
+          )
         )
       );
 

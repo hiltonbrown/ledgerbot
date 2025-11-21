@@ -19,7 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar as CalendarIcon, DollarSign, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { APCashFlowChart } from "./ap-cash-flow-chart";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/toast";
 
 interface Bill {
   id: string;
@@ -50,7 +50,6 @@ export function APPaymentScheduleModal({
   onClose,
   onPaymentRunCreated,
 }: PaymentScheduleModalProps) {
-  const { toast } = useToast();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [billsByDate, setBillsByDate] = useState<Record<string, Bill[]>>({});
   const [forecast, setForecast] = useState<ForecastData[]>([]);
@@ -137,18 +136,16 @@ export function APPaymentScheduleModal({
   const handleCreatePaymentRun = async () => {
     if (selectedBills.size === 0) {
       toast({
-        title: "No bills selected",
+        type: "error",
         description: "Please select at least one bill for the payment run",
-        variant: "destructive",
       });
       return;
     }
 
     if (!paymentRunName.trim()) {
       toast({
-        title: "Name required",
+        type: "error",
         description: "Please enter a name for the payment run",
-        variant: "destructive",
       });
       return;
     }
@@ -171,7 +168,7 @@ export function APPaymentScheduleModal({
 
       if (result.success) {
         toast({
-          title: "Payment run created",
+          type: "success",
           description: `Successfully created payment run with ${selectedBills.size} bills`,
         });
 
@@ -185,17 +182,15 @@ export function APPaymentScheduleModal({
         }
       } else {
         toast({
-          title: "Failed to create payment run",
+          type: "error",
           description: result.error || "An error occurred",
-          variant: "destructive",
         });
       }
     } catch (error) {
       console.error("Error creating payment run:", error);
       toast({
-        title: "Error",
+        type: "error",
         description: "An error occurred while creating the payment run",
-        variant: "destructive",
       });
     } finally {
       setIsCreating(false);
@@ -206,7 +201,7 @@ export function APPaymentScheduleModal({
   const datesWithBills = Object.keys(billsByDate).map((dateStr) => new Date(dateStr));
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+    <Dialog open={open} onOpenChange={(isOpen: boolean) => !isOpen && onClose()}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">

@@ -162,7 +162,6 @@ Provide your analysis:`;
     const result = await generateText({
       model: myProvider.languageModel("anthropic-claude-sonnet-4-5"),
       prompt,
-      maxTokens: 800,
     });
 
     const commentary = result.text;

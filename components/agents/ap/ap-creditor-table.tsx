@@ -255,10 +255,14 @@ export function APCreditorTable({
                             </div>
                           </div>
                           {creditor.hasBankChange && (
-                            <Banknote className="h-4 w-4 text-orange-500" title="Bank details changed" />
+                            <span title="Bank details changed">
+                              <Banknote className="h-4 w-4 text-orange-500" />
+                            </span>
                           )}
                           {creditor.riskLevel === "high" || creditor.riskLevel === "critical" ? (
-                            <AlertTriangle className="h-4 w-4 text-red-500" title="High risk" />
+                            <span title="High risk">
+                              <AlertTriangle className="h-4 w-4 text-red-500" />
+                            </span>
                           ) : null}
                         </div>
                       </TableCell>
