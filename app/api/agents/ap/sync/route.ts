@@ -44,13 +44,13 @@ export async function POST() {
       { limit: 1000 }
     );
 
-    const contactsData = JSON.parse(contactsResult.content[0].text);
-    console.log("[AP Sync] Fetched contacts:", contactsData.contacts?.length || 0);
+    const contacts = JSON.parse(contactsResult.content[0].text);
+    console.log("[AP Sync] Fetched contacts:", Array.isArray(contacts) ? contacts.length : 0);
 
     // Filter for suppliers (IsSupplier = true)
-    const suppliers = contactsData.contacts?.filter(
-      (c: { isSupplier?: boolean }) => c.isSupplier
-    ) || [];
+    const suppliers = Array.isArray(contacts)
+      ? contacts.filter((c: { isSupplier?: boolean }) => c.isSupplier)
+      : [];
 
     // Step 2: Upsert suppliers to database
     const supplierInserts: Omit<ApContactInsert, "userId">[] = suppliers.map(
@@ -93,13 +93,13 @@ export async function POST() {
       limit: 1000,
     });
 
-    const billsData = JSON.parse(billsResult.content[0].text);
-    console.log("[AP Sync] Fetched bills:", billsData.invoices?.length || 0);
+    const bills = JSON.parse(billsResult.content[0].text);
+    console.log("[AP Sync] Fetched bills:", Array.isArray(bills) ? bills.length : 0);
 
     // Step 4: Upsert bills to database
     const billInserts: Omit<ApBillInsert, "userId">[] = [];
 
-    for (const bill of billsData.invoices || []) {
+    for (const bill of Array.isArray(bills) ? bills : []) {
       const contactId = supplierMap.get(bill.contact?.contactID);
       if (!contactId) {
         console.warn("[AP Sync] Skipping bill - supplier not found:", bill.invoiceNumber);
