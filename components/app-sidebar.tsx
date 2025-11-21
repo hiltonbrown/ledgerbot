@@ -1,26 +1,20 @@
 "use client";
 
 import {
-  BookOpen,
   Bot,
-  FileText,
-  Home,
   LifeBuoy,
   Lightbulb,
   MessageSquare,
   Send,
   Settings2,
-  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { PlusIcon } from "@/components/icons";
 import { NavMain } from "@/components/nav-main";
 import { NavSecondary } from "@/components/nav-secondary";
 import { NavUser } from "@/components/nav-user";
 import { SidebarHistory } from "@/components/sidebar-history";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -40,7 +34,6 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import type { AuthUser } from "@/lib/types/auth";
-import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 type SidebarXeroConnection = {
   id: string;
@@ -118,24 +111,16 @@ export function AppSidebar({
       title: "Chat",
       url: "/",
       icon: MessageSquare,
-      isActive: true,
     },
     {
       title: "Agents",
       url: "/agents",
       icon: Bot,
+      isActive: true,
       items: [
         {
           title: "Document Processing",
           url: "/agents/docmanagement",
-        },
-        {
-          title: "Reconciliations",
-          url: "/agents/reconciliations",
-        },
-        {
-          title: "Compliance",
-          url: "/agents/compliance",
         },
         {
           title: "Analytics",
@@ -146,16 +131,16 @@ export function AppSidebar({
           url: "/agents/forecasting",
         },
         {
-          title: "Q&A",
-          url: "/agents/qanda",
-        },
-        {
           title: "Accounts Payable",
           url: "/agents/ap",
         },
         {
           title: "Accounts Receivable",
           url: "/agents/ar",
+        },
+        {
+          title: "Q&A",
+          url: "/agents/qanda",
         },
         {
           title: "Workflow",

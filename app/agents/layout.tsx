@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
-import { AgentsHeader } from "@/components/agents/agents-header";
 import { AppSidebar } from "@/components/app-sidebar";
+import { ChatHeader } from "@/components/chat-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import { getXeroConnectionsByUserId } from "@/lib/db/queries";
@@ -28,11 +28,7 @@ export default async function AgentsLayout({
       <AppSidebar user={user} xeroConnections={sidebarXeroConnections} />
       <SidebarInset>
         <div className="flex min-h-svh flex-col">
-          <header className="border-b bg-background">
-            <div className="flex flex-col gap-4 px-6 py-6">
-              <AgentsHeader />
-            </div>
-          </header>
+          <ChatHeader chatId="" isReadonly={false} />
           <main className="flex-1 px-6 py-8">
             <div className="mx-auto w-full max-w-6xl space-y-8">{children}</div>
           </main>

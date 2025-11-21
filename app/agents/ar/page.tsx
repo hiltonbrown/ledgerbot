@@ -16,7 +16,6 @@ import {
   Phone,
   RefreshCw,
   Search,
-  TrendingUp,
   Users,
   X,
 } from "lucide-react";
@@ -24,11 +23,10 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -342,9 +340,11 @@ export default function AccountsReceivableAgentPage() {
     if (minAmount || maxAmount) {
       // Validate minAmount and maxAmount
       const min = minAmount ? Math.max(0, Number.parseFloat(minAmount)) : 0;
-      const max = maxAmount ? Math.max(0, Number.parseFloat(maxAmount)) : Number.POSITIVE_INFINITY;
+      const max = maxAmount
+        ? Math.max(0, Number.parseFloat(maxAmount))
+        : Number.POSITIVE_INFINITY;
       // If invalid input, skip filtering (show all)
-      if (isNaN(min) || isNaN(max) || (maxAmount && min > max)) {
+      if (Number.isNaN(min) || Number.isNaN(max) || (maxAmount && min > max)) {
         // Optionally, you could return [] here to show no results, or handle error UI
         // For now, skip filtering
       } else {
@@ -469,39 +469,17 @@ export default function AccountsReceivableAgentPage() {
   }, []);
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto space-y-6 p-6">
       {/* Header */}
-      <Card>
-        <CardHeader className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <DollarSign className="h-6 w-6 text-primary" />
-              <CardTitle className="text-xl">
-                Accounts Receivable Agent
-              </CardTitle>
-            </div>
-            <Button
-              disabled={syncStatus.isSyncing || isLoadingReport}
-              onClick={handleSyncXero}
-              size="default"
-            >
-              {syncStatus.isSyncing ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Syncing from Xero
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Sync from Xero
-                </>
-              )}
-            </Button>
-          </div>
-          <p className="text-muted-foreground text-sm">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="flex items-center gap-2 font-bold text-3xl">
+            <DollarSign className="h-8 w-8 text-primary" />
+            Accounts Receivable Agent
+          </h1>
+          <p className="text-muted-foreground">
             Manage customer invoices, track overdue payments, and generate
-            collection scripts. Sync data from Xero to view ageing reports and
-            contact debtors.
+            collection scripts
           </p>
           {syncStatus.lastSynced && (
             <p className="text-muted-foreground text-xs">
@@ -511,175 +489,238 @@ export default function AccountsReceivableAgentPage() {
               {syncStatus.isUsingMock && " (using mock data)"}
             </p>
           )}
-        </CardHeader>
-      </Card>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            className="gap-2"
+            disabled={syncStatus.isSyncing || isLoadingReport}
+            onClick={handleSyncXero}
+            variant="outline"
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${syncStatus.isSyncing ? "animate-spin" : ""}`}
+            />
+            Sync from Xero
+          </Button>
+        </div>
+      </div>
 
       {/* Error Display */}
       {error && (
-        <Card className="border-destructive">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="h-5 w-5" />
-              <p className="font-medium">{error}</p>
-            </div>
-          </CardContent>
+        <Card className="border-destructive p-6">
+          <div className="flex items-center gap-2 text-destructive">
+            <AlertTriangle className="h-5 w-5" />
+            <p className="font-medium">{error}</p>
+          </div>
         </Card>
       )}
 
       {/* Summary Cards */}
       {ageingReport && (
         <div className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="font-medium text-sm">
-                Total Outstanding
-              </CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="font-bold text-2xl">
-                {formatCurrency(ageingReport.summary.totalOutstanding)}
+          <Card className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-muted-foreground text-sm">
+                  Total Outstanding
+                </p>
+                <p className="mt-2 font-bold text-3xl">
+                  {formatCurrency(ageingReport.summary.totalOutstanding)}
+                </p>
+                <p className="mt-1 text-muted-foreground text-sm">
+                  Across {ageingReport.summary.invoiceCount} invoice
+                  {ageingReport.summary.invoiceCount !== 1 ? "s" : ""}
+                </p>
               </div>
-              <p className="text-muted-foreground text-xs">
-                Across {ageingReport.summary.invoiceCount} invoice
-                {ageingReport.summary.invoiceCount !== 1 ? "s" : ""}
-              </p>
-            </CardContent>
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                <DollarSign className="h-6 w-6 text-primary" />
+              </div>
+            </div>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="font-medium text-sm">
-                Active Debtors
-              </CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="font-bold text-2xl">
-                {ageingReport.summary.contactCount}
+          <Card className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-muted-foreground text-sm">
+                  Active Debtors
+                </p>
+                <p className="mt-2 font-bold text-3xl">
+                  {ageingReport.summary.contactCount}
+                </p>
+                <p className="mt-1 text-muted-foreground text-sm">
+                  Customers with overdue invoices
+                </p>
               </div>
-              <p className="text-muted-foreground text-xs">
-                Customers with overdue invoices
-              </p>
-            </CardContent>
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-500/10">
+                <Users className="h-6 w-6 text-blue-600" />
+              </div>
+            </div>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="font-medium text-sm">Average DSO</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="font-bold text-2xl">
-                {ageingReport.summary.contactCount > 0
-                  ? Math.round(
-                      ageingReport.contacts.reduce(
-                        (sum, c) => sum + c.oldestInvoiceDays,
-                        0
-                      ) / ageingReport.summary.contactCount
-                    )
-                  : 0}{" "}
-                days
+          <Card className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-muted-foreground text-sm">
+                  Average DSO
+                </p>
+                <p className="mt-2 font-bold text-3xl">
+                  {ageingReport.summary.contactCount > 0
+                    ? Math.round(
+                        ageingReport.contacts.reduce(
+                          (sum, c) => sum + c.oldestInvoiceDays,
+                          0
+                        ) / ageingReport.summary.contactCount
+                      )
+                    : 0}{" "}
+                  days
+                </p>
+                <p className="mt-1 text-muted-foreground text-sm">
+                  Days Sales Outstanding
+                </p>
               </div>
-              <p className="text-muted-foreground text-xs">
-                Days Sales Outstanding
-              </p>
-            </CardContent>
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-500/10">
+                <Clock className="h-6 w-6 text-green-600" />
+              </div>
+            </div>
           </Card>
         </div>
       )}
 
-      {/* Ageing Buckets */}
+      {/* Ageing Summary */}
       {ageingReport && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <TrendingUp className="h-5 w-5 text-primary" />
-              Ageing Summary
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {ageingReport.buckets.map((bucket) => {
-                const percentage =
-                  ageingReport.summary.totalOutstanding > 0
-                    ? (bucket.totalOutstanding /
-                        ageingReport.summary.totalOutstanding) *
-                      100
-                    : 0;
+        <Card className="p-6">
+          <div className="mb-6">
+            <h3 className="font-semibold text-lg">Ageing Summary</h3>
+            <p className="text-muted-foreground text-sm">
+              Outstanding invoices by age
+            </p>
+          </div>
 
-                return (
-                  <div className="space-y-2" key={bucket.label}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">
-                          {bucket.label}
-                        </span>
-                        <Badge variant="outline">
-                          {bucket.invoiceCount} invoice
-                          {bucket.invoiceCount !== 1 ? "s" : ""}
-                        </Badge>
-                      </div>
-                      <span className="font-semibold text-sm">
-                        {formatCurrency(bucket.totalOutstanding)}
+          <div className="space-y-4">
+            {ageingReport.buckets.map((bucket) => {
+              // Calculate max value for scaling
+              const maxTotal = Math.max(
+                ...ageingReport.buckets.map((b) => b.totalOutstanding),
+                1
+              );
+              const percentage =
+                maxTotal > 0 ? (bucket.totalOutstanding / maxTotal) * 100 : 0;
+              const shareOfTotal =
+                ageingReport.summary.totalOutstanding > 0
+                  ? (bucket.totalOutstanding /
+                      ageingReport.summary.totalOutstanding) *
+                    100
+                  : 0;
+
+              // Determine color based on bucket
+              let colorClass = "bg-green-500";
+              if (
+                bucket.label.includes("1-30") ||
+                bucket.label.includes("30")
+              ) {
+                colorClass = "bg-yellow-500";
+              } else if (
+                bucket.label.includes("31-60") ||
+                bucket.label.includes("60")
+              ) {
+                colorClass = "bg-orange-500";
+              } else if (
+                bucket.label.includes("61-90") ||
+                bucket.label.includes("90+") ||
+                bucket.label.includes("90")
+              ) {
+                colorClass = "bg-red-500";
+              }
+
+              return (
+                <div className="space-y-2" key={bucket.label}>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium">{bucket.label}</span>
+                    <span className="text-muted-foreground">
+                      {bucket.invoiceCount}{" "}
+                      {bucket.invoiceCount === 1 ? "invoice" : "invoices"} • $
+                      {bucket.totalOutstanding.toLocaleString("en-AU", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                  </div>
+                  <div className="relative h-8 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className={`h-full transition-all duration-500 ${colorClass}`}
+                      style={{ width: `${percentage}%` }}
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="font-medium text-sm text-white drop-shadow-md">
+                        {shareOfTotal.toFixed(1)}%
                       </span>
                     </div>
-                    <Progress className="h-2" value={percentage} />
                   </div>
-                );
-              })}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-6 border-t pt-4">
+            <div className="flex items-center justify-between font-semibold">
+              <span>Total</span>
+              <span>
+                $
+                {ageingReport.summary.totalOutstanding.toLocaleString("en-AU", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </span>
             </div>
-          </CardContent>
+          </div>
         </Card>
       )}
 
       {/* Search and Filters */}
       {ageingReport && ageingReport.contacts.length > 0 && (
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="-translate-y-1/2 absolute top-1/2 left-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    className="pl-10"
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search by customer name or email..."
-                    value={searchQuery}
-                  />
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={() => setShowFilters(!showFilters)}
-                  size="default"
-                  variant="outline"
-                >
-                  <Filter className="mr-2 h-4 w-4" />
-                  Filters
-                  {(riskFilter !== "all" ||
-                    bucketFilter !== "all" ||
-                    minAmount ||
-                    maxAmount) && (
-                    <Badge className="ml-2" variant="destructive">
-                      Active
-                    </Badge>
-                  )}
-                </Button>
-                <Button
-                  onClick={handleExportCSV}
-                  size="default"
-                  variant="outline"
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  Export CSV
-                </Button>
+        <Card className="p-6">
+          <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="-translate-y-1/2 absolute top-1/2 left-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  className="pl-10"
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by customer name or email..."
+                  value={searchQuery}
+                />
               </div>
             </div>
-          </CardHeader>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => setShowFilters(!showFilters)}
+                size="default"
+                variant="outline"
+              >
+                <Filter className="mr-2 h-4 w-4" />
+                Filters
+                {(riskFilter !== "all" ||
+                  bucketFilter !== "all" ||
+                  minAmount ||
+                  maxAmount) && (
+                  <Badge className="ml-2" variant="destructive">
+                    Active
+                  </Badge>
+                )}
+              </Button>
+              <Button
+                onClick={handleExportCSV}
+                size="default"
+                variant="outline"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Export CSV
+              </Button>
+            </div>
+          </div>
 
           {showFilters && (
-            <CardContent className="border-t">
+            <div className="border-t pt-4">
               <div className="grid gap-4 md:grid-cols-4">
                 <div className="space-y-2">
                   <Label htmlFor="risk-filter">Risk Level</Label>
@@ -750,15 +791,15 @@ export default function AccountsReceivableAgentPage() {
                   {ageingReport.contacts.length} customers
                 </p>
               </div>
-            </CardContent>
+            </div>
           )}
         </Card>
       )}
 
       {/* Bulk Action Toolbar */}
       {selectedContacts.size > 0 && (
-        <Card className="border-primary">
-          <CardContent className="flex items-center justify-between py-4">
+        <Card className="border-primary p-4">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Check className="h-5 w-5 text-primary" />
               <span className="font-semibold">
@@ -784,24 +825,24 @@ export default function AccountsReceivableAgentPage() {
                 Clear Selection
               </Button>
             </div>
-          </CardContent>
+          </div>
         </Card>
       )}
 
       {/* Debtor List */}
       {ageingReport && filteredContacts.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
+        <Card className="p-6">
+          <div className="mb-4">
+            <h3 className="flex items-center gap-2 font-semibold text-lg">
               <FileText className="h-5 w-5 text-primary" />
               Debtors ({filteredContacts.length})
-            </CardTitle>
+            </h3>
             <p className="text-muted-foreground text-sm">
               Click the arrow to view invoice details, or click actions to draft
               reminders
             </p>
-          </CardHeader>
-          <CardContent>
+          </div>
+          <div>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -1026,14 +1067,14 @@ export default function AccountsReceivableAgentPage() {
                 })}
               </TableBody>
             </Table>
-          </CardContent>
+          </div>
         </Card>
       )}
 
       {/* Empty State */}
       {ageingReport && ageingReport.contacts.length === 0 && (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
+        <Card className="p-6">
+          <div className="flex flex-col items-center justify-center py-12">
             <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
             <h3 className="mb-2 font-semibold text-lg">No Overdue Invoices</h3>
             <p className="mb-4 text-center text-muted-foreground text-sm">
@@ -1053,19 +1094,19 @@ export default function AccountsReceivableAgentPage() {
                 </>
               )}
             </Button>
-          </CardContent>
+          </div>
         </Card>
       )}
 
       {/* Loading State */}
       {isLoadingReport && !ageingReport && (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
+        <Card className="p-6">
+          <div className="flex flex-col items-center justify-center py-12">
             <Loader2 className="mb-4 h-12 w-12 animate-spin text-primary" />
             <p className="text-muted-foreground text-sm">
               Loading ageing report...
             </p>
-          </CardContent>
+          </div>
         </Card>
       )}
     </div>

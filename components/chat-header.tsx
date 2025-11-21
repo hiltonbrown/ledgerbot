@@ -1,56 +1,26 @@
 "use client";
 
-import { Moon, Sun } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useTheme } from "next-themes";
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo } from "react";
 import { useWindowSize } from "usehooks-ts";
 import { SidebarToggle } from "@/components/sidebar-toggle";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { PlusIcon } from "./icons";
 import { useSidebar } from "./ui/sidebar";
 
 function PureChatHeader({
-  chatId,
-  isReadonly,
+  chatId: _chatId,
+  isReadonly: _isReadonly,
 }: {
   chatId: string;
   isReadonly: boolean;
 }) {
   const router = useRouter();
   const { open } = useSidebar();
-  const { resolvedTheme, setTheme } = useTheme();
-
   const { width: windowWidth } = useWindowSize();
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
 
   const shouldShowNewChat = !open || windowWidth < 768;
-
-  const themeToggleLabel = isMounted
-    ? resolvedTheme === "dark"
-      ? "Switch to light mode"
-      : "Switch to dark mode"
-    : "Toggle theme";
-  const themeToggleIcon = useMemo(() => {
-    if (!isMounted) {
-      return <Moon className="size-4" />;
-    }
-
-    return resolvedTheme === "dark" ? (
-      <Sun className="size-4" />
-    ) : (
-      <Moon className="size-4" />
-    );
-  }, [isMounted, resolvedTheme]);
-
-  const handleThemeToggle = () => {
-    const nextTheme = resolvedTheme === "dark" ? "light" : "dark";
-    setTheme(nextTheme);
-  };
 
   return (
     <header className="sticky top-0 flex items-center gap-2 bg-background px-2 py-1.5 md:px-2">
@@ -70,25 +40,9 @@ function PureChatHeader({
         </Button>
       )}
 
-      <Button
-        className="order-3 h-8 px-3 md:h-9"
-        onClick={() => router.push("/agents")}
-        variant="ghost"
-      >
-        Agents
-      </Button>
-
-      <Button
-        aria-label={themeToggleLabel}
-        className="order-4 ml-auto h-8 w-8 md:h-9 md:w-9"
-        disabled={!isMounted}
-        onClick={handleThemeToggle}
-        size="icon"
-        variant="ghost"
-      >
-        {themeToggleIcon}
-        <span className="sr-only">{themeToggleLabel}</span>
-      </Button>
+      <div className="order-3 ml-auto">
+        <ThemeToggle />
+      </div>
     </header>
   );
 }
