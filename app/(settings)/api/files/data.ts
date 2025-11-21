@@ -50,10 +50,10 @@ export async function getFileSummary(): Promise<FileSummary> {
 
     // Format files for display
     const formattedFiles: FileRecord[] = files.slice(0, 5).map((file) => {
-      const sizeInMb = file.sizeBytes / (1024 * 1024);
+      const sizeInMb = file.fileSize / (1024 * 1024);
       const sizeStr = sizeInMb >= 1
         ? `${sizeInMb.toFixed(1)} MB`
-        : `${(file.sizeBytes / 1024).toFixed(0)} KB`;
+        : `${(file.fileSize / 1024).toFixed(0)} KB`;
 
       // Determine file type from filename
       const ext = file.name.split('.').pop()?.toLowerCase() || '';
