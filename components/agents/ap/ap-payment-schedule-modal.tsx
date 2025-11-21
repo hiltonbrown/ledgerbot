@@ -17,7 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar as CalendarIcon, DollarSign, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Calendar as CalendarIcon, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { APCashFlowChart } from "./ap-cash-flow-chart";
 import { toast } from "@/components/toast";
 
