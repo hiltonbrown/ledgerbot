@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq, gte, lt, lte, sql, or } from "drizzle-orm";
+import { and, desc, eq, lte, sql, or } from "drizzle-orm";
 import { ChatSDKError } from "@/lib/errors";
 import { db } from "../queries";
 import type {
