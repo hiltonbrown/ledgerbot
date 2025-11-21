@@ -6,6 +6,7 @@ import {
   BookOpen,
   ExternalLink,
   MessageSquareText,
+  RefreshCw,
   Send,
   ThumbsDown,
   ThumbsUp,
