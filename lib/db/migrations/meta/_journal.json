@@ -197,6 +197,13 @@
       "when": 1763638126857,
       "tag": "0027_handy_rogue",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1763721529977,
+      "tag": "0028_whole_gressill",
+      "breakpoints": true
     }
   ]
 }
