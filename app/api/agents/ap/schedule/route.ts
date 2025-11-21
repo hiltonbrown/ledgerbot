@@ -3,6 +3,8 @@ import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import { db } from "@/lib/db/queries";
 import { apBill, apContact } from "@/lib/db/schema/ap";
 import { eq, and, sql, gte, lte } from "drizzle-orm";
+import { createPaymentSchedule } from "@/lib/db/queries/ap";
+import type { ApPaymentScheduleInsert } from "@/lib/db/schema/ap";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -203,25 +205,24 @@ export async function POST(request: Request) {
       low: bills.length,
     };
 
-    // Create payment schedule (you would save this to apPaymentSchedule table)
-    const schedule = {
-      id: crypto.randomUUID(),
+    // Create payment schedule in database
+    const scheduleData: ApPaymentScheduleInsert = {
+      userId: user.id,
       name,
-      scheduledDate,
+      scheduledDate: new Date(scheduledDate),
       billIds,
-      totalAmount: Math.round(totalAmount * 100) / 100,
-      billCount: bills.length,
+      totalAmount: (Math.round(totalAmount * 100) / 100).toString(),
+      billCount: bills.length.toString(),
       riskSummary,
       notes,
       status: "draft",
-      createdAt: new Date().toISOString(),
     };
 
-    // TODO: Save to database using createPaymentSchedule from queries/ap.ts
+    const createdSchedule = await createPaymentSchedule(scheduleData);
 
     return NextResponse.json({
       success: true,
-      schedule,
+      schedule: createdSchedule,
     });
   } catch (error) {
     console.error("[AP Schedule API] Error:", error);
