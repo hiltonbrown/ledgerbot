@@ -1,28 +1,58 @@
 "use client";
 
-import { Network } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Network, Play, GitBranch } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function WorkflowAgentPage() {
   return (
-    <div className="space-y-10">
-      <Card>
-        <CardHeader className="flex flex-col gap-2">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Network className="h-5 w-5 text-primary" />
-            Workflow supervisor
-          </CardTitle>
-          <p className="text-muted-foreground text-sm">
-            Graph orchestrations across document, reconciliation and compliance
-            agents with traceability.
+    <div className="container mx-auto space-y-6 p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="flex items-center gap-2 font-bold text-3xl">
+            <Network className="h-8 w-8 text-primary" />
+            Workflow Supervisor Agent
+          </h1>
+          <p className="text-muted-foreground">
+            Graph orchestrations across document, reconciliation, and compliance
+            agents with Mastra workflows and traceability
           </p>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border border-primary/40 border-dashed bg-primary/5 p-6 text-center">
-            <p className="font-semibold text-sm">Coming soon</p>
-            <p className="mt-2 text-muted-foreground text-sm">
-              The Workflow Supervisor workspace is under development. Configure
-              settings via Settings → Agents.
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" disabled className="gap-2">
+            <GitBranch className="h-4 w-4" />
+            View Workflows
+          </Button>
+          <Button disabled className="gap-2">
+            <Play className="h-4 w-4" />
+            Run Workflow
+          </Button>
+        </div>
+      </div>
+
+      {/* Coming Soon Card */}
+      <Card>
+        <CardContent className="p-12">
+          <div className="flex flex-col items-center justify-center text-center">
+            <Network className="mb-4 h-16 w-16 text-muted-foreground" />
+            <h2 className="mb-2 font-semibold text-xl">
+              Workflow Supervisor Coming Soon
+            </h2>
+            <p className="mb-6 max-w-md text-muted-foreground">
+              The Workflow Supervisor workspace is under development. This agent
+              will orchestrate multi-step processes across document management,
+              reconciliation, and compliance agents using Mastra workflows with
+              full traceability.
+            </p>
+            <p className="text-muted-foreground text-sm">
+              Configure settings via{" "}
+              <a
+                href="/settings/agents"
+                className="font-medium text-primary hover:underline"
+              >
+                Settings → Agents
+              </a>
             </p>
           </div>
         </CardContent>
