@@ -70,20 +70,6 @@ export function APPaymentScheduleModal({
   const [paymentRunNotes, setPaymentRunNotes] = useState("");
   const [isCreating, setIsCreating] = useState(false);
 
-  // Load schedule data when modal opens
-  useEffect(() => {
-    if (open) {
-      loadScheduleData();
-    } else {
-      // Reset state when closing
-      setSelectedBills(new Set());
-      setShowCreateForm(false);
-      setPaymentRunName("");
-      setPaymentRunNotes("");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, loadScheduleData]);
-
   const loadScheduleData = async () => {
     try {
       setIsLoading(true);
@@ -111,6 +97,20 @@ export function APPaymentScheduleModal({
       setIsLoading(false);
     }
   };
+
+  // Load schedule data when modal opens
+  useEffect(() => {
+    if (open) {
+      loadScheduleData();
+    } else {
+      // Reset state when closing
+      setSelectedBills(new Set());
+      setShowCreateForm(false);
+      setPaymentRunName("");
+      setPaymentRunNotes("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const selectedDateKey = selectedDate
     ? selectedDate.toISOString().split("T")[0]
