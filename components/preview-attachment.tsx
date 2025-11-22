@@ -46,6 +46,12 @@ export const PreviewAttachment = ({
           content: document.content,
           isVisible: true,
           status: "idle",
+          boundingBox: {
+            top: 0,
+            left: 0,
+            width: 0,
+            height: 0,
+          },
         });
       }
     } catch (error) {
