@@ -731,7 +731,7 @@ export async function respondWithCitations({
     throw new Error("A user message is required.");
   }
 
-  const { activeDoc, messages } = await prepareDocAgentRun({
+  const { activeDoc } = await prepareDocAgentRun({
     userId,
     message,
     docId,
