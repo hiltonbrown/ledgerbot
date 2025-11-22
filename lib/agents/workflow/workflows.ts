@@ -38,11 +38,6 @@ export async function executeMonthEndCloseWorkflow(
 
     // In production, this would trigger the document management agent
     // to process all uploaded invoices, receipts, and bank statements
-    const documentsResult = {
-      documentsProcessed: 0,
-      validationErrors: [],
-      status: "complete" as const,
-    };
 
     // Step 2: Reconcile bank transactions
     console.log(
@@ -51,12 +46,6 @@ export async function executeMonthEndCloseWorkflow(
 
     // In production, this would run the reconciliation agent
     // to match bank feeds with ledger entries
-    const reconciliationResult = {
-      matchedCount: 0,
-      exceptionsCount: 0,
-      autoApprovedCount: 0,
-      status: "complete" as const,
-    };
 
     // Step 3: Generate analytics report
     console.log(
@@ -65,7 +54,7 @@ export async function executeMonthEndCloseWorkflow(
 
     // In production, this would run the analytics agent
     // to create the financial report with KPIs and narrative
-    const analyticsResult = {
+    return {
       reportId: "report-123",
       kpis: {
         grossMargin: 0,
@@ -75,8 +64,6 @@ export async function executeMonthEndCloseWorkflow(
       },
       status: "complete" as const,
     };
-
-    return analyticsResult;
   } catch (error) {
     console.error("[Month-End Close] Workflow failed:", error);
     return {
@@ -142,30 +129,19 @@ export async function executeInvestorUpdateWorkflow(
     );
 
     // In production, fetch from Xero or database
-    const financialData = {
-      revenue: [100_000, 110_000, 120_000],
-      expenses: [80_000, 85_000, 90_000],
-      cash: 500_000,
-    };
 
     // Step 2: Create forecast
     console.log(`[Investor Update] Creating forecast for ${input.period}`);
 
     // In production, run forecasting agent with historical data
-    const forecastData = {
-      forecastId: "forecast-123",
-      scenarios: ["Base", "Upside", "Downside"],
-    };
 
     // Step 3: Prepare investor Q&A
     console.log(`[Investor Update] Preparing Q&A for ${input.period}`);
 
     // In production, use Q&A agent to generate anticipated investor questions
-    const qaData = {
+    return {
       qaPairs: [],
     };
-
-    return qaData;
   } catch (error) {
     console.error("[Investor Update] Workflow failed:", error);
     return {
@@ -218,21 +194,15 @@ export async function executeAtoAuditPackWorkflow(
     console.log(`[ATO Audit Pack] Collecting documents for ${input.period}`);
 
     // In production, use document management agent to gather required documents
-    const documentsResult = {
-      documentIds: [],
-      documentCount: 0,
-    };
 
     // Step 2: Generate audit pack
     console.log(`[ATO Audit Pack] Generating audit pack for ${input.period}`);
 
     // In production, compile all documents into a PDF package
-    const auditPackResult = {
+    return {
       packId: "audit-pack-123",
       fileUrl: "/files/audit-pack-123.pdf",
     };
-
-    return auditPackResult;
   } catch (error) {
     console.error("[ATO Audit Pack] Workflow failed:", error);
     return {
