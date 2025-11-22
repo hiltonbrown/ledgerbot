@@ -5,7 +5,6 @@ import { Home, Moon, Settings2, Sun, Users } from "lucide-react";
 import { useTheme } from "next-themes";
 
 import { SidebarMenu, SidebarMenuItem } from "@/components/ui/sidebar";
-import { sidebarUserButtonAppearance } from "@/lib/clerk/appearance";
 
 export function NavUser() {
   const { setTheme, resolvedTheme } = useTheme();
@@ -13,7 +12,7 @@ export function NavUser() {
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <UserButton appearance={sidebarUserButtonAppearance}>
+        <UserButton>
           <UserButton.MenuItems>
             <UserButton.Link
               href="/"
