@@ -254,19 +254,20 @@ function PureMultimodalInput({
   );
 
   useEffect(() => {
-    const csvAttachments = attachments.filter(
+    const spreadsheetAttachments = attachments.filter(
       (attachment) =>
-        attachment.contentType === "text/csv" &&
+        (attachment.contentType.includes("csv") ||
+          attachment.contentType.includes("spreadsheetml")) &&
         attachment.extractedText &&
         !attachment.documentId &&
         !attachment.processingError
     );
 
-    if (csvAttachments.length === 0) {
+    if (spreadsheetAttachments.length === 0) {
       return;
     }
 
-    csvAttachments.forEach((attachment) => {
+    spreadsheetAttachments.forEach((attachment) => {
       const documentId = generateUUID();
       const baseName =
         attachment.name?.replace(/\.[^.]+$/, "") ?? "Imported Spreadsheet";
@@ -283,12 +284,25 @@ function PureMultimodalInput({
               title,
               kind: "sheet",
               content: attachment.extractedText ?? "",
+              chatId,
             }),
           });
 
           if (!response.ok) {
+            let errorText = "";
+            try {
+              errorText = await response.text();
+            } catch (e) {
+              errorText = "Could not read response body";
+            }
+            console.error("Document creation failed");
+            console.error("Status:", response.status);
+            console.error("StatusText:", response.statusText);
+            console.error("Body:", errorText);
+            console.error("URL:", response.url);
+            console.error("OK:", response.ok);
             throw new Error(
-              `Failed to persist spreadsheet (${response.status})`
+              `Failed to persist spreadsheet (${response.status}): ${errorText}`
             );
           }
 
@@ -316,7 +330,7 @@ function PureMultimodalInput({
         }
       })();
     });
-  }, [attachments, setAttachments, setArtifact]);
+  }, [attachments, setAttachments, setArtifact, chatId]);
 
   const handleFileChange = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {

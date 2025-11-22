@@ -1,0 +1,1 @@
+ALTER TABLE "Document" ALTER COLUMN "chatId" DROP NOT NULL;

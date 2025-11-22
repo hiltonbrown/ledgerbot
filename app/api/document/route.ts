@@ -60,18 +60,41 @@ export async function POST(request: Request) {
     content,
     title,
     kind,
-  }: { content: string; title: string; kind: ArtifactKind } =
+    chatId,
+  }: { content: string; title: string; kind: ArtifactKind; chatId?: string } =
     await request.json();
 
   const documents = await getDocumentsById({ id });
 
   if (documents.length === 0) {
-    return new ChatSDKError(
-      "not_found:document",
-      "Document not found"
-    ).toResponse();
+    // Create new document - chatId will be updated later when message is sent
+    try {
+      const document = await saveDocument({
+        id,
+        content,
+        title,
+        kind,
+        userId: user.id,
+        chatId, // May be undefined, that's ok
+      });
+
+      return Response.json(document, { status: 200 });
+    } catch (error) {
+      console.error("Failed to create document:", {
+        id,
+        title,
+        kind,
+        userId: user.id,
+        chatId,
+        contentLength: content?.length,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      throw error;
+    }
   }
 
+  // Update existing document
   const [doc] = documents;
 
   if (doc.userId !== user.id) {
@@ -84,7 +107,7 @@ export async function POST(request: Request) {
     title,
     kind,
     userId: user.id,
-    chatId: doc.chatId,
+    chatId: doc.chatId || undefined,
   });
 
   return Response.json(document, { status: 200 });

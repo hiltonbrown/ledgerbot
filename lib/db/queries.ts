@@ -495,13 +495,22 @@ export async function saveDocument({
   kind: ArtifactKind;
   content: string;
   userId: string;
-  chatId: string;
+  chatId?: string;
 }) {
   // Extract short title (before pipe) if present
   const shortTitle = title.includes("|") ? title.split("|")[0].trim() : title;
 
   try {
-    return await db
+    console.log("saveDocument: Attempting to insert document", {
+      id,
+      title: shortTitle,
+      kind,
+      userId,
+      chatId,
+      contentLength: content?.length,
+    });
+
+    const result = await db
       .insert(document)
       .values({
         id,
@@ -509,11 +518,23 @@ export async function saveDocument({
         kind,
         content,
         userId,
-        chatId,
+        ...(chatId && { chatId }),
         createdAt: new Date(),
       })
       .returning();
-  } catch (_error) {
+
+    console.log("saveDocument: Insert successful", result);
+    return result;
+  } catch (error) {
+    console.error("saveDocument: Insert failed", {
+      id,
+      title: shortTitle,
+      kind,
+      userId,
+      chatId,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     throw new ChatSDKError("bad_request:database", "Failed to save document");
   }
 }

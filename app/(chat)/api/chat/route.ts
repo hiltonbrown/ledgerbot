@@ -8,6 +8,7 @@ import {
   streamText,
   type UIMessageStreamWriter,
 } from "ai";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { unstable_cache as cache } from "next/cache";
 import { after } from "next/server";
 import {
@@ -38,6 +39,7 @@ import {
 import { isProductionEnvironment } from "@/lib/constants";
 import {
   createStreamId,
+  db,
   deleteChatById,
   getActiveXeroConnection,
   getChatById,
@@ -48,6 +50,7 @@ import {
   updateChatLastContextById,
   updateChatVisiblityById,
 } from "@/lib/db/queries";
+import * as schema from "@/lib/db/schema";
 import {
   detectApprovalCommand,
   detectDeeperRequest,
@@ -161,8 +164,12 @@ export async function getStreamContext(): Promise<ResumableStreamContext | null>
 function includeAttachmentText(messages: ChatMessage[]): ChatMessage[] {
   return messages.map((message) => {
     const newParts = message.parts.map((part) => {
-      if (part.type === "file" && part.mediaType === "text/csv") {
-        const csvPreview = (
+      if (
+        part.type === "file" &&
+        (part.mediaType?.includes("csv") ||
+          part.mediaType?.includes("spreadsheetml"))
+      ) {
+        const spreadsheetPreview = (
           (part as { extractedText?: string }).extractedText ?? ""
         )
           .split("\n")
@@ -171,12 +178,12 @@ function includeAttachmentText(messages: ChatMessage[]): ChatMessage[] {
         const documentId = (part as { documentId?: string }).documentId;
         const name = (part as { name?: string }).name ?? "spreadsheet";
         const instruction = documentId
-          ? `Use the createDocument tool with { "action": "analyze", "documentId": "${documentId}", "question": "<your question>" } to analyze, summarize, or update this CSV.`
-          : "Use the createDocument tool with action `analyze` to analyze, summarize, or update this CSV.";
+          ? `Use the createDocument tool with { "action": "analyze", "documentId": "${documentId}", "question": "<your question>" } to analyze, summarize, or update this spreadsheet.`
+          : "Use the createDocument tool with action `analyze` to analyze, summarize, or update this spreadsheet.";
 
         return {
           type: "text" as const,
-          text: `[Spreadsheet Attachment: ${name}]\n${instruction}\n\nPreview (first rows):\n${csvPreview}\n[End Spreadsheet Attachment]`,
+          text: `[Spreadsheet Attachment: ${name}]\n${instruction}\n\nPreview (first rows):\n${spreadsheetPreview}\n[End Spreadsheet Attachment]`,
         };
       }
 
@@ -346,6 +353,32 @@ export async function POST(request: Request) {
       country,
       userContext,
     };
+
+    // Update any documents that were created without chatId
+    const documentIds = message.parts
+      .filter(
+        (part) =>
+          part.type === "file" && "documentId" in part && part.documentId
+      )
+      .map((part) => (part as any).documentId)
+      .filter(Boolean);
+
+    if (documentIds.length > 0) {
+      try {
+        await db
+          .update(schema.document)
+          .set({ chatId: id })
+          .where(
+            and(
+              eq(schema.document.userId, user.id),
+              inArray(schema.document.id, documentIds),
+              isNull(schema.document.chatId)
+            )
+          );
+      } catch (error) {
+        console.warn("Failed to update document chatIds:", error);
+      }
+    }
 
     await saveMessages({
       messages: [
