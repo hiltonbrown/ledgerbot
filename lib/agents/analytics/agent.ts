@@ -10,13 +10,18 @@ import { executeXeroMCPTool } from "@/lib/ai/xero-mcp-client";
 const calculateKpisTool = tool({
   description:
     "Calculate key performance indicators from financial data including gross margin, runway, burn rate, and revenue growth.",
-  parameters: z.object({
+  inputSchema: z.object({
     revenue: z.array(z.number()).describe("Monthly revenue values"),
     cogs: z.array(z.number()).optional().describe("Cost of goods sold"),
     expenses: z.array(z.number()).describe("Monthly expense values"),
     cash: z.number().optional().describe("Current cash balance"),
   }),
-  execute: async ({ revenue, cogs = [], expenses, cash = 0 }) => {
+  execute: async ({ revenue, cogs = [], expenses, cash = 0 }: {
+    revenue: number[];
+    cogs?: number[];
+    expenses: number[];
+    cash?: number;
+  }) => {
     const latestRevenue = revenue[revenue.length - 1] || 0;
     const previousRevenue = revenue[revenue.length - 2] || 0;
     const latestCogs = cogs[cogs.length - 1] || 0;
@@ -72,7 +77,7 @@ const calculateKpisTool = tool({
 const generateNarrativeTool = tool({
   description:
     "Generate executive narrative commentary for financial reports explaining trends, risks, and opportunities.",
-  parameters: z.object({
+  inputSchema: z.object({
     period: z.string().describe("Reporting period (e.g., 'October 2025')"),
     kpis: z
       .object({
@@ -84,7 +89,11 @@ const generateNarrativeTool = tool({
       .describe("Key performance indicators"),
     context: z.string().optional().describe("Additional context or notes"),
   }),
-  execute: async ({ period, kpis, context: additionalContext }) => {
+  execute: async ({ period, kpis, context: additionalContext }: {
+    period: string;
+    kpis: { grossMargin: number; netBurn: number; runway: number; revenueGrowth: number };
+    context?: string;
+  }) => {
     const narrativeParts: string[] = [];
 
     narrativeParts.push(`# Financial Summary - ${period}`);
@@ -144,7 +153,7 @@ function createAnalyticsXeroTools(userId: string) {
     xero_get_profit_and_loss: tool({
       description:
         "Get the Profit & Loss report from Xero for financial analysis and reporting.",
-      parameters: z.object({
+      inputSchema: z.object({
         fromDate: z
           .string()
           .describe("Start date (ISO 8601 format YYYY-MM-DD)"),
@@ -164,6 +173,11 @@ function createAnalyticsXeroTools(userId: string) {
         toDate,
         periods = 12,
         timeframe = "MONTH",
+      }: {
+        fromDate: string;
+        toDate: string;
+        periods?: number;
+        timeframe?: string;
       }) => {
         const result = await executeXeroMCPTool(
           userId,
@@ -177,13 +191,13 @@ function createAnalyticsXeroTools(userId: string) {
     xero_get_balance_sheet: tool({
       description:
         "Get the Balance Sheet from Xero for financial position analysis.",
-      parameters: z.object({
+      inputSchema: z.object({
         fromDate: z
           .string()
           .describe("Start date (ISO 8601 format YYYY-MM-DD)"),
         toDate: z.string().describe("End date (ISO 8601 format YYYY-MM-DD)"),
       }),
-      execute: async ({ fromDate, toDate }) => {
+      execute: async ({ fromDate, toDate }: { fromDate: string; toDate: string }) => {
         const result = await executeXeroMCPTool(
           userId,
           "xero_get_balance_sheet",

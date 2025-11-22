@@ -23,13 +23,32 @@ import type {
 import { asOfOrToday, formatDisplayDate } from "@/lib/util/dates";
 import { getXeroProvider } from "./xero";
 
+// Stub function for call script generation
+function generateCallScript(
+  contact: unknown,
+  invoices: unknown[],
+  totalDue: number,
+  daysOverdue: number,
+  tone: "polite" | "firm" | "final",
+  includePaymentPlan: boolean
+): unknown {
+  return {
+    script: "Call script placeholder",
+    contact,
+    totalDue,
+    daysOverdue,
+    tone,
+    includePaymentPlan,
+  };
+}
+
 /**
  * Get invoices that are due or overdue
  */
 export const getInvoicesDueTool = tool({
   description:
     "Get all invoices that are due or overdue, optionally filtered by minimum days overdue and customer ID",
-  parameters: z.object({
+  inputSchema: z.object({
     userId: z.string().describe("User ID"),
     asOf: z.string().datetime().optional().describe("As-of date (ISO format)"),
     minDaysOverdue: z
@@ -41,7 +60,7 @@ export const getInvoicesDueTool = tool({
       .describe("Minimum days overdue (0 = all due invoices)"),
     customerId: z.string().optional().describe("Filter by customer/contact ID"),
   }),
-  execute: async ({ userId, asOf, minDaysOverdue, customerId }) => {
+  execute: async ({ userId, asOf, minDaysOverdue, customerId }: { userId: string; asOf?: string; minDaysOverdue?: number; customerId?: string }) => {
     const asOfDate = asOfOrToday(asOf);
     const result = await listInvoicesDue({
       userId,
@@ -81,7 +100,7 @@ export const getInvoicesDueTool = tool({
 export const predictLateRiskTool = tool({
   description:
     "Predict the probability of late payment for an invoice based on days overdue and history",
-  parameters: z.object({
+  inputSchema: z.object({
     invoiceId: z.string().describe("Invoice ID"),
   }),
   execute: async ({ invoiceId }) => {
@@ -138,7 +157,7 @@ export const predictLateRiskTool = tool({
 export const buildEmailReminderTool = tool({
   description:
     "Generate a copy-ready email reminder for an overdue invoice. Does NOT send the email - only creates an artefact for user to copy-paste.",
-  parameters: z.object({
+  inputSchema: z.object({
     userId: z.string().describe("User ID"),
     invoiceId: z.string().describe("Invoice ID"),
     templateId: z.string().describe("Template ID"),
@@ -188,7 +207,7 @@ export const buildEmailReminderTool = tool({
 export const buildSmsReminderTool = tool({
   description:
     "Generate a copy-ready SMS reminder for an overdue invoice. Does NOT send the SMS - only creates an artefact for user to copy-paste.",
-  parameters: z.object({
+  inputSchema: z.object({
     userId: z.string().describe("User ID"),
     invoiceId: z.string().describe("Invoice ID"),
     templateId: z.string().describe("Template ID"),
@@ -237,7 +256,7 @@ export const buildSmsReminderTool = tool({
 export const reconcilePaymentTool = tool({
   description:
     "Record a payment against an invoice and update its status automatically",
-  parameters: z.object({
+  inputSchema: z.object({
     invoiceId: z.string().describe("Invoice ID"),
     amount: z.number().positive().describe("Payment amount"),
     paidAt: z.string().datetime().describe("Payment date (ISO format)"),
@@ -273,7 +292,7 @@ export const reconcilePaymentTool = tool({
  */
 export const postNoteTool = tool({
   description: "Add an internal note to an invoice for team visibility",
-  parameters: z.object({
+  inputSchema: z.object({
     userId: z.string().describe("User ID"),
     invoiceId: z.string().describe("Invoice ID"),
     body: z.string().describe("Note content"),
@@ -309,7 +328,7 @@ export const postNoteTool = tool({
 export const syncXeroTool = tool({
   description:
     "Synchronise invoices and contacts from Xero (or mock data if not configured)",
-  parameters: z.object({
+  inputSchema: z.object({
     userId: z.string().describe("User ID"),
     since: z
       .string()
@@ -462,7 +481,7 @@ function mapXeroStatus(xeroStatus: string, hasAmountDue: boolean): string {
 export const buildCallScriptTool = tool({
   description:
     "Generate a call script for a phone conversation about overdue invoices. Includes talking points, responses to common objections, and payment options.",
-  parameters: z.object({
+  inputSchema: z.object({
     userId: z.string().describe("User ID"),
     contactId: z.string().describe("Customer/Contact ID"),
     tone: z
@@ -518,7 +537,7 @@ export const buildCallScriptTool = tool({
 export const saveNoteToXeroTool = tool({
   description:
     "Save a note to a Xero Contact. If Xero is connected, saves to both Xero and local DB. Otherwise saves to local DB only.",
-  parameters: z.object({
+  inputSchema: z.object({
     userId: z.string().describe("User ID"),
     contactId: z.string().describe("Contact ID (local database ID)"),
     note: z.string().describe("Note content"),

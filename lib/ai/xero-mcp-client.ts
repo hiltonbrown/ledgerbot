@@ -1585,13 +1585,12 @@ export async function executeXeroMCPTool(
           );
 
           // Update connection error status with all details
-          await updateConnectionError(
-            connection.id,
-            parsedError.userMessage,
-            parsedError.type,
-            parsedError.correlationId,
-            JSON.stringify(parsedError)
-          );
+          await updateConnectionError(connection.id, {
+            error: parsedError.userMessage,
+            errorType: parsedError.type,
+            correlationId: parsedError.correlationId,
+            technicalDetails: JSON.stringify(parsedError),
+          });
 
           // If error requires reconnection, log warning
           if (requiresReconnection(parsedError)) {

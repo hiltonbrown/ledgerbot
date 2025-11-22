@@ -12,7 +12,7 @@ export function createForecastingXeroTools(userId: string) {
     xero_get_profit_and_loss: tool({
       description:
         "Get the Profit & Loss report from Xero for a specific date range. Use this to understand historical revenue, expenses, and profitability trends.",
-      parameters: z.object({
+      inputSchema: z.object({
         fromDate: z
           .string()
           .describe("Start date for the report (ISO 8601 format YYYY-MM-DD)"),
@@ -30,7 +30,7 @@ export function createForecastingXeroTools(userId: string) {
           .default("MONTH")
           .describe("Reporting timeframe"),
       }),
-      execute: async (args: any) => {
+      execute: async (args: { fromDate: string; toDate: string; periods?: number; timeframe?: string }) => {
         const result = await executeXeroMCPTool(
           userId,
           "xero_get_profit_and_loss",
@@ -43,7 +43,7 @@ export function createForecastingXeroTools(userId: string) {
     xero_get_balance_sheet: tool({
       description:
         "Get the Balance Sheet from Xero for a specific date range. Use this to understand cash position, assets, liabilities, and equity.",
-      parameters: z.object({
+      inputSchema: z.object({
         fromDate: z
           .string()
           .describe("Start date for the report (ISO 8601 format YYYY-MM-DD)"),
@@ -51,7 +51,7 @@ export function createForecastingXeroTools(userId: string) {
           .string()
           .describe("End date for the report (ISO 8601 format YYYY-MM-DD)"),
       }),
-      execute: async (args: any) => {
+      execute: async (args: { fromDate: string; toDate: string }) => {
         const result = await executeXeroMCPTool(
           userId,
           "xero_get_balance_sheet",

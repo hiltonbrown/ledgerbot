@@ -3,8 +3,10 @@ import "server-only";
 import {
   deactivateXeroConnection,
   getAllActiveXeroConnections,
-  updateXeroConnectionStatus,
 } from "@/lib/db/queries";
+import { db } from "@/lib/db/queries";
+import { xeroConnection } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { decryptToken } from "./encryption";
 import type { XeroConnection } from "./types";
 
@@ -210,11 +212,15 @@ export async function cleanupStaleConnections(
       if (lastApiCallAge >= 90) {
         stale.push(connection.id);
         if (!dryRun) {
-          await updateXeroConnectionStatus(connection.id, {
-            connectionStatus: "disconnected",
-            lastError:
-              "Connection marked as inactive due to 90+ days of inactivity",
-          });
+          await db
+            .update(xeroConnection)
+            .set({
+              connectionStatus: "disconnected",
+              lastError:
+                "Connection marked as inactive due to 90+ days of inactivity",
+              updatedAt: new Date(),
+            })
+            .where(eq(xeroConnection.id, connection.id));
           console.log(
             `[Connection Cleanup] Marked stale connection ${connection.id} as disconnected (tenant: ${connection.tenantName}, ${lastApiCallAge} days inactive)`
           );

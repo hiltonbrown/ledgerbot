@@ -23,6 +23,9 @@ import { ChatSDKError } from "../errors";
 import type { AppUsage } from "../usage";
 import * as schema from "./schema";
 import {
+  type AgentTrace,
+  type AgentTraceInsert,
+  agentTrace,
   type Chat,
   type ContextFile,
   chat,
@@ -1116,9 +1119,12 @@ export async function createXeroConnection({
             expiresAt,
             scopes,
             authenticationEventId,
-            xeroConnectionId: xeroConnectionId || existingConnection.xeroConnectionId,
-            xeroCreatedDateUtc: xeroCreatedDateUtc || existingConnection.xeroCreatedDateUtc,
-            xeroUpdatedDateUtc: xeroUpdatedDateUtc || existingConnection.xeroUpdatedDateUtc,
+            xeroConnectionId:
+              xeroConnectionId || existingConnection.xeroConnectionId,
+            xeroCreatedDateUtc:
+              xeroCreatedDateUtc || existingConnection.xeroCreatedDateUtc,
+            xeroUpdatedDateUtc:
+              xeroUpdatedDateUtc || existingConnection.xeroUpdatedDateUtc,
             connectionStatus: "connected",
             lastError: null, // Clear user-friendly error message
             lastErrorDetails: null, // Clear technical error details
@@ -1646,20 +1652,22 @@ export async function syncXeroConnectionMetadata(
 
 export async function updateConnectionError(
   connectionId: string,
-  error: string,
-  errorType?: string,
-  correlationId?: string,
-  technicalDetails?: string
+  options: {
+    error: string;
+    errorType?: string;
+    correlationId?: string;
+    technicalDetails?: string;
+  }
 ): Promise<void> {
   try {
     await db
       .update(xeroConnection)
       .set({
         connectionStatus: "error",
-        lastError: error, // User-friendly message
-        lastErrorDetails: technicalDetails || null, // Technical details for debugging
-        lastErrorType: errorType || null,
-        lastCorrelationId: correlationId || null,
+        lastError: options.error, // User-friendly message
+        lastErrorDetails: options.technicalDetails || null, // Technical details for debugging
+        lastErrorType: options.errorType || null,
+        lastCorrelationId: options.correlationId || null,
         updatedAt: new Date(),
       })
       .where(eq(xeroConnection.id, connectionId));
