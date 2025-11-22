@@ -218,6 +218,20 @@
       "when": 1763799658623,
       "tag": "0030_black_rictor",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1763799668000,
+      "tag": "0031_add_sheet_enum",
+      "breakpoints": false
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1732287000000,
+      "tag": "0032_rename_document_text_to_kind",
+      "breakpoints": false
     }
   ]
 }
