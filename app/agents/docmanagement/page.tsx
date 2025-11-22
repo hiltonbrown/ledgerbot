@@ -137,6 +137,55 @@ export default function DocumentManagementAgentPage() {
     });
   }, []);
 
+  const prepareDocAgent = useCallback(
+    async (contextId: string, docIdValue?: string) => {
+      setIsPreparingAgent(true);
+      setAgentReady(false);
+      setAgentStatus("Syncing PDF context...");
+
+      try {
+        const response = await fetch("/api/agents/docmanagement", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            mode: "load",
+            contextFileId: contextId,
+            docId: docIdValue,
+          }),
+        });
+
+        const data: { doc?: AgentLoadSuccess; error?: string } =
+          await response.json();
+
+        if (!response.ok || !data.doc) {
+          throw new Error(
+            data.error ?? "Failed to prepare the document agent."
+          );
+        }
+
+        setAgentContextMeta(data.doc);
+        setAgentReady(true);
+        const pageLabel = data.doc.pageCount === 1 ? "page" : "pages";
+        setAgentStatus(`Indexed ${data.doc.pageCount} ${pageLabel}`);
+        const warningList =
+          (data.doc.meta?.warnings as string[] | undefined) ?? [];
+        appendWarnings(warningList);
+      } catch (prepError) {
+        const message =
+          prepError instanceof Error
+            ? prepError.message
+            : "Unable to prepare the document agent.";
+        setAgentStatus(message);
+        setError(message);
+      } finally {
+        setIsPreparingAgent(false);
+      }
+    },
+    [appendWarnings]
+  );
+
   // Restore conversation from Redis cache on mount (if available)
   useEffect(() => {
     async function restoreConversation() {
@@ -204,54 +253,6 @@ export default function DocumentManagementAgentPage() {
     setIsPreparingAgent(false);
   }, []);
 
-  const prepareDocAgent = useCallback(
-    async (contextId: string, docIdValue?: string) => {
-      setIsPreparingAgent(true);
-      setAgentReady(false);
-      setAgentStatus("Syncing PDF context...");
-
-      try {
-        const response = await fetch("/api/agents/docmanagement", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            mode: "load",
-            contextFileId: contextId,
-            docId: docIdValue,
-          }),
-        });
-
-        const data: { doc?: AgentLoadSuccess; error?: string } =
-          await response.json();
-
-        if (!response.ok || !data.doc) {
-          throw new Error(
-            data.error ?? "Failed to prepare the document agent."
-          );
-        }
-
-        setAgentContextMeta(data.doc);
-        setAgentReady(true);
-        const pageLabel = data.doc.pageCount === 1 ? "page" : "pages";
-        setAgentStatus(`Indexed ${data.doc.pageCount} ${pageLabel}`);
-        const warningList =
-          (data.doc.meta?.warnings as string[] | undefined) ?? [];
-        appendWarnings(warningList);
-      } catch (prepError) {
-        const message =
-          prepError instanceof Error
-            ? prepError.message
-            : "Unable to prepare the document agent.";
-        setAgentStatus(message);
-        setError(message);
-      } finally {
-        setIsPreparingAgent(false);
-      }
-    },
-    [appendWarnings]
-  );
   const generateQuestionsForSummary = useCallback(
     async (
       contextId: string,
