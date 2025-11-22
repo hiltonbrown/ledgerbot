@@ -25,8 +25,7 @@ export const maxDuration = 300; // 5 minutes max duration
  *   - Rate limiting
  * - Prevents tokens expiring during user operations
  *
- * Recommended cron schedule: */15 * * * * (every 15 minutes)
- */
+ * Recommended cron schedule: every 15 minutes ("*/15 * * * *")
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {

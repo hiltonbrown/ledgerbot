@@ -1548,6 +1548,21 @@ export async function getExpiringXeroConnections(
   }
 }
 
+export async function getAllActiveXeroConnections(): Promise<XeroConnection[]> {
+  try {
+    return await db
+      .select()
+      .from(xeroConnection)
+      .where(eq(xeroConnection.isActive, true))
+      .orderBy(desc(xeroConnection.updatedAt));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get all active Xero connections"
+    );
+  }
+}
+
 export async function getAllXeroConnectionsForUser(
   userId: string
 ): Promise<XeroConnection[]> {
