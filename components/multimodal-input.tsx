@@ -157,24 +157,30 @@ function PureMultimodalInput({
   const submitForm = useCallback(() => {
     window.history.replaceState({}, "", `/chat/${chatId}`);
 
+    const parts = [
+      ...attachments.map((attachment) => ({
+        type: "file" as const,
+        url: attachment.url,
+        name: attachment.name,
+        mediaType: attachment.contentType,
+        extractedText: attachment.extractedText,
+        fileSize: attachment.fileSize,
+        processingError: attachment.processingError,
+        documentId: attachment.documentId,
+      })),
+    ];
+
+    // Only add text part if there's actual text content
+    if (input.trim()) {
+      parts.push({
+        type: "text",
+        text: input,
+      });
+    }
+
     sendMessage({
       role: "user",
-      parts: [
-        ...attachments.map((attachment) => ({
-          type: "file" as const,
-          url: attachment.url,
-          name: attachment.name,
-          mediaType: attachment.contentType,
-          extractedText: attachment.extractedText,
-          fileSize: attachment.fileSize,
-          processingError: attachment.processingError,
-          documentId: attachment.documentId,
-        })),
-        {
-          type: "text",
-          text: input,
-        },
-      ],
+      parts,
     });
 
     setAttachments([]);
@@ -284,7 +290,7 @@ function PureMultimodalInput({
               title,
               kind: "sheet",
               content: attachment.extractedText ?? "",
-              chatId,
+              chatId: undefined, // Chat doesn't exist yet - will be updated when message is sent
             }),
           });
 
@@ -532,7 +538,10 @@ function PureMultimodalInput({
           ) : (
             <PromptInputSubmit
               className="size-8 rounded-full bg-primary text-primary-foreground transition-colors duration-200 hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground"
-              disabled={!input.trim() || uploadQueue.length > 0}
+              disabled={
+                (attachments.length === 0 && !input.trim()) ||
+                uploadQueue.length > 0
+              }
               status={status}
             >
               <ArrowUpIcon size={14} />

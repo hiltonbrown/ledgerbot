@@ -109,6 +109,7 @@ const PurePreviewMessage = ({
                     processingError: (
                       attachment as { processingError?: string }
                     ).processingError,
+                    documentId: (attachment as { documentId?: string }).documentId,
                   }}
                   key={attachment.url}
                 />

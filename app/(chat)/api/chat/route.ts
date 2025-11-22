@@ -163,7 +163,9 @@ export async function getStreamContext(): Promise<ResumableStreamContext | null>
 
 function includeAttachmentText(messages: ChatMessage[]): ChatMessage[] {
   return messages.map((message) => {
-    const newParts = message.parts.map((part) => {
+    const newParts: any[] = [];
+
+    for (const part of message.parts) {
       if (
         part.type === "file" &&
         (part.mediaType?.includes("csv") ||
@@ -181,26 +183,32 @@ function includeAttachmentText(messages: ChatMessage[]): ChatMessage[] {
           ? `Use the createDocument tool with { "action": "analyze", "documentId": "${documentId}", "question": "<your question>" } to analyze, summarize, or update this spreadsheet.`
           : "Use the createDocument tool with action `analyze` to analyze, summarize, or update this spreadsheet.";
 
-        return {
+        // Keep the file part for UI rendering
+        newParts.push(part);
+
+        // Add text instructions for the AI
+        newParts.push({
           type: "text" as const,
           text: `[Spreadsheet Attachment: ${name}]\n${instruction}\n\nPreview (first rows):\n${spreadsheetPreview}\n[End Spreadsheet Attachment]`,
-        };
-      }
-
-      if (
+        });
+      } else if (
         part.type === "file" &&
         "extractedText" in part &&
         part.extractedText &&
         !part.mediaType?.startsWith("image/")
       ) {
-        // Replace file parts with extracted text for non-image files
-        return {
+        // Keep the file part for UI rendering
+        newParts.push(part);
+
+        // Add extracted text for the AI
+        newParts.push({
           type: "text" as const,
           text: `[Attachment: ${(part as any).name ?? "file"}]\n${part.extractedText}\n[End Attachment]`,
-        };
+        });
+      } else {
+        newParts.push(part);
       }
-      return part;
-    });
+    }
 
     return {
       ...message,
@@ -261,11 +269,16 @@ function findLatestDeepResearchSummaryAttachment(
 
 export async function POST(request: Request) {
   let requestBody: PostRequestBody;
+  let json: any;
 
   try {
-    const json = await request.json();
+    json = await request.json();
     requestBody = postRequestBodySchema.parse(json);
-  } catch (_) {
+  } catch (error) {
+    console.error("Schema validation failed:", error);
+    if (json) {
+      console.error("Request body:", JSON.stringify(json, null, 2));
+    }
     return new ChatSDKError("bad_request:api").toResponse();
   }
 
