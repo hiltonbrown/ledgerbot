@@ -81,17 +81,20 @@ export async function POST(req: Request) {
         executeInvestorUpdate: executeInvestorUpdateTool,
         executeAtoAuditPack: executeAtoAuditPackTool,
       },
-      onStepFinish: async ({ stepType, text, toolCalls }) => {
-        console.log(`[Workflow Supervisor] Step completed: ${stepType}`);
+      onStepFinish: async ({ text, toolCalls, finishReason, usage }) => {
+        console.log(`[Workflow Supervisor] Step completed with reason: ${finishReason}`);
         if (toolCalls && toolCalls.length > 0) {
           console.log(
             `[Workflow Supervisor] Tools called: ${toolCalls.map((tc) => tc.toolName).join(", ")}`
           );
         }
+        if (usage) {
+          console.log(`[Workflow Supervisor] Token usage: ${usage.totalTokens}`);
+        }
       },
     });
 
-    return result.toDataStreamResponse();
+    return result.toTextStreamResponse();
   } catch (error) {
     console.error("[Workflow Supervisor] Error handling chat request:", error);
     return new NextResponse("Internal Server Error", { status: 500 });

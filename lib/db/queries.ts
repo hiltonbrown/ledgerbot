@@ -1034,6 +1034,9 @@ export async function createXeroConnection({
   expiresAt,
   scopes,
   authenticationEventId,
+  xeroConnectionId,
+  xeroCreatedDateUtc,
+  xeroUpdatedDateUtc,
 }: {
   userId: string;
   tenantId: string;
@@ -1049,6 +1052,9 @@ export async function createXeroConnection({
   expiresAt: Date;
   scopes: string[];
   authenticationEventId?: string;
+  xeroConnectionId?: string;
+  xeroCreatedDateUtc?: Date;
+  xeroUpdatedDateUtc?: Date;
 }): Promise<XeroConnection> {
   try {
     const now = new Date();
@@ -1110,6 +1116,9 @@ export async function createXeroConnection({
             expiresAt,
             scopes,
             authenticationEventId,
+            xeroConnectionId: xeroConnectionId || existingConnection.xeroConnectionId,
+            xeroCreatedDateUtc: xeroCreatedDateUtc || existingConnection.xeroCreatedDateUtc,
+            xeroUpdatedDateUtc: xeroUpdatedDateUtc || existingConnection.xeroUpdatedDateUtc,
             connectionStatus: "connected",
             lastError: null, // Clear user-friendly error message
             lastErrorDetails: null, // Clear technical error details
@@ -1162,6 +1171,9 @@ export async function createXeroConnection({
             expiresAt,
             scopes,
             authenticationEventId,
+            xeroConnectionId,
+            xeroCreatedDateUtc,
+            xeroUpdatedDateUtc,
             connectionStatus: "connected",
             isActive: true,
             updatedAt: now,
