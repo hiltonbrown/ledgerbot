@@ -1,7 +1,20 @@
-import type { CoreMessage } from "ai";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { type CoreMessage, streamText } from "ai";
 import { NextResponse } from "next/server";
-import { apAgent, createAPAgentWithXero } from "@/lib/agents/ap/agent";
+import {
+  assessPaymentRiskTool,
+  checkDuplicateBillsTool,
+  createAPXeroTools,
+  extractInvoiceDataTool,
+  generateEmailDraftTool,
+  generatePaymentProposalTool,
+  matchVendorTool,
+  suggestBillCodingTool,
+  validateABNTool,
+} from "@/lib/agents/ap/tools";
 import type { APAgentSettings } from "@/lib/agents/ap/types";
+import { myProvider } from "@/lib/ai/providers";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import {
   getActiveXeroConnection,
@@ -10,6 +23,12 @@ import {
 } from "@/lib/db/queries";
 
 export const maxDuration = 60;
+
+// Load system prompt from markdown file
+const SYSTEM_INSTRUCTIONS = readFileSync(
+  join(process.cwd(), "prompts/ap-system-prompt.md"),
+  "utf-8"
+);
 
 /**
  * POST /api/agents/ap
@@ -59,11 +78,9 @@ export async function POST(req: Request) {
       });
     }
 
-    // Determine which agent to use based on Xero connection
+    // Determine which tools to use based on Xero connection
     const xeroConnection = await getActiveXeroConnection(user.id);
-    const agent = xeroConnection
-      ? createAPAgentWithXero(user.id, settings?.model)
-      : apAgent;
+    const xeroTools = xeroConnection ? createAPXeroTools(user.id) : {};
 
     if (xeroConnection) {
       console.log("[AP Agent] Using agent with Xero tools");
@@ -83,10 +100,24 @@ export async function POST(req: Request) {
       });
     }
 
-    // Stream the agent response using Mastra's AI SDK integration
-    const stream = await agent.stream(messages, {
-      format: "aisdk",
+    const result = streamText({
+      model: myProvider.languageModel(
+        settings?.model || "anthropic-claude-sonnet-4-5"
+      ),
+      system: SYSTEM_INSTRUCTIONS,
+      messages,
       maxSteps: 5,
+      tools: {
+        extractInvoiceData: extractInvoiceDataTool,
+        matchVendor: matchVendorTool,
+        validateABN: validateABNTool,
+        suggestBillCoding: suggestBillCodingTool,
+        checkDuplicateBills: checkDuplicateBillsTool,
+        generatePaymentProposal: generatePaymentProposalTool,
+        assessPaymentRisk: assessPaymentRiskTool,
+        generateEmailDraft: generateEmailDraftTool,
+        ...xeroTools,
+      },
       onStepFinish: async ({ stepType, text, toolCalls, usage }) => {
         // Log each step for observability
         console.log(`[AP Agent] Step completed: ${stepType}`);
@@ -103,7 +134,7 @@ export async function POST(req: Request) {
       },
     });
 
-    return stream.toUIMessageStreamResponse();
+    return result.toDataStreamResponse();
   } catch (error) {
     console.error("[AP Agent] Error handling chat request:", error);
 

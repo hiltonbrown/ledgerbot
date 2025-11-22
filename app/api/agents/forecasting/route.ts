@@ -6,6 +6,7 @@ import {
   getModelMeta,
 } from "@/lib/agents/forecasting/config";
 import { forecastingMemory } from "@/lib/agents/forecasting/memory";
+import { createForecastingXeroTools } from "@/lib/agents/forecasting/tools";
 import {
   addMonths,
   clampHorizon,
@@ -13,7 +14,6 @@ import {
   formatIsoDate,
   parseMonthToDate,
 } from "@/lib/agents/forecasting/utils";
-import { createXeroTools } from "@/lib/ai/tools/xero-tools";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import {
   getActiveXeroConnection,
@@ -60,7 +60,7 @@ async function buildXeroContext({
   periods: number;
 }) {
   try {
-    const tools = createXeroTools(userId);
+    const tools = createForecastingXeroTools(userId);
 
     const [pnlResult, balanceResult] = await Promise.allSettled([
       // biome-ignore lint/suspicious/noExplicitAny: Type workaround for AI SDK tool execution

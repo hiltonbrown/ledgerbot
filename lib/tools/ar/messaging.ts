@@ -2,7 +2,7 @@
  * AR messaging and comms tools for Mastra agent
  */
 
-import { createTool } from "@mastra/core/tools";
+import { tool } from "ai";
 import { z } from "zod";
 import {
   createCommsArtefact,
@@ -26,11 +26,10 @@ import { getXeroProvider } from "./xero";
 /**
  * Get invoices that are due or overdue
  */
-export const getInvoicesDueTool = createTool({
-  id: "getInvoicesDue",
+export const getInvoicesDueTool = tool({
   description:
     "Get all invoices that are due or overdue, optionally filtered by minimum days overdue and customer ID",
-  inputSchema: z.object({
+  parameters: z.object({
     userId: z.string().describe("User ID"),
     asOf: z.string().datetime().optional().describe("As-of date (ISO format)"),
     minDaysOverdue: z
@@ -42,35 +41,13 @@ export const getInvoicesDueTool = createTool({
       .describe("Minimum days overdue (0 = all due invoices)"),
     customerId: z.string().optional().describe("Filter by customer/contact ID"),
   }),
-  outputSchema: z.object({
-    invoices: z.array(
-      z.object({
-        id: z.string(),
-        number: z.string(),
-        issueDate: z.string(),
-        dueDate: z.string(),
-        total: z.string(),
-        amountPaid: z.string(),
-        amountDue: z.string(),
-        status: z.string(),
-        daysOverdue: z.number(),
-        contact: z.object({
-          id: z.string(),
-          name: z.string(),
-          email: z.string().optional(),
-          phone: z.string().optional(),
-        }),
-      })
-    ),
-    asOf: z.string(),
-  }),
-  execute: async ({ context: inputData }) => {
-    const asOfDate = asOfOrToday(inputData.asOf);
+  execute: async ({ userId, asOf, minDaysOverdue, customerId }) => {
+    const asOfDate = asOfOrToday(asOf);
     const result = await listInvoicesDue({
-      userId: inputData.userId,
+      userId,
       asOf: asOfDate,
-      minDaysOverdue: inputData.minDaysOverdue,
-      customerId: inputData.customerId,
+      minDaysOverdue,
+      customerId,
     });
 
     return {
@@ -101,20 +78,14 @@ export const getInvoicesDueTool = createTool({
 /**
  * Predict late payment risk for an invoice
  */
-export const predictLateRiskTool = createTool({
-  id: "predictLateRisk",
+export const predictLateRiskTool = tool({
   description:
     "Predict the probability of late payment for an invoice based on days overdue and history",
-  inputSchema: z.object({
+  parameters: z.object({
     invoiceId: z.string().describe("Invoice ID"),
   }),
-  outputSchema: z.object({
-    invoiceId: z.string(),
-    probability: z.number().min(0).max(1).describe("Risk probability (0-1)"),
-    factors: z.array(z.string()).describe("Contributing risk factors"),
-  }),
-  execute: async ({ context: inputData }) => {
-    const invoice = await getInvoiceWithContact(inputData.invoiceId);
+  execute: async ({ invoiceId }) => {
+    const invoice = await getInvoiceWithContact(invoiceId);
 
     if (!invoice) {
       throw new Error("Invoice not found");
@@ -164,26 +135,17 @@ export const predictLateRiskTool = createTool({
 /**
  * Build email reminder artefact (does NOT send)
  */
-export const buildEmailReminderTool = createTool({
-  id: "buildEmailReminder",
+export const buildEmailReminderTool = tool({
   description:
     "Generate a copy-ready email reminder for an overdue invoice. Does NOT send the email - only creates an artefact for user to copy-paste.",
-  inputSchema: z.object({
+  parameters: z.object({
     userId: z.string().describe("User ID"),
     invoiceId: z.string().describe("Invoice ID"),
     templateId: z.string().describe("Template ID"),
     tone: z.enum(["polite", "firm", "final"]).describe("Tone of the reminder"),
   }),
-  outputSchema: z.object({
-    invoiceId: z.string(),
-    subject: z.string(),
-    body: z.string(),
-    tone: z.string(),
-    artefactId: z.string(),
-    preview: z.string().describe("First 100 chars of body"),
-  }),
-  execute: async ({ context: inputData }) => {
-    const invoice = await getInvoiceWithContact(inputData.invoiceId);
+  execute: async ({ userId, invoiceId, templateId, tone }) => {
+    const invoice = await getInvoiceWithContact(invoiceId);
 
     if (!invoice) {
       throw new Error("Invoice not found");
@@ -191,18 +153,18 @@ export const buildEmailReminderTool = createTool({
 
     const { subject, body } = generateEmailContent(
       invoice,
-      inputData.tone as "polite" | "firm" | "final"
+      tone as "polite" | "firm" | "final"
     );
 
     const artefact: ArCommsArtefactInsert = {
-      userId: inputData.userId,
-      invoiceId: inputData.invoiceId,
+      userId,
+      invoiceId,
       channel: "email",
       subject,
       body,
-      tone: inputData.tone,
+      tone,
       metadata: {
-        templateId: inputData.templateId,
+        templateId,
         generatedAt: new Date().toISOString(),
       },
     };
@@ -213,7 +175,7 @@ export const buildEmailReminderTool = createTool({
       invoiceId: invoice.id,
       subject,
       body,
-      tone: inputData.tone,
+      tone,
       artefactId: created.id,
       preview: body.slice(0, 100),
     };
@@ -223,25 +185,17 @@ export const buildEmailReminderTool = createTool({
 /**
  * Build SMS reminder artefact (does NOT send)
  */
-export const buildSmsReminderTool = createTool({
-  id: "buildSmsReminder",
+export const buildSmsReminderTool = tool({
   description:
     "Generate a copy-ready SMS reminder for an overdue invoice. Does NOT send the SMS - only creates an artefact for user to copy-paste.",
-  inputSchema: z.object({
+  parameters: z.object({
     userId: z.string().describe("User ID"),
     invoiceId: z.string().describe("Invoice ID"),
     templateId: z.string().describe("Template ID"),
     tone: z.enum(["polite", "firm", "final"]).describe("Tone of the reminder"),
   }),
-  outputSchema: z.object({
-    invoiceId: z.string(),
-    text: z.string(),
-    tone: z.string(),
-    artefactId: z.string(),
-    preview: z.string().describe("First 50 chars"),
-  }),
-  execute: async ({ context: inputData }) => {
-    const invoice = await getInvoiceWithContact(inputData.invoiceId);
+  execute: async ({ userId, invoiceId, templateId, tone }) => {
+    const invoice = await getInvoiceWithContact(invoiceId);
 
     if (!invoice) {
       throw new Error("Invoice not found");
@@ -249,18 +203,18 @@ export const buildSmsReminderTool = createTool({
 
     const text = generateSmsContent(
       invoice,
-      inputData.tone as "polite" | "firm" | "final"
+      tone as "polite" | "firm" | "final"
     );
 
     const artefact: ArCommsArtefactInsert = {
-      userId: inputData.userId,
-      invoiceId: inputData.invoiceId,
+      userId,
+      invoiceId,
       channel: "sms",
       subject: null,
       body: text,
-      tone: inputData.tone,
+      tone,
       metadata: {
-        templateId: inputData.templateId,
+        templateId,
         generatedAt: new Date().toISOString(),
       },
     };
@@ -270,7 +224,7 @@ export const buildSmsReminderTool = createTool({
     return {
       invoiceId: invoice.id,
       text,
-      tone: inputData.tone,
+      tone,
       artefactId: created.id,
       preview: text.slice(0, 50),
     };
@@ -280,29 +234,21 @@ export const buildSmsReminderTool = createTool({
 /**
  * Reconcile a payment against an invoice
  */
-export const reconcilePaymentTool = createTool({
-  id: "reconcilePayment",
+export const reconcilePaymentTool = tool({
   description:
     "Record a payment against an invoice and update its status automatically",
-  inputSchema: z.object({
+  parameters: z.object({
     invoiceId: z.string().describe("Invoice ID"),
     amount: z.number().positive().describe("Payment amount"),
     paidAt: z.string().datetime().describe("Payment date (ISO format)"),
     reference: z.string().optional().describe("Payment reference/note"),
   }),
-  outputSchema: z.object({
-    invoiceId: z.string(),
-    newStatus: z.string(),
-    paymentId: z.string(),
-    amountPaid: z.string(),
-    amountRemaining: z.string(),
-  }),
-  execute: async ({ context: inputData }) => {
+  execute: async ({ invoiceId, amount, paidAt, reference }) => {
     const payment: ArPaymentInsert = {
-      invoiceId: inputData.invoiceId,
-      amount: inputData.amount.toFixed(2),
-      paidAt: new Date(inputData.paidAt),
-      reference: inputData.reference,
+      invoiceId,
+      amount: amount.toFixed(2),
+      paidAt: new Date(paidAt),
+      reference,
     };
 
     const result = await insertPayment(payment);
@@ -325,10 +271,9 @@ export const reconcilePaymentTool = createTool({
 /**
  * Post an internal note on an invoice
  */
-export const postNoteTool = createTool({
-  id: "postNote",
+export const postNoteTool = tool({
   description: "Add an internal note to an invoice for team visibility",
-  inputSchema: z.object({
+  parameters: z.object({
     userId: z.string().describe("User ID"),
     invoiceId: z.string().describe("Invoice ID"),
     body: z.string().describe("Note content"),
@@ -338,19 +283,12 @@ export const postNoteTool = createTool({
       .default("private")
       .describe("Note visibility"),
   }),
-  outputSchema: z.object({
-    noteId: z.string(),
-    invoiceId: z.string(),
-    body: z.string(),
-    visibility: z.string(),
-    createdAt: z.string(),
-  }),
-  execute: async ({ context: inputData }) => {
+  execute: async ({ userId, invoiceId, body, visibility }) => {
     const note: ArNoteInsert = {
-      userId: inputData.userId,
-      invoiceId: inputData.invoiceId,
-      body: inputData.body,
-      visibility: inputData.visibility || "private",
+      userId,
+      invoiceId,
+      body,
+      visibility: visibility || "private",
     };
 
     const created = await createNote(note);
@@ -368,11 +306,10 @@ export const postNoteTool = createTool({
 /**
  * Sync invoices and contacts from Xero
  */
-export const syncXeroTool = createTool({
-  id: "syncXero",
+export const syncXeroTool = tool({
   description:
     "Synchronise invoices and contacts from Xero (or mock data if not configured)",
-  inputSchema: z.object({
+  parameters: z.object({
     userId: z.string().describe("User ID"),
     since: z
       .string()
@@ -380,18 +317,13 @@ export const syncXeroTool = createTool({
       .optional()
       .describe("Sync data modified since this date"),
   }),
-  outputSchema: z.object({
-    contactsSync: z.number(),
-    invoicesSynced: z.number(),
-    isUsingMock: z.boolean(),
-  }),
-  execute: async ({ context: inputData }) => {
-    const xero = await getXeroProvider(inputData.userId);
+  execute: async ({ userId, since }) => {
+    const xero = await getXeroProvider(userId);
 
     // Sync contacts first
     const xeroContacts = await xero.listContacts({ isCustomer: true });
     const contacts = await upsertContacts(
-      inputData.userId,
+      userId,
       xeroContacts.map((c) => ({
         name: c.name,
         email: c.emailAddress,
@@ -403,14 +335,14 @@ export const syncXeroTool = createTool({
     // Sync invoices
     const xeroInvoices = await xero.listInvoices({
       status: "AUTHORISED",
-      dateFrom: inputData.since,
+      dateFrom: since,
     });
 
     // Map contact IDs
     const contactMap = new Map(contacts.map((c) => [c.externalRef, c.id]));
 
     const invoices = await upsertInvoices(
-      inputData.userId,
+      userId,
       xeroInvoices.map((inv) => {
         const contactId = contactMap.get(inv.contact.contactID);
         if (!contactId) {
@@ -527,11 +459,10 @@ function mapXeroStatus(xeroStatus: string, hasAmountDue: boolean): string {
 /**
  * Build call script artefact for phone conversation
  */
-export const buildCallScriptTool = createTool({
-  id: "buildCallScript",
+export const buildCallScriptTool = tool({
   description:
     "Generate a call script for a phone conversation about overdue invoices. Includes talking points, responses to common objections, and payment options.",
-  inputSchema: z.object({
+  parameters: z.object({
     userId: z.string().describe("User ID"),
     contactId: z.string().describe("Customer/Contact ID"),
     tone: z
@@ -543,26 +474,13 @@ export const buildCallScriptTool = createTool({
       .default(false)
       .describe("Include payment plan options in script"),
   }),
-  outputSchema: z.object({
-    contactId: z.string(),
-    contactName: z.string(),
-    script: z.string(),
-    talkingPoints: z.array(z.string()),
-    objectionResponses: z.array(
-      z.object({
-        objection: z.string(),
-        response: z.string(),
-      })
-    ),
-    tone: z.string(),
-  }),
-  execute: async ({ context: inputData }) => {
+  execute: async ({ userId, contactId, tone, includePaymentPlan }) => {
     // Get all invoices for this contact
     const invoices = await listInvoicesDue({
-      userId: inputData.userId,
+      userId,
       asOf: new Date(),
       minDaysOverdue: 0,
-      customerId: inputData.contactId,
+      customerId: contactId,
     });
 
     if (invoices.invoices.length === 0) {
@@ -586,8 +504,8 @@ export const buildCallScriptTool = createTool({
       invoices.invoices,
       totalDue,
       oldestInvoice.daysOverdue,
-      inputData.tone as "polite" | "firm" | "final",
-      inputData.includePaymentPlan
+      tone as "polite" | "firm" | "final",
+      includePaymentPlan
     );
 
     return script;
@@ -597,22 +515,15 @@ export const buildCallScriptTool = createTool({
 /**
  * Save note to Xero Contact (via API if connected, local DB otherwise)
  */
-export const saveNoteToXeroTool = createTool({
-  id: "saveNoteToXero",
+export const saveNoteToXeroTool = tool({
   description:
     "Save a note to a Xero Contact. If Xero is connected, saves to both Xero and local DB. Otherwise saves to local DB only.",
-  inputSchema: z.object({
+  parameters: z.object({
     userId: z.string().describe("User ID"),
     contactId: z.string().describe("Contact ID (local database ID)"),
     note: z.string().describe("Note content"),
   }),
-  outputSchema: z.object({
-    success: z.boolean(),
-    noteId: z.string(),
-    savedToXero: z.boolean(),
-    message: z.string(),
-  }),
-  execute: async ({ context: inputData }) => {
+  execute: async ({ userId, contactId, note: noteContent }) => {
     // For now, we'll save to local DB only
     // Future enhancement: integrate with Xero API to save notes
     // Xero doesn't have a native "notes" API, but we can use Contact.Notes field
@@ -620,10 +531,10 @@ export const saveNoteToXeroTool = createTool({
 
     // Get contact to find associated invoices
     const invoices = await listInvoicesDue({
-      userId: inputData.userId,
+      userId,
       asOf: new Date(),
       minDaysOverdue: 0,
-      customerId: inputData.contactId,
+      customerId: contactId,
     });
 
     if (invoices.invoices.length === 0) {
@@ -632,13 +543,13 @@ export const saveNoteToXeroTool = createTool({
 
     // Save note to first invoice (as contact-level notes need invoice association)
     const note: ArNoteInsert = {
-      userId: inputData.userId,
+      userId,
       invoiceId: invoices.invoices[0].id,
-      body: inputData.note,
+      body: noteContent,
       visibility: "shared",
       metadata: {
         isContactNote: true,
-        contactId: inputData.contactId,
+        contactId,
         createdAt: new Date().toISOString(),
       },
     };
@@ -658,119 +569,3 @@ export const saveNoteToXeroTool = createTool({
     };
   },
 });
-
-// Helper function for call script generation
-function generateCallScript(
-  contact: { name: string; email?: string | null; phone?: string | null },
-  invoices: Array<{
-    id: string;
-    number: string;
-    dueDate: Date;
-    total: string;
-    amountPaid: string;
-    daysOverdue: number;
-  }>,
-  totalDue: number,
-  maxDaysOverdue: number,
-  tone: "polite" | "firm" | "final",
-  includePaymentPlan: boolean
-): {
-  contactId: string;
-  contactName: string;
-  script: string;
-  talkingPoints: string[];
-  objectionResponses: Array<{ objection: string; response: string }>;
-  tone: string;
-} {
-  const invoiceList = invoices
-    .map(
-      (inv) =>
-        `• Invoice ${inv.number}: $${(Number.parseFloat(inv.total) - Number.parseFloat(inv.amountPaid)).toFixed(2)} (${inv.daysOverdue} days overdue)`
-    )
-    .join("\n");
-
-  const greetings = {
-    polite: `Hi ${contact.name}, this is [Your Name] from [Your Company]. I hope you're doing well today. I'm calling regarding some outstanding invoices on your account.`,
-    firm: `Hello ${contact.name}, this is [Your Name] from [Your Company]. I'm calling about overdue invoices on your account that require immediate attention.`,
-    final: `${contact.name}, this is [Your Name] from [Your Company]. This is a final courtesy call regarding seriously overdue invoices before we escalate to collections.`,
-  };
-
-  const mainPoints = {
-    polite: `I wanted to touch base with you about ${invoices.length} invoice${invoices.length > 1 ? "s" : ""} that ${invoices.length > 1 ? "are" : "is"} now overdue. The total outstanding amount is $${totalDue.toFixed(2)}, with the oldest invoice being ${maxDaysOverdue} days past due.`,
-    firm: `Your account currently has ${invoices.length} overdue invoice${invoices.length > 1 ? "s" : ""} totaling $${totalDue.toFixed(2)}. Some of these are now ${maxDaysOverdue} days overdue, which is significantly past our payment terms.`,
-    final: `Your account is seriously delinquent with ${invoices.length} invoice${invoices.length > 1 ? "s" : ""} totaling $${totalDue.toFixed(2)}. The oldest invoice is ${maxDaysOverdue} days overdue. We need to resolve this immediately to avoid further action.`,
-  };
-
-  const closings = {
-    polite:
-      "Can we arrange payment today, or would you like to discuss a payment plan?",
-    firm: "I need to know when we can expect full payment. Can you commit to a payment date today?",
-    final:
-      "We need payment within 48 hours to prevent this from going to collections. Can you make payment immediately, or do we need to proceed with formal action?",
-  };
-
-  const paymentPlanSection = includePaymentPlan
-    ? `\n\nPAYMENT PLAN OPTIONS:\nIf full payment isn't possible right now, we can discuss:\n• Split payment over 2-4 weeks\n• Partial payment today with balance on agreed date\n• Weekly installments until cleared\n\nWhat would work best for your situation?`
-    : "";
-
-  const script = `${greetings[tone]}
-
-${mainPoints[tone]}
-
-INVOICE BREAKDOWN:
-${invoiceList}
-
-${closings[tone]}${paymentPlanSection}
-
-NEXT STEPS:
-1. Confirm payment method and timeline
-2. Send payment confirmation email
-3. Update account notes with agreed terms
-4. Follow up if payment not received by agreed date`;
-
-  const talkingPoints = [
-    `Total outstanding: $${totalDue.toFixed(2)}`,
-    `Number of overdue invoices: ${invoices.length}`,
-    `Oldest invoice: ${maxDaysOverdue} days overdue`,
-    "Payment terms: Net 30 days",
-    tone === "final"
-      ? "This is final notice before collections"
-      : "We value your business and want to help",
-  ];
-
-  const objectionResponses = [
-    {
-      objection: "I haven't received the invoice",
-      response: `I can resend that immediately. The invoice was originally sent on [date] to ${contact.email || "your email on file"}. Would you like me to send it to a different email address?`,
-    },
-    {
-      objection: "I'm having cash flow issues",
-      response:
-        "I understand that can be challenging. Would a payment plan help? We could arrange smaller weekly or bi-weekly payments to make this more manageable.",
-    },
-    {
-      objection: "There's a dispute with the invoice",
-      response:
-        "I wasn't aware of any issues. Can you tell me specifically what the concern is so we can resolve it? In the meantime, would you be comfortable paying the undisputed portion?",
-    },
-    {
-      objection: "I'll pay it next week/month",
-      response:
-        "I appreciate you committing to payment. Can we be more specific about the date? I'd like to note exactly when we can expect payment and send you a confirmation.",
-    },
-    {
-      objection: "I've already paid this",
-      response:
-        "Let me check our records. Can you provide the payment date, amount, and reference number? I'll verify this immediately and update your account if needed.",
-    },
-  ];
-
-  return {
-    contactId: contact.name, // We don't have ID in this context
-    contactName: contact.name,
-    script,
-    talkingPoints,
-    objectionResponses,
-    tone,
-  };
-}
