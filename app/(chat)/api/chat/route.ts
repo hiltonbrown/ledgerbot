@@ -387,6 +387,16 @@ export async function POST(request: Request) {
       }
     }
 
+    console.log("[DEBUG] Saving user message:", {
+      messageId: message.id,
+      partsCount: message.parts.length,
+      parts: message.parts.map((p: any) => ({
+        type: p.type,
+        hasDocumentId: 'documentId' in p,
+        documentId: (p as any).documentId,
+      })),
+    });
+
     await saveMessages({
       messages: [
         {
