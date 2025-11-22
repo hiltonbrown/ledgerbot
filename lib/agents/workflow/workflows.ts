@@ -152,10 +152,7 @@ export async function executeInvestorUpdateWorkflow(
     console.log(`[Investor Update] Creating forecast for ${input.period}`);
 
     // In production, run forecasting agent with historical data
-    const forecastData = {
-      forecastId: "forecast-123",
-      scenarios: ["Base", "Upside", "Downside"],
-    };
+    // TODO: Generate forecast data and use in investor update
 
     // Step 3: Prepare investor Q&A
     console.log(`[Investor Update] Preparing Q&A for ${input.period}`);
