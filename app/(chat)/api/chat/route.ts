@@ -183,10 +183,7 @@ function includeAttachmentText(messages: ChatMessage[]): ChatMessage[] {
           ? `Use the createDocument tool with { "action": "analyze", "documentId": "${documentId}", "question": "<your question>" } to analyze, summarize, or update this spreadsheet.`
           : "Use the createDocument tool with action `analyze` to analyze, summarize, or update this spreadsheet.";
 
-        // Keep the file part for UI rendering
-        newParts.push(part);
-
-        // Add text instructions for the AI
+        // Replace file part with text instructions for the AI (AI doesn't support file URLs)
         newParts.push({
           type: "text" as const,
           text: `[Spreadsheet Attachment: ${name}]\n${instruction}\n\nPreview (first rows):\n${spreadsheetPreview}\n[End Spreadsheet Attachment]`,
@@ -197,10 +194,7 @@ function includeAttachmentText(messages: ChatMessage[]): ChatMessage[] {
         part.extractedText &&
         !part.mediaType?.startsWith("image/")
       ) {
-        // Keep the file part for UI rendering
-        newParts.push(part);
-
-        // Add extracted text for the AI
+        // Replace file part with extracted text for the AI (AI doesn't support file URLs)
         newParts.push({
           type: "text" as const,
           text: `[Attachment: ${(part as any).name ?? "file"}]\n${part.extractedText}\n[End Attachment]`,
