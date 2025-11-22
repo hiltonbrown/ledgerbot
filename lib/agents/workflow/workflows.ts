@@ -54,7 +54,7 @@ export async function executeMonthEndCloseWorkflow(
 
     // In production, this would run the analytics agent
     // to create the financial report with KPIs and narrative
-    const analyticsResult = {
+    return {
       reportId: "report-123",
       kpis: {
         grossMargin: 0,
@@ -64,8 +64,6 @@ export async function executeMonthEndCloseWorkflow(
       },
       status: "complete" as const,
     };
-
-    return analyticsResult;
   } catch (error) {
     console.error("[Month-End Close] Workflow failed:", error);
     return {
@@ -141,11 +139,9 @@ export async function executeInvestorUpdateWorkflow(
     console.log(`[Investor Update] Preparing Q&A for ${input.period}`);
 
     // In production, use Q&A agent to generate anticipated investor questions
-    const qaData = {
+    return {
       qaPairs: [],
     };
-
-    return qaData;
   } catch (error) {
     console.error("[Investor Update] Workflow failed:", error);
     return {
@@ -203,12 +199,10 @@ export async function executeAtoAuditPackWorkflow(
     console.log(`[ATO Audit Pack] Generating audit pack for ${input.period}`);
 
     // In production, compile all documents into a PDF package
-    const auditPackResult = {
+    return {
       packId: "audit-pack-123",
       fileUrl: "/files/audit-pack-123.pdf",
     };
-
-    return auditPackResult;
   } catch (error) {
     console.error("[ATO Audit Pack] Workflow failed:", error);
     return {
