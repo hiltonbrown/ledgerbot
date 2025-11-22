@@ -1,66 +1,66 @@
-import type { CoreMessage } from "ai";
-import { NextResponse } from "next/server";
 import {
-  analyticsAgent,
-  createAnalyticsAgentWithXero,
+  convertToModelMessages,
+  createUIMessageStream,
+  JsonToSseTransformStream,
+  streamText,
+} from "ai";
+import {
+  getAnalyticsAgentSystemPrompt,
+  getAnalyticsAgentTools,
+  getAnalyticsAgentToolsWithXero,
 } from "@/lib/agents/analytics/agent";
+import { myProvider } from "@/lib/ai/providers";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
-import {
-  getActiveXeroConnection,
-  getChatById,
-  saveChat,
-} from "@/lib/db/queries";
+import { isProductionEnvironment } from "@/lib/constants";
+import { getActiveXeroConnection } from "@/lib/db/queries";
+import { generateUUID } from "@/lib/utils";
 
 export const maxDuration = 60;
 
-export async function POST(req: Request) {
+export async function POST(request: Request) {
   try {
     const user = await getAuthUser();
     if (!user) {
-      return new NextResponse("Not authenticated", { status: 401 });
+      return new Response("Not authenticated", { status: 401 });
     }
 
-    const { messages, settings } = (await req.json()) as {
-      messages: CoreMessage[];
-      settings?: {
-        model?: string;
-        chatId?: string;
-      };
+    const { messages } = (await request.json()) as {
+      messages: any[];
+      chatId?: string;
     };
 
-    // Get or create chat for analytics agent
-    const chatId = settings?.chatId || "analytics-agent";
-    const chat = await getChatById({ id: chatId });
-    if (!chat) {
-      await saveChat({
-        id: chatId,
-        userId: user.id,
-        title: "Analytics Agent",
-        visibility: "private",
-      });
-    }
-
-    // Determine which agent to use based on Xero connection
+    // Check if user has Xero connection
     const xeroConnection = await getActiveXeroConnection(user.id);
-    const agent = xeroConnection
-      ? createAnalyticsAgentWithXero(user.id)
-      : analyticsAgent;
+    const analyticsTools = xeroConnection
+      ? getAnalyticsAgentToolsWithXero(user.id)
+      : getAnalyticsAgentTools();
 
-    if (xeroConnection) {
-      console.log(
-        "[Analytics Agent] Using agent with Xero P&L and balance sheet tools"
-      );
-    }
+    const stream = createUIMessageStream({
+      execute: ({ writer: dataStream }) => {
+        const result = streamText({
+          model: myProvider.languageModel("anthropic-claude-sonnet-4-5"),
+          system: getAnalyticsAgentSystemPrompt(),
+          messages: convertToModelMessages(messages),
+          tools: analyticsTools,
+          experimental_telemetry: {
+            isEnabled: isProductionEnvironment,
+            functionId: "analytics-agent",
+          },
+        });
 
-    // Stream the agent response using Mastra's AI SDK integration
-    const stream = await agent.stream(messages, {
-      format: "aisdk",
-      maxSteps: 5,
+        dataStream.merge(
+          result.toUIMessageStream({
+            sendReasoning: true,
+          })
+        );
+      },
+      generateId: generateUUID,
     });
 
-    return stream.toUIMessageStreamResponse();
+    const sseStream = stream.pipeThrough(new JsonToSseTransformStream());
+    return new Response(sseStream);
   } catch (error) {
-    console.error("[Analytics Agent] Error handling chat request:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    console.error("[Analytics Agent] Error:", error);
+    return new Response("Internal Server Error", { status: 500 });
   }
 }

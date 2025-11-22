@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createTool } from "@mastra/core/tools";
+import { tool } from "ai";
 import { z } from "zod";
 import { executeXeroMCPTool } from "@/lib/ai/xero-mcp-client";
 
@@ -9,8 +9,7 @@ import { executeXeroMCPTool } from "@/lib/ai/xero-mcp-client";
  */
 export function createForecastingXeroTools(userId: string) {
   return {
-    xero_get_profit_and_loss: createTool({
-      id: "xero_get_profit_and_loss",
+    xero_get_profit_and_loss: tool({
       description:
         "Get the Profit & Loss report from Xero for a specific date range. Use this to understand historical revenue, expenses, and profitability trends.",
       inputSchema: z.object({
@@ -31,19 +30,17 @@ export function createForecastingXeroTools(userId: string) {
           .default("MONTH")
           .describe("Reporting timeframe"),
       }),
-      outputSchema: z.string(),
-      execute: async ({ context }) => {
+      execute: async (args: { fromDate: string; toDate: string; periods?: number; timeframe?: string }) => {
         const result = await executeXeroMCPTool(
           userId,
           "xero_get_profit_and_loss",
-          context
+          args
         );
         return result.content[0].text;
       },
     }),
 
-    xero_get_balance_sheet: createTool({
-      id: "xero_get_balance_sheet",
+    xero_get_balance_sheet: tool({
       description:
         "Get the Balance Sheet from Xero for a specific date range. Use this to understand cash position, assets, liabilities, and equity.",
       inputSchema: z.object({
@@ -54,12 +51,11 @@ export function createForecastingXeroTools(userId: string) {
           .string()
           .describe("End date for the report (ISO 8601 format YYYY-MM-DD)"),
       }),
-      outputSchema: z.string(),
-      execute: async ({ context }) => {
+      execute: async (args: { fromDate: string; toDate: string }) => {
         const result = await executeXeroMCPTool(
           userId,
           "xero_get_balance_sheet",
-          context
+          args
         );
         return result.content[0].text;
       },

@@ -1,4 +1,5 @@
-import { generateText } from "ai";
+import { generateObject, generateText } from "ai";
+import { z } from "zod";
 import type { RequestHints } from "@/lib/ai/prompts";
 import { myProvider } from "@/lib/ai/providers";
 import type {
@@ -12,7 +13,7 @@ import type {
   DeepResearchReportAttachment,
   DeepResearchSource,
   DeepResearchSummaryAttachment,
-} from "./deep-research-types";
+} from "./types";
 
 const DEFAULT_SUMMARY_MODEL = "anthropic-claude-sonnet-4-5";
 const TAVILY_SEARCH_URL =
@@ -50,64 +51,24 @@ type SummarySynthesis = {
   approvalMessage: string;
 };
 
-type PlanResponse = {
-  plan: string[];
-  searchQueries: string[];
-  focusPoints: string[];
-};
-
-const PLAN_SYSTEM_PROMPT = `You are the Mastra Deep Research planner for LedgerBot. Create a focused, multi-step plan to investigate the user's accounting or finance question. The plan must:
+const PLAN_SYSTEM_PROMPT = `You are the Deep Research planner for LedgerBot. Create a focused, multi-step plan to investigate the user's accounting or finance question. The plan must:
 - Identify 3-5 concrete research steps in plain language.
 - Recommend 3-5 high quality web or API search queries tailored to current events (last 12-18 months) and authoritative sources.
-- Note any key focus points such as regions, time periods, regulatory bodies, or stakeholder types.
+- Note any key focus points such as regions, time periods, regulatory bodies, or stakeholder types.`;
 
-Return ONLY valid JSON with the following shape:
-{
-  "plan": string[],
-  "searchQueries": string[],
-  "focusPoints": string[]
-}`;
+const EVALUATION_SYSTEM_PROMPT =
+  "You are the source evaluator. Given the research question and raw search hits, provide structured assessments for each source. Rate reliability and confidence based on recency, authority, and direct relevance.";
 
-const EVALUATION_SYSTEM_PROMPT = `You are the Mastra source evaluator. Given the research question and raw search hits, provide structured assessments for each source. Rate reliability and confidence based on recency, authority, and direct relevance.
-Return ONLY JSON:
-{
-  "sources": Array<{
-    "index": number,
-    "summary": string,
-    "reliability": "high" | "medium" | "low",
-    "confidence": number,
-    "notes"?: string
-  }>
-}`;
-
-const SUMMARY_SYSTEM_PROMPT = `You are the Mastra Deep Research synthesizer. Using the question, plan, and evaluated sources, produce a concise summary for the user with rigorous citations. All findings and recommendations must reference sources using [index] notation.
-Return ONLY JSON with this shape:
-{
-  "narrative": string,
-  "findings": string[],
-  "recommendations": string[],
-  "followUpQuestions": string[],
-  "confidence": number,
-  "approvalMessage": string
-}
+const SUMMARY_SYSTEM_PROMPT = `You are the Deep Research synthesizer. Using the question, plan, and evaluated sources, produce a concise summary for the user with rigorous citations. All findings and recommendations must reference sources using [index] notation.
 The narrative should be at most 4 sentences and include at least one citation. Citations refer to the source indices (1-indexed).`;
 
-const REPORT_SYSTEM_PROMPT = `You are the Mastra Deep Research report writer for LedgerBot. Produce an executive-ready markdown report that:
+const REPORT_SYSTEM_PROMPT = `You are the Deep Research report writer for LedgerBot. Produce an executive-ready markdown report that:
 - Summarises the research question and context.
 - Highlights key findings with supporting details and citations ([index](url)).
 - Evaluates source quality briefly.
 - Provides actionable recommendations and next steps with cited evidence.
 - Includes an appendix table of all sources (Title | Reliability | Confidence | Notes | Link).
 Ensure the tone is professional and analytical. Make the document valid markdown.`;
-
-function safeJsonParse<T>(input: string): T | null {
-  try {
-    return JSON.parse(input) as T;
-  } catch (error) {
-    console.warn("[deep-research] Failed to parse JSON", error, input);
-    return null;
-  }
-}
 
 function nowIso() {
   return new Date().toISOString();
@@ -150,15 +111,25 @@ async function createResearchPlan({
     contextHints.length > 0 ? contextHints.join(" | ") : "Not specified"
   }`;
 
-  const { text } = await generateText({
-    model: myProvider.languageModel(modelId ?? DEFAULT_SUMMARY_MODEL),
-    system: PLAN_SYSTEM_PROMPT,
-    prompt,
-  });
+  try {
+    const { object } = await generateObject({
+      model: myProvider.languageModel(modelId ?? DEFAULT_SUMMARY_MODEL),
+      system: PLAN_SYSTEM_PROMPT,
+      prompt,
+      schema: z.object({
+        plan: z.array(z.string()),
+        searchQueries: z.array(z.string()),
+        focusPoints: z.array(z.string()),
+      }),
+    });
 
-  const parsed = safeJsonParse<PlanResponse>(text.trim());
-
-  if (!parsed) {
+    return {
+      plan: object.plan.filter(Boolean),
+      searchQueries: object.searchQueries.filter(Boolean),
+      focusPoints: object.focusPoints.filter(Boolean),
+    };
+  } catch (error) {
+    console.warn("[deep-research] Failed to generate plan", error);
     const fallbackPlan = [
       "Clarify financial scope and recent regulatory context",
       "Collect the latest guidance and market data from authoritative sources",
@@ -169,14 +140,8 @@ async function createResearchPlan({
       plan: fallbackPlan,
       searchQueries: [question].concat(contextHints).slice(0, 3),
       focusPoints: contextHints,
-    } satisfies ResearchPlan;
+    };
   }
-
-  return {
-    plan: parsed.plan?.filter(Boolean) ?? [],
-    searchQueries: parsed.searchQueries?.filter(Boolean) ?? [question],
-    focusPoints: parsed.focusPoints?.filter(Boolean) ?? [],
-  } satisfies ResearchPlan;
 }
 
 async function performSearch(
@@ -278,14 +243,29 @@ async function evaluateSources({
     " | "
   )}\n\n${condensed}`;
 
-  const { text } = await generateText({
-    model: myProvider.languageModel(modelId ?? DEFAULT_SUMMARY_MODEL),
-    system: EVALUATION_SYSTEM_PROMPT,
-    prompt,
-  });
+  try {
+    const { object } = await generateObject({
+      model: myProvider.languageModel(modelId ?? DEFAULT_SUMMARY_MODEL),
+      system: EVALUATION_SYSTEM_PROMPT,
+      prompt,
+      schema: z.object({
+        sources: z.array(
+          z.object({
+            index: z.number(),
+            summary: z.string(),
+            reliability: z.enum(["high", "medium", "low"]),
+            confidence: z.number(),
+            notes: z.string().optional(),
+          })
+        ),
+      }),
+    });
 
-  const parsed = safeJsonParse<{ sources: SourceEvaluation[] }>(text.trim());
-  return parsed?.sources?.filter(Boolean) ?? [];
+    return object.sources.filter(Boolean);
+  } catch (error) {
+    console.warn("[deep-research] Failed to evaluate sources", error);
+    return [];
+  }
 }
 
 async function buildSummary({
@@ -330,15 +310,24 @@ async function buildSummary({
     2
   );
 
-  const { text } = await generateText({
-    model: myProvider.languageModel(modelId ?? DEFAULT_SUMMARY_MODEL),
-    system: SUMMARY_SYSTEM_PROMPT,
-    prompt,
-  });
+  try {
+    const { object } = await generateObject({
+      model: myProvider.languageModel(modelId ?? DEFAULT_SUMMARY_MODEL),
+      system: SUMMARY_SYSTEM_PROMPT,
+      prompt,
+      schema: z.object({
+        narrative: z.string(),
+        findings: z.array(z.string()),
+        recommendations: z.array(z.string()),
+        followUpQuestions: z.array(z.string()),
+        confidence: z.number(),
+        approvalMessage: z.string(),
+      }),
+    });
 
-  const parsed = safeJsonParse<SummarySynthesis>(text.trim());
-
-  if (!parsed) {
+    return object;
+  } catch (error) {
+    console.warn("[deep-research] Failed to build summary", error);
     return {
       narrative:
         "Unable to synthesise the findings due to formatting issues. Please review the raw source summaries above.",
@@ -350,10 +339,8 @@ async function buildSummary({
         Math.max(evaluations.length, 1),
       approvalMessage:
         "Respond with 'approve' to generate a formal report or ask for a deeper investigation.",
-    } satisfies SummarySynthesis;
+    };
   }
-
-  return parsed;
 }
 
 function buildMetadata({
@@ -424,7 +411,7 @@ function mergeSearchResults(results: RawSearchHit[][]): RawSearchHit[] {
   return Array.from(byUrl.values());
 }
 
-export async function runMastraDeepResearchSummary({
+export async function runDeepResearchSummary({
   question,
   followUp,
   parentSessionId,
@@ -445,7 +432,7 @@ export async function runMastraDeepResearchSummary({
   const createdAt = nowIso();
   const history: DeepResearchHistoryEntry[] = [];
 
-  logHistory(history, "Initialising Mastra deep research workflow");
+  logHistory(history, "Initialising deep research workflow");
 
   const plan = await createResearchPlan({
     question,
@@ -493,7 +480,7 @@ export async function runMastraDeepResearchSummary({
       summary: evaluation.summary,
       reliability: evaluation.reliability,
       confidence: evaluation.confidence,
-      publishedAt: hit?.publishedDate,
+      publishedAt: hit?.publishedDate || undefined,
       notes: evaluation.notes,
     } satisfies DeepResearchSource;
   });
@@ -558,7 +545,7 @@ export async function runMastraDeepResearchSummary({
   return { message, attachment, metadata };
 }
 
-export async function runMastraDeepResearchReport({
+export async function runDeepResearchReport({
   summaryAttachment,
   modelId,
 }: {

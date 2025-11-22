@@ -1,8 +1,21 @@
-import type { CoreMessage } from "ai";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { type CoreMessage, streamText } from "ai";
 import { NextResponse } from "next/server";
-import { arAgent, createArAgentWithModel } from "@/lib/agents/ar/agent";
+import { myProvider } from "@/lib/ai/providers";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import { getChatById, saveChat } from "@/lib/db/queries";
+import {
+  buildCallScriptTool,
+  buildEmailReminderTool,
+  buildSmsReminderTool,
+  getInvoicesDueTool,
+  postNoteTool,
+  predictLateRiskTool,
+  reconcilePaymentTool,
+  saveNoteToXeroTool,
+  syncXeroTool,
+} from "@/lib/tools/ar/messaging";
 
 export const maxDuration = 60;
 
@@ -13,6 +26,14 @@ type ArSettings = {
   tone?: "polite" | "firm" | "final";
   autoConfirm?: boolean;
 };
+
+// Load system prompt from markdown file
+const SYSTEM_PROMPT_PATH = join(
+  process.cwd(),
+  "prompts",
+  "ar-system-prompt.md"
+);
+const SYSTEM_INSTRUCTIONS = readFileSync(SYSTEM_PROMPT_PATH, "utf-8");
 
 export async function POST(req: Request) {
   try {
@@ -38,11 +59,6 @@ export async function POST(req: Request) {
       });
     }
 
-    // Use custom model if specified in settings
-    const agent = settings?.model
-      ? createArAgentWithModel(settings.model)
-      : arAgent;
-
     console.log("[AR Agent] Processing chat request", {
       userId: user.id,
       messageCount: messages.length,
@@ -52,7 +68,9 @@ export async function POST(req: Request) {
     // Inject user ID into system context for tools
     const systemMessage: CoreMessage = {
       role: "system",
-      content: `User ID: ${user.id}
+      content: `${SYSTEM_INSTRUCTIONS}
+
+User ID: ${user.id}
 
 CRITICAL REMINDER:
 - commsEnabled: false
@@ -68,10 +86,22 @@ ${settings?.autoConfirm ? "Auto-confirm: enabled (generate artefacts without con
 
     const messagesWithContext = [systemMessage, ...messages];
 
-    // Stream the agent response using Mastra's AI SDK integration
-    const stream = await agent.stream(messagesWithContext, {
-      format: "aisdk",
-      maxSteps: 5,
+    const result = streamText({
+      model: myProvider.languageModel(
+        settings?.model || "anthropic-claude-sonnet-4-5"
+      ),
+      messages: messagesWithContext,
+      tools: {
+        getInvoicesDue: getInvoicesDueTool,
+        predictLateRisk: predictLateRiskTool,
+        buildEmailReminder: buildEmailReminderTool,
+        buildSmsReminder: buildSmsReminderTool,
+        buildCallScript: buildCallScriptTool,
+        reconcilePayment: reconcilePaymentTool,
+        postNote: postNoteTool,
+        saveNoteToXero: saveNoteToXeroTool,
+        syncXero: syncXeroTool,
+      },
       onStepFinish: ({ text, toolCalls }) => {
         console.log("[AR Agent] Step finished:", {
           hasText: !!text,
@@ -80,7 +110,7 @@ ${settings?.autoConfirm ? "Auto-confirm: enabled (generate artefacts without con
       },
     });
 
-    return stream.toUIMessageStreamResponse();
+    return result.toTextStreamResponse();
   } catch (error) {
     console.error("[AR Agent] Error handling chat request:", error);
     return new NextResponse("Internal Server Error", { status: 500 });

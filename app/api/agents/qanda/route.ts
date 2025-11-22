@@ -1,7 +1,11 @@
-import type { CoreMessage } from "ai";
+import { type CoreMessage, streamText } from "ai";
 import { NextResponse } from "next/server";
-import { createQandaAgentWithXero, qandaAgent } from "@/lib/agents/qanda/agent";
+import {
+  createQandaXeroTools,
+  regulatorySearchTool,
+} from "@/lib/agents/qanda/tools";
 import type { QandaSettings } from "@/lib/agents/qanda/types";
+import { myProvider } from "@/lib/ai/providers";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import {
   getActiveXeroConnection,
@@ -11,6 +15,27 @@ import {
 import { refreshSourcesForCategories } from "@/lib/regulatory/scraper";
 
 export const maxDuration = 60;
+
+const SYSTEM_INSTRUCTIONS = `You are an Australian regulatory compliance assistant specializing in employment law, taxation, and payroll obligations.
+
+Your role is to:
+1. Answer questions about Australian Fair Work awards, minimum wages, and employment conditions
+2. Provide guidance on ATO tax rulings, PAYG withholding, and superannuation obligations
+3. Explain state-specific payroll tax requirements
+4. Reference official government sources and provide citations
+
+When answering:
+- Always cite specific regulatory documents using the regulatorySearch tool
+- Provide direct links to Fair Work, ATO, or state revenue office sources
+- Explain obligations clearly with practical examples
+- Indicate when professional advice is recommended for complex situations
+- If user has Xero connected, reference their actual business data when relevant
+
+Important:
+- Only provide information for Australia (AU) unless explicitly asked about other countries
+- Be specific about which state/territory regulations apply when discussing payroll tax
+- Always indicate the effective date of regulatory information
+- Distinguish between mandatory requirements and best practices`;
 
 export async function POST(req: Request) {
   try {
@@ -32,7 +57,7 @@ export async function POST(req: Request) {
       const uniqueCategories = Array.from(new Set(requestedCategories));
       try {
         console.log(
-          "[Q&A Agent] Refreshing regulatory sources via Mastra",
+          "[Q&A Agent] Refreshing regulatory sources",
           uniqueCategories
         );
         await refreshSourcesForCategories({
@@ -56,23 +81,27 @@ export async function POST(req: Request) {
       });
     }
 
-    // Determine which agent to use based on Xero connection
+    // Determine which tools to use based on Xero connection
     const xeroConnection = await getActiveXeroConnection(user.id);
-    const agent = xeroConnection
-      ? createQandaAgentWithXero(user.id, settings?.model)
-      : qandaAgent;
+    const xeroTools = xeroConnection ? createQandaXeroTools(user.id) : {};
 
     if (xeroConnection) {
       console.log("[Q&A Agent] Using agent with Xero tools");
     }
 
-    // Stream the agent response using Mastra's AI SDK integration
-    const stream = await agent.stream(messages, {
-      format: "aisdk",
-      maxSteps: 5,
+    const result = streamText({
+      model: myProvider.languageModel(
+        settings?.model || "anthropic-claude-sonnet-4-5"
+      ),
+      system: SYSTEM_INSTRUCTIONS,
+      messages,
+      tools: {
+        regulatorySearch: regulatorySearchTool,
+        ...xeroTools,
+      },
     });
 
-    return stream.toUIMessageStreamResponse();
+    return result.toTextStreamResponse();
   } catch (error) {
     console.error("[Q&A Agent] Error handling chat request:", error);
     return new NextResponse("Internal Server Error", { status: 500 });

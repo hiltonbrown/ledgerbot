@@ -54,12 +54,7 @@ export async function POST(req: Request) {
           );
 
           // Execute workflow
-          const run = await arDunningWorkflow.createRunAsync();
-          const startResult = await run.start({ inputData: workflowInput });
-
-          // Get final result
-          const result =
-            startResult.status === "success" ? startResult.result : null;
+          const result = await arDunningWorkflow.execute(workflowInput);
 
           // Build final response
           const finalData = {

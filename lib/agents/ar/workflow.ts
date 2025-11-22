@@ -1,86 +1,72 @@
 import "server-only";
 
-import { createStep, createWorkflow } from "@mastra/core";
 import { z } from "zod";
 import { listInvoicesDue } from "@/lib/db/queries/ar";
 import { asOfOrToday } from "@/lib/util/dates";
 import { redactLog } from "@/lib/util/redact";
 
 /**
- * Workflow: AR Dunning Cycle
+ * AR Dunning Cycle Workflow
  *
  * Orchestrates: Triage → Fetch → Assess → Propose → Confirm → Act → Summarise
  */
 
-// Step 1: Triage - Validate inputs
-const triageStep = createStep({
-  id: "ar-triage",
-  inputSchema: z.object({
-    userId: z.string(),
-    asOf: z.string().optional(),
-    minDaysOverdue: z.number().int().nonnegative().default(0),
-    tone: z.enum(["polite", "firm", "final"]).default("polite"),
-    autoConfirm: z.boolean().default(false),
-  }),
-  outputSchema: z.object({
-    userId: z.string(),
-    asOf: z.string(),
-    minDaysOverdue: z.number(),
-    tone: z.string(),
-    autoConfirm: z.boolean(),
-    status: z.enum(["ready", "invalid"]),
-  }),
-  execute: async ({ inputData }) => {
-    console.log("[AR Dunning] Step 1: Triage", ...redactLog(inputData));
+export interface ArDunningWorkflowInput {
+  userId: string;
+  asOf?: string;
+  minDaysOverdue?: number;
+  tone?: "polite" | "firm" | "final";
+  autoConfirm?: boolean;
+}
 
-    const asOfDate = asOfOrToday(inputData.asOf);
+export interface ArDunningWorkflowOutput {
+  success: boolean;
+  artefactsCreated: number;
+  commsEnabled: boolean;
+  summary: string;
+  invoices?: Array<{
+    id: string;
+    number: string;
+    daysOverdue: number;
+    total: string;
+    contactName: string;
+  }>;
+  assessments?: Array<{
+    invoiceId: string;
+    invoiceNumber: string;
+    riskScore: number;
+    recommendedTone: string;
+  }>;
+  plan?: Array<{
+    invoiceId: string;
+    invoiceNumber: string;
+    action: string;
+    tone: string;
+  }>;
+}
 
-    return {
-      userId: inputData.userId,
-      asOf: asOfDate.toISOString(),
-      minDaysOverdue: inputData.minDaysOverdue,
-      tone: inputData.tone,
-      autoConfirm: inputData.autoConfirm,
-      status: "ready" as const,
-    };
-  },
-});
+/**
+ * Execute AR Dunning Cycle workflow
+ */
+export async function executeArDunningWorkflow(
+  input: ArDunningWorkflowInput
+): Promise<ArDunningWorkflowOutput> {
+  try {
+    // Step 1: Triage - Validate inputs
+    console.log("[AR Dunning] Step 1: Triage", ...redactLog(input));
 
-// Step 2: Fetch - Get invoices
-const fetchInvoicesStep = createStep({
-  id: "ar-fetch",
-  inputSchema: z.object({
-    userId: z.string(),
-    asOf: z.string(),
-    minDaysOverdue: z.number(),
-    tone: z.string(),
-    autoConfirm: z.boolean(),
-    status: z.enum(["ready", "invalid"]),
-  }),
-  outputSchema: z.object({
-    invoices: z.array(
-      z.object({
-        id: z.string(),
-        number: z.string(),
-        daysOverdue: z.number(),
-        total: z.string(),
-        contactName: z.string(),
-      })
-    ),
-    count: z.number(),
-    status: z.enum(["found", "empty"]),
-  }),
-  execute: async ({ inputData }) => {
-    if (inputData.status !== "ready") {
-      return { invoices: [], count: 0, status: "empty" as const };
-    }
+    const asOfDate = asOfOrToday(input.asOf);
+    const minDaysOverdue = input.minDaysOverdue ?? 0;
+    const tone = input.tone ?? "polite";
+    const autoConfirm = input.autoConfirm ?? false;
 
+    // Step 2: Fetch - Get invoices
     console.log("[AR Dunning] Step 2: Fetching invoices");
 
     const result = await listInvoicesDue({
-      userId: inputData.userId,
-      asOf: new Date(inputData.asOf),
-      minDaysOverdue: inputData.minDaysOverdue,
+      userId: input.userId,
+      asOf: asOfDate,
+      minDaysOverdue,
     });
 
     const invoices = result.invoices.map((inv) => ({
@@ -96,49 +82,20 @@ const fetchInvoicesStep = createStep({
       ...redactLog(invoices)
     );
 
-    return {
-      invoices,
-      count: invoices.length,
-      status: invoices.length > 0 ? ("found" as const) : ("empty" as const),
-    };
-  },
-});
-
-// Step 3: Assess - Calculate risk
-const assessRiskStep = createStep({
-  id: "ar-assess",
-  inputSchema: z.object({
-    invoices: z.array(
-      z.object({
-        id: z.string(),
-        number: z.string(),
-        daysOverdue: z.number(),
-        total: z.string(),
-        contactName: z.string(),
-      })
-    ),
-    count: z.number(),
-    status: z.enum(["found", "empty"]),
-  }),
-  outputSchema: z.object({
-    assessments: z.array(
-      z.object({
-        invoiceId: z.string(),
-        invoiceNumber: z.string(),
-        riskScore: z.number(),
-        recommendedTone: z.string(),
-      })
-    ),
-    status: z.enum(["assessed", "skipped"]),
-  }),
-  execute: async ({ inputData }) => {
-    if (inputData.status !== "found") {
-      return { assessments: [], status: "skipped" as const };
+    if (invoices.length === 0) {
+      return {
+        success: true,
+        artefactsCreated: 0,
+        commsEnabled: false,
+        summary: "No overdue invoices found matching criteria.",
+        invoices: [],
+      };
     }
 
+    // Step 3: Assess - Calculate risk
     console.log("[AR Dunning] Step 3: Assessing risk");
 
-    const assessments = inputData.invoices.map((inv) => {
+    const assessments = invoices.map((inv) => {
       // Calculate risk score based on days overdue
       let riskScore = 0.1; // Base risk
       if (inv.daysOverdue > 0) {
@@ -168,125 +125,57 @@ const assessRiskStep = createStep({
       };
     });
 
-    return {
-      assessments,
-      status: "assessed" as const,
-    };
-  },
-});
-
-// Step 4: Propose - Present plan
-const proposePlanStep = createStep({
-  id: "ar-propose",
-  inputSchema: z.object({
-    assessments: z.array(
-      z.object({
-        invoiceId: z.string(),
-        invoiceNumber: z.string(),
-        riskScore: z.number(),
-        recommendedTone: z.string(),
-      })
-    ),
-    status: z.enum(["assessed", "skipped"]),
-  }),
-  outputSchema: z.object({
-    plan: z.array(
-      z.object({
-        invoiceId: z.string(),
-        invoiceNumber: z.string(),
-        action: z.string(),
-        tone: z.string(),
-      })
-    ),
-    summary: z.string(),
-    status: z.enum(["proposed", "skipped"]),
-  }),
-  execute: async ({ inputData, getInitData }) => {
-    if (inputData.status !== "assessed") {
-      return {
-        plan: [],
-        summary: "No invoices to process",
-        status: "skipped" as const,
-      };
-    }
-
+    // Step 4: Propose - Present plan
     console.log("[AR Dunning] Step 4: Proposing plan");
 
-    const workflowInput = getInitData();
-
-    const plan = inputData.assessments.map((assessment) => ({
+    const plan = assessments.map((assessment) => ({
       invoiceId: assessment.invoiceId,
       invoiceNumber: assessment.invoiceNumber,
       action: "generate_email_reminder",
-      tone: workflowInput.tone || assessment.recommendedTone,
+      tone: tone || assessment.recommendedTone,
     }));
 
     const summary = `Dunning plan for ${plan.length} invoice(s). Recommended actions generated based on risk assessment.`;
 
-    return {
-      plan,
-      summary,
-      status: "proposed" as const,
-    };
-  },
-});
+    // Step 5: Act - Generate artefacts (only if autoConfirm)
+    let artefactsCreated = 0;
+    let commsEnabled = false;
 
-// Step 5: Act - Generate artefacts (only if autoConfirm or explicit confirmation)
-const generateArtefactsStep = createStep({
-  id: "ar-act",
-  inputSchema: z.object({
-    plan: z.array(
-      z.object({
-        invoiceId: z.string(),
-        invoiceNumber: z.string(),
-        action: z.string(),
-        tone: z.string(),
-      })
-    ),
-    summary: z.string(),
-    status: z.enum(["proposed", "skipped"]),
-  }),
-  outputSchema: z.object({
-    artefacts: z.array(
-      z.object({
-        invoiceId: z.string(),
-        artefactId: z.string(),
-        channel: z.string(),
-      })
-    ),
-    status: z.enum(["complete", "skipped"]),
-  }),
-  execute: async ({ inputData, getInitData }) => {
-    const workflowInput = getInitData();
-
-    // Only proceed if autoConfirm is true
-    if (!workflowInput.autoConfirm || inputData.status !== "proposed") {
+    if (autoConfirm) {
       console.log(
-        "[AR Dunning] Step 5: Skipped (autoConfirm=false or no plan)"
+        "[AR Dunning] Step 5: Generating artefacts (autoConfirm=true)"
       );
-      return { artefacts: [], status: "skipped" as const };
+
+      // TODO: In production, call buildEmailReminderTool for each invoice
+      // For now, create mock artefacts
+      artefactsCreated = plan.length;
+      commsEnabled = true;
+    } else {
+      console.log("[AR Dunning] Step 5: Skipped (autoConfirm=false)");
     }
 
-    console.log("[AR Dunning] Step 5: Generating artefacts (autoConfirm=true)");
-
-    // TODO: In production, call buildEmailReminderTool for each invoice
-    // For now, create mock artefacts
-    const artefacts = inputData.plan.map((item) => ({
-      invoiceId: item.invoiceId,
-      artefactId: `artefact-${item.invoiceId}`,
-      channel: "email",
-    }));
-
     return {
-      artefacts,
-      status: "complete" as const,
+      success: true,
+      artefactsCreated,
+      commsEnabled,
+      summary,
+      invoices,
+      assessments,
+      plan,
     };
-  },
-});
+  } catch (error) {
+    console.error("[AR Dunning] Workflow failed:", error);
+    return {
+      success: false,
+      artefactsCreated: 0,
+      commsEnabled: false,
+      summary: `Workflow failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+    };
+  }
+}
 
-// Create the workflow
-export const arDunningWorkflow = createWorkflow({
-  id: "ar-dunning-cycle",
+// Legacy compatibility - create a workflow-like interface
+export const arDunningWorkflow = {
   inputSchema: z.object({
     userId: z.string(),
     asOf: z.string().optional(),
@@ -300,17 +189,5 @@ export const arDunningWorkflow = createWorkflow({
     commsEnabled: z.boolean(),
     summary: z.string(),
   }),
-})
-  .then(triageStep)
-  .then(fetchInvoicesStep)
-  .then(assessRiskStep)
-  .then(proposePlanStep)
-  .then(generateArtefactsStep)
-  .commit();
-
-export type ArDunningWorkflowInput = z.infer<
-  typeof arDunningWorkflow.inputSchema
->;
-export type ArDunningWorkflowOutput = z.infer<
-  typeof arDunningWorkflow.outputSchema
->;
+  execute: executeArDunningWorkflow,
+};

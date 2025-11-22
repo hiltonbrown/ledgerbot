@@ -1,7 +1,6 @@
 import "server-only";
 
-import { createTool } from "@mastra/core/tools";
-import { generateObject } from "ai";
+import { generateObject, tool } from "ai";
 import { z } from "zod";
 import { myProvider } from "@/lib/ai/providers";
 import { executeXeroMCPTool } from "@/lib/ai/xero-mcp-client";
@@ -45,7 +44,7 @@ export async function extractInvoiceData(
       !TRUSTED_FILE_HOSTNAMES.includes(parsedUrl.hostname)
     ) {
       throw new Error(
-        `fileUrl must use HTTPS and be on a trusted host: ${parsedUrl.hostname}`,
+        `fileUrl must use HTTPS and be on a trusted host: ${parsedUrl.hostname}`
       );
     }
     console.log(
@@ -62,9 +61,11 @@ export async function extractInvoiceData(
     const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
     const contentLengthHeader = fileResponse.headers.get("content-length");
     if (contentLengthHeader) {
-      const contentLength = parseInt(contentLengthHeader, 10);
+      const contentLength = Number.parseInt(contentLengthHeader, 10);
       if (contentLength > MAX_FILE_SIZE) {
-        throw new Error(`File size (${contentLength} bytes) exceeds maximum allowed size of ${MAX_FILE_SIZE} bytes.`);
+        throw new Error(
+          `File size (${contentLength} bytes) exceeds maximum allowed size of ${MAX_FILE_SIZE} bytes.`
+        );
       }
     }
     // Convert to base64 for vision API
@@ -288,8 +289,7 @@ If any field is not clearly visible or not present on the invoice, leave it as u
  * Validate Australian Business Number (ABN)
  * In production, this would call the ABR (Australian Business Register) API
  */
-export const validateABNTool = createTool({
-  id: "validateABN",
+export const validateABNTool = tool({
   description:
     "Validates an Australian Business Number (ABN) and retrieves business entity information. Use this to verify supplier legitimacy and GST registration status.",
   inputSchema: z.object({
@@ -299,23 +299,7 @@ export const validateABNTool = createTool({
         "The 11-digit ABN to validate (spaces and hyphens will be removed)"
       ),
   }),
-  outputSchema: z.object({
-    success: z.boolean(),
-    validation: z
-      .object({
-        abn: z.string(),
-        isValid: z.boolean(),
-        entityName: z.string().optional(),
-        entityType: z.string().optional(),
-        gstRegistered: z.boolean().optional(),
-        message: z.string().optional(),
-      })
-      .optional(),
-    error: z.string().optional(),
-  }),
-  execute: async ({ context }) => {
-    const { abn } = context;
-
+  execute: async ({ abn }: { abn: string }) => {
     try {
       // Remove spaces and hyphens
       const cleanABN = abn.replace(/[\s-]/g, "");
@@ -361,8 +345,7 @@ export const validateABNTool = createTool({
 /**
  * Suggest GL account coding and GST treatment for bill line items
  */
-export const suggestBillCodingTool = createTool({
-  id: "suggestBillCoding",
+export const suggestBillCodingTool = tool({
   description:
     "Analyzes bill line item descriptions and suggests appropriate GL account codes and GST tax codes for Australian businesses. Returns coding suggestions with confidence scores and reasoning.",
   inputSchema: z.object({
@@ -386,26 +369,11 @@ export const suggestBillCodingTool = createTool({
       .optional()
       .describe("Available GL accounts from Xero (if connected)"),
   }),
-  outputSchema: z.object({
-    success: z.boolean(),
-    suggestions: z
-      .array(
-        z.object({
-          lineItemIndex: z.number(),
-          description: z.string(),
-          suggestedAccount: z.string(),
-          suggestedAccountName: z.string(),
-          suggestedGSTCode: z.string(),
-          confidence: z.number(),
-          reasoning: z.string(),
-        })
-      )
-      .optional(),
-    error: z.string().optional(),
-  }),
-  execute: async ({ context }) => {
-    const { supplierName, lineItems, chartOfAccounts } = context;
-
+  execute: async ({ supplierName, lineItems, chartOfAccounts }: {
+    supplierName: string;
+    lineItems: Array<{ description: string; amount: number }>;
+    chartOfAccounts?: Array<{ code: string; name: string; type: string }>;
+  }) => {
     try {
       console.log(
         `[AP Agent] Generating coding suggestions for ${lineItems.length} line items from ${supplierName}`
@@ -413,7 +381,7 @@ export const suggestBillCodingTool = createTool({
 
       // AI-powered coding suggestion logic
       // In production, this would use LLM with context about chart of accounts
-      const suggestions: CodingSuggestion[] = lineItems.map((item, index) => {
+      const suggestions: CodingSuggestion[] = lineItems.map((item: { description: string; amount: number }, index: number) => {
         const description = item.description.toLowerCase();
 
         // Rule-based suggestions (simplified - production would use ML)
@@ -475,7 +443,7 @@ export const suggestBillCodingTool = createTool({
 
         // Override with actual chart of accounts if available
         if (chartOfAccounts && chartOfAccounts.length > 0) {
-          const matchingAccount = chartOfAccounts.find((acc) =>
+          const matchingAccount = chartOfAccounts.find((acc: { code: string; name: string; type: string }) =>
             acc.name.toLowerCase().includes(suggestedAccountName.toLowerCase())
           );
           if (matchingAccount) {
@@ -517,8 +485,7 @@ export const suggestBillCodingTool = createTool({
 /**
  * Check for duplicate bills in the system
  */
-export const checkDuplicateBillsTool = createTool({
-  id: "checkDuplicateBills",
+export const checkDuplicateBillsTool = tool({
   description:
     "Checks if a bill is a potential duplicate by comparing supplier, amount, date, and reference number against recent bills. Helps prevent double-payment.",
   inputSchema: z.object({
@@ -532,26 +499,12 @@ export const checkDuplicateBillsTool = createTool({
       .default(90)
       .describe("Number of days to look back for duplicates"),
   }),
-  outputSchema: z.object({
-    success: z.boolean(),
-    isDuplicate: z.boolean(),
-    duplicateCount: z.number(),
-    potentialDuplicates: z
-      .array(
-        z.object({
-          billId: z.string(),
-          billNumber: z.string(),
-          amount: z.number(),
-          date: z.string(),
-          similarity: z.number(),
-        })
-      )
-      .optional(),
-    error: z.string().optional(),
-  }),
-  execute: async ({ context }) => {
-    const { supplierName, amount, date, checkDays } = context;
-
+  execute: async ({ supplierName, amount, date, checkDays }: {
+    supplierName: string;
+    amount: number;
+    date: string;
+    checkDays: number;
+  }) => {
     try {
       console.log(
         `[AP Agent] Checking for duplicate bills from ${supplierName} for $${amount}`
@@ -581,8 +534,7 @@ export const checkDuplicateBillsTool = createTool({
 /**
  * Generate payment run proposal
  */
-export const generatePaymentProposalTool = createTool({
-  id: "generatePaymentProposal",
+export const generatePaymentProposalTool = tool({
   description:
     "Generates a payment run proposal based on due dates, approval status, and risk assessment. Prioritizes urgent payments and flags high-risk items for review.",
   inputSchema: z.object({
@@ -604,38 +556,7 @@ export const generatePaymentProposalTool = createTool({
       .default(true)
       .describe("Only include approved bills"),
   }),
-  outputSchema: z.object({
-    success: z.boolean(),
-    proposal: z
-      .object({
-        batchName: z.string(),
-        proposedDate: z.string(),
-        bills: z.array(
-          z.object({
-            billId: z.string(),
-            billNumber: z.string(),
-            supplierName: z.string(),
-            amount: z.number(),
-            dueDate: z.string(),
-            priority: z.enum(["urgent", "due_soon", "normal"]),
-          })
-        ),
-        totalAmount: z.number(),
-        billCount: z.number(),
-        riskSummary: z.object({
-          critical: z.number(),
-          high: z.number(),
-          medium: z.number(),
-          low: z.number(),
-        }),
-        recommendations: z.array(z.string()),
-      })
-      .optional(),
-    error: z.string().optional(),
-  }),
-  execute: async ({ context }) => {
-    const { paymentDate } = context;
-
+  execute: async ({ paymentDate }: { paymentDate: string }) => {
     try {
       console.log(`[AP Agent] Generating payment proposal for ${paymentDate}`);
 
@@ -690,8 +611,7 @@ export const generatePaymentProposalTool = createTool({
 /**
  * Assess payment risk for a bill
  */
-export const assessPaymentRiskTool = createTool({
-  id: "assessPaymentRisk",
+export const assessPaymentRiskTool = tool({
   description:
     "Evaluates payment risk factors for a bill including missing information, supplier status, approval status, and unusual patterns. Returns risk level and specific flags.",
   inputSchema: z.object({
@@ -709,29 +629,23 @@ export const assessPaymentRiskTool = createTool({
       .optional()
       .describe("Supplier's average bill amount for comparison"),
   }),
-  outputSchema: z.object({
-    success: z.boolean(),
-    risk: z
-      .object({
-        level: z.enum(["low", "medium", "high", "critical"]),
-        flags: z.array(z.string()),
-        score: z.number(),
-        recommendations: z.array(z.string()),
-      })
-      .optional(),
-    error: z.string().optional(),
-  }),
-  execute: async ({ context }) => {
-    const {
-      billId,
-      amount,
-      hasABN,
-      hasTaxInvoice,
-      isApproved,
-      supplierStatus,
-      averageAmount,
-    } = context;
-
+  execute: async ({
+    billId,
+    amount,
+    hasABN,
+    hasTaxInvoice,
+    isApproved,
+    supplierStatus,
+    averageAmount,
+  }: {
+    billId: string;
+    amount: number;
+    hasABN: boolean;
+    hasTaxInvoice: boolean;
+    isApproved: boolean;
+    supplierStatus: "active" | "inactive" | "pending" | "blocked";
+    averageAmount?: number;
+  }) => {
     try {
       console.log(`[AP Agent] Assessing payment risk for bill ${billId}`);
 
@@ -829,8 +743,7 @@ export const assessPaymentRiskTool = createTool({
 /**
  * Generate email draft for supplier communication
  */
-export const generateEmailDraftTool = createTool({
-  id: "generateEmailDraft",
+export const generateEmailDraftTool = tool({
   description:
     "Generates professional email draft for supplier communication including payment advice, follow-ups, queries, and reminders. Returns draft as text artifact for user review - does NOT send emails.",
   inputSchema: z.object({
@@ -846,28 +759,19 @@ export const generateEmailDraftTool = createTool({
         "Additional context (e.g., bill numbers, amounts, issues to address)"
       ),
   }),
-  outputSchema: z.object({
-    success: z.boolean(),
-    draft: z
-      .object({
-        to: z.string(),
-        subject: z.string(),
-        body: z.string(),
-        purpose: z.string(),
-        createdAt: z.string(),
-      })
-      .optional(),
-    error: z.string().optional(),
-  }),
-  execute: async ({ context }) => {
-    const {
-      purpose,
-      supplierName,
-      supplierEmail,
-      subject,
-      context: emailContext,
-    } = context;
-
+  execute: async ({
+    purpose,
+    supplierName,
+    supplierEmail,
+    subject,
+    context: emailContext,
+  }: {
+    purpose: "follow_up" | "reminder" | "query" | "payment_advice";
+    supplierName: string;
+    supplierEmail: string;
+    subject?: string;
+    context: string;
+  }) => {
     try {
       console.log(
         `[AP Agent] Generating ${purpose} email draft for ${supplierName}`
@@ -983,8 +887,7 @@ Accounts Payable Team`;
 /**
  * Extract invoice data from uploaded PDF or image
  */
-export const extractInvoiceDataTool = createTool({
-  id: "extractInvoiceData",
+export const extractInvoiceDataTool = tool({
   description:
     "Extracts structured invoice data from an uploaded PDF or image file URL. Returns supplier details, invoice number, dates, line items, amounts, and GST information for Australian tax invoices.",
   inputSchema: z.object({
@@ -997,50 +900,7 @@ export const extractInvoiceDataTool = createTool({
         "AI model to use for extraction (defaults to anthropic-claude-sonnet-4-5)"
       ),
   }),
-  outputSchema: z.object({
-    success: z.boolean(),
-    invoiceData: z
-      .object({
-        supplierName: z.string().optional(),
-        supplierABN: z.string().optional(),
-        supplierAddress: z.string().optional(),
-        supplierEmail: z.string().optional(),
-        supplierPhone: z.string().optional(),
-        invoiceNumber: z.string().optional(),
-        invoiceDate: z.string().optional(),
-        dueDate: z.string().optional(),
-        purchaseOrderNumber: z.string().optional(),
-        subtotal: z.number().optional(),
-        gstAmount: z.number().optional(),
-        totalAmount: z.number().optional(),
-        lineItems: z
-          .array(
-            z.object({
-              description: z.string(),
-              quantity: z.number().optional(),
-              unitPrice: z.number().optional(),
-              amount: z.number(),
-              gstIncluded: z.boolean().optional(),
-            })
-          )
-          .optional(),
-        paymentTerms: z.string().optional(),
-        bankDetails: z
-          .object({
-            accountName: z.string().optional(),
-            bsb: z.string().optional(),
-            accountNumber: z.string().optional(),
-          })
-          .optional(),
-        rawText: z.string().optional(),
-        confidence: z.number().optional(),
-        warnings: z.array(z.string()).optional(),
-      })
-      .optional(),
-    error: z.string().optional(),
-  }),
-  execute: async ({ context }) => {
-    const { fileUrl, fileType, model } = context;
+  execute: async ({ fileUrl, fileType, model }: { fileUrl: string; fileType: "pdf" | "image"; model?: string }) => {
     return extractInvoiceData(fileUrl, fileType, model);
   },
 });
@@ -1049,8 +909,7 @@ export const extractInvoiceDataTool = createTool({
  * Match supplier to existing Xero contact or propose new contact creation
  * Requires Xero connection
  */
-export const matchVendorTool = createTool({
-  id: "matchVendor",
+export const matchVendorTool = tool({
   description:
     "Matches extracted supplier information to existing Xero contacts using fuzzy name matching. Returns exact matches, similar contacts, or suggests creating a new contact.",
   inputSchema: z.object({
@@ -1061,46 +920,7 @@ export const matchVendorTool = createTool({
       .optional()
       .describe("Supplier email if available"),
   }),
-  outputSchema: z.object({
-    success: z.boolean(),
-    match: z
-      .object({
-        matched: z.boolean(),
-        contact: z
-          .object({
-            contactId: z.string(),
-            name: z.string(),
-            email: z.string().optional(),
-            phone: z.string().optional(),
-            isSupplier: z.boolean(),
-          })
-          .optional(),
-        suggestions: z
-          .array(
-            z.object({
-              contactId: z.string(),
-              name: z.string(),
-              similarity: z.number(),
-              email: z.string().optional(),
-            })
-          )
-          .optional(),
-        shouldCreateNew: z.boolean(),
-        proposedContact: z
-          .object({
-            name: z.string(),
-            email: z.string().optional(),
-            phone: z.string().optional(),
-            taxNumber: z.string().optional(),
-          })
-          .optional(),
-      })
-      .optional(),
-    error: z.string().optional(),
-  }),
-  execute: async ({ context }) => {
-    const { supplierName, supplierABN, supplierEmail } = context;
-
+  execute: async ({ supplierName, supplierABN, supplierEmail }: { supplierName: string; supplierABN?: string; supplierEmail?: string }) => {
     try {
       console.log(`[AP Agent] Matching vendor: ${supplierName}`);
 
@@ -1139,8 +959,7 @@ export const matchVendorTool = createTool({
  */
 export function createAPXeroTools(userId: string) {
   return {
-    xero_list_bills: createTool({
-      id: "xero_list_bills",
+    xero_list_bills: tool({
       description:
         "Get supplier bills (ACCPAY invoices) from Xero. Use this to fetch bills for payment runs, approval workflows, or reconciliation.",
       inputSchema: z.object({
@@ -1163,36 +982,32 @@ export function createAPXeroTools(userId: string) {
           .default(100)
           .describe("Maximum number of bills to return"),
       }),
-      outputSchema: z.string(),
-      execute: async ({ context }) => {
+      execute: async (args: { status?: string; dateFrom?: string; dateTo?: string; contactId?: string; limit?: number }) => {
         const result = await executeXeroMCPTool(userId, "xero_list_invoices", {
-          ...context,
+          ...args,
           invoiceType: "ACCPAY", // Bills are ACCPAY type
         });
         return result.content[0].text;
       },
     }),
 
-    xero_get_bill: createTool({
-      id: "xero_get_bill",
+    xero_get_bill: tool({
       description:
         "Get detailed information about a specific supplier bill from Xero including line items, payments, and attachments.",
       inputSchema: z.object({
         invoiceId: z.string().describe("Xero invoice ID"),
       }),
-      outputSchema: z.string(),
-      execute: async ({ context }) => {
+      execute: async (args: { invoiceId: string }) => {
         const result = await executeXeroMCPTool(
           userId,
           "xero_get_invoice",
-          context
+          args
         );
         return result.content[0].text;
       },
     }),
 
-    xero_list_suppliers: createTool({
-      id: "xero_list_suppliers",
+    xero_list_suppliers: tool({
       description:
         "Get list of suppliers from Xero. Use this to validate vendor information and check payment details.",
       inputSchema: z.object({
@@ -1206,19 +1021,17 @@ export function createAPXeroTools(userId: string) {
           .default(100)
           .describe("Maximum number of suppliers to return"),
       }),
-      outputSchema: z.string(),
-      execute: async ({ context }) => {
+      execute: async (args: { searchTerm?: string; limit?: number }) => {
         const result = await executeXeroMCPTool(
           userId,
           "xero_list_contacts",
-          context
+          args
         );
         return result.content[0].text;
       },
     }),
 
-    xero_list_accounts: createTool({
-      id: "xero_list_accounts",
+    xero_list_accounts: tool({
       description:
         "Get chart of accounts from Xero for expense coding suggestions. Filter by EXPENSE or DIRECTCOSTS types for AP purposes.",
       inputSchema: z.object({
@@ -1227,23 +1040,20 @@ export function createAPXeroTools(userId: string) {
           .optional()
           .describe("Filter by account type for expense coding"),
       }),
-      outputSchema: z.string(),
-      execute: async ({ context }) => {
+      execute: async (args: { accountType?: string }) => {
         const result = await executeXeroMCPTool(
           userId,
           "xero_list_accounts",
-          context
+          args
         );
         return result.content[0].text;
       },
     }),
 
-    xero_list_tax_rates: createTool({
-      id: "xero_list_tax_rates",
+    xero_list_tax_rates: tool({
       description:
         "Get list of GST/tax rates configured in Xero for accurate tax coding on bills.",
       inputSchema: z.object({}),
-      outputSchema: z.string(),
       execute: async () => {
         const result = await executeXeroMCPTool(
           userId,
@@ -1254,8 +1064,7 @@ export function createAPXeroTools(userId: string) {
       },
     }),
 
-    xero_list_payments: createTool({
-      id: "xero_list_payments",
+    xero_list_payments: tool({
       description:
         "Get list of payments from Xero to track payment history and reconcile payment runs.",
       inputSchema: z.object({
@@ -1273,19 +1082,17 @@ export function createAPXeroTools(userId: string) {
           .default(100)
           .describe("Maximum number of payments to return"),
       }),
-      outputSchema: z.string(),
-      execute: async ({ context }) => {
+      execute: async (args: { dateFrom?: string; dateTo?: string; limit?: number }) => {
         const result = await executeXeroMCPTool(
           userId,
           "xero_list_payments",
-          context
+          args
         );
         return result.content[0].text;
       },
     }),
 
-    xero_create_bill: createTool({
-      id: "xero_create_bill",
+    xero_create_bill: tool({
       description:
         "Creates a new supplier bill (ACCPAY invoice) in Xero with line items. Bills are created in DRAFT status for user review before approval. Returns the created bill details including Xero invoice ID.",
       inputSchema: z.object({
@@ -1318,24 +1125,21 @@ export function createAPXeroTools(userId: string) {
           )
           .describe("Array of line items for the bill"),
       }),
-      outputSchema: z.object({
-        success: z.boolean(),
-        invoiceId: z.string().optional(),
-        invoiceNumber: z.string().optional(),
-        status: z.string().optional(),
-        total: z.number().optional(),
-        error: z.string().optional(),
-      }),
-      execute: async ({ context }) => {
-        const {
-          contactId,
-          invoiceNumber,
-          date,
-          dueDate,
-          reference,
-          lineItems,
-        } = context;
-
+      execute: async ({
+        contactId,
+        invoiceNumber,
+        date,
+        dueDate,
+        reference,
+        lineItems,
+      }: {
+        contactId: string;
+        invoiceNumber: string;
+        date: string;
+        dueDate: string;
+        reference?: string;
+        lineItems: Array<{ description: string; quantity?: number; unitAmount: number; accountCode: string; taxType?: string }>;
+      }) => {
         try {
           console.log(
             `[AP Agent] Creating Xero bill ${invoiceNumber} for contact ${contactId}`
@@ -1384,8 +1188,7 @@ export function createAPXeroTools(userId: string) {
       },
     }),
 
-    xero_create_contact: createTool({
-      id: "xero_create_contact",
+    xero_create_contact: tool({
       description:
         "Creates a new supplier contact in Xero. Use this when a vendor match is not found and a new supplier needs to be added.",
       inputSchema: z.object({
@@ -1393,15 +1196,7 @@ export function createAPXeroTools(userId: string) {
         email: z.string().optional().describe("Supplier email address"),
         phone: z.string().optional().describe("Supplier phone number"),
       }),
-      outputSchema: z.object({
-        success: z.boolean(),
-        contactId: z.string().optional(),
-        name: z.string().optional(),
-        error: z.string().optional(),
-      }),
-      execute: async ({ context }) => {
-        const { name, email, phone } = context;
-
+      execute: async ({ name, email, phone }: { name: string; email?: string; phone?: string }) => {
         try {
           console.log(`[AP Agent] Creating Xero contact: ${name}`);
 

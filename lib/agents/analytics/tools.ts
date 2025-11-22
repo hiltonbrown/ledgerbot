@@ -1,5 +1,3 @@
-import "server-only";
-
 import { tool } from "ai";
 import { z } from "zod";
 import { executeXeroMCPTool } from "@/lib/ai/xero-mcp-client";
@@ -7,7 +5,7 @@ import { executeXeroMCPTool } from "@/lib/ai/xero-mcp-client";
 /**
  * Calculate KPIs tool
  */
-const calculateKpisTool = tool({
+export const calculateKpisTool = tool({
   description:
     "Calculate key performance indicators from financial data including gross margin, runway, burn rate, and revenue growth.",
   inputSchema: z.object({
@@ -16,16 +14,22 @@ const calculateKpisTool = tool({
     expenses: z.array(z.number()).describe("Monthly expense values"),
     cash: z.number().optional().describe("Current cash balance"),
   }),
-  execute: async ({ revenue, cogs = [], expenses, cash = 0 }: {
+  execute: async ({
+    revenue,
+    cogs = [],
+    expenses,
+    cash = 0,
+  }: {
     revenue: number[];
     cogs?: number[];
     expenses: number[];
     cash?: number;
   }) => {
-    const latestRevenue = revenue[revenue.length - 1] || 0;
-    const previousRevenue = revenue[revenue.length - 2] || 0;
-    const latestCogs = cogs[cogs.length - 1] || 0;
-    const latestExpenses = expenses[expenses.length - 1] || 0;
+    const latestRevenue = revenue.at(-1) || 0;
+    const previousRevenue = revenue.at(-2) || 0;
+    const latestCogs = cogs?.at(-1) || 0;
+    const latestExpenses = expenses.at(-1) || 0;
+    await Promise.resolve(); // Ensure async execution
 
     const grossProfit = latestRevenue - latestCogs;
     const grossMargin =
@@ -74,7 +78,7 @@ const calculateKpisTool = tool({
 /**
  * Generate narrative tool
  */
-const generateNarrativeTool = tool({
+export const generateNarrativeTool = tool({
   description:
     "Generate executive narrative commentary for financial reports explaining trends, risks, and opportunities.",
   inputSchema: z.object({
@@ -89,11 +93,21 @@ const generateNarrativeTool = tool({
       .describe("Key performance indicators"),
     context: z.string().optional().describe("Additional context or notes"),
   }),
-  execute: async ({ period, kpis, context: additionalContext }: {
+  execute: async ({
+    period,
+    kpis,
+    context: additionalContext,
+  }: {
     period: string;
-    kpis: { grossMargin: number; netBurn: number; runway: number; revenueGrowth: number };
+    kpis: {
+      grossMargin: number;
+      netBurn: number;
+      runway: number;
+      revenueGrowth: number;
+    };
     context?: string;
   }) => {
+    await Promise.resolve(); // Ensure async execution
     const narrativeParts: string[] = [];
 
     narrativeParts.push(`# Financial Summary - ${period}`);
@@ -148,7 +162,7 @@ const generateNarrativeTool = tool({
 /**
  * Create Xero tools for analytics
  */
-function createAnalyticsXeroTools(userId: string) {
+export function createAnalyticsXeroTools(userId: string) {
   return {
     xero_get_profit_and_loss: tool({
       description:
@@ -168,12 +182,7 @@ function createAnalyticsXeroTools(userId: string) {
           .optional()
           .default("MONTH"),
       }),
-      execute: async ({
-        fromDate,
-        toDate,
-        periods = 12,
-        timeframe = "MONTH",
-      }: {
+      execute: async (args: {
         fromDate: string;
         toDate: string;
         periods?: number;
@@ -182,7 +191,7 @@ function createAnalyticsXeroTools(userId: string) {
         const result = await executeXeroMCPTool(
           userId,
           "xero_get_profit_and_loss",
-          { fromDate, toDate, periods, timeframe }
+          args
         );
         return result.content[0].text;
       },
@@ -197,79 +206,14 @@ function createAnalyticsXeroTools(userId: string) {
           .describe("Start date (ISO 8601 format YYYY-MM-DD)"),
         toDate: z.string().describe("End date (ISO 8601 format YYYY-MM-DD)"),
       }),
-      execute: async ({ fromDate, toDate }: { fromDate: string; toDate: string }) => {
+      execute: async (args: { fromDate: string; toDate: string }) => {
         const result = await executeXeroMCPTool(
           userId,
           "xero_get_balance_sheet",
-          { fromDate, toDate }
+          args
         );
         return result.content[0].text;
       },
     }),
   };
-}
-
-const ANALYTICS_INSTRUCTIONS = `You are the financial analytics agent for LedgerBot.
-
-Your role is to:
-1. Generate narrative-rich financial reports with KPI annotations
-2. Calculate and explain key performance indicators
-3. Create executive summaries and insights
-4. Identify trends, risks, and opportunities in financial data
-5. Provide drill-down analysis and recommendations
-
-When analyzing financials:
-- Use calculateKpis to compute metrics from financial data
-- Use generateNarrative to create executive commentary
-- When Xero is connected, pull actual P&L and balance sheet data
-- Focus on insights and actionable recommendations, not just numbers
-- Explain trends in business context (e.g., "revenue growth driven by new customer acquisition")
-- Flag risks early (e.g., declining margins, increasing burn rate)
-- Provide comparative analysis (month-over-month, year-over-year)
-
-Key Metrics to Track:
-- Revenue growth (MoM, YoY)
-- Gross margin and gross profit
-- Operating expenses and burn rate
-- Cash runway and cash position
-- Customer acquisition cost (if data available)
-- Lifetime value (if data available)
-
-Reporting Best Practices:
-- Lead with insights, not data
-- Use clear, non-technical language
-- Highlight 3-5 key takeaways
-- Provide specific, actionable recommendations
-- Include context and explanations
-- Use Australian financial terminology
-- Format for executive consumption (board packs, investor updates)`;
-
-/**
- * Get base Analytics agent tools (without Xero integration)
- */
-export function getAnalyticsAgentTools() {
-  return {
-    calculateKpis: calculateKpisTool,
-    generateNarrative: generateNarrativeTool,
-  };
-}
-
-/**
- * Get Analytics agent tools with Xero integration for a specific user
- */
-export function getAnalyticsAgentToolsWithXero(userId: string) {
-  const xeroTools = createAnalyticsXeroTools(userId);
-
-  return {
-    calculateKpis: calculateKpisTool,
-    generateNarrative: generateNarrativeTool,
-    ...xeroTools,
-  };
-}
-
-/**
- * Get Analytics agent system prompt
- */
-export function getAnalyticsAgentSystemPrompt(): string {
-  return ANALYTICS_INSTRUCTIONS;
 }

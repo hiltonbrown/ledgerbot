@@ -1,4 +1,3 @@
-import { Agent } from "@mastra/core/agent";
 import { generateText } from "ai";
 import { z } from "zod";
 import { formatNumberWithCurrency } from "@/lib/agents/forecasting/utils";
@@ -265,7 +264,7 @@ Return ONLY valid JSON that matches the schema described above.
   const { text } = await generateText({
     model: myProvider.languageModel("openai-gpt-5-chat"),
     system:
-      "You are the Mastra financial modeling agent for LedgerBot. Create rigorous financial forecasts blending provided inputs with accounting best practice. Tie recommendations back to revenue, cost, and cash flow levers. Maintain Australian accounting tone when discussing compliance or GST.",
+      "You are the financial modeling agent for LedgerBot. Create rigorous financial forecasts blending provided inputs with accounting best practice. Tie recommendations back to revenue, cost, and cash flow levers. Maintain Australian accounting tone when discussing compliance or GST.",
     prompt,
   });
 
@@ -273,7 +272,7 @@ Return ONLY valid JSON that matches the schema described above.
 
   if (!parsed.success) {
     throw new Error(
-      `Unable to parse Mastra financial modeling response: ${parsed.error.message}`
+      `Unable to parse financial modeling response: ${parsed.error.message}`
     );
   }
 
@@ -326,26 +325,23 @@ Output requirements:
 - Visualization suggestions for charts and graphs`;
 
 /**
- * Base Forecasting Agent (without Xero tools)
+ * Get base Forecasting agent tools (without Xero integration)
  */
-export const forecastingAgent = new Agent({
-  name: "forecasting-agent",
-  instructions: FORECASTING_INSTRUCTIONS,
-  model: myProvider.languageModel("openai-gpt-5-chat"),
-});
+export function getForecastingAgentTools() {
+  return {};
+}
 
 /**
- * Create a Forecasting agent instance with Xero tools for a specific user
+ * Get Forecasting agent tools with Xero integration for a specific user
  */
-export function createForecastingAgentWithXero(userId: string) {
+export function getForecastingAgentToolsWithXero(userId: string) {
   const xeroTools = createForecastingXeroTools(userId);
+  return xeroTools;
+}
 
-  return new Agent({
-    name: "forecasting-agent-with-xero",
-    instructions: FORECASTING_INSTRUCTIONS,
-    model: myProvider.languageModel("openai-gpt-5-chat"),
-    tools: {
-      ...xeroTools,
-    },
-  });
+/**
+ * Get Forecasting agent system prompt
+ */
+export function getForecastingAgentSystemPrompt(): string {
+  return FORECASTING_INSTRUCTIONS;
 }

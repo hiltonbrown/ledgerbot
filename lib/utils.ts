@@ -12,7 +12,7 @@ import type {
   DeepResearchAttachment,
   DeepResearchReportAttachment,
   DeepResearchSummaryAttachment,
-} from '@/lib/mastra/deep-research-types';
+} from '@/lib/types';
 import { ChatSDKError, type ErrorCode } from './errors';
 import type {
   ChatMessage,

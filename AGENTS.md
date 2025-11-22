@@ -242,20 +242,20 @@ Artifacts are special UI components that render AI-generated content in a side p
 - **Behavior**: Real-time updates visible to user during AI generation
 - **Important**: Never update documents immediately after creation - wait for user feedback
 
-### Agent Workspaces (Mastra Framework)
+### Agent Workspaces (AI SDK Framework)
 
-LedgerBot features specialized AI agent workspaces for accounting automation built on **Mastra** (`app/agents/`).
+LedgerBot features specialized AI agent workspaces for accounting automation built directly on **Vercel AI SDK** (`app/agents/`).
 
-**Framework**: Mastra ([mastra.ai](https://mastra.ai)) provides unified architecture, tool integration, and workflow orchestration.
+**Framework**: Direct AI SDK integration using `streamText()` and `tool()` functions (Mastra framework was removed).
 
-**Implemented Agents** (using Mastra):
+**Implemented Agents** (using AI SDK):
 1. **Advisory Q&A** (`/agents/qanda`): Regulatory-aware conversational assistant for Australian tax law, Fair Work awards, and compliance queries with citations and confidence scoring ✅
-2. **Forecasting** (`/agents/forecasting`): Scenario modeling and runway projections with Mastra workflows ✅
+2. **Forecasting** (`/agents/forecasting`): Scenario modeling and runway projections with multiple financial models ✅
 3. **Analytics** (`/agents/analytics`): Narrative-rich reporting with KPI annotations, drill-down tables, and presentation-ready exports ✅
-4. **Workflow Supervisor** (`/agents/workflow`): Graph orchestrations across document and agent workflows with traceability ✅
-5. **Accounts Payable (AP)** (`/agents/ap`): Supplier bill management with vendor validation, coding suggestions, and payment automation ✅
-6. **Accounts Receivable (AR)** (`/agents/ar`): Customer invoice management with payment reminders, late risk prediction, and DSO reduction ✅
-7. **Document Processing** (`/agents/docmanagement`): AI-assisted intake for invoices, receipts, and bank statements with automated OCR and validation queues ⚠️ Hybrid
+4. **Workflow Supervisor** (`/agents/workflow`): Multi-agent workflow orchestration for complex accounting processes ✅
+5. **Accounts Payable (AP)** (`/agents/ap`): Supplier bill management with vendor validation, coding suggestions, payment automation, complete database schema, and full-featured UI ✅
+6. **Accounts Receivable (AR)** (`/agents/ar`): Customer invoice management with payment reminders, late risk prediction, DSO reduction, complete database schema, and customer-centric UI ✅
+7. **Document Processing** (`/agents/docmanagement`): AI-assisted intake for invoices, receipts, and bank statements (legacy implementation) ⚠️
 
 **Planned Agents** (not yet implemented):
 8. **Reconciliations** (`/agents/reconciliations`): Continuous bank feed matching with fuzzy logic suggestions and ledger adjustment proposals ❌
@@ -285,20 +285,20 @@ The Q&A agent provides regulatory-aware assistance for Australian tax law, emplo
 - **Suggested Questions**: Common Australian regulatory queries (minimum wage, super, payroll tax, BAS)
 - **Stream Controls**: Toggles for streaming responses and showing/hiding citations
 
-**Backend Implementation** (completed):
+**Backend Implementation** (completed with AI SDK):
 - **Database schema**: `regulatoryDocument`, `regulatoryScrapeJob`, and `qaReviewRequest` tables with full-text search
 - **Configuration system**: Markdown-based source management (`config/regulatory-sources.md`) with 10 Australian sources
-- **Scraping infrastructure**: Mastra-powered ingestion that fetches sources directly, summarises obligations, and updates the Postgres RAG catalog
+- **Scraping infrastructure**: Custom ingestion that fetches sources directly, summarises obligations, and updates the Postgres RAG catalog (not Mastra)
 - **Full-text search**: PostgreSQL tsvector with GIN indexes, relevance ranking, and context excerpts
-- **AI tool**: `regulatorySearch` tool for RAG retrieval with category filtering
+- **AI tool**: `regulatorySearch` tool for RAG retrieval with category filtering (using `tool()` from 'ai')
 - **Confidence scoring**: Multi-factor algorithm analyzing citations, relevance, hedging language, and Xero integration
 - **API endpoints**:
-  - `/api/agents/qanda` - Streaming chat with regulatory + Xero tools
+  - `/api/agents/qanda` - Streaming chat with AI SDK (regulatory + Xero tools)
   - `/api/regulatory/search` - Full-text search
   - `/api/regulatory/scrape` - Manual scraping trigger
   - `/api/regulatory/stats` - Knowledge base statistics
   - `/api/agents/qanda/review` - Review request management
-  - `/api/cron/regulatory-sync` - Scheduled daily sync
+  - `/api/cron/regulatory-sync` - Scheduled daily sync (not yet implemented as cron)
 - **Cron job**: Daily scheduled sync via Vercel Cron (2:00 AM UTC) for high-priority sources
 - **Human review**: Review request system for low-confidence responses with database tracking
 
@@ -359,14 +359,28 @@ See `/docs/regulatory-system-summary.md` for complete implementation details and
   - OAuth scopes and active connection status
   - Multi-organisation support (one active connection per user)
 
+**Accounts Payable Tables** (`lib/db/schema/ap.ts`):
+- `apContact`: Supplier/vendor records with ABN, risk level, payment terms, Xero integration
+- `apBill`: Supplier bills/invoices with approval workflow, payment tracking, line items, GST codes
+- `apPayment`: Payment records with bank account, reference, approval status
+- `apApprovalLog`: Approval workflow audit trail
+- `apBankAccountChange`: Supplier bank account change requests with verification workflow
+- `apPaymentRun`: Batch payment run tracking with total amounts, approval status
+- Complete approval workflow, payment automation, and Xero synchronization
+
 **Accounts Receivable Tables** (`lib/db/schema/ar.ts`):
-- `arContact`, `arInvoice`, `arPayment`, `arReminder`, `arNote`, `arCommsArtefact`
-- Full payment tracking, reminders, and Xero synchronization
+- `arContact`: Customer records with email, phone, Xero integration
+- `arInvoice`: Customer invoices with payment tracking, due dates, status (awaiting_payment, paid, overdue)
+- `arPayment`: Payment records with amount, date, method, reference
+- `arReminder`: Payment reminder tracking with type (friendly, firm, final), channel (email, sms)
+- `arNote`: Customer notes and communication history
+- `arCommsArtefact`: Communication templates and drafts (email, sms)
+- Full payment tracking, automated reminders, late risk prediction, and Xero synchronization
 
 **Regulatory Tables** (`lib/db/schema.ts`):
-- `regulatoryDocument`: Full-text searchable regulatory content
-- `regulatoryScrapeJob`: Scraping job tracking
-- `qaReviewRequest`: Human review for low-confidence responses
+- `regulatoryDocument`: Full-text searchable regulatory content with categories (award, tax_ruling, payroll_tax)
+- `regulatoryScrapeJob`: Scraping job tracking with status, progress, error logging
+- `qaReviewRequest`: Human review tracking for low-confidence Q&A responses with resolution tracking
 
 **Migration Strategy**:
 - Old message/vote tables are deprecated but retained (Message, Vote)

@@ -1,6 +1,5 @@
 import "server-only";
 
-import { Agent } from "@mastra/core/agent";
 import { myProvider } from "@/lib/ai/providers";
 import { createQandaXeroTools, regulatorySearchTool } from "./tools";
 
@@ -26,33 +25,36 @@ Important:
 - Distinguish between mandatory requirements and best practices`;
 
 /**
- * Q&A Advisory Agent
+ * Q&A Advisory Agent Tools
  *
  * Provides regulatory-aware assistance for Australian tax law, employment law,
  * and compliance obligations with citations and confidence scoring.
  */
-export const qandaAgent = new Agent({
-  name: "qanda-agent",
-  instructions: SYSTEM_INSTRUCTIONS,
-  model: myProvider.languageModel("anthropic-claude-sonnet-4-5"),
-  tools: {
-    regulatorySearch: regulatorySearchTool,
-  },
-});
 
 /**
- * Create a Q&A agent instance with Xero tools for a specific user
+ * Get base Q&A agent tools (without Xero integration)
  */
-export function createQandaAgentWithXero(userId: string, modelId?: string) {
+export function getQandaAgentTools() {
+  return {
+    regulatorySearch: regulatorySearchTool,
+  };
+}
+
+/**
+ * Get Q&A agent tools with Xero integration for a specific user
+ */
+export function getQandaAgentToolsWithXero(userId: string) {
   const xeroTools = createQandaXeroTools(userId);
 
-  return new Agent({
-    name: "qanda-agent-with-xero",
-    instructions: SYSTEM_INSTRUCTIONS,
-    model: myProvider.languageModel(modelId || "anthropic-claude-sonnet-4-5"),
-    tools: {
-      regulatorySearch: regulatorySearchTool,
-      ...xeroTools,
-    },
-  });
+  return {
+    regulatorySearch: regulatorySearchTool,
+    ...xeroTools,
+  };
+}
+
+/**
+ * Get Q&A agent system prompt
+ */
+export function getQandaAgentSystemPrompt(): string {
+  return SYSTEM_INSTRUCTIONS;
 }

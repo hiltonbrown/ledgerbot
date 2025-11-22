@@ -32,7 +32,7 @@ const agentSnapshots = [
   {
     title: "Forecasting",
     description:
-      "Scenario modelling, runway projections and automated assumption tracking with Mastra workflows.",
+      "Scenario modelling, runway projections and automated assumption tracking with AI workflows.",
     href: "/agents/forecasting",
     icon: <Gauge className="h-5 w-5" />,
   },

@@ -5,7 +5,6 @@ import {
   documentHandlersByArtifactKind,
 } from "@/lib/artifacts/server";
 import { getDocumentById } from "@/lib/db/queries";
-import { runMastraCsvToQuestions } from "@/lib/mastra/csv-to-questions";
 import type { ChatMessage } from "@/lib/types";
 import type { AuthUser } from "@/lib/types/auth";
 import { generateUUID } from "@/lib/utils";
@@ -135,16 +134,18 @@ export const createDocument = ({
           } as const;
         }
 
-        const analysis = await runMastraCsvToQuestions({
-          csv,
-          question,
-        });
-
+        // CSV analysis functionality temporarily disabled
         return {
           action,
           documentId,
           question,
-          ...analysis,
+          answer:
+            "CSV analysis is currently unavailable. Please try again later.",
+          reasoning: "The CSV analysis feature is temporarily disabled.",
+          highlights: [],
+          followUpQuestions: [],
+          sampledRows: [],
+          numericSummary: {},
         } as const;
       }
 

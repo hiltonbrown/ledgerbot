@@ -191,11 +191,11 @@ export default function ForecastingAgentPage() {
           </h1>
           <p className="text-muted-foreground">
             Scenario modeling and runway projections with multiple financial
-            models and Mastra workflow orchestration
+            models and AI workflow orchestration
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" disabled className="gap-2">
+          <Button className="gap-2" disabled variant="outline">
             <RefreshCw className="h-4 w-4" />
             Refresh Data
           </Button>

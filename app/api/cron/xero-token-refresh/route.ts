@@ -1,15 +1,32 @@
 import { NextResponse } from "next/server";
-import {
-  deactivateXeroConnection,
-  getExpiringXeroConnections,
-} from "@/lib/db/queries";
-import { refreshXeroTokenById } from "@/lib/xero/connection-manager";
+import { getAllActiveXeroConnections } from "@/lib/db/queries";
+import { refreshXeroToken } from "@/lib/xero/connection-manager";
 
 // Configure route for Vercel cron jobs
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60; // 60 seconds max duration
+export const maxDuration = 300; // 5 minutes max duration
 
+/**
+ * Xero Proactive Token Refresh Cron Job
+ *
+ * Xero best practice: Refresh tokens BEFORE they expire to prevent service interruption
+ *
+ * This job runs every 15 minutes to:
+ * 1. Find connections with tokens expiring in < 20 minutes
+ * 2. Proactively refresh these tokens
+ * 3. Track success/failure rates
+ *
+ * Why 20 minutes?
+ * - Xero access tokens last 30 minutes
+ * - Refreshing at 20 minutes leaves 10-minute buffer for:
+ *   - Cron job delays
+ *   - Network latency
+ *   - Rate limiting
+ * - Prevents tokens expiring during user operations
+ *
+ * Recommended cron schedule: every 15 minutes (see Vercel dashboard for cron setup)
+ */
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -19,23 +36,26 @@ export async function GET(request: Request) {
   console.log("⏰ Scheduled Xero token refresh started");
 
   try {
-    // Best Practice: Only refresh when necessary (during API usage)
-    // Changed from 7 days to 6 hours to be less aggressive
-    // Access tokens last 30 minutes, so 6 hours catches tokens about to expire
-    // without refreshing inactive connections unnecessarily
-    const SIX_HOURS_IN_DAYS = 6 / 24; // 0.25 days
-    const expiringConnections = await getExpiringXeroConnections(
-      SIX_HOURS_IN_DAYS
-    );
+    const now = new Date();
+    const twentyMinutesFromNow = new Date(now.getTime() + 20 * 60 * 1000);
+
+    // Get all active connections
+    const connections = await getAllActiveXeroConnections();
+
+    // Filter to connections with tokens expiring in < 20 minutes
+    const connectionsToRefresh = connections.filter((conn) => {
+      const expiresAt = new Date(conn.expiresAt);
+      return expiresAt <= twentyMinutesFromNow;
+    });
 
     console.log(
-      `Found ${expiringConnections.length} Xero connections expiring within 6 hours`
+      `Found ${connectionsToRefresh.length} connections with tokens expiring in < 20 minutes (out of ${connections.length} total active connections)`
     );
 
-    if (expiringConnections.length === 0) {
+    if (connectionsToRefresh.length === 0) {
       return NextResponse.json({
         success: true,
-        message: "No expiring connections found",
+        message: "No tokens need refreshing",
         total: 0,
         refreshed: 0,
         failed: 0,
@@ -44,77 +64,95 @@ export async function GET(request: Request) {
 
     let refreshed = 0;
     let failed = 0;
-    const failures: Array<{ connectionId: string; error: string }> = [];
+    const failures: Array<{
+      connectionId: string;
+      tenantName: string | null;
+      error: string;
+      isPermanent: boolean;
+    }> = [];
 
-    // Refresh each expiring connection
-    for (const connection of expiringConnections) {
-      console.log(
-        `Refreshing token for connection ${connection.id} (user: ${connection.userId}, tenant: ${connection.tenantName || connection.tenantId}, expires: ${connection.expiresAt.toISOString()})`
+    // Refresh tokens for all expiring connections
+    for (const connection of connectionsToRefresh) {
+      const expiresAt = new Date(connection.expiresAt);
+      const minutesUntilExpiry = Math.floor(
+        (expiresAt.getTime() - now.getTime()) / (60 * 1000)
       );
 
-      const result = await refreshXeroTokenById(connection.id);
+      console.log(
+        `Refreshing token for connection ${connection.id} (${connection.tenantName || connection.tenantId}), expires in ${minutesUntilExpiry} minutes`
+      );
 
-      if (result.success) {
-        refreshed++;
-        console.log(
-          `✅ Successfully refreshed token for connection ${connection.id}`
-        );
-      } else {
+      try {
+        const result = await refreshXeroToken(connection.id);
+
+        if (result.success) {
+          refreshed++;
+          console.log(
+            `✅ Successfully refreshed token for connection ${connection.id} (${connection.tenantName || connection.tenantId})`
+          );
+        } else {
+          failed++;
+          console.error(
+            `❌ Failed to refresh token for connection ${connection.id}:`,
+            result.error
+          );
+
+          failures.push({
+            connectionId: connection.id,
+            tenantName: connection.tenantName,
+            error: result.error || "Unknown error",
+            isPermanent: result.isPermanentFailure || false,
+          });
+        }
+      } catch (error) {
         failed++;
-        const errorMsg = result.error || "Unknown error";
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+
         console.error(
-          `❌ Failed to refresh token for connection ${connection.id}: ${errorMsg}`
+          `❌ Unexpected error refreshing token for connection ${connection.id}:`,
+          errorMessage
         );
+
         failures.push({
           connectionId: connection.id,
-          error: errorMsg,
+          tenantName: connection.tenantName,
+          error: errorMessage,
+          isPermanent: false,
         });
-
-        // Only deactivate on permanent failures (expired refresh token)
-        // Temporary failures (network, server errors) should retry on next cron run
-        const isPermanentFailure =
-          errorMsg.includes("invalid_grant") ||
-          errorMsg.includes("refresh_token") ||
-          errorMsg.toLowerCase().includes("expired") ||
-          errorMsg.includes("60 days");
-
-        if (isPermanentFailure) {
-          try {
-            await deactivateXeroConnection(connection.id);
-            console.log(
-              `Deactivated connection ${connection.id} due to PERMANENT refresh failure (expired refresh token)`
-            );
-          } catch (deactivateError) {
-            console.error(
-              `Failed to deactivate connection ${connection.id}:`,
-              deactivateError
-            );
-          }
-        } else {
-          console.warn(
-            `⚠️ TEMPORARY failure for connection ${connection.id} - will retry on next cron run (connection remains active)`
-          );
-        }
       }
     }
 
     console.log(
-      `✅ Scheduled Xero token refresh completed: ${refreshed} refreshed, ${failed} failed out of ${expiringConnections.length} total`
+      `✅ Xero token refresh completed: ${refreshed} refreshed, ${failed} failed out of ${connectionsToRefresh.length} total`
     );
+
+    // Log permanent failures (require user re-authentication)
+    const permanentFailures = failures.filter((f) => f.isPermanent);
+    if (permanentFailures.length > 0) {
+      console.warn(
+        `⚠️ ${permanentFailures.length} connection(s) require user re-authentication:`,
+        permanentFailures.map((f) => ({
+          connectionId: f.connectionId,
+          tenant: f.tenantName,
+        }))
+      );
+    }
 
     return NextResponse.json({
       success: true,
-      total: expiringConnections.length,
+      total: connectionsToRefresh.length,
       refreshed,
       failed,
       failures: failures.length > 0 ? failures : undefined,
+      permanentFailures: permanentFailures.length,
     });
   } catch (error) {
-    console.error("❌ Scheduled Xero token refresh failed:", error);
+    console.error("❌ Xero token refresh failed:", error);
     return NextResponse.json(
       {
         success: false,
-        message: "Scheduled Xero token refresh failed",
+        message: "Xero token refresh failed",
         error: error instanceof Error ? error.message : String(error),
       },
       { status: 500 }

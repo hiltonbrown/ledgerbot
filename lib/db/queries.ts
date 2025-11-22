@@ -23,6 +23,9 @@ import { ChatSDKError } from "../errors";
 import type { AppUsage } from "../usage";
 import * as schema from "./schema";
 import {
+  type AgentTrace,
+  type AgentTraceInsert,
+  agentTrace,
   type Chat,
   type ContextFile,
   chat,
@@ -1034,6 +1037,9 @@ export async function createXeroConnection({
   expiresAt,
   scopes,
   authenticationEventId,
+  xeroConnectionId,
+  xeroCreatedDateUtc,
+  xeroUpdatedDateUtc,
 }: {
   userId: string;
   tenantId: string;
@@ -1049,6 +1055,9 @@ export async function createXeroConnection({
   expiresAt: Date;
   scopes: string[];
   authenticationEventId?: string;
+  xeroConnectionId?: string;
+  xeroCreatedDateUtc?: Date;
+  xeroUpdatedDateUtc?: Date;
 }): Promise<XeroConnection> {
   try {
     const now = new Date();
@@ -1101,7 +1110,8 @@ export async function createXeroConnection({
             organisationId: organisationId || existingConnection.organisationId,
             shortCode: shortCode || existingConnection.shortCode,
             baseCurrency: baseCurrency || existingConnection.baseCurrency,
-            organisationType: organisationType || existingConnection.organisationType,
+            organisationType:
+              organisationType || existingConnection.organisationType,
             isDemoCompany: isDemoCompany ?? existingConnection.isDemoCompany,
             accessToken,
             refreshToken,
@@ -1109,6 +1119,12 @@ export async function createXeroConnection({
             expiresAt,
             scopes,
             authenticationEventId,
+            xeroConnectionId:
+              xeroConnectionId || existingConnection.xeroConnectionId,
+            xeroCreatedDateUtc:
+              xeroCreatedDateUtc || existingConnection.xeroCreatedDateUtc,
+            xeroUpdatedDateUtc:
+              xeroUpdatedDateUtc || existingConnection.xeroUpdatedDateUtc,
             connectionStatus: "connected",
             lastError: null, // Clear user-friendly error message
             lastErrorDetails: null, // Clear technical error details
@@ -1161,6 +1177,9 @@ export async function createXeroConnection({
             expiresAt,
             scopes,
             authenticationEventId,
+            xeroConnectionId,
+            xeroCreatedDateUtc,
+            xeroUpdatedDateUtc,
             connectionStatus: "connected",
             isActive: true,
             updatedAt: now,
@@ -1525,7 +1544,9 @@ export async function getExpiringXeroConnections(
   try {
     // Calculate threshold date using milliseconds to properly handle fractional days
     // e.g., 0.25 days = 6 hours
-    const thresholdDate = new Date(Date.now() + daysThreshold * 24 * 60 * 60 * 1000);
+    const thresholdDate = new Date(
+      Date.now() + daysThreshold * 24 * 60 * 60 * 1000
+    );
 
     return await db
       .select()
@@ -1541,6 +1562,21 @@ export async function getExpiringXeroConnections(
     throw new ChatSDKError(
       "bad_request:database",
       "Failed to get expiring Xero connections"
+    );
+  }
+}
+
+export async function getAllActiveXeroConnections(): Promise<XeroConnection[]> {
+  try {
+    return await db
+      .select()
+      .from(xeroConnection)
+      .where(eq(xeroConnection.isActive, true))
+      .orderBy(desc(xeroConnection.updatedAt));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get all active Xero connections"
     );
   }
 }
@@ -1616,20 +1652,22 @@ export async function syncXeroConnectionMetadata(
 
 export async function updateConnectionError(
   connectionId: string,
-  error: string,
-  errorType?: string,
-  correlationId?: string,
-  technicalDetails?: string
+  options: {
+    error: string;
+    errorType?: string;
+    correlationId?: string;
+    technicalDetails?: string;
+  }
 ): Promise<void> {
   try {
     await db
       .update(xeroConnection)
       .set({
         connectionStatus: "error",
-        lastError: error, // User-friendly message
-        lastErrorDetails: technicalDetails || null, // Technical details for debugging
-        lastErrorType: errorType || null,
-        lastCorrelationId: correlationId || null,
+        lastError: options.error, // User-friendly message
+        lastErrorDetails: options.technicalDetails || null, // Technical details for debugging
+        lastErrorType: options.errorType || null,
+        lastCorrelationId: options.correlationId || null,
         updatedAt: new Date(),
       })
       .where(eq(xeroConnection.id, connectionId));
@@ -1681,5 +1719,160 @@ export async function updateRateLimitInfo(
   } catch (_error) {
     // Don't throw error - rate limit tracking shouldn't break API calls
     console.error("Failed to update rate limit info:", _error);
+  }
+}
+
+// ============================================================================
+// Agent Trace Queries
+// ============================================================================
+
+/**
+ * Creates a new agent trace record for tool execution logging
+ * @param trace - The agent trace data to insert
+ * @returns Promise resolving to the created AgentTrace record
+ */
+export async function createAgentTrace(
+  trace: AgentTraceInsert
+): Promise<AgentTrace> {
+  try {
+    const [createdTrace] = await db
+      .insert(agentTrace)
+      .values(trace)
+      .returning();
+
+    if (!createdTrace) {
+      throw new Error("Failed to create agent trace record");
+    }
+
+    return createdTrace;
+  } catch (error) {
+    console.error("Failed to create agent trace:", error);
+    // Don't throw error - logging failures shouldn't break agent execution
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to create agent trace"
+    );
+  }
+}
+
+/**
+ * Gets agent traces for a specific chat
+ * @param chatId - The chat ID to filter traces
+ * @param limit - Maximum number of traces to return (default: 50)
+ * @returns Promise resolving to array of AgentTrace objects
+ */
+export async function getAgentTracesByChatId(
+  chatId: string,
+  limit = 50
+): Promise<AgentTrace[]> {
+  try {
+    return await db
+      .select()
+      .from(agentTrace)
+      .where(eq(agentTrace.chatId, chatId))
+      .orderBy(desc(agentTrace.createdAt))
+      .limit(limit);
+  } catch (error) {
+    console.error("Failed to get agent traces by chat ID:", error);
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get agent traces by chat ID"
+    );
+  }
+}
+
+/**
+ * Gets agent traces for a specific message
+ * @param messageId - The message ID to filter traces
+ * @returns Promise resolving to array of AgentTrace objects
+ */
+export async function getAgentTracesByMessageId(
+  messageId: string
+): Promise<AgentTrace[]> {
+  try {
+    return await db
+      .select()
+      .from(agentTrace)
+      .where(eq(agentTrace.messageId, messageId))
+      .orderBy(desc(agentTrace.createdAt));
+  } catch (error) {
+    console.error("Failed to get agent traces by message ID:", error);
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get agent traces by message ID"
+    );
+  }
+}
+
+/**
+ * Gets agent traces by tool name
+ * @param toolName - The tool name to filter traces
+ * @param limit - Maximum number of traces to return (default: 100)
+ * @returns Promise resolving to array of AgentTrace objects
+ */
+export async function getAgentTracesByToolName(
+  toolName: string,
+  limit = 100
+): Promise<AgentTrace[]> {
+  try {
+    return await db
+      .select()
+      .from(agentTrace)
+      .where(eq(agentTrace.toolName, toolName))
+      .orderBy(desc(agentTrace.createdAt))
+      .limit(limit);
+  } catch (error) {
+    console.error("Failed to get agent traces by tool name:", error);
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get agent traces by tool name"
+    );
+  }
+}
+
+/**
+ * Gets agent traces by status
+ * @param status - The status to filter traces ('success' or 'error')
+ * @param limit - Maximum number of traces to return (default: 100)
+ * @returns Promise resolving to array of AgentTrace objects
+ */
+export async function getAgentTracesByStatus(
+  status: "success" | "error",
+  limit = 100
+): Promise<AgentTrace[]> {
+  try {
+    return await db
+      .select()
+      .from(agentTrace)
+      .where(eq(agentTrace.status, status))
+      .orderBy(desc(agentTrace.createdAt))
+      .limit(limit);
+  } catch (error) {
+    console.error("Failed to get agent traces by status:", error);
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get agent traces by status"
+    );
+  }
+}
+
+/**
+ * Gets recent agent traces across all chats
+ * @param limit - Maximum number of traces to return (default: 100)
+ * @returns Promise resolving to array of AgentTrace objects
+ */
+export async function getRecentAgentTraces(limit = 100): Promise<AgentTrace[]> {
+  try {
+    return await db
+      .select()
+      .from(agentTrace)
+      .orderBy(desc(agentTrace.createdAt))
+      .limit(limit);
+  } catch (error) {
+    console.error("Failed to get recent agent traces:", error);
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get recent agent traces"
+    );
   }
 }

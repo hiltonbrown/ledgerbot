@@ -1,12 +1,16 @@
+import { streamText } from "ai";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import {
   formatAnswerWithCitations,
+  getDocManagementSystemPrompt,
+  getDocManagementTools,
   loadDocumentForAgent,
   prepareDocAgentRun,
   respondWithCitations,
 } from "@/lib/agents/docmanagement";
+import { myProvider } from "@/lib/ai/providers";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
 
 export const runtime = "nodejs";
@@ -111,14 +115,14 @@ export async function POST(request: Request) {
             history: payload.history,
           });
 
-          const agentStream = await setup.agent.stream(setup.messages, {
-            runtimeContext: setup.runtimeContext,
-            toolChoice: "auto",
-            maxSteps: 6,
+          const result = streamText({
+            model: myProvider.languageModel("anthropic-claude-sonnet-4-5"),
+            system: getDocManagementSystemPrompt(),
+            messages: setup.messages,
+            tools: getDocManagementTools(),
           });
 
-          const reader = agentStream.textStream.getReader();
-          const decoder = new TextDecoder();
+          const reader = result.textStream.getReader();
           let rawAnswer = "";
 
           while (true) {
@@ -127,10 +131,8 @@ export async function POST(request: Request) {
               break;
             }
             if (value) {
-              const textChunk =
-                typeof value === "string" ? value : decoder.decode(value);
-              rawAnswer += textChunk;
-              sendEvent("delta", { text: textChunk });
+              rawAnswer += value;
+              sendEvent("delta", { text: value });
             }
           }
 

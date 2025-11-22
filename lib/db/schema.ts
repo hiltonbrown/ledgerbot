@@ -408,5 +408,33 @@ export const qaReviewRequest = pgTable(
 export type QaReviewRequest = InferSelectModel<typeof qaReviewRequest>;
 export type QaReviewRequestInsert = typeof qaReviewRequest.$inferInsert;
 
-export * from "./schema/ar";
+export const agentTrace = pgTable(
+  "AgentTrace",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    chatId: uuid("chatId")
+      .notNull()
+      .references(() => chat.id),
+    messageId: uuid("messageId").notNull(),
+    toolName: text("toolName"),
+    toolArgs: jsonb("toolArgs"),
+    toolResult: jsonb("toolResult"),
+    durationMs: integer("durationMs"),
+    status: varchar("status", { length: 20 }).notNull(), // 'success', 'error'
+    errorDetails: text("errorDetails"),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+  },
+  (table) => ({
+    chatIdIdx: index("agent_trace_chat_id_idx").on(table.chatId),
+    messageIdIdx: index("agent_trace_message_id_idx").on(table.messageId),
+    toolNameIdx: index("agent_trace_tool_name_idx").on(table.toolName),
+    statusIdx: index("agent_trace_status_idx").on(table.status),
+    createdAtIdx: index("agent_trace_created_at_idx").on(table.createdAt),
+  })
+);
+
+export type AgentTrace = InferSelectModel<typeof agentTrace>;
+export type AgentTraceInsert = typeof agentTrace.$inferInsert;
+
 export * from "./schema/ap";
+export * from "./schema/ar";

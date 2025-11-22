@@ -41,17 +41,48 @@ export async function GET(request: Request) {
       );
     }
 
-    // Verify state
+    // Verify state - Xero best practice: prevent CSRF and validate freshness
     try {
       const stateData = JSON.parse(
         Buffer.from(state, "base64").toString("utf-8")
       );
+
+      // Verify user ID matches
       if (stateData.userId !== user.id) {
+        console.error("State user ID mismatch:", {
+          expected: user.id,
+          received: stateData.userId,
+        });
         return NextResponse.redirect(
           new URL("/settings/integrations?error=invalid_state", request.url)
         );
       }
-    } catch {
+
+      // Verify state hasn't expired (10 minute limit per Xero best practice)
+      const stateAge = Date.now() - stateData.timestamp;
+      const TEN_MINUTES = 10 * 60 * 1000;
+      if (stateAge > TEN_MINUTES) {
+        console.error("State expired:", {
+          age: Math.floor(stateAge / 1000),
+          limit: 600,
+        });
+        return NextResponse.redirect(
+          new URL(
+            "/settings/integrations?error=state_expired",
+            request.url
+          )
+        );
+      }
+
+      // Verify nonce exists (CSRF protection)
+      if (!stateData.nonce || typeof stateData.nonce !== "string") {
+        console.error("Missing or invalid nonce in state");
+        return NextResponse.redirect(
+          new URL("/settings/integrations?error=invalid_state", request.url)
+        );
+      }
+    } catch (parseError) {
+      console.error("Failed to parse state:", parseError);
       return NextResponse.redirect(
         new URL("/settings/integrations?error=invalid_state", request.url)
       );
@@ -165,14 +196,59 @@ export async function GET(request: Request) {
 
     const tenantDetailsResults = await Promise.all(tenantDetailsPromises);
 
-    // Create connections with organisation metadata
+    // Fetch connection metadata from Xero /connections endpoint (best practice)
+    // This provides the Xero connection ID and creation/update timestamps
+    let connectionsMetadata: Map<string, any> = new Map();
+    try {
+      const connections = await fetch(
+        `https://api.xero.com/connections${authenticationEventId ? `?authEventId=${authenticationEventId}` : ""}`,
+        {
+          headers: {
+            Authorization: `Bearer ${tokenSet.access_token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (connections.ok) {
+        const connectionsData = await connections.json();
+        // Map by tenantId for easy lookup
+        for (const conn of connectionsData) {
+          connectionsMetadata.set(conn.tenantId, conn);
+        }
+        console.log(
+          `✅ [OAuth Callback] Fetched connection metadata for ${connectionsData.length} tenant(s)`
+        );
+      } else {
+        console.warn(
+          `⚠️ [OAuth Callback] Failed to fetch connection metadata: ${connections.status}`
+        );
+      }
+    } catch (metadataError) {
+      console.warn(
+        "[OAuth Callback] Could not fetch connection metadata:",
+        metadataError
+      );
+      // Continue without metadata - it's not critical for connection creation
+    }
+
+    // Create connections with organisation metadata and connection tracking
     await Promise.all(
-      tenantDetailsResults.map(({ tenant, orgDetails }) =>
-        createXeroConnection({
+      tenantDetailsResults.map(({ tenant, orgDetails }) => {
+        const connMetadata = connectionsMetadata.get(tenant.tenantId);
+        return createXeroConnection({
           userId: user.id,
           tenantId: tenant.tenantId,
           tenantName: tenant.tenantName,
           tenantType: tenant.tenantType,
+          // Xero connection metadata (for tracking and cleanup)
+          xeroConnectionId: connMetadata?.id, // Xero's connection ID from /connections endpoint
+          xeroCreatedDateUtc: connMetadata?.createdDateUtc
+            ? new Date(connMetadata.createdDateUtc)
+            : undefined,
+          xeroUpdatedDateUtc: connMetadata?.updatedDateUtc
+            ? new Date(connMetadata.updatedDateUtc)
+            : undefined,
           // Organisation metadata (Xero best practice fields)
           organisationId: orgDetails?.OrganisationID,
           shortCode: orgDetails?.ShortCode,
@@ -184,8 +260,8 @@ export async function GET(request: Request) {
           expiresAt,
           scopes: getXeroScopes(),
           authenticationEventId,
-        })
-      )
+        });
+      })
     );
 
     // Auto-sync chart of accounts for the active connection (non-blocking)

@@ -1,15 +1,14 @@
 import "server-only";
 
-import { createTool } from "@mastra/core/tools";
+import { tool } from "ai";
 import { z } from "zod";
 import { executeXeroMCPTool } from "@/lib/ai/xero-mcp-client";
 import { searchRegulatoryDocuments } from "@/lib/regulatory/search";
 
 /**
- * Regulatory search tool for Mastra agents
+ * Regulatory search tool for agents
  */
-export const regulatorySearchTool = createTool({
-  id: "regulatorySearch",
+export const regulatorySearchTool = tool({
   description: `Searches the Australian regulatory knowledge base for information on employment law, taxation, and payroll.
     Use this tool to answer compliance questions and provide citations to official sources.
     Good queries are specific, like "what is the minimum wage for a retail worker?" or "superannuation guarantee percentage".`,
@@ -27,24 +26,7 @@ export const regulatorySearchTool = createTool({
       .default(5)
       .describe("The maximum number of results to return."),
   }),
-  outputSchema: z.object({
-    success: z.boolean(),
-    count: z.number().optional(),
-    results: z
-      .array(
-        z.object({
-          title: z.string(),
-          url: z.string(),
-          category: z.string(),
-          excerpt: z.string(),
-          relevanceScore: z.number(),
-        })
-      )
-      .optional(),
-    message: z.string().optional(),
-  }),
-  execute: async ({ context }) => {
-    const { query, category, limit } = context;
+  execute: async ({ query, category, limit }: { query: string; category: string; limit: number }) => {
     try {
       console.log(`[Q&A Agent] Regulatory search for: "${query}"`);
       const results = await searchRegulatoryDocuments(query, {
@@ -91,8 +73,7 @@ export const regulatorySearchTool = createTool({
  */
 export function createQandaXeroTools(userId: string) {
   return {
-    xero_list_invoices: createTool({
-      id: "xero_list_invoices",
+    xero_list_invoices: tool({
       description:
         "Get a list of invoices from Xero. Can retrieve SALES INVOICES (sent TO customers, Type=ACCREC) or BILLS (received FROM suppliers, Type=ACCPAY). IMPORTANT: When user asks for invoices in a specific month/year, you MUST provide BOTH dateFrom and dateTo parameters to define the complete date range.",
       inputSchema: z.object({
@@ -125,23 +106,20 @@ export function createQandaXeroTools(userId: string) {
           .default(100)
           .describe("Maximum number of invoices to return"),
       }),
-      outputSchema: z.string(),
-      execute: async ({ context }) => {
+      execute: async (args: { invoiceType?: string; status?: string; dateFrom?: string; dateTo?: string; contactId?: string; limit?: number }) => {
         const result = await executeXeroMCPTool(
           userId,
           "xero_list_invoices",
-          context
+          args
         );
         return result.content[0].text;
       },
     }),
 
-    xero_get_organisation: createTool({
-      id: "xero_get_organisation",
+    xero_get_organisation: tool({
       description:
         "Get information about the connected Xero organisation. Use this to view organisation name, address, and settings.",
       inputSchema: z.object({}),
-      outputSchema: z.string(),
       execute: async () => {
         const result = await executeXeroMCPTool(
           userId,
@@ -152,8 +130,7 @@ export function createQandaXeroTools(userId: string) {
       },
     }),
 
-    xero_list_contacts: createTool({
-      id: "xero_list_contacts",
+    xero_list_contacts: tool({
       description:
         "Get a list of contacts (customers and suppliers) from Xero. Use this to search for customers or suppliers by name or email.",
       inputSchema: z.object({
@@ -167,19 +144,17 @@ export function createQandaXeroTools(userId: string) {
           .default(100)
           .describe("Maximum number of contacts to return"),
       }),
-      outputSchema: z.string(),
-      execute: async ({ context }) => {
+      execute: async (args: { searchTerm?: string; limit?: number }) => {
         const result = await executeXeroMCPTool(
           userId,
           "xero_list_contacts",
-          context
+          args
         );
         return result.content[0].text;
       },
     }),
 
-    xero_list_accounts: createTool({
-      id: "xero_list_accounts",
+    xero_list_accounts: tool({
       description:
         "Get the chart of accounts from Xero. Use this to view account codes, names, and types.",
       inputSchema: z.object({
@@ -210,12 +185,11 @@ export function createQandaXeroTools(userId: string) {
           .optional()
           .describe("Filter by account type"),
       }),
-      outputSchema: z.string(),
-      execute: async ({ context }) => {
+      execute: async (args: { accountType?: string }) => {
         const result = await executeXeroMCPTool(
           userId,
           "xero_list_accounts",
-          context
+          args
         );
         return result.content[0].text;
       },
