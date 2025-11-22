@@ -76,7 +76,6 @@ export async function POST(req: Request) {
       model: myProvider.languageModel("anthropic-claude-sonnet-4-5"),
       system: SUPERVISOR_INSTRUCTIONS,
       messages,
-      maxSteps: 10, // Allow more steps for complex workflows
       tools: {
         executeMonthEndClose: executeMonthEndCloseTool,
         executeInvestorUpdate: executeInvestorUpdateTool,

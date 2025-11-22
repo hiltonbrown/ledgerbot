@@ -292,3 +292,116 @@ export function requiresReconnection(parsedError: ParsedXeroError): boolean {
     parsedError.statusCode === 403
   );
 }
+
+/**
+ * Determine if error is retryable
+ * Xero best practice: Retry transient failures with exponential backoff
+ */
+export function isRetryableError(parsedError: ParsedXeroError): boolean {
+  // Server errors are retryable
+  if (parsedError.type === "server") {
+    return true;
+  }
+
+  // Rate limit errors are retryable (after waiting)
+  if (parsedError.type === "rate_limit") {
+    return true;
+  }
+
+  // Network errors are retryable
+  if (parsedError.type === "network") {
+    return true;
+  }
+
+  // 502, 503, 504 errors are retryable
+  if (
+    parsedError.statusCode === 502 ||
+    parsedError.statusCode === 503 ||
+    parsedError.statusCode === 504
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Retry configuration for Xero API calls
+ */
+export interface RetryConfig {
+  maxRetries: number;
+  initialDelayMs: number;
+  maxDelayMs: number;
+  backoffMultiplier: number;
+}
+
+const DEFAULT_RETRY_CONFIG: RetryConfig = {
+  maxRetries: 3,
+  initialDelayMs: 1000, // 1 second
+  maxDelayMs: 10000, // 10 seconds
+  backoffMultiplier: 2, // Exponential backoff
+};
+
+/**
+ * Retry a Xero API call with exponential backoff
+ * Xero best practice: Implement retry logic for transient failures
+ */
+export async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  config: Partial<RetryConfig> = {},
+  shouldRetry?: (error: ParsedXeroError) => boolean
+): Promise<T> {
+  const {
+    maxRetries,
+    initialDelayMs,
+    maxDelayMs,
+    backoffMultiplier,
+  }: RetryConfig = {
+    ...DEFAULT_RETRY_CONFIG,
+    ...config,
+  };
+
+  let lastError: ParsedXeroError | undefined;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      const parsedError = parseXeroError(error);
+      lastError = parsedError;
+
+      // Check if we should retry
+      const canRetry =
+        attempt < maxRetries &&
+        (shouldRetry
+          ? shouldRetry(parsedError)
+          : isRetryableError(parsedError));
+
+      if (!canRetry) {
+        throw error;
+      }
+
+      // Calculate delay with exponential backoff
+      const delay = Math.min(
+        initialDelayMs * backoffMultiplier ** attempt,
+        maxDelayMs
+      );
+
+      console.warn(
+        `[Xero Retry] Attempt ${attempt + 1}/${maxRetries} failed. Retrying in ${delay}ms...`,
+        {
+          errorType: parsedError.type,
+          message: parsedError.message,
+        }
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+
+  // All retries exhausted
+  throw new Error(
+    lastError?.userMessage ||
+      "Xero API call failed after multiple retry attempts"
+  );
+}

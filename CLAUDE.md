@@ -33,10 +33,16 @@ Optional: `REDIS_URL`, `AI_GATEWAY_URL`
 **Xero Tools**: `xero_list_invoices`, `xero_get_invoice`, `xero_list_contacts`, `xero_get_contact`, `xero_list_accounts` (cached), `xero_list_journal_entries`, `xero_get_bank_transactions`, `xero_get_organisation`
 
 ### Xero Integration
-**OAuth2**: Authorization Code Flow with client secret, AES-256-GCM encrypted tokens, auto-refresh
-**API Best Practices**: Pagination (100-1000/page), If-Modified-Since headers, rate limit handling (5 concurrent, 60/min, 5000/day)
-**Architecture**: Multi-org support, chart of accounts caching (DB-first), conditional tool integration
-**Files**: `lib/xero/{connection-manager,encryption,rate-limit-handler,chart-of-accounts-sync}.ts`, `lib/ai/xero-mcp-client.ts`
+**OAuth2**: Authorization Code Flow + PKCE, AES-256-GCM encrypted tokens, proactive token refresh (20-min threshold)
+**Security**: CSRF protection (nonce + timestamp), state expiry (10 min), correlation ID tracking, optimistic locking
+**Token Management**: Refresh token rotation (60-day window reset), concurrency protection (lock map), 5-sec refresh throttle
+**Tenant Context**: Explicit context passing (no globals/thread-locals), immutable context objects, per-request validation
+**API Best Practices**: Pagination (100-1000/page), If-Modified-Since headers, rate limit tracking, exponential backoff retry
+**Architecture**: Multi-org support, connection health monitoring, chart of accounts caching (DB-first), conditional tool integration
+**Error Handling**: 7 error types (validation, authorization, token, rate_limit, server, network, unknown), user-friendly messages, auto-retry
+**Connection Management**: Proactive refresh cron (15-min), cleanup cron (daily), health checks, staleness tracking
+**Files**: `lib/xero/{connection-manager,encryption,error-handler,connection-health,tenant-context,rate-limit-handler,chart-of-accounts-sync}.ts`, `lib/ai/xero-mcp-client.ts`
+**Cron**: `api/cron/xero-token-refresh` (15-min), `api/cron/xero-connection-cleanup` (daily)
 **Env**: `XERO_CLIENT_ID`, `XERO_CLIENT_SECRET`, `XERO_REDIRECT_URI`, `XERO_ENCRYPTION_KEY`
 **Scopes**: `offline_access`, `accounting.{transactions,contacts,settings,reports.read,journals.read,attachments}`, `payroll.*`
 

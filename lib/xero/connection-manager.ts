@@ -16,8 +16,13 @@ import type {
 } from "./types";
 
 // In-memory lock to prevent concurrent token refreshes for the same connection
+// Xero Best Practice: "Only allow one thread to refresh the token at a time"
 // Key: connectionId, Value: Promise of ongoing refresh
 const tokenRefreshLocks = new Map<string, Promise<TokenRefreshResult>>();
+
+// Track the last successful refresh to prevent race conditions
+// This ensures we don't have multiple processes trying to refresh the same token
+const lastRefreshTimestamps = new Map<string, number>();
 
 const XERO_SCOPES = [
   "offline_access",
@@ -51,6 +56,9 @@ export function createXeroClient(state?: string): XeroClient {
     state,
     httpTimeout: 10_000, // 10 seconds - prevent timeout issues with token refresh
     clockTolerance: 10, // 10 seconds - handle time sync issues between servers (Xero best practice)
+    // PKCE support (Xero best practice for defense-in-depth security)
+    // While not required for Authorization Code flow, PKCE adds protection against authorization code interception
+    grantType: "authorization_code_with_pkce", // Enable PKCE for enhanced security
   });
 }
 
@@ -240,6 +248,7 @@ export async function refreshXeroToken(
   connectionId: string,
   retryWithOldToken = false
 ): Promise<TokenRefreshResult> {
+  // Xero Best Practice: "Only allow one thread to refresh the token at a time"
   // Check if there's already a refresh in progress for this connection
   const existingRefresh = tokenRefreshLocks.get(connectionId);
   if (existingRefresh) {
@@ -247,6 +256,20 @@ export async function refreshXeroToken(
       `🔒 [refreshXeroToken] Refresh already in progress for connection ${connectionId}, waiting...`
     );
     return await existingRefresh;
+  }
+
+  // Additional safety check: Don't refresh if recently refreshed (< 5 seconds ago)
+  // This prevents race conditions in high-concurrency scenarios
+  const lastRefresh = lastRefreshTimestamps.get(connectionId);
+  if (lastRefresh && Date.now() - lastRefresh < 5000) {
+    console.log(
+      `⏭️ [refreshXeroToken] Connection ${connectionId} was refreshed ${Date.now() - lastRefresh}ms ago, skipping refresh`
+    );
+    // Return the current connection instead of refreshing
+    const connection = await getXeroConnectionById(connectionId);
+    if (connection) {
+      return { success: true, connection };
+    }
   }
 
   // Create a new refresh promise and store it in the lock map
@@ -372,6 +395,9 @@ async function performTokenRefresh(
     );
 
     const now = new Date();
+
+    // Xero Best Practice: "Overwrite the stored refresh token with the new one immediately"
+    // Each token refresh provides a NEW refresh token and invalidates the old one
     const updatedConnection = await updateXeroTokens({
       id: connectionId,
       accessToken: encryptToken(tokenSet.access_token),
@@ -381,6 +407,9 @@ async function performTokenRefresh(
       resetRefreshTokenIssuedAt: true, // CRITICAL: Reset the 60-day window with new refresh token
       expectedUpdatedAt: connection.updatedAt, // Optimistic locking to prevent race conditions
     });
+
+    // Track successful refresh timestamp to prevent rapid re-refresh
+    lastRefreshTimestamps.set(connectionId, Date.now());
 
     // Handle optimistic lock failure (another process updated the token concurrently)
     if (!updatedConnection) {
