@@ -19,7 +19,7 @@ import {
 } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -165,7 +165,7 @@ export default function DocumentManagementAgentPage() {
 
           // Restore chat messages
           const restoredMessages: ChatMessage[] = data.data.messages.map(
-            (msg: PdfChatMessage, index: number) => ({
+            (msg: PdfChatMessage, _index: number) => ({
               ...msg,
               id: generateUUID(),
             })
@@ -183,7 +183,7 @@ export default function DocumentManagementAgentPage() {
 
     restoreConversation();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contextFileId]);
+  }, [contextFileId, prepareDocAgent]);
 
   const resetWorkflow = useCallback(() => {
     setContextFileId(null);
@@ -717,10 +717,10 @@ export default function DocumentManagementAgentPage() {
         </div>
         <div className="flex gap-2">
           <Button
-            variant="outline"
-            onClick={resetWorkflow}
-            disabled={!contextFileId}
             className="gap-2"
+            disabled={!contextFileId}
+            onClick={resetWorkflow}
+            variant="outline"
           >
             Reset
           </Button>

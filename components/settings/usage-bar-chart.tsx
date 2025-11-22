@@ -15,9 +15,7 @@ import {
   type ChartConfig,
   ChartContainer,
   ChartLegend,
-  ChartLegendContent,
   ChartTooltip,
-  ChartTooltipContent,
 } from "@/components/ui/chart";
 
 export function UsageBarChart({ metrics }: { metrics: UsageMetric[] }) {

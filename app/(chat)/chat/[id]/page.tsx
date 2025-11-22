@@ -54,8 +54,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     initialModelId && chatModelIds.includes(initialModelId);
 
   // Get the most recent document to restore artifact
-  const latestDocument =
-    documents.length > 0 ? documents[documents.length - 1] : null;
+  const latestDocument = documents.length > 0 ? documents.at(-1) : null;
 
   if (!isValidModelId) {
     return (

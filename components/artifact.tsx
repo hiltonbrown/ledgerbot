@@ -438,9 +438,7 @@ function PureArtifact({
                 <ArtifactCloseButton />
 
                 <div className="flex flex-col">
-                  <div className="font-medium">
-                    {artifact.title}
-                  </div>
+                  <div className="font-medium">{artifact.title}</div>
 
                   {isContentDirty ? (
                     <div className="text-muted-foreground text-sm">

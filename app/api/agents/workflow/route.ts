@@ -82,14 +82,18 @@ export async function POST(req: Request) {
         executeAtoAuditPack: executeAtoAuditPackTool,
       },
       onStepFinish: async ({ text, toolCalls, finishReason, usage }) => {
-        console.log(`[Workflow Supervisor] Step completed with reason: ${finishReason}`);
+        console.log(
+          `[Workflow Supervisor] Step completed with reason: ${finishReason}`
+        );
         if (toolCalls && toolCalls.length > 0) {
           console.log(
             `[Workflow Supervisor] Tools called: ${toolCalls.map((tc) => tc.toolName).join(", ")}`
           );
         }
         if (usage) {
-          console.log(`[Workflow Supervisor] Token usage: ${usage.totalTokens}`);
+          console.log(
+            `[Workflow Supervisor] Token usage: ${usage.totalTokens}`
+          );
         }
       },
     });

@@ -26,7 +26,15 @@ export const regulatorySearchTool = tool({
       .default(5)
       .describe("The maximum number of results to return."),
   }),
-  execute: async ({ query, category, limit }: { query: string; category: string; limit: number }) => {
+  execute: async ({
+    query,
+    category,
+    limit,
+  }: {
+    query: string;
+    category: string;
+    limit: number;
+  }) => {
     try {
       console.log(`[Q&A Agent] Regulatory search for: "${query}"`);
       const results = await searchRegulatoryDocuments(query, {
@@ -106,7 +114,14 @@ export function createQandaXeroTools(userId: string) {
           .default(100)
           .describe("Maximum number of invoices to return"),
       }),
-      execute: async (args: { invoiceType?: string; status?: string; dateFrom?: string; dateTo?: string; contactId?: string; limit?: number }) => {
+      execute: async (args: {
+        invoiceType?: string;
+        status?: string;
+        dateFrom?: string;
+        dateTo?: string;
+        contactId?: string;
+        limit?: number;
+      }) => {
         const result = await executeXeroMCPTool(
           userId,
           "xero_list_invoices",

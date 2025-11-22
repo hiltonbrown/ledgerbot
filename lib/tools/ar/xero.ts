@@ -251,8 +251,12 @@ function getRealXeroProvider(
               emailAddress: inv.contact?.emailAddress,
               phones: inv.contact?.phones,
             },
-            dateString: inv.date ? new Date(inv.date).toISOString().split("T")[0] : "",
-            dueDateString: inv.dueDate ? new Date(inv.dueDate).toISOString().split("T")[0] : "",
+            dateString: inv.date
+              ? new Date(inv.date).toISOString().split("T")[0]
+              : "",
+            dueDateString: inv.dueDate
+              ? new Date(inv.dueDate).toISOString().split("T")[0]
+              : "",
             status: inv.status || "",
             lineAmountTypes: inv.lineAmountTypes || "",
             subTotal: inv.subTotal || 0,

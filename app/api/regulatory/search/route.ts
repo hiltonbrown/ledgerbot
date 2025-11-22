@@ -59,13 +59,19 @@ export async function GET(req: Request) {
 
     const filters: SearchFilters = {};
     const country = searchParams.get("country");
-    if (country) filters.country = country;
+    if (country) {
+      filters.country = country;
+    }
 
     const category = searchParams.get("category");
-    if (category) filters.category = category.split(",");
+    if (category) {
+      filters.category = category.split(",");
+    }
 
     const limit = searchParams.get("limit");
-    if (limit) filters.limit = Number.parseInt(limit, 10);
+    if (limit) {
+      filters.limit = Number.parseInt(limit, 10);
+    }
 
     console.log(`[API] Searching for: "${query}" with filters:`, filters);
 

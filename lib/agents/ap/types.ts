@@ -7,19 +7,19 @@ import type { CoreMessage } from "ai";
 /**
  * Settings for AP agent operations
  */
-export interface APAgentSettings {
+export type APAgentSettings = {
   model?: string;
   autoApprovalThreshold?: number;
   requireABN?: boolean;
   gstValidation?: boolean;
   duplicateCheckDays?: number;
   defaultPaymentTerms?: string;
-}
+};
 
 /**
  * Request format for AP agent API
  */
-export interface APAgentRequest {
+export type APAgentRequest = {
   messages: CoreMessage[];
   settings?: APAgentSettings;
-}
+};

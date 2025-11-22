@@ -2,18 +2,21 @@
 
 import { Card } from "@/components/ui/card";
 
-export interface AgeingBucket {
+export type AgeingBucket = {
   bucket: string;
   count: number;
   total: number;
-}
+};
 
-interface APAgeingChartProps {
+type APAgeingChartProps = {
   ageingSummary: AgeingBucket[];
   isLoading?: boolean;
-}
+};
 
-export function APAgeingChart({ ageingSummary, isLoading }: APAgeingChartProps) {
+export function APAgeingChart({
+  ageingSummary,
+  isLoading,
+}: APAgeingChartProps) {
   if (isLoading) {
     return (
       <Card className="p-6">
@@ -52,7 +55,8 @@ export function APAgeingChart({ ageingSummary, isLoading }: APAgeingChartProps) 
       <div className="space-y-4">
         {ageingSummary.map((bucket) => {
           const percentage = maxTotal > 0 ? (bucket.total / maxTotal) * 100 : 0;
-          const shareOfTotal = grandTotal > 0 ? (bucket.total / grandTotal) * 100 : 0;
+          const shareOfTotal =
+            grandTotal > 0 ? (bucket.total / grandTotal) * 100 : 0;
 
           // Determine color based on bucket
           let colorClass = "bg-green-500";
@@ -65,10 +69,12 @@ export function APAgeingChart({ ageingSummary, isLoading }: APAgeingChartProps) 
           }
 
           return (
-            <div key={bucket.bucket} className="space-y-2">
+            <div className="space-y-2" key={bucket.bucket}>
               <div className="flex items-center justify-between text-sm">
                 <span className="font-medium">
-                  {bucket.bucket === "current" ? "Current" : `${bucket.bucket} days`}
+                  {bucket.bucket === "current"
+                    ? "Current"
+                    : `${bucket.bucket} days`}
                 </span>
                 <span className="text-muted-foreground">
                   {bucket.count} {bucket.count === 1 ? "bill" : "bills"} • $

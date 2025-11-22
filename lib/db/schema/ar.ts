@@ -71,10 +71,9 @@ export const arInvoice = pgTable(
     statusIdx: index("ar_invoice_status_idx").on(table.status),
     dueDateIdx: index("ar_invoice_due_date_idx").on(table.dueDate),
     externalRefIdx: index("ar_invoice_external_ref_idx").on(table.externalRef),
-    externalRefUserIdUnique: uniqueIndex("ar_invoice_external_ref_user_id_unique").on(
-      table.externalRef,
-      table.userId
-    ),
+    externalRefUserIdUnique: uniqueIndex(
+      "ar_invoice_external_ref_user_id_unique"
+    ).on(table.externalRef, table.userId),
   })
 );
 

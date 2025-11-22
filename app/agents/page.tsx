@@ -1,13 +1,11 @@
 import {
   Activity,
   BarChart3,
-  ClipboardList,
   CreditCard,
   DollarSign,
   FileText,
   Gauge,
   Network,
-  ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { AgentSummaryCard } from "@/components/agents/agent-summary-card";

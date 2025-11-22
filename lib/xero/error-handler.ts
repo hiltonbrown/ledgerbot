@@ -19,11 +19,11 @@ export type XeroErrorType =
   | "network"
   | "unknown";
 
-export interface XeroValidationError {
+export type XeroValidationError = {
   Message: string;
-}
+};
 
-export interface XeroErrorResponse {
+export type XeroErrorResponse = {
   Type?: string;
   Title?: string;
   Status?: number;
@@ -33,9 +33,9 @@ export interface XeroErrorResponse {
   Elements?: Array<{
     ValidationErrors?: XeroValidationError[];
   }>;
-}
+};
 
-export interface ParsedXeroError {
+export type ParsedXeroError = {
   type: XeroErrorType;
   message: string;
   userMessage: string;
@@ -43,7 +43,7 @@ export interface ParsedXeroError {
   originalError?: unknown;
   statusCode?: number;
   details?: string[];
-}
+};
 
 /**
  * Extract X-Correlation-Id from response headers
@@ -328,17 +328,17 @@ export function isRetryableError(parsedError: ParsedXeroError): boolean {
 /**
  * Retry configuration for Xero API calls
  */
-export interface RetryConfig {
+export type RetryConfig = {
   maxRetries: number;
   initialDelayMs: number;
   maxDelayMs: number;
   backoffMultiplier: number;
-}
+};
 
 const DEFAULT_RETRY_CONFIG: RetryConfig = {
   maxRetries: 3,
   initialDelayMs: 1000, // 1 second
-  maxDelayMs: 10000, // 10 seconds
+  maxDelayMs: 10_000, // 10 seconds
   backoffMultiplier: 2, // Exponential backoff
 };
 

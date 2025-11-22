@@ -1,15 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { CreditCard, RefreshCw, Calendar } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Calendar, CreditCard, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import {
+  type AgeingBucket,
+  APAgeingChart,
+} from "@/components/agents/ap/ap-ageing-chart";
+import type { CreditorDetailsData } from "@/components/agents/ap/ap-creditor-details";
+import {
+  APCreditorTable,
+  type ContactWithStats,
+} from "@/components/agents/ap/ap-creditor-table";
+import {
+  APFilterTabs,
+  type FilterType,
+} from "@/components/agents/ap/ap-filter-tabs";
 import { APKPICards, type APKPIs } from "@/components/agents/ap/ap-kpi-cards";
-import { APAgeingChart, type AgeingBucket } from "@/components/agents/ap/ap-ageing-chart";
-import { APCreditorTable, type ContactWithStats } from "@/components/agents/ap/ap-creditor-table";
-import { APFilterTabs, type FilterType } from "@/components/agents/ap/ap-filter-tabs";
 import { APPaymentScheduleModal } from "@/components/agents/ap/ap-payment-schedule-modal";
-import { type CreditorDetailsData } from "@/components/agents/ap/ap-creditor-details";
 import { toast } from "@/components/toast";
+import { Button } from "@/components/ui/button";
 
 export default function AccountsPayableAgentPage() {
   const [kpis, setKpis] = useState<APKPIs | null>(null);
@@ -22,11 +31,15 @@ export default function AccountsPayableAgentPage() {
   const [showPaymentSchedule, setShowPaymentSchedule] = useState(false);
 
   // Expanded creditor data
-  const [expandedData, setExpandedData] = useState<Record<string, CreditorDetailsData | null>>({});
-  const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
+  const [expandedData, setExpandedData] = useState<
+    Record<string, CreditorDetailsData | null>
+  >({});
+  const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>(
+    {}
+  );
 
   // Load KPIs
-  const loadKPIs = async () => {
+  const loadKPIs = useCallback(async () => {
     try {
       setIsLoadingKPIs(true);
       const response = await fetch("/api/agents/ap/kpis");
@@ -43,15 +56,13 @@ export default function AccountsPayableAgentPage() {
     } finally {
       setIsLoadingKPIs(false);
     }
-  };
+  }, []);
 
   // Load creditors
-  const loadCreditors = async (filter: FilterType = "all") => {
+  const loadCreditors = useCallback(async (filter: FilterType = "all") => {
     try {
       setIsLoadingCreditors(true);
-      const response = await fetch(
-        `/api/agents/ap/creditors?filter=${filter}`
-      );
+      const response = await fetch(`/api/agents/ap/creditors?filter=${filter}`);
       const data = await response.json();
 
       if (data.success && data.creditors) {
@@ -64,7 +75,7 @@ export default function AccountsPayableAgentPage() {
     } finally {
       setIsLoadingCreditors(false);
     }
-  };
+  }, []);
 
   // Sync from Xero
   const handleSyncFromXero = async () => {
@@ -123,7 +134,9 @@ export default function AccountsPayableAgentPage() {
       // Set loading state
       setLoadingStates((prev) => ({ ...prev, [creditor.id]: true }));
 
-      const response = await fetch(`/api/agents/ap/creditors/${creditor.id}/commentary`);
+      const response = await fetch(
+        `/api/agents/ap/creditors/${creditor.id}/commentary`
+      );
       const result = await response.json();
 
       if (result.success && result.data) {
@@ -155,7 +168,7 @@ export default function AccountsPayableAgentPage() {
   useEffect(() => {
     loadKPIs();
     loadCreditors();
-  }, []);
+  }, [loadCreditors, loadKPIs]);
 
   // Calculate filter counts
   const filterCounts = {
@@ -182,12 +195,14 @@ export default function AccountsPayableAgentPage() {
         </div>
         <div className="flex gap-2">
           <Button
-            variant="outline"
-            onClick={handleSyncFromXero}
-            disabled={isSyncing}
             className="gap-2"
+            disabled={isSyncing}
+            onClick={handleSyncFromXero}
+            variant="outline"
           >
-            <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`}
+            />
             Sync from Xero
           </Button>
           <Button
@@ -201,7 +216,7 @@ export default function AccountsPayableAgentPage() {
       </div>
 
       {/* KPI Cards */}
-      <APKPICards kpis={kpis} isLoading={isLoadingKPIs} />
+      <APKPICards isLoading={isLoadingKPIs} kpis={kpis} />
 
       {/* Ageing Summary */}
       <APAgeingChart ageingSummary={ageingSummary} isLoading={isLoadingKPIs} />
@@ -210,24 +225,24 @@ export default function AccountsPayableAgentPage() {
       <div className="flex items-center justify-between">
         <APFilterTabs
           activeFilter={activeFilter}
-          onFilterChange={handleFilterChange}
           counts={filterCounts}
+          onFilterChange={handleFilterChange}
         />
       </div>
 
       {/* Creditor Table */}
       <APCreditorTable
         creditors={creditors}
-        isLoading={isLoadingCreditors}
-        onRowExpand={handleRowExpand}
         expandedData={expandedData}
+        isLoading={isLoadingCreditors}
         loadingStates={loadingStates}
+        onRowExpand={handleRowExpand}
       />
 
       {/* Payment Schedule Modal */}
       <APPaymentScheduleModal
-        open={showPaymentSchedule}
         onClose={() => setShowPaymentSchedule(false)}
+        open={showPaymentSchedule}
       />
     </div>
   );

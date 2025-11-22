@@ -20,11 +20,11 @@ export default function AnalyticsAgentPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" disabled className="gap-2">
+          <Button className="gap-2" disabled variant="outline">
             <RefreshCw className="h-4 w-4" />
             Sync Data
           </Button>
-          <Button disabled className="gap-2">
+          <Button className="gap-2" disabled>
             <Download className="h-4 w-4" />
             Export Report
           </Button>
@@ -47,8 +47,8 @@ export default function AnalyticsAgentPage() {
             <p className="text-muted-foreground text-sm">
               Configure settings via{" "}
               <a
-                href="/settings/agents"
                 className="font-medium text-primary hover:underline"
+                href="/settings/agents"
               >
                 Settings → Agents
               </a>

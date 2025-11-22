@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import type { Integration } from "./integration-card";
 
-interface XeroConnection {
+type XeroConnection = {
   id: string;
   tenantId: string;
   tenantName: string | null;
@@ -28,12 +28,12 @@ interface XeroConnection {
   lastError: string | null;
   lastErrorType: string | null;
   lastCorrelationId: string | null;
-}
+};
 
-interface XeroIntegrationCardProps {
+type XeroIntegrationCardProps = {
   integration: Integration;
   initialConnections: XeroConnection[];
-}
+};
 
 // The refresh token expires after 60 days.
 // Thresholds for warning and critical status:
@@ -41,7 +41,7 @@ interface XeroIntegrationCardProps {
 // - WARNING_THRESHOLD_DAYS: 10 days before expiry (ageDays > 50)
 const REFRESH_TOKEN_EXPIRY_DAYS = 60;
 const CRITICAL_THRESHOLD_DAYS = 55; // 5 days before expiry
-const WARNING_THRESHOLD_DAYS = 50;  // 10 days before expiry
+const WARNING_THRESHOLD_DAYS = 50; // 10 days before expiry
 
 function getRefreshTokenStatus(refreshTokenIssuedAt: Date) {
   const now = Date.now();
@@ -85,11 +85,18 @@ function formatLastRefresh(updatedAt: Date): string {
   const diffHours = Math.floor(diffMs / (60 * 60 * 1000));
   const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
 
-  if (diffMins < 1) return "Just now";
-  if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? "s" : ""} ago`;
-  if (diffHours < 24)
+  if (diffMins < 1) {
+    return "Just now";
+  }
+  if (diffMins < 60) {
+    return `${diffMins} minute${diffMins !== 1 ? "s" : ""} ago`;
+  }
+  if (diffHours < 24) {
     return `${diffHours} hour${diffHours !== 1 ? "s" : ""} ago`;
-  if (diffDays < 30) return `${diffDays} day${diffDays !== 1 ? "s" : ""} ago`;
+  }
+  if (diffDays < 30) {
+    return `${diffDays} day${diffDays !== 1 ? "s" : ""} ago`;
+  }
 
   return new Date(updatedAt).toLocaleDateString();
 }
@@ -238,7 +245,7 @@ export function XeroIntegrationCard({
         let errorMsg = "Failed to refresh connections after switch";
         try {
           const errorData = await refreshed.json();
-          if (errorData && errorData.message) {
+          if (errorData?.message) {
             errorMsg += `: ${errorData.message}`;
           }
         } catch {
@@ -338,21 +345,19 @@ export function XeroIntegrationCard({
               const tokenStatus = getRefreshTokenStatus(
                 activeConnection.refreshTokenIssuedAt
               );
-              const lastRefresh = formatLastRefresh(
-                activeConnection.updatedAt
-              );
+              const lastRefresh = formatLastRefresh(activeConnection.updatedAt);
 
               return (
                 <div className="mt-3 space-y-1.5 border-t pt-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">
-                      Refresh Token
-                    </span>
+                    <span className="text-muted-foreground">Refresh Token</span>
                     <div className="flex items-center gap-1.5">
                       <span
                         className={`inline-block h-2 w-2 rounded-full ${tokenStatus.bgColor}`}
                       />
-                      <span className={`font-medium ${tokenStatus.statusColor}`}>
+                      <span
+                        className={`font-medium ${tokenStatus.statusColor}`}
+                      >
                         {tokenStatus.statusText}
                       </span>
                     </div>

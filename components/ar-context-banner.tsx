@@ -34,15 +34,26 @@ export function ArContextBanner({
   };
 
   // Canonical risk calculation function
-  const getRiskLevel = (daysOverdue: number): "low" | "medium" | "high" | "critical" => {
-    if (daysOverdue <= 30) return "low";
-    if (daysOverdue <= 60) return "medium";
-    if (daysOverdue <= 90) return "high";
+  const getRiskLevel = (
+    daysOverdue: number
+  ): "low" | "medium" | "high" | "critical" => {
+    if (daysOverdue <= 30) {
+      return "low";
+    }
+    if (daysOverdue <= 60) {
+      return "medium";
+    }
+    if (daysOverdue <= 90) {
+      return "high";
+    }
     return "critical";
   };
 
   // Mapping from risk level to label and badge variant
-  const riskLevelMap: Record<"low" | "medium" | "high" | "critical", { label: string; variant: "secondary" | "default" | "destructive" }> = {
+  const riskLevelMap: Record<
+    "low" | "medium" | "high" | "critical",
+    { label: string; variant: "secondary" | "default" | "destructive" }
+  > = {
     low: { label: "Low Risk", variant: "secondary" },
     medium: { label: "Medium Risk", variant: "default" },
     high: { label: "High Risk", variant: "destructive" },
@@ -96,7 +107,12 @@ export function ArContextBanner({
             </Button>
           </Link>
           {onClose && (
-            <Button aria-label="Close AR context banner" onClick={onClose} size="sm" variant="ghost">
+            <Button
+              aria-label="Close AR context banner"
+              onClick={onClose}
+              size="sm"
+              variant="ghost"
+            >
               <X className="h-4 w-4" />
             </Button>
           )}

@@ -1,13 +1,13 @@
 import "server-only";
 
-import { and, desc, eq, lte, sql, or } from "drizzle-orm";
+import { and, desc, eq, lte, or, sql } from "drizzle-orm";
 import { ChatSDKError } from "@/lib/errors";
 import { db } from "../queries";
 import type {
-  ApBill,
-  ApBillInsert,
   ApBankChange,
   ApBankChangeInsert,
+  ApBill,
+  ApBillInsert,
   ApCommsArtefact,
   ApCommsArtefactInsert,
   ApContact,
@@ -22,8 +22,8 @@ import type {
   ApRiskAssessmentInsert,
 } from "../schema/ap";
 import {
-  apBill,
   apBankChange,
+  apBill,
   apCommsArtefact,
   apContact,
   apNote,
@@ -91,21 +91,16 @@ export async function listBillsDue({
   status,
 }: ListBillsDueParams): Promise<ListBillsDueResult> {
   try {
-    const conditions = [
-      eq(apBill.userId, userId),
-      lte(apBill.dueDate, asOf),
-    ];
+    const conditions = [eq(apBill.userId, userId), lte(apBill.dueDate, asOf)];
 
     // Filter by status if provided
     if (status && status.length > 0) {
       conditions.push(
-        or(...status.map((s) => eq(apBill.status, s))) as typeof conditions[0]
+        or(...status.map((s) => eq(apBill.status, s))) as (typeof conditions)[0]
       );
     } else {
       // Default: exclude paid and cancelled bills
-      conditions.push(
-        sql`${apBill.status} NOT IN ('paid', 'cancelled')`
-      );
+      conditions.push(sql`${apBill.status} NOT IN ('paid', 'cancelled')`);
     }
 
     if (supplierId) {
@@ -145,10 +140,7 @@ export async function listBillsDue({
     };
   } catch (error) {
     console.error("[AP] List bills due error:", error);
-    throw new ChatSDKError(
-      "bad_request:database",
-      "Failed to list bills due"
-    );
+    throw new ChatSDKError("bad_request:database", "Failed to list bills due");
   }
 }
 
@@ -170,13 +162,15 @@ export async function getBillWithDetails(
       .where(and(eq(apBill.id, billId), eq(apBill.userId, userId)))
       .limit(1);
 
-    if (results.length === 0) return null;
+    if (results.length === 0) {
+      return null;
+    }
 
     const row = results[0];
     const daysOverdue = Math.max(
       0,
       Math.floor(
-        (new Date().getTime() - new Date(row.bill.dueDate).getTime()) /
+        (Date.now() - new Date(row.bill.dueDate).getTime()) /
           (1000 * 60 * 60 * 24)
       )
     );
@@ -203,7 +197,10 @@ export async function getBillWithDetails(
       .select()
       .from(apBankChange)
       .where(
-        and(eq(apBankChange.contactId, row.contact.id), eq(apBankChange.userId, userId))
+        and(
+          eq(apBankChange.contactId, row.contact.id),
+          eq(apBankChange.userId, userId)
+        )
       )
       .orderBy(desc(apBankChange.detectedAt));
 
@@ -377,7 +374,9 @@ export async function insertPayment(
 
     return { payment: newPayment, bill: updatedBill };
   } catch (error) {
-    if (error instanceof ChatSDKError) throw error;
+    if (error instanceof ChatSDKError) {
+      throw error;
+    }
     console.error("[AP] Insert payment error:", error);
     throw new ChatSDKError("bad_request:database", "Failed to insert payment");
   }
@@ -403,12 +402,11 @@ export async function markBillPaid(
     const { bill } = await insertPayment(payment);
     return bill;
   } catch (error) {
-    if (error instanceof ChatSDKError) throw error;
+    if (error instanceof ChatSDKError) {
+      throw error;
+    }
     console.error("[AP] Mark bill paid error:", error);
-    throw new ChatSDKError(
-      "bad_request:database",
-      "Failed to mark bill paid"
-    );
+    throw new ChatSDKError("bad_request:database", "Failed to mark bill paid");
   }
 }
 
@@ -419,10 +417,7 @@ export async function recordBankChange(
   change: ApBankChangeInsert
 ): Promise<ApBankChange> {
   try {
-    const [created] = await db
-      .insert(apBankChange)
-      .values(change)
-      .returning();
+    const [created] = await db.insert(apBankChange).values(change).returning();
     return created;
   } catch (error) {
     console.error("[AP] Record bank change error:", error);
@@ -497,7 +492,10 @@ export async function getBillRiskAssessment(
       .select()
       .from(apRiskAssessment)
       .where(
-        and(eq(apRiskAssessment.billId, billId), eq(apRiskAssessment.userId, userId))
+        and(
+          eq(apRiskAssessment.billId, billId),
+          eq(apRiskAssessment.userId, userId)
+        )
       )
       .orderBy(desc(apRiskAssessment.assessedAt))
       .limit(1);
@@ -545,7 +543,10 @@ export async function getBillArtefacts(
       .select()
       .from(apCommsArtefact)
       .where(
-        and(eq(apCommsArtefact.billId, billId), eq(apCommsArtefact.userId, userId))
+        and(
+          eq(apCommsArtefact.billId, billId),
+          eq(apCommsArtefact.userId, userId)
+        )
       )
       .orderBy(desc(apCommsArtefact.createdAt));
   } catch (error) {
@@ -585,10 +586,7 @@ export async function getBillNotes(
       .orderBy(desc(apNote.createdAt));
   } catch (error) {
     console.error("[AP] Get bill notes error:", error);
-    throw new ChatSDKError(
-      "bad_request:database",
-      "Failed to get bill notes"
-    );
+    throw new ChatSDKError("bad_request:database", "Failed to get bill notes");
   }
 }
 
@@ -670,7 +668,9 @@ export async function getContactsWithStats(
     }
 
     // Sort by total outstanding (descending)
-    return contactsWithStats.sort((a, b) => b.totalOutstanding - a.totalOutstanding);
+    return contactsWithStats.sort(
+      (a, b) => b.totalOutstanding - a.totalOutstanding
+    );
   } catch (error) {
     console.error("[AP] Get contacts with stats error:", error);
     throw new ChatSDKError(
@@ -754,7 +754,8 @@ export async function getAPKPIs(userId: string): Promise<APKPIs> {
       bills.length > 0
         ? bills.reduce((sum, bill) => {
             const days = Math.floor(
-              (new Date(bill.dueDate).getTime() - new Date(bill.issueDate).getTime()) /
+              (new Date(bill.dueDate).getTime() -
+                new Date(bill.issueDate).getTime()) /
                 (1000 * 60 * 60 * 24)
             );
             return sum + days;
@@ -839,10 +840,7 @@ export async function getUnverifiedBankChanges(
       .select()
       .from(apBankChange)
       .where(
-        and(
-          eq(apBankChange.userId, userId),
-          eq(apBankChange.isVerified, false)
-        )
+        and(eq(apBankChange.userId, userId), eq(apBankChange.isVerified, false))
       )
       .orderBy(desc(apBankChange.detectedAt));
   } catch (error) {
@@ -857,7 +855,9 @@ export async function getUnverifiedBankChanges(
 /**
  * Get high-risk bills for a user
  */
-export async function getHighRiskBills(userId: string): Promise<BillWithContact[]> {
+export async function getHighRiskBills(
+  userId: string
+): Promise<BillWithContact[]> {
   try {
     // Get all risk assessments with high or critical risk
     const highRiskAssessments = await db
@@ -890,7 +890,10 @@ export async function getHighRiskBills(userId: string): Promise<BillWithContact[
       .where(
         and(
           eq(apBill.userId, userId),
-          sql`${apBill.id} IN (${sql.join(billIds.map((id) => sql`${id}`), sql`, `)})`
+          sql`${apBill.id} IN (${sql.join(
+            billIds.map((id) => sql`${id}`),
+            sql`, `
+          )})`
         )
       )
       .orderBy(desc(apBill.dueDate));
@@ -899,7 +902,7 @@ export async function getHighRiskBills(userId: string): Promise<BillWithContact[
       const daysOverdue = Math.max(
         0,
         Math.floor(
-          (new Date().getTime() - new Date(row.bill.dueDate).getTime()) /
+          (Date.now() - new Date(row.bill.dueDate).getTime()) /
             (1000 * 60 * 60 * 24)
         )
       );

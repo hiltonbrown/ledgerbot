@@ -227,7 +227,7 @@ export function PromptSettingsForm({ data }: { data: UserSettings }) {
         type: "success",
         description: "Your personalisation settings have been saved.",
       });
-    } catch (error) {
+    } catch (_error) {
       toast({
         type: "error",
         description: "Failed to save settings. Please try again.",

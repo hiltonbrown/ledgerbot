@@ -1,17 +1,17 @@
 "use client";
 
-import { FileText, ZoomIn, ZoomOut, Download } from "lucide-react";
+import { Download, FileText, ZoomIn, ZoomOut } from "lucide-react";
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
-interface InvoiceViewerProps {
+type InvoiceViewerProps = {
   fileUrl: string | null;
   fileName: string | null;
   fileType: "pdf" | "image" | null;
-}
+};
 
 export function InvoiceViewer({
   fileUrl,
@@ -29,7 +29,9 @@ export function InvoiceViewer({
   };
 
   const handleDownload = () => {
-    if (!fileUrl) return;
+    if (!fileUrl) {
+      return;
+    }
     window.open(fileUrl, "_blank");
   };
 
@@ -61,10 +63,10 @@ export function InvoiceViewer({
           </CardTitle>
           <div className="flex items-center gap-2">
             <Button
+              disabled={zoom <= 50}
               onClick={handleZoomOut}
               size="sm"
               variant="outline"
-              disabled={zoom <= 50}
             >
               <ZoomOut className="h-4 w-4" />
             </Button>
@@ -72,14 +74,19 @@ export function InvoiceViewer({
               {zoom}%
             </span>
             <Button
+              disabled={zoom >= 200}
               onClick={handleZoomIn}
               size="sm"
               variant="outline"
-              disabled={zoom >= 200}
             >
               <ZoomIn className="h-4 w-4" />
             </Button>
-            <Button onClick={handleDownload} size="sm" variant="outline" aria-label="Download invoice">
+            <Button
+              aria-label="Download invoice"
+              onClick={handleDownload}
+              size="sm"
+              variant="outline"
+            >
               <Download className="h-4 w-4" />
             </Button>
           </div>
@@ -94,13 +101,13 @@ export function InvoiceViewer({
                   "border-0 bg-white shadow-lg transition-all",
                   "min-h-[800px]"
                 )}
+                sandbox="allow-same-origin"
                 src={fileUrl}
                 style={{
                   width: `${zoom}%`,
                   height: `${(zoom / 100) * 800}px`,
                 }}
                 title="Invoice PDF"
-                sandbox="allow-same-origin"
               />
             ) : (
               <img

@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { Info, BarChart3 } from "lucide-react";
+import { BarChart3, Info } from "lucide-react";
 import { ModelComparisonChart } from "@/components/settings/model-comparison-chart";
 import { ModelTokenUsage } from "@/components/settings/model-token-usage";
 import { SettingsSection } from "@/components/settings/settings-section";

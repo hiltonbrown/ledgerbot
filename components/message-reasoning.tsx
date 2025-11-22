@@ -21,7 +21,7 @@ export function MessageReasoning({
   defaultOpen = true,
 }: MessageReasoningProps) {
   const hasReasoningText = reasoning.trim().length > 0;
-  const [hasBeenStreaming, setHasBeenStreaming] = useState(
+  const [_hasBeenStreaming, setHasBeenStreaming] = useState(
     isLoading || hasReasoningText
   );
 
@@ -33,7 +33,9 @@ export function MessageReasoning({
 
   // Parse reasoning into steps (split by double newlines or numbered lists)
   const parseReasoningSteps = (text: string): string[] => {
-    if (!text.trim()) return [];
+    if (!text.trim()) {
+      return [];
+    }
 
     // Try to split by numbered steps (1., 2., etc.)
     const numberedSteps = text.match(

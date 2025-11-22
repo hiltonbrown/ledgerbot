@@ -23,7 +23,10 @@ export const executeMonthEndCloseTool = tool({
 
     try {
       // Direct workflow execution (createRunAsync is not part of AI SDK)
-      const workflowResult = await monthEndCloseWorkflow.execute({ month, userId });
+      const workflowResult = await monthEndCloseWorkflow.execute({
+        month,
+        userId,
+      });
 
       return {
         success: true,
@@ -61,11 +64,17 @@ export const executeInvestorUpdateTool = tool({
 
     try {
       // Direct workflow execution (createRunAsync is not part of AI SDK)
-      const workflowResult = await investorUpdateWorkflow.execute({ period, userId });
+      const workflowResult = await investorUpdateWorkflow.execute({
+        period,
+        userId,
+      });
 
       return {
         success: true,
-        reportId: workflowResult.qaPairs.length > 0 ? "investor-report-123" : "investor-report-123",
+        reportId:
+          workflowResult.qaPairs.length > 0
+            ? "investor-report-123"
+            : "investor-report-123",
         forecastId: "forecast-123",
       };
     } catch (error) {
@@ -92,7 +101,10 @@ export const executeAtoAuditPackTool = tool({
 
     try {
       // Direct workflow execution (createRunAsync is not part of AI SDK)
-      const workflowResult = await atoAuditPackWorkflow.execute({ period, userId });
+      const workflowResult = await atoAuditPackWorkflow.execute({
+        period,
+        userId,
+      });
 
       return {
         success: true,

@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { ExternalLink, Info, Book } from "lucide-react";
+import { Book, ExternalLink, Info } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ChartOfAccountsDisplay } from "@/components/settings/chart-of-accounts-display";

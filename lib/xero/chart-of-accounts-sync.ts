@@ -216,8 +216,12 @@ export function formatChartOfAccountsForPrompt(
 
   // Filter accounts
   let filtered = accounts.filter((acc) => {
-    if (!includeArchived && acc.status === "ARCHIVED") return false;
-    if (acc.status === "DELETED") return false;
+    if (!includeArchived && acc.status === "ARCHIVED") {
+      return false;
+    }
+    if (acc.status === "DELETED") {
+      return false;
+    }
     return true;
   });
 
@@ -266,7 +270,9 @@ function formatGroupedByType(
 
   for (const accountClass of classOrder) {
     const classAccounts = grouped[accountClass];
-    if (!classAccounts || classAccounts.length === 0) continue;
+    if (!classAccounts || classAccounts.length === 0) {
+      continue;
+    }
 
     sections.push(`\n${accountClass}S:`);
 

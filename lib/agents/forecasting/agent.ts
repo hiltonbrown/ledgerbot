@@ -77,7 +77,7 @@ function normaliseNumber(value: unknown) {
 }
 
 function buildScenarioCsv(
-  scenarios: Array<z.infer<typeof RESPONSE_SCHEMA>["scenarios"][number]>,
+  scenarios: z.infer<typeof RESPONSE_SCHEMA>["scenarios"][number][],
   currency: string
 ) {
   const header = [

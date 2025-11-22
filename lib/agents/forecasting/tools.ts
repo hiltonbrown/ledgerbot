@@ -30,7 +30,12 @@ export function createForecastingXeroTools(userId: string) {
           .default("MONTH")
           .describe("Reporting timeframe"),
       }),
-      execute: async (args: { fromDate: string; toDate: string; periods?: number; timeframe?: string }) => {
+      execute: async (args: {
+        fromDate: string;
+        toDate: string;
+        periods?: number;
+        timeframe?: string;
+      }) => {
         const result = await executeXeroMCPTool(
           userId,
           "xero_get_profit_and_loss",

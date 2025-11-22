@@ -1,8 +1,5 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertTriangle,
   Banknote,
@@ -11,9 +8,12 @@ import {
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
-import type { ApBill, ApPayment, ApBankChange } from "@/lib/db/schema/ap";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { ApBankChange, ApBill, ApPayment } from "@/lib/db/schema/ap";
 
-export interface CreditorDetailsData {
+export type CreditorDetailsData = {
   bills: ApBill[];
   recentPayments: (ApPayment & { billNumber?: string })[];
   bankChanges: ApBankChange[];
@@ -24,12 +24,12 @@ export interface CreditorDetailsData {
     avgDaysToPayment: number;
   };
   commentary: string;
-}
+};
 
-interface APCreditorDetailsProps {
+type APCreditorDetailsProps = {
   data: CreditorDetailsData | null;
   isLoading: boolean;
-}
+};
 
 export function APCreditorDetails({ data, isLoading }: APCreditorDetailsProps) {
   if (isLoading) {
@@ -80,7 +80,7 @@ export function APCreditorDetails({ data, isLoading }: APCreditorDetailsProps) {
                 const headingMatch = section.match(/^\*\*(.*?)\*\*/);
                 if (headingMatch) {
                   return (
-                    <div key={idx} className="mb-3">
+                    <div className="mb-3" key={idx}>
                       <h5 className="mb-2 font-semibold text-sm">
                         {headingMatch[1]}
                       </h5>
@@ -91,7 +91,7 @@ export function APCreditorDetails({ data, isLoading }: APCreditorDetailsProps) {
                   );
                 }
                 return (
-                  <p key={idx} className="mb-3 text-muted-foreground text-sm">
+                  <p className="mb-3 text-muted-foreground text-sm" key={idx}>
                     {section}
                   </p>
                 );
@@ -175,23 +175,20 @@ export function APCreditorDetails({ data, isLoading }: APCreditorDetailsProps) {
                       Number.parseFloat(bill.amountPaid)
                     ).toFixed(2);
                     const daysOverdue = Math.floor(
-                      (new Date().getTime() -
-                        new Date(bill.dueDate).getTime()) /
+                      (Date.now() - new Date(bill.dueDate).getTime()) /
                         (1000 * 60 * 60 * 24)
                     );
 
                     return (
                       <div
-                        key={bill.id}
                         className="flex items-center justify-between border-b pb-2 last:border-0"
+                        key={bill.id}
                       >
                         <div>
                           <p className="font-medium text-sm">{bill.number}</p>
                           <p className="text-muted-foreground text-xs">
                             Due{" "}
-                            {new Date(bill.dueDate).toLocaleDateString(
-                              "en-AU"
-                            )}
+                            {new Date(bill.dueDate).toLocaleDateString("en-AU")}
                             {daysOverdue > 0 && (
                               <span className="ml-1 text-red-600">
                                 ({daysOverdue} days overdue)
@@ -201,13 +198,16 @@ export function APCreditorDetails({ data, isLoading }: APCreditorDetailsProps) {
                         </div>
                         <div className="text-right">
                           <p className="font-semibold text-sm">
-                            ${Number.parseFloat(amountDue).toLocaleString("en-AU")}
+                            $
+                            {Number.parseFloat(amountDue).toLocaleString(
+                              "en-AU"
+                            )}
                           </p>
                           <Badge
+                            className="text-xs"
                             variant={
                               daysOverdue > 0 ? "destructive" : "outline"
                             }
-                            className="text-xs"
                           >
                             {bill.status}
                           </Badge>
@@ -235,21 +235,19 @@ export function APCreditorDetails({ data, isLoading }: APCreditorDetailsProps) {
                 <div className="space-y-3">
                   {recentPayments.map((payment) => (
                     <div
-                      key={payment.id}
                       className="flex items-center justify-between border-b pb-2 last:border-0"
+                      key={payment.id}
                     >
                       <div>
                         <p className="font-medium text-sm">
                           {payment.billNumber || "Unknown"}
                         </p>
                         <p className="text-muted-foreground text-xs">
-                          {new Date(payment.paidAt).toLocaleDateString(
-                            "en-AU"
-                          )}
+                          {new Date(payment.paidAt).toLocaleDateString("en-AU")}
                           {payment.method && ` • ${payment.method}`}
                         </p>
                       </div>
-                      <p className="font-semibold text-sm text-green-600">
+                      <p className="font-semibold text-green-600 text-sm">
                         $
                         {Number.parseFloat(
                           payment.amount.toString()
@@ -273,8 +271,8 @@ export function APCreditorDetails({ data, isLoading }: APCreditorDetailsProps) {
                 <div className="space-y-3">
                   {bankChanges.map((change) => (
                     <div
+                      className="border-orange-200 border-b pb-3 last:border-0 dark:border-orange-800"
                       key={change.id}
-                      className="border-b border-orange-200 pb-3 last:border-0 dark:border-orange-800"
                     >
                       <div className="mb-2 flex items-center justify-between">
                         <span className="font-medium text-sm">
@@ -283,8 +281,10 @@ export function APCreditorDetails({ data, isLoading }: APCreditorDetailsProps) {
                           )}
                         </span>
                         <Badge
-                          variant={change.isVerified ? "default" : "destructive"}
                           className="text-xs"
+                          variant={
+                            change.isVerified ? "default" : "destructive"
+                          }
                         >
                           {change.isVerified ? "Verified" : "Unverified"}
                         </Badge>

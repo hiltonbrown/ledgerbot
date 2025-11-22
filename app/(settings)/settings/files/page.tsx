@@ -1,4 +1,4 @@
-import { Info, FileText } from "lucide-react";
+import { FileText, Info } from "lucide-react";
 import { ContextFileList } from "@/components/settings/context-file-list";
 import { ContextFileUpload } from "@/components/settings/context-file-upload";
 import { SettingsSection } from "@/components/settings/settings-section";

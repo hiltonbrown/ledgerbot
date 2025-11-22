@@ -1,6 +1,6 @@
 "use client";
 
-import { Network, Play, GitBranch } from "lucide-react";
+import { GitBranch, Network, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -20,11 +20,11 @@ export default function WorkflowAgentPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" disabled className="gap-2">
+          <Button className="gap-2" disabled variant="outline">
             <GitBranch className="h-4 w-4" />
             View Workflows
           </Button>
-          <Button disabled className="gap-2">
+          <Button className="gap-2" disabled>
             <Play className="h-4 w-4" />
             Run Workflow
           </Button>
@@ -48,8 +48,8 @@ export default function WorkflowAgentPage() {
             <p className="text-muted-foreground text-sm">
               Configure settings via{" "}
               <a
-                href="/settings/agents"
                 className="font-medium text-primary hover:underline"
+                href="/settings/agents"
               >
                 Settings → Agents
               </a>

@@ -215,10 +215,10 @@ export default function QandAAgentPage() {
         </div>
         <div className="flex gap-2">
           <Button
-            variant="outline"
-            onClick={handleManualRefresh}
-            disabled={isRefreshingSources}
             className="gap-2"
+            disabled={isRefreshingSources}
+            onClick={handleManualRefresh}
+            variant="outline"
           >
             <RefreshCw
               className={`h-4 w-4 ${isRefreshingSources ? "animate-spin" : ""}`}

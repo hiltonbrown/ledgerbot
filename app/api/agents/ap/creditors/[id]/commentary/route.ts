@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
 import { generateText } from "ai";
-import { getAuthUser } from "@/lib/auth/clerk-helpers";
+import { and, desc, eq, sql } from "drizzle-orm";
+import { NextResponse } from "next/server";
 import { myProvider } from "@/lib/ai/providers";
+import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import { db } from "@/lib/db/queries";
-import { apBill, apContact, apBankChange, apPayment } from "@/lib/db/schema/ap";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { apBankChange, apBill, apContact, apPayment } from "@/lib/db/schema/ap";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,16 +15,13 @@ export const maxDuration = 30;
  * Generate AI commentary for a specific creditor
  */
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getAuthUser();
     if (!user) {
-      return NextResponse.json(
-        { error: "Not authenticated" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
     const { id } = await params;
@@ -73,7 +70,9 @@ export async function GET(
     const bankChanges = await db
       .select()
       .from(apBankChange)
-      .where(and(eq(apBankChange.contactId, id), eq(apBankChange.userId, user.id)))
+      .where(
+        and(eq(apBankChange.contactId, id), eq(apBankChange.userId, user.id))
+      )
       .orderBy(desc(apBankChange.detectedAt))
       .limit(5);
 
@@ -136,11 +135,18 @@ ${bankChanges.length > 0 ? `Most Recent Change: ${new Date(bankChanges[0].detect
 ${bankChanges.length > 0 && !bankChanges[0].isVerified ? "⚠️ UNVERIFIED BANK CHANGE" : ""}
 
 Current Outstanding Bills:
-${bills.slice(0, 5).map((b) => {
-  const amountDue = (Number.parseFloat(b.total) - Number.parseFloat(b.amountPaid)).toFixed(2);
-  const daysOverdue = Math.floor((now.getTime() - new Date(b.dueDate).getTime()) / (1000 * 60 * 60 * 24));
-  return `- ${b.number}: $${amountDue} (${daysOverdue > 0 ? `${daysOverdue} days overdue` : `due ${new Date(b.dueDate).toLocaleDateString("en-AU")}`})`;
-}).join("\n")}
+${bills
+  .slice(0, 5)
+  .map((b) => {
+    const amountDue = (
+      Number.parseFloat(b.total) - Number.parseFloat(b.amountPaid)
+    ).toFixed(2);
+    const daysOverdue = Math.floor(
+      (now.getTime() - new Date(b.dueDate).getTime()) / (1000 * 60 * 60 * 24)
+    );
+    return `- ${b.number}: $${amountDue} (${daysOverdue > 0 ? `${daysOverdue} days overdue` : `due ${new Date(b.dueDate).toLocaleDateString("en-AU")}`})`;
+  })
+  .join("\n")}
 `;
 
     // Generate AI commentary

@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
  * This calls the Xero API DELETE /connections endpoint and deactivates in database
  */
 export async function DELETE(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {

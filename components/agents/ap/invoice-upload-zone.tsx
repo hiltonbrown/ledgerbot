@@ -1,11 +1,11 @@
 "use client";
 
-import { Upload, FileText, Loader2, CheckCircle, XCircle } from "lucide-react";
+import { CheckCircle, FileText, Loader2, Upload, XCircle } from "lucide-react";
 import { useCallback, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-interface InvoiceUploadZoneProps {
+type InvoiceUploadZoneProps = {
   onFileUploaded: (fileData: {
     fileUrl: string;
     fileName: string;
@@ -13,7 +13,7 @@ interface InvoiceUploadZoneProps {
     mimeType: string;
   }) => void;
   disabled?: boolean;
-}
+};
 
 export function InvoiceUploadZone({
   onFileUploaded,
@@ -96,10 +96,14 @@ export function InvoiceUploadZone({
       e.stopPropagation();
       setIsDragging(false);
 
-      if (disabled) return;
+      if (disabled) {
+        return;
+      }
 
       const files = Array.from(e.dataTransfer.files);
-      if (files.length === 0) return;
+      if (files.length === 0) {
+        return;
+      }
 
       const file = files[0];
       await uploadFile(file);
@@ -109,7 +113,9 @@ export function InvoiceUploadZone({
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || files.length === 0) return;
+    if (!files || files.length === 0) {
+      return;
+    }
 
     const file = files[0];
     await uploadFile(file);
@@ -146,7 +152,9 @@ export function InvoiceUploadZone({
             <>
               <CheckCircle className="mb-4 h-16 w-16 text-green-500" />
               <p className="font-medium text-lg">Upload successful!</p>
-              <p className="text-muted-foreground text-sm">{uploadedFileName}</p>
+              <p className="text-muted-foreground text-sm">
+                {uploadedFileName}
+              </p>
               <p className="mt-4 text-muted-foreground text-xs">
                 Drop another file to replace
               </p>
@@ -170,9 +178,7 @@ export function InvoiceUploadZone({
                 )}
               </div>
               <p className="mb-2 font-semibold text-lg">
-                {isDragging
-                  ? "Drop your invoice here"
-                  : "Drag & drop invoice"}
+                {isDragging ? "Drop your invoice here" : "Drag & drop invoice"}
               </p>
               <p className="mb-4 text-muted-foreground text-sm">
                 or click to browse files

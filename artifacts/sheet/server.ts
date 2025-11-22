@@ -14,7 +14,11 @@ export const sheetDocumentHandler = createDocumentHandler<"sheet">({
       system: sheetPrompt,
       prompt: title,
       schema: z.object({
-        csv: z.string().describe("CSV data with newline characters (\\n) separating each row. Each row must be on a new line."),
+        csv: z
+          .string()
+          .describe(
+            "CSV data with newline characters (\\n) separating each row. Each row must be on a new line."
+          ),
       }),
     });
 
@@ -54,7 +58,11 @@ export const sheetDocumentHandler = createDocumentHandler<"sheet">({
       system: updateDocumentPrompt(document.content, "sheet"),
       prompt: description,
       schema: z.object({
-        csv: z.string().describe("CSV data with newline characters (\\n) separating each row. Each row must be on a new line."),
+        csv: z
+          .string()
+          .describe(
+            "CSV data with newline characters (\\n) separating each row. Each row must be on a new line."
+          ),
       }),
     });
 

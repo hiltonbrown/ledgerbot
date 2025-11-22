@@ -10,6 +10,8 @@ import {
   updateChatVisiblityById,
 } from "@/lib/db/queries";
 
+const HEADING_REGEX = /^#\s+(.+)$/m;
+
 export async function saveChatModelAsCookie(model: string) {
   const cookieStore = await cookies();
   cookieStore.set("chat-model", model);
@@ -46,8 +48,8 @@ export async function generateTitleFromContent({
 }) {
   // For text documents, try to extract the first heading
   if (kind === "text") {
-    const headingMatch = content.match(/^#\s+(.+)$/m);
-    if (headingMatch && headingMatch[1]) {
+    const headingMatch = content.match(HEADING_REGEX);
+    if (headingMatch?.[1]) {
       return headingMatch[1].trim();
     }
   }
@@ -79,7 +81,9 @@ Rules:
   });
 
   // Extract short title if pipe character is present (safety fallback)
-  const cleanTitle = title.includes("|") ? title.split("|")[0].trim() : title.trim();
+  const cleanTitle = title.includes("|")
+    ? title.split("|")[0].trim()
+    : title.trim();
 
   return cleanTitle;
 }

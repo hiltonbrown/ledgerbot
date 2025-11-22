@@ -8,12 +8,12 @@ import { z } from "zod";
  * Orchestrates: Documents → Reconciliations → Analytics
  */
 
-export interface MonthEndCloseInput {
+export type MonthEndCloseInput = {
   month: string;
   userId: string;
-}
+};
 
-export interface MonthEndCloseOutput {
+export type MonthEndCloseOutput = {
   reportId: string;
   kpis: {
     grossMargin: number;
@@ -22,7 +22,7 @@ export interface MonthEndCloseOutput {
     revenueGrowth: number;
   };
   status: "complete" | "failed";
-}
+};
 
 /**
  * Execute Month-End Close workflow
@@ -104,17 +104,17 @@ export const monthEndCloseWorkflow = {
  * Orchestrates: Analytics → Forecasting → Q&A
  */
 
-export interface InvestorUpdateInput {
+export type InvestorUpdateInput = {
   period: string;
   userId: string;
-}
+};
 
-export interface InvestorUpdateOutput {
+export type InvestorUpdateOutput = {
   qaPairs: Array<{
     question: string;
     answer: string;
   }>;
-}
+};
 
 /**
  * Execute Investor Update workflow
@@ -173,15 +173,15 @@ export const investorUpdateWorkflow = {
  * Orchestrates: Documents → Workflow
  */
 
-export interface AtoAuditPackInput {
+export type AtoAuditPackInput = {
   period: string;
   userId: string;
-}
+};
 
-export interface AtoAuditPackOutput {
+export type AtoAuditPackOutput = {
   packId: string;
   fileUrl: string;
-}
+};
 
 /**
  * Execute ATO Audit Pack workflow

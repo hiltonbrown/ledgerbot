@@ -12,8 +12,8 @@ type MemoryMessage = {
 type LibsqlClient = {
   execute: (
     query: string,
-    params?: Record<string, unknown> | Array<unknown>
-  ) => Promise<{ rows: Array<Record<string, unknown>> } | void>;
+    params?: Record<string, unknown> | unknown[]
+  ) => Promise<{ rows: Record<string, unknown>[] } | undefined>;
 };
 
 async function createLibsqlClient(): Promise<LibsqlClient | null> {
@@ -120,7 +120,7 @@ export class ForecastingMemoryStore {
     }
   }
 
-  async appendMany(messages: Array<Omit<MemoryMessage, "id" | "createdAt">>) {
+  async appendMany(messages: Omit<MemoryMessage, "id" | "createdAt">[]) {
     for (const message of messages) {
       await this.append(message);
     }

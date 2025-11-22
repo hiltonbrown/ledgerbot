@@ -251,7 +251,7 @@ export function Chat({
 
   // Restore the most recent artifact when loading the chat
   useEffect(() => {
-    if (initialDocument && initialDocument.content) {
+    if (initialDocument?.content) {
       setArtifact({
         documentId: initialDocument.id,
         title: initialDocument.title,
@@ -294,7 +294,7 @@ export function Chat({
 
   return (
     <>
-      <div className="overscroll-behavior-contain flex h-dvh min-w-0 touch-pan-y flex-col bg-background">
+      <div className="overscroll-behavior-contain flex h-dvh min-w-0 touch-pan-y flex-col bg-background md:h-[calc(100dvh-1rem)] md:min-h-[calc(100dvh-1rem)]">
         <ChatHeader chatId={id} isReadonly={isReadonly} />
 
         <Messages

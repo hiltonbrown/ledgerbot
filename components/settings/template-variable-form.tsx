@@ -734,7 +734,8 @@ export function TemplateVariableForm({
                   setFormState({
                     country: data.personalisation.country,
                     state: data.personalisation.state,
-                    timezone: data.personalisation.timezone || "Australia/Sydney",
+                    timezone:
+                      data.personalisation.timezone || "Australia/Sydney",
                     companyName:
                       xeroConnection?.tenantName ||
                       data.personalisation.companyName ||

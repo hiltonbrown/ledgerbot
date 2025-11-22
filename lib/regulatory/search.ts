@@ -1,11 +1,11 @@
-import { and, desc, eq, inArray, not, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../db/queries";
 import { type RegulatoryDocument, regulatoryDocument } from "../db/schema";
 
 /**
  * Represents a single item in a list of search results.
  */
-export interface SearchResult {
+export type SearchResult = {
   documentId: string;
   title: string;
   sourceUrl: string;
@@ -15,17 +15,17 @@ export interface SearchResult {
   excerpt: string;
   effectiveDate: Date | null;
   metadata: Record<string, unknown>;
-}
+};
 
 /**
  * Defines the available filters for a search query.
  */
-export interface SearchFilters {
+export type SearchFilters = {
   country?: string;
   category?: string[];
   dateRange?: { start: Date; end: Date };
   limit?: number;
-}
+};
 
 /**
  * Searches regulatory documents using full-text search.

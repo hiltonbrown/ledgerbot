@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
+import { executeXeroMCPTool } from "@/lib/ai/xero-mcp-client";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import { getActiveXeroConnection } from "@/lib/db/queries";
-import { executeXeroMCPTool } from "@/lib/ai/xero-mcp-client";
-import { upsertContacts, upsertBills } from "@/lib/db/queries/ap";
-import type { ApContactInsert, ApBillInsert } from "@/lib/db/schema/ap";
+import { upsertBills, upsertContacts } from "@/lib/db/queries/ap";
+import type { ApBillInsert, ApContactInsert } from "@/lib/db/schema/ap";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,10 +17,7 @@ export async function POST() {
   try {
     const user = await getAuthUser();
     if (!user) {
-      return NextResponse.json(
-        { error: "Not authenticated" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
     // Check for active Xero connection
@@ -29,7 +26,8 @@ export async function POST() {
       return NextResponse.json(
         {
           success: false,
-          error: "No active Xero connection found. Please connect to Xero first.",
+          error:
+            "No active Xero connection found. Please connect to Xero first.",
         },
         { status: 400 }
       );
@@ -45,7 +43,10 @@ export async function POST() {
     );
 
     const contacts = JSON.parse(contactsResult.content[0].text);
-    console.log("[AP Sync] Fetched contacts:", Array.isArray(contacts) ? contacts.length : 0);
+    console.log(
+      "[AP Sync] Fetched contacts:",
+      Array.isArray(contacts) ? contacts.length : 0
+    );
 
     // Filter for suppliers (IsSupplier = true)
     const suppliers = Array.isArray(contacts)
@@ -89,13 +90,20 @@ export async function POST() {
     }
 
     // Step 3: Fetch bills (ACCPAY invoices)
-    const billsResult = await executeXeroMCPTool(user.id, "xero_list_invoices", {
-      invoiceType: "ACCPAY",
-      limit: 1000,
-    });
+    const billsResult = await executeXeroMCPTool(
+      user.id,
+      "xero_list_invoices",
+      {
+        invoiceType: "ACCPAY",
+        limit: 1000,
+      }
+    );
 
     const bills = JSON.parse(billsResult.content[0].text);
-    console.log("[AP Sync] Fetched bills:", Array.isArray(bills) ? bills.length : 0);
+    console.log(
+      "[AP Sync] Fetched bills:",
+      Array.isArray(bills) ? bills.length : 0
+    );
 
     // Step 4: Upsert bills to database
     const billInserts: Omit<ApBillInsert, "userId">[] = [];
@@ -103,12 +111,15 @@ export async function POST() {
     for (const bill of Array.isArray(bills) ? bills : []) {
       const contactId = supplierMap.get(bill.contact?.contactID);
       if (!contactId) {
-        console.warn("[AP Sync] Skipping bill - supplier not found:", bill.invoiceNumber);
+        console.warn(
+          "[AP Sync] Skipping bill - supplier not found:",
+          bill.invoiceNumber
+        );
         continue;
       }
 
       // Map Xero status to our status
-      let status: string = "draft";
+      let status = "draft";
       if (bill.status === "PAID") {
         status = "paid";
       } else if (bill.status === "AUTHORISED") {
@@ -133,26 +144,30 @@ export async function POST() {
         total: bill.total?.toString() || "0",
         amountPaid: bill.amountPaid?.toString() || "0",
         status: isOverdue && status === "approved" ? "overdue" : status,
-        approvalStatus: status === "approved" || status === "paid" ? "approved" : "pending",
+        approvalStatus:
+          status === "approved" || status === "paid" ? "approved" : "pending",
         hasAttachment: false,
         externalRef: bill.invoiceID,
-        lineItems: bill.lineItems?.map((item: {
-          description?: string;
-          accountCode?: string;
-          quantity?: number;
-          unitAmount?: number;
-          lineAmount?: number;
-          taxType?: string;
-          taxAmount?: number;
-        }) => ({
-          description: item.description || "",
-          accountCode: item.accountCode,
-          quantity: item.quantity || 1,
-          unitAmount: item.unitAmount || 0,
-          lineAmount: item.lineAmount || 0,
-          taxType: item.taxType,
-          taxAmount: item.taxAmount || 0,
-        })) || [],
+        lineItems:
+          bill.lineItems?.map(
+            (item: {
+              description?: string;
+              accountCode?: string;
+              quantity?: number;
+              unitAmount?: number;
+              lineAmount?: number;
+              taxType?: string;
+              taxAmount?: number;
+            }) => ({
+              description: item.description || "",
+              accountCode: item.accountCode,
+              quantity: item.quantity || 1,
+              unitAmount: item.unitAmount || 0,
+              lineAmount: item.lineAmount || 0,
+              taxType: item.taxType,
+              taxAmount: item.taxAmount || 0,
+            })
+          ) || [],
         metadata: {},
       });
     }

@@ -51,22 +51,23 @@ export async function getFileSummary(): Promise<FileSummary> {
     // Format files for display
     const formattedFiles: FileRecord[] = files.slice(0, 5).map((file) => {
       const sizeInMb = file.fileSize / (1024 * 1024);
-      const sizeStr = sizeInMb >= 1
-        ? `${sizeInMb.toFixed(1)} MB`
-        : `${(file.fileSize / 1024).toFixed(0)} KB`;
+      const sizeStr =
+        sizeInMb >= 1
+          ? `${sizeInMb.toFixed(1)} MB`
+          : `${(file.fileSize / 1024).toFixed(0)} KB`;
 
       // Determine file type from filename
-      const ext = file.name.split('.').pop()?.toLowerCase() || '';
+      const ext = file.name.split(".").pop()?.toLowerCase() || "";
       let type = "Document";
-      if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+      if (["jpg", "jpeg", "png", "gif", "webp"].includes(ext)) {
         type = "Image";
-      } else if (['xlsx', 'xls', 'csv'].includes(ext)) {
+      } else if (["xlsx", "xls", "csv"].includes(ext)) {
         type = "Spreadsheet";
-      } else if (['pdf'].includes(ext)) {
+      } else if (["pdf"].includes(ext)) {
         type = "PDF";
-      } else if (['docx', 'doc'].includes(ext)) {
+      } else if (["docx", "doc"].includes(ext)) {
         type = "Document";
-      } else if (['txt', 'md'].includes(ext)) {
+      } else if (["txt", "md"].includes(ext)) {
         type = "Text";
       }
 
@@ -77,7 +78,12 @@ export async function getFileSummary(): Promise<FileSummary> {
         size: sizeStr,
         uploadedAt: file.createdAt.toISOString(),
         owner: user.email || "",
-        status: file.status === "ready" ? "synced" : file.status === "processing" ? "processing" : "failed",
+        status:
+          file.status === "ready"
+            ? "synced"
+            : file.status === "processing"
+              ? "processing"
+              : "failed",
       };
     });
 
@@ -101,4 +107,3 @@ export async function getFileSummary(): Promise<FileSummary> {
     };
   }
 }
-

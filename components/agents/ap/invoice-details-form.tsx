@@ -1,43 +1,42 @@
 "use client";
 
 import {
+  AlertCircle,
   Building2,
-  Calendar,
+  CheckCircle,
   DollarSign,
   FileText,
   Loader2,
-  CheckCircle,
-  AlertCircle,
   Plus,
-  Trash2,
   Save,
+  Trash2,
 } from "lucide-react";
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import type { ExtractedInvoiceData } from "@/types/ap";
 
-interface InvoiceDetailsFormProps {
+type InvoiceDetailsFormProps = {
   fileUrl: string | null;
   fileType: "pdf" | "image" | null;
   isProcessing: boolean;
   extractedData: ExtractedInvoiceData | null;
   onSyncToXero: (data: ExtractedInvoiceData) => Promise<void>;
-}
+};
 
-interface LineItem {
+type LineItem = {
   description: string;
   quantity: number;
   unitPrice: number;
   amount: number;
   accountCode?: string;
   taxType: string;
-}
+};
 
 export function InvoiceDetailsForm({
   fileUrl,
@@ -137,8 +136,12 @@ export function InvoiceDetailsForm({
 
     // Recalculate amount if quantity or unit price changes
     if (field === "quantity" || field === "unitPrice") {
-      const quantity = field === "quantity" ? Number(value) : updatedLineItems[index].quantity;
-      const unitPrice = field === "unitPrice" ? Number(value) : updatedLineItems[index].unitPrice;
+      const quantity =
+        field === "quantity" ? Number(value) : updatedLineItems[index].quantity;
+      const unitPrice =
+        field === "unitPrice"
+          ? Number(value)
+          : updatedLineItems[index].unitPrice;
       updatedLineItems[index].amount = quantity * unitPrice;
     }
 
@@ -348,10 +351,10 @@ export function InvoiceDetailsForm({
                         Item {index + 1}
                       </span>
                       <Button
+                        aria-label="Remove line item"
                         onClick={() => handleRemoveLineItem(index)}
                         size="sm"
                         variant="ghost"
-                        aria-label="Remove line item"
                       >
                         <Trash2 className="h-4 w-4 text-red-500" />
                       </Button>
@@ -391,9 +394,7 @@ export function InvoiceDetailsForm({
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor={`unitPrice-${index}`}>
-                          Unit Price
-                        </Label>
+                        <Label htmlFor={`unitPrice-${index}`}>Unit Price</Label>
                         <Input
                           id={`unitPrice-${index}`}
                           min="0"
@@ -455,9 +456,7 @@ export function InvoiceDetailsForm({
                 <span className="font-medium">${subtotal.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground text-sm">
-                  GST (10%)
-                </span>
+                <span className="text-muted-foreground text-sm">GST (10%)</span>
                 <span className="font-medium">${gstAmount.toFixed(2)}</span>
               </div>
               <Separator />

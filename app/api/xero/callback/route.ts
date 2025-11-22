@@ -67,10 +67,7 @@ export async function GET(request: Request) {
           limit: 600,
         });
         return NextResponse.redirect(
-          new URL(
-            "/settings/integrations?error=state_expired",
-            request.url
-          )
+          new URL("/settings/integrations?error=state_expired", request.url)
         );
       }
 
@@ -198,7 +195,7 @@ export async function GET(request: Request) {
 
     // Fetch connection metadata from Xero /connections endpoint (best practice)
     // This provides the Xero connection ID and creation/update timestamps
-    let connectionsMetadata: Map<string, any> = new Map();
+    const connectionsMetadata: Map<string, any> = new Map();
     try {
       const connections = await fetch(
         `https://api.xero.com/connections${authenticationEventId ? `?authEventId=${authenticationEventId}` : ""}`,

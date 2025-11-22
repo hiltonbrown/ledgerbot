@@ -1,27 +1,27 @@
 "use client";
 
+import { Calendar, DollarSign, Users } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { DollarSign, Users, Calendar } from "lucide-react";
 
-export interface APKPIs {
+export type APKPIs = {
   totalOutstanding: number;
   activeCreditors: number;
   daysPayableOutstanding: number;
   overdueBills?: number;
   overdueAmount?: number;
-}
+};
 
-interface APKPICardsProps {
+type APKPICardsProps = {
   kpis: APKPIs | null;
   isLoading?: boolean;
-}
+};
 
 export function APKPICards({ kpis, isLoading }: APKPICardsProps) {
   if (isLoading) {
     return (
       <div className="grid gap-4 md:grid-cols-3">
         {[1, 2, 3].map((i) => (
-          <Card key={i} className="p-6">
+          <Card className="p-6" key={i}>
             <div className="animate-pulse space-y-3">
               <div className="h-4 w-1/3 rounded bg-muted" />
               <div className="h-8 w-1/2 rounded bg-muted" />
@@ -42,21 +42,24 @@ export function APKPICards({ kpis, isLoading }: APKPICardsProps) {
       <Card className="p-6">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-muted-foreground text-sm font-medium">
+            <p className="font-medium text-muted-foreground text-sm">
               Total Outstanding
             </p>
             <p className="mt-2 font-bold text-3xl">
-              ${kpis.totalOutstanding.toLocaleString("en-AU", {
+              $
+              {kpis.totalOutstanding.toLocaleString("en-AU", {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
               })}
             </p>
             {kpis.overdueAmount !== undefined && kpis.overdueAmount > 0 && (
               <p className="mt-1 text-red-600 text-sm">
-                ${kpis.overdueAmount.toLocaleString("en-AU", {
+                $
+                {kpis.overdueAmount.toLocaleString("en-AU", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
-                })} overdue
+                })}{" "}
+                overdue
               </p>
             )}
           </div>
@@ -70,13 +73,14 @@ export function APKPICards({ kpis, isLoading }: APKPICardsProps) {
       <Card className="p-6">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-muted-foreground text-sm font-medium">
+            <p className="font-medium text-muted-foreground text-sm">
               Active Creditors
             </p>
             <p className="mt-2 font-bold text-3xl">{kpis.activeCreditors}</p>
             {kpis.overdueBills !== undefined && kpis.overdueBills > 0 && (
               <p className="mt-1 text-red-600 text-sm">
-                {kpis.overdueBills} overdue {kpis.overdueBills === 1 ? "bill" : "bills"}
+                {kpis.overdueBills} overdue{" "}
+                {kpis.overdueBills === 1 ? "bill" : "bills"}
               </p>
             )}
           </div>
@@ -90,7 +94,7 @@ export function APKPICards({ kpis, isLoading }: APKPICardsProps) {
       <Card className="p-6">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-muted-foreground text-sm font-medium">
+            <p className="font-medium text-muted-foreground text-sm">
               Days Payable Outstanding
             </p>
             <p className="mt-2 font-bold text-3xl">

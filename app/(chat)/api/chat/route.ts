@@ -80,6 +80,8 @@ import {
 import { generateTitleFromUserMessage } from "../../actions";
 import { type PostRequestBody, postRequestBodySchema } from "./schema";
 
+const WHITESPACE_REGEX = /\s+/;
+
 export const maxDuration = 60;
 
 let globalStreamContext: ResumableStreamContext | null = null;
@@ -267,7 +269,6 @@ export async function POST(request: Request) {
       selectedChatModel,
       selectedVisibilityType,
       streamReasoning,
-      showReasoningPreference,
       deepResearch,
     }: {
       id: string;
@@ -275,7 +276,6 @@ export async function POST(request: Request) {
       selectedChatModel: ChatModel["id"];
       selectedVisibilityType: VisibilityType;
       streamReasoning?: boolean;
-      showReasoningPreference?: boolean;
       deepResearch?: boolean;
     } = requestBody;
 
@@ -502,51 +502,50 @@ export async function POST(request: Request) {
 
     if (deepResearchEnabled) {
       if (!latestDeepResearchSummary && !isLikelyDetailedQuestion(userText)) {
-        return respondWithManualStream(
-          async (writer, { registerAttachments }) => {
-            const createdAt = new Date().toISOString();
-            const sessionId = generateUUID();
-            const questionText =
-              userText.length > 0
-                ? userText
-                : "A detailed research question has not been provided.";
-            const metadata: MessageMetadata = {
-              createdAt,
-              deepResearch: {
-                sessionId,
-                status: "needs-details",
-                question: questionText,
-              },
-            };
-            const messageId = generateUUID();
-            const textChunkId = generateUUID();
-            const promptText =
-              "### Deep Research Setup Required\nDeep Research is enabled. Share a specific question so I can investigate. Please include:\n\n- Topic and context (industry, region, stakeholders)\n- Timeframe or regulatory window you care about\n- What decision or deliverable you need support for\n\nOnce you provide those details I'll run automated searches and summarise the findings.";
-
-            writer.write({
-              type: "start",
-              messageId,
-              messageMetadata: metadata,
-            });
-            writer.write({ type: "text-start", id: textChunkId });
-            writer.write({
-              type: "text-delta",
-              id: textChunkId,
-              delta: promptText,
-            });
-            writer.write({ type: "text-end", id: textChunkId });
-            writer.write({ type: "finish", messageMetadata: metadata });
-
-            const attachment: DeepResearchSessionAttachment = {
-              type: "deep-research-session",
+        return respondWithManualStream((writer, { registerAttachments }) => {
+          const createdAt = new Date().toISOString();
+          const sessionId = generateUUID();
+          const questionText =
+            userText.length > 0
+              ? userText
+              : "A detailed research question has not been provided.";
+          const metadata: MessageMetadata = {
+            createdAt,
+            deepResearch: {
               sessionId,
               status: "needs-details",
-              createdAt,
               question: questionText,
-            };
-            registerAttachments(messageId, [attachment]);
-          }
-        );
+            },
+          };
+          const messageId = generateUUID();
+          const textChunkId = generateUUID();
+          const promptText =
+            "### Deep Research Setup Required\nDeep Research is enabled. Share a specific question so I can investigate. Please include:\n\n- Topic and context (industry, region, stakeholders)\n- Timeframe or regulatory window you care about\n- What decision or deliverable you need support for\n\nOnce you provide those details I'll run automated searches and summarise the findings.";
+
+          writer.write({
+            type: "start",
+            messageId,
+            messageMetadata: metadata,
+          });
+          writer.write({ type: "text-start", id: textChunkId });
+          writer.write({
+            type: "text-delta",
+            id: textChunkId,
+            delta: promptText,
+          });
+          writer.write({ type: "text-end", id: textChunkId });
+          writer.write({ type: "finish", messageMetadata: metadata });
+
+          const attachment: DeepResearchSessionAttachment = {
+            type: "deep-research-session",
+            sessionId,
+            status: "needs-details",
+            createdAt,
+            question: questionText,
+          };
+          registerAttachments(messageId, [attachment]);
+          return Promise.resolve();
+        });
       }
 
       if (latestDeepResearchSummary) {
@@ -589,10 +588,10 @@ export async function POST(request: Request) {
         const hasFollowUpIntent =
           detectDeeperRequest(userText) ||
           isLikelyDetailedQuestion(userText) ||
-          userText.split(/\s+/).filter(Boolean).length >= 6;
+          userText.split(WHITESPACE_REGEX).filter(Boolean).length >= 6;
 
         if (!hasFollowUpIntent) {
-          return respondWithManualStream(async (writer) => {
+          return respondWithManualStream((writer) => {
             const metadata: MessageMetadata = {
               createdAt: new Date().toISOString(),
               deepResearch: {
@@ -628,6 +627,7 @@ export async function POST(request: Request) {
             });
             writer.write({ type: "text-end", id: textChunkId });
             writer.write({ type: "finish", messageMetadata: metadata });
+            return Promise.resolve();
           });
         }
 

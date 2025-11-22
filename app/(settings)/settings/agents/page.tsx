@@ -8,12 +8,11 @@ import {
   FileText,
   MessageSquare,
   Network,
-  Scale,
   TrendingUp,
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   AgentConfigCard,
   SettingRow,
@@ -22,7 +21,6 @@ import { SettingsSection } from "@/components/settings/settings-section";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MultiSelect } from "@/components/ui/multi-select";
 import {
   Select,
   SelectContent,
@@ -72,7 +70,8 @@ export default function AgentSettingsPage() {
   const [apModel, setApModel] = useState("anthropic-claude-sonnet-4-5");
   const [duplicateThreshold, setDuplicateThreshold] = useState("80");
   const [bankChangeMonitoring, setBankChangeMonitoring] = useState(true);
-  const [autoApproveRiskThreshold, setAutoApproveRiskThreshold] = useState("20");
+  const [autoApproveRiskThreshold, setAutoApproveRiskThreshold] =
+    useState("20");
   const [riskWeights, setRiskWeights] = useState({
     duplicateBills: true,
     unusualAmounts: true,
@@ -127,17 +126,23 @@ export default function AgentSettingsPage() {
       setApModel(savedApModel);
     }
 
-    const savedDuplicateThreshold = localStorage.getItem("apDuplicateThreshold");
+    const savedDuplicateThreshold = localStorage.getItem(
+      "apDuplicateThreshold"
+    );
     if (savedDuplicateThreshold) {
       setDuplicateThreshold(savedDuplicateThreshold);
     }
 
-    const savedBankChangeMonitoring = localStorage.getItem("apBankChangeMonitoring");
+    const savedBankChangeMonitoring = localStorage.getItem(
+      "apBankChangeMonitoring"
+    );
     if (savedBankChangeMonitoring) {
       setBankChangeMonitoring(savedBankChangeMonitoring === "true");
     }
 
-    const savedAutoApproveThreshold = localStorage.getItem("apAutoApproveRiskThreshold");
+    const savedAutoApproveThreshold = localStorage.getItem(
+      "apAutoApproveRiskThreshold"
+    );
     if (savedAutoApproveThreshold) {
       setAutoApproveRiskThreshold(savedAutoApproveThreshold);
     }
@@ -156,8 +161,14 @@ export default function AgentSettingsPage() {
     // Save AP agent settings to localStorage
     localStorage.setItem("apAgentModel", apModel);
     localStorage.setItem("apDuplicateThreshold", duplicateThreshold);
-    localStorage.setItem("apBankChangeMonitoring", String(bankChangeMonitoring));
-    localStorage.setItem("apAutoApproveRiskThreshold", autoApproveRiskThreshold);
+    localStorage.setItem(
+      "apBankChangeMonitoring",
+      String(bankChangeMonitoring)
+    );
+    localStorage.setItem(
+      "apAutoApproveRiskThreshold",
+      autoApproveRiskThreshold
+    );
     localStorage.setItem("apRiskWeights", JSON.stringify(riskWeights));
 
     console.log("Saving agent configurations...");
@@ -194,10 +205,7 @@ export default function AgentSettingsPage() {
         </div>
       </div>
 
-      <SettingsSection
-        description=""
-        title=""
-      >
+      <SettingsSection description="" title="">
         <div className="space-y-6">
           <div className="flex flex-col gap-3 rounded-lg border bg-muted/30 p-4 md:flex-row md:items-center md:justify-between">
             <div className="space-y-1">
@@ -646,7 +654,10 @@ export default function AgentSettingsPage() {
             >
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label className="font-normal text-sm" htmlFor="risk-duplicate">
+                  <Label
+                    className="font-normal text-sm"
+                    htmlFor="risk-duplicate"
+                  >
                     Duplicate bills
                   </Label>
                   <Switch
@@ -676,7 +687,10 @@ export default function AgentSettingsPage() {
                   />
                 </div>
                 <div className="flex items-center justify-between">
-                  <Label className="font-normal text-sm" htmlFor="risk-new-supplier">
+                  <Label
+                    className="font-normal text-sm"
+                    htmlFor="risk-new-supplier"
+                  >
                     New suppliers
                   </Label>
                   <Switch
@@ -691,7 +705,10 @@ export default function AgentSettingsPage() {
                   />
                 </div>
                 <div className="flex items-center justify-between">
-                  <Label className="font-normal text-sm" htmlFor="risk-bank-change">
+                  <Label
+                    className="font-normal text-sm"
+                    htmlFor="risk-bank-change"
+                  >
                     Bank account changes
                   </Label>
                   <Switch

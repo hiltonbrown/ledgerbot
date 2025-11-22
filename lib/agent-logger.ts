@@ -6,8 +6,8 @@ import type { AgentTraceInsert } from "./db/schema";
  * Provides structured logging with automatic PII redaction for security
  */
 export class AgentLogger {
-  private chatId: string;
-  private messageId: string;
+  private readonly chatId: string;
+  private readonly messageId: string;
 
   constructor(chatId: string, messageId: string) {
     this.chatId = chatId;
@@ -206,7 +206,7 @@ export class AgentLogger {
 
     // Limit length to prevent excessive logging
     return withoutPaths.length > 500
-      ? withoutPaths.substring(0, 500) + "..."
+      ? `${withoutPaths.substring(0, 500)}...`
       : withoutPaths;
   }
 }

@@ -126,9 +126,17 @@ export async function POST(req: Request) {
 }
 
 function mapXeroStatus(xeroStatus: string, hasAmountDue: boolean): string {
-  if (xeroStatus === "PAID") return "paid";
-  if (xeroStatus === "VOIDED") return "voided";
-  if (xeroStatus === "DRAFT") return "draft";
-  if (xeroStatus === "AUTHORISED" && hasAmountDue) return "awaiting_payment";
+  if (xeroStatus === "PAID") {
+    return "paid";
+  }
+  if (xeroStatus === "VOIDED") {
+    return "voided";
+  }
+  if (xeroStatus === "DRAFT") {
+    return "draft";
+  }
+  if (xeroStatus === "AUTHORISED" && hasAmountDue) {
+    return "awaiting_payment";
+  }
   return "awaiting_payment";
 }

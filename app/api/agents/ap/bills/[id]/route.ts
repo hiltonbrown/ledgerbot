@@ -10,16 +10,13 @@ export const dynamic = "force-dynamic";
  * Get full bill details including payments, risk assessment, and bank changes
  */
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getAuthUser();
     if (!user) {
-      return NextResponse.json(
-        { error: "Not authenticated" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
     const { id } = await params;
@@ -27,10 +24,7 @@ export async function GET(
     const billDetails = await getBillWithDetails(id, user.id);
 
     if (!billDetails) {
-      return NextResponse.json(
-        { error: "Bill not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Bill not found" }, { status: 404 });
     }
 
     return NextResponse.json({

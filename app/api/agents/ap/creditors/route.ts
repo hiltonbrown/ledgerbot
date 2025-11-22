@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
-import { getContactsWithStats, getUnverifiedBankChanges } from "@/lib/db/queries/ap";
+import {
+  getContactsWithStats,
+  getUnverifiedBankChanges,
+} from "@/lib/db/queries/ap";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,10 +16,7 @@ export async function GET(request: Request) {
   try {
     const user = await getAuthUser();
     if (!user) {
-      return NextResponse.json(
-        { error: "Not authenticated" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -39,14 +39,11 @@ export async function GET(request: Request) {
         );
         break;
       case "bank-changes":
-        creditors = creditors.filter((c) =>
-          contactsWithBankChanges.has(c.id)
-        );
+        creditors = creditors.filter((c) => contactsWithBankChanges.has(c.id));
         break;
       case "overdue":
         creditors = creditors.filter((c) => c.totalOverdue > 0);
         break;
-      case "all":
       default:
         // No filter, return all
         break;

@@ -4,6 +4,7 @@ import { ChatHeader } from "@/components/chat-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import { getXeroConnectionsByUserId } from "@/lib/db/queries";
+import { SettingsSubnav } from "../_components/settings-subnav";
 
 export const dynamic = "force-dynamic";
 export const experimental_ppr = true;
@@ -29,6 +30,7 @@ export default async function SettingsLayout({
       <SidebarInset>
         <div className="flex min-h-svh flex-col">
           <ChatHeader chatId="" isReadonly={false} />
+          <SettingsSubnav />
           <main className="flex-1">{children}</main>
         </div>
       </SidebarInset>

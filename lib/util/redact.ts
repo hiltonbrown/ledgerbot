@@ -7,10 +7,14 @@
  * Example: john.doe@example.com → jo***@example.com
  */
 export function maskEmail(email: string): string {
-  if (!email || !email.includes("@")) return "***";
+  if (!email || !email.includes("@")) {
+    return "***";
+  }
 
   const [local, domain] = email.split("@");
-  if (local.length <= 2) return `***@${domain}`;
+  if (local.length <= 2) {
+    return `***@${domain}`;
+  }
 
   return `${local.slice(0, 2)}***@${domain}`;
 }
@@ -20,10 +24,14 @@ export function maskEmail(email: string): string {
  * Example: +61 412 345 678 → ***678
  */
 export function maskPhone(phone: string): string {
-  if (!phone) return "***";
+  if (!phone) {
+    return "***";
+  }
 
   const digits = phone.replace(/\D/g, "");
-  if (digits.length <= 3) return "***";
+  if (digits.length <= 3) {
+    return "***";
+  }
 
   return `***${digits.slice(-3)}`;
 }
@@ -37,8 +45,10 @@ export function redactPii(data: unknown): unknown {
     // Email pattern
     let redacted = data.replace(
       /([a-zA-Z0-9._-]+)@([a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/gi,
-      (match, local, domain) => {
-        if (local.length <= 2) return `***@${domain}`;
+      (_match, local, domain) => {
+        if (local.length <= 2) {
+          return `***@${domain}`;
+        }
         return `${local.slice(0, 2)}***@${domain}`;
       }
     );
@@ -48,7 +58,9 @@ export function redactPii(data: unknown): unknown {
       /(\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{2,4}[-.\s]?\d{2,4}/g,
       (match) => {
         const digits = match.replace(/\D/g, "");
-        if (digits.length <= 3) return "***";
+        if (digits.length <= 3) {
+          return "***";
+        }
         return `***${digits.slice(-3)}`;
       }
     );

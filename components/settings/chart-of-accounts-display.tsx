@@ -72,7 +72,9 @@ export function ChartOfAccountsDisplay({
 
   // Filter accounts based on search query
   const filteredAccounts = accounts.filter((account) => {
-    if (!searchQuery) return true;
+    if (!searchQuery) {
+      return true;
+    }
 
     const query = searchQuery.toLowerCase();
     return (
@@ -195,7 +197,9 @@ export function ChartOfAccountsDisplay({
         <div className="space-y-4">
           {classOrder.map((accountClass) => {
             const classAccounts = groupedAccounts[accountClass];
-            if (!classAccounts || classAccounts.length === 0) return null;
+            if (!classAccounts || classAccounts.length === 0) {
+              return null;
+            }
 
             return (
               <div className="rounded-md border" key={accountClass}>

@@ -62,7 +62,11 @@ const loadDefaultCodePrompt = () => {
 // Load default tone and grammar guide from markdown file
 const loadDefaultToneGrammar = () => {
   try {
-    const promptPath = join(process.cwd(), "prompts", "default-tone-grammar.md");
+    const promptPath = join(
+      process.cwd(),
+      "prompts",
+      "default-tone-grammar.md"
+    );
     return readFileSync(promptPath, "utf-8");
   } catch (error) {
     console.error("Failed to load default tone and grammar guide:", error);
@@ -211,7 +215,11 @@ export async function getUserSettings(): Promise<UserSettings> {
       // Fetch and format chart of accounts
       try {
         const chartData = await getChartOfAccounts(xeroConnection.id);
-        if (chartData?.accounts && Array.isArray(chartData.accounts) && chartData.accounts.length > 0) {
+        if (
+          chartData?.accounts &&
+          Array.isArray(chartData.accounts) &&
+          chartData.accounts.length > 0
+        ) {
           // Format chart for AI prompt (grouped by type, active accounts only)
           chartOfAccountsText = formatChartOfAccountsForPrompt(
             chartData.accounts,

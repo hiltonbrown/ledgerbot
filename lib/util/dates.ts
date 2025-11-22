@@ -17,8 +17,12 @@ export function daysBetween(a: Date, b: Date): number {
  * Get asOf date or default to today
  */
 export function asOfOrToday(asOf?: string | Date): Date {
-  if (!asOf) return new Date();
-  if (asOf instanceof Date) return asOf;
+  if (!asOf) {
+    return new Date();
+  }
+  if (asOf instanceof Date) {
+    return asOf;
+  }
   return new Date(asOf);
 }
 
@@ -107,10 +111,18 @@ export function formatRelativeTime(date: Date, relativeTo?: Date): string {
   const reference = relativeTo || new Date();
   const days = daysBetween(reference, date);
 
-  if (days === 0) return "today";
-  if (days === 1) return "tomorrow";
-  if (days === -1) return "yesterday";
-  if (days > 0) return `in ${days} days`;
+  if (days === 0) {
+    return "today";
+  }
+  if (days === 1) {
+    return "tomorrow";
+  }
+  if (days === -1) {
+    return "yesterday";
+  }
+  if (days > 0) {
+    return `in ${days} days`;
+  }
   return `${Math.abs(days)} days ago`;
 }
 

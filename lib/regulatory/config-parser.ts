@@ -1,10 +1,10 @@
-import fs from "fs/promises";
-import path from "path";
+import fs from "node:fs/promises";
+import path from "node:path";
 
 /**
  * Represents a single regulatory source defined in the configuration.
  */
-export interface RegulatorySource {
+export type RegulatorySource = {
   country: string; // "AU", "NZ", etc.
   section: string; // "Fair Work (Employment Law)"
   subsection: string; // "Minimum Wages"
@@ -13,7 +13,7 @@ export interface RegulatorySource {
   updateFrequency: "daily" | "weekly" | "monthly" | "quarterly";
   priority: "high" | "medium" | "low";
   category: "award" | "tax_ruling" | "payroll_tax" | "custom";
-}
+};
 
 const configPath = path.resolve(process.cwd(), "config/regulatory-sources.md");
 

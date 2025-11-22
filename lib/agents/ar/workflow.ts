@@ -11,15 +11,15 @@ import { redactLog } from "@/lib/util/redact";
  * Orchestrates: Triage → Fetch → Assess → Propose → Confirm → Act → Summarise
  */
 
-export interface ArDunningWorkflowInput {
+export type ArDunningWorkflowInput = {
   userId: string;
   asOf?: string;
   minDaysOverdue?: number;
   tone?: "polite" | "firm" | "final";
   autoConfirm?: boolean;
-}
+};
 
-export interface ArDunningWorkflowOutput {
+export type ArDunningWorkflowOutput = {
   success: boolean;
   artefactsCreated: number;
   commsEnabled: boolean;
@@ -43,7 +43,7 @@ export interface ArDunningWorkflowOutput {
     action: string;
     tone: string;
   }>;
-}
+};
 
 /**
  * Execute AR Dunning Cycle workflow

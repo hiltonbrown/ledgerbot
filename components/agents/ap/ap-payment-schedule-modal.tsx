@@ -82,7 +82,7 @@ export function APPaymentScheduleModal({
       setPaymentRunNotes("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, loadScheduleData]);
 
   const loadScheduleData = async () => {
     try {

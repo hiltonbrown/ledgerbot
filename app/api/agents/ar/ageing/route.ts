@@ -65,7 +65,9 @@ export async function GET(req: Request) {
         Number.parseFloat(invoice.total) -
         Number.parseFloat(invoice.amountPaid);
 
-      if (amountDue <= 0) continue; // Skip fully paid invoices
+      if (amountDue <= 0) {
+        continue; // Skip fully paid invoices
+      }
 
       let contact = contactMap.get(invoice.contact.id);
       if (!contact) {
@@ -154,7 +156,9 @@ export async function GET(req: Request) {
       const amountDue =
         Number.parseFloat(invoice.total) -
         Number.parseFloat(invoice.amountPaid);
-      if (amountDue <= 0) continue;
+      if (amountDue <= 0) {
+        continue;
+      }
 
       if (invoice.daysOverdue <= 30) {
         buckets[0].invoiceCount += 1;

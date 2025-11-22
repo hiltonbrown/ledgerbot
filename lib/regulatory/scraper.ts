@@ -6,26 +6,18 @@ import {
   regulatoryDocument,
   regulatoryScrapeJob,
 } from "../db/schema";
-import {
-  getSourcesByCategory,
-  getSourcesByCountry,
-  parseRegulatoryConfig,
-  type RegulatorySource,
-} from "./config-parser";
-import {
-  type RegulatoryScrapeSummary,
-  runRegulatorySummary,
-} from "./regulatory-summary";
+import { parseRegulatoryConfig, type RegulatorySource } from "./config-parser";
+import { runRegulatorySummary } from "./regulatory-summary";
 import { countTokens, extractTextFromHtml } from "./text-utils";
 
 /**
  * Represents the result of scraping and saving a single document.
  */
-export interface ScrapeDocumentResult {
+export type ScrapeDocumentResult = {
   action: "created" | "updated" | "unchanged" | "failed";
   documentId?: string;
   error?: string;
-}
+};
 
 /**
  * Scrapes a URL and transforms the content into a database-ready object.

@@ -1,12 +1,12 @@
 import "server-only";
 
+import { eq } from "drizzle-orm";
 import {
+  db,
   deactivateXeroConnection,
   getAllActiveXeroConnections,
 } from "@/lib/db/queries";
-import { db } from "@/lib/db/queries";
 import { xeroConnection } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
 import { decryptToken } from "./encryption";
 import type { XeroConnection } from "./types";
 
@@ -83,7 +83,9 @@ export async function checkConnectionHealth(
     status = "expired";
   } else if (refreshTokenAge >= 55) {
     issues.push(`Refresh token expires in ${refreshTokenExpiresInDays} days`);
-    if (status === "healthy") status = "warning";
+    if (status === "healthy") {
+      status = "warning";
+    }
   }
 
   // Check connection staleness (no API calls for 30+ days)
@@ -97,7 +99,9 @@ export async function checkConnectionHealth(
       issues.push(
         `No API calls for ${lastApiCallAge} days (connection may be unused)`
       );
-      if (status === "healthy") status = "warning";
+      if (status === "healthy") {
+        status = "warning";
+      }
     }
   }
 
@@ -170,9 +174,7 @@ export async function checkAllConnectionsHealth(): Promise<HealthCheckResult> {
  *
  * @param dryRun If true, only returns what would be cleaned up without making changes
  */
-export async function cleanupStaleConnections(
-  dryRun = false
-): Promise<{
+export async function cleanupStaleConnections(dryRun = false): Promise<{
   expiredCount: number;
   staleCount: number;
   expired: string[];

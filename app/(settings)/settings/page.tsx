@@ -1,18 +1,18 @@
-import Link from "next/link";
+import { count, eq } from "drizzle-orm";
 import {
-  Settings,
-  Sparkles,
   BarChart3,
+  ChevronRight,
   FileText,
   Plug,
+  Settings,
+  Sparkles,
   Users,
-  ChevronRight,
 } from "lucide-react";
+import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import { db } from "@/lib/db/queries";
 import { chat } from "@/lib/db/schema";
-import { eq, count } from "drizzle-orm";
 import { getFileSummary } from "../api/files/data";
 
 export const dynamic = "force-dynamic";

@@ -32,6 +32,8 @@ import {
   forecastModelLibrary,
 } from "@/lib/agents/forecasting/config";
 
+const LINE_BREAK_REGEX = /\r?\n/;
+
 const forecastSeries = [
   { month: "Nov", base: 280_000, best: 310_000, worst: 240_000 },
   { month: "Dec", base: 292_000, best: 332_000, worst: 238_000 },
@@ -85,7 +87,7 @@ export default function ForecastingAgentPage() {
 
   const parseList = (value: string) =>
     value
-      .split(/\r?\n/)
+      .split(LINE_BREAK_REGEX)
       .map((item) => item.trim())
       .filter(Boolean);
 

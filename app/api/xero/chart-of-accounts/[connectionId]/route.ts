@@ -10,7 +10,7 @@ import { getChartOfAccounts } from "@/lib/xero/chart-of-accounts-sync";
  * Fetch chart of accounts for a specific Xero connection
  */
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ connectionId: string }> }
 ) {
   try {

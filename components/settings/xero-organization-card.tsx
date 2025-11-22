@@ -12,18 +12,18 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-interface XeroConnection {
+type XeroConnection = {
   id: string;
   tenantId: string;
   tenantName: string | null;
   isActive: boolean;
   createdAt: Date;
   expiresAt: Date;
-}
+};
 
-interface XeroOrganizationCardProps {
+type XeroOrganizationCardProps = {
   connection: XeroConnection;
-}
+};
 
 export function XeroOrganizationCard({
   connection,

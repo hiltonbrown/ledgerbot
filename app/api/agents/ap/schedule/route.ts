@@ -1,10 +1,10 @@
+import { and, eq, gte, lte, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import { db } from "@/lib/db/queries";
-import { apBill, apContact } from "@/lib/db/schema/ap";
-import { eq, and, sql, gte, lte } from "drizzle-orm";
 import { createPaymentSchedule } from "@/lib/db/queries/ap";
 import type { ApPaymentScheduleInsert } from "@/lib/db/schema/ap";
+import { apBill, apContact } from "@/lib/db/schema/ap";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,10 +17,7 @@ export async function GET(request: Request) {
   try {
     const user = await getAuthUser();
     if (!user) {
-      return NextResponse.json(
-        { error: "Not authenticated" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -81,7 +78,9 @@ export async function GET(request: Request) {
       const dayBills = billsByDate[dateKey] || [];
 
       const amountDue = dayBills.reduce((sum, item) => {
-        const due = Number.parseFloat(item.bill.total) - Number.parseFloat(item.bill.amountPaid);
+        const due =
+          Number.parseFloat(item.bill.total) -
+          Number.parseFloat(item.bill.amountPaid);
         return sum + due;
       }, 0);
 
@@ -98,16 +97,19 @@ export async function GET(request: Request) {
     }
 
     // Format bills for response
-    const formattedBillsByDate: Record<string, Array<{
-      id: string;
-      number: string;
-      contactName: string;
-      contactId: string;
-      dueDate: string;
-      amount: number;
-      status: string;
-      riskLevel: string;
-    }>> = {};
+    const formattedBillsByDate: Record<
+      string,
+      Array<{
+        id: string;
+        number: string;
+        contactName: string;
+        contactId: string;
+        dueDate: string;
+        amount: number;
+        status: string;
+        riskLevel: string;
+      }>
+    > = {};
 
     for (const [dateKey, dayBills] of Object.entries(billsByDate)) {
       formattedBillsByDate[dateKey] = dayBills.map((item) => ({
@@ -116,7 +118,9 @@ export async function GET(request: Request) {
         contactName: item.contact.name,
         contactId: item.contact.id,
         dueDate: new Date(item.bill.dueDate).toISOString(),
-        amount: Number.parseFloat(item.bill.total) - Number.parseFloat(item.bill.amountPaid),
+        amount:
+          Number.parseFloat(item.bill.total) -
+          Number.parseFloat(item.bill.amountPaid),
         status: item.bill.status,
         riskLevel: item.contact.riskLevel,
       }));
@@ -158,10 +162,7 @@ export async function POST(request: Request) {
   try {
     const user = await getAuthUser();
     if (!user) {
-      return NextResponse.json(
-        { error: "Not authenticated" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
     const body = await request.json();
@@ -181,7 +182,10 @@ export async function POST(request: Request) {
       .where(
         and(
           eq(apBill.userId, user.id),
-          sql`${apBill.id} IN (${sql.join(billIds.map((id: string) => sql`${id}`), sql`, `)})`
+          sql`${apBill.id} IN (${sql.join(
+            billIds.map((id: string) => sql`${id}`),
+            sql`, `
+          )})`
         )
       );
 
@@ -193,7 +197,8 @@ export async function POST(request: Request) {
     }
 
     const totalAmount = bills.reduce((sum, bill) => {
-      const due = Number.parseFloat(bill.total) - Number.parseFloat(bill.amountPaid);
+      const due =
+        Number.parseFloat(bill.total) - Number.parseFloat(bill.amountPaid);
       return sum + due;
     }, 0);
 

@@ -6,12 +6,12 @@ import { z } from "zod";
 
 // Runtime context for tracking doc state across tool calls
 class RuntimeContext extends Map<string, unknown> {}
+
 import type {
   PdfChatMessage,
   PdfSectionSummary,
 } from "@/lib/agents/docmanagement/types";
 import { summarizePdfContent } from "@/lib/agents/docmanagement/workflow";
-import { myProvider } from "@/lib/ai/providers";
 import {
   getContextFileById,
   touchContextFile,
@@ -97,20 +97,20 @@ const PdfLoadSchema = z
     }
   );
 
-const RagSearchSchema = z.object({
+const _RagSearchSchema = z.object({
   query: z.string().min(2),
   k: z.number().int().min(1).max(32).default(8),
   docId: z.string().optional(),
   contextFileId: z.string().optional(),
 });
 
-const PdfCiteSchema = z.object({
+const _PdfCiteSchema = z.object({
   docId: z.string().optional(),
   contextFileId: z.string().optional(),
   answerSpan: z.string().min(2),
 });
 
-const XeroQuerySchema = z.object({
+const _XeroQuerySchema = z.object({
   resource: z.string(),
   params: z.record(z.string(), z.any()).optional(),
 });
@@ -434,7 +434,7 @@ async function ensureDocumentLoaded({
   return doc;
 }
 
-function requireUserId(runtimeContext?: RuntimeContext) {
+function _requireUserId(runtimeContext?: RuntimeContext) {
   const userId = runtimeContext?.get("userId");
   if (!userId || typeof userId !== "string") {
     throw new Error("User context is required for this operation.");
@@ -442,7 +442,7 @@ function requireUserId(runtimeContext?: RuntimeContext) {
   return userId;
 }
 
-async function ensureDocForTool({
+async function _ensureDocForTool({
   runtimeContext,
   userId,
   docId,
@@ -493,7 +493,7 @@ function scoreChunkText(text: string, tokens: string[]) {
   return hits / tokens.length;
 }
 
-function searchDocumentChunks(
+function _searchDocumentChunks(
   doc: LoadedDocument,
   query: string,
   limit: number
@@ -630,7 +630,11 @@ export function formatAnswerWithCitations(
 const pdfLoadTool = tool({
   description: "Load and index a PDF from a stored context file or public URL",
   inputSchema: PdfLoadSchema,
-  execute: async (context: { contextFileId?: string; docId?: string; fileUrl?: string }) => {
+  execute: async (context: {
+    contextFileId?: string;
+    docId?: string;
+    fileUrl?: string;
+  }) => {
     const userId = "user"; // Simplified for migration
     const doc = await ensureDocumentLoaded({
       userId,

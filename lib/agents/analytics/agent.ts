@@ -16,16 +16,21 @@ const calculateKpisTool = tool({
     expenses: z.array(z.number()).describe("Monthly expense values"),
     cash: z.number().optional().describe("Current cash balance"),
   }),
-  execute: async ({ revenue, cogs = [], expenses, cash = 0 }: {
+  execute: async ({
+    revenue,
+    cogs = [],
+    expenses,
+    cash = 0,
+  }: {
     revenue: number[];
     cogs?: number[];
     expenses: number[];
     cash?: number;
   }) => {
-    const latestRevenue = revenue[revenue.length - 1] || 0;
-    const previousRevenue = revenue[revenue.length - 2] || 0;
-    const latestCogs = cogs[cogs.length - 1] || 0;
-    const latestExpenses = expenses[expenses.length - 1] || 0;
+    const latestRevenue = revenue.at(-1) || 0;
+    const previousRevenue = revenue.at(-2) || 0;
+    const latestCogs = cogs.at(-1) || 0;
+    const latestExpenses = expenses.at(-1) || 0;
 
     const grossProfit = latestRevenue - latestCogs;
     const grossMargin =
@@ -89,9 +94,18 @@ const generateNarrativeTool = tool({
       .describe("Key performance indicators"),
     context: z.string().optional().describe("Additional context or notes"),
   }),
-  execute: async ({ period, kpis, context: additionalContext }: {
+  execute: async ({
+    period,
+    kpis,
+    context: additionalContext,
+  }: {
     period: string;
-    kpis: { grossMargin: number; netBurn: number; runway: number; revenueGrowth: number };
+    kpis: {
+      grossMargin: number;
+      netBurn: number;
+      runway: number;
+      revenueGrowth: number;
+    };
     context?: string;
   }) => {
     const narrativeParts: string[] = [];
@@ -197,7 +211,13 @@ function createAnalyticsXeroTools(userId: string) {
           .describe("Start date (ISO 8601 format YYYY-MM-DD)"),
         toDate: z.string().describe("End date (ISO 8601 format YYYY-MM-DD)"),
       }),
-      execute: async ({ fromDate, toDate }: { fromDate: string; toDate: string }) => {
+      execute: async ({
+        fromDate,
+        toDate,
+      }: {
+        fromDate: string;
+        toDate: string;
+      }) => {
         const result = await executeXeroMCPTool(
           userId,
           "xero_get_balance_sheet",

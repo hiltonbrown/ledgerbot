@@ -36,12 +36,8 @@ export const apContact = pgTable(
     abn: varchar("abn", { length: 11 }), // Australian Business Number
     email: varchar("email", { length: 255 }),
     phone: varchar("phone", { length: 50 }),
-    status: varchar("status", { length: 20 })
-      .notNull()
-      .default("active"), // active, inactive, pending, blocked
-    riskLevel: varchar("riskLevel", { length: 20 })
-      .notNull()
-      .default("low"), // low, medium, high, critical
+    status: varchar("status", { length: 20 }).notNull().default("active"), // active, inactive, pending, blocked
+    riskLevel: varchar("riskLevel", { length: 20 }).notNull().default("low"), // low, medium, high, critical
     paymentTerms: varchar("paymentTerms", { length: 50 }), // e.g., "Net 30"
     defaultAccount: varchar("defaultAccount", { length: 50 }), // Default expense account code
     externalRef: varchar("externalRef", { length: 255 }), // Xero contact ID
@@ -85,9 +81,7 @@ export const apBill = pgTable(
     amountPaid: numeric("amountPaid", { precision: 10, scale: 2 })
       .notNull()
       .default("0"),
-    status: varchar("status", { length: 20 })
-      .notNull()
-      .default("draft"), // draft, awaiting_approval, approved, disputed, paid, overdue, cancelled
+    status: varchar("status", { length: 20 }).notNull().default("draft"), // draft, awaiting_approval, approved, disputed, paid, overdue, cancelled
     approvalStatus: varchar("approvalStatus", { length: 20 })
       .notNull()
       .default("pending"), // pending, approved, rejected, escalated, expired
@@ -96,18 +90,19 @@ export const apBill = pgTable(
     hasAttachment: boolean("hasAttachment").default(false),
     attachmentUrl: text("attachmentUrl"),
     externalRef: varchar("externalRef", { length: 255 }), // Xero invoice ID
-    lineItems: jsonb("lineItems").$type<
-      Array<{
-        description: string;
-        accountCode?: string;
-        accountName?: string;
-        quantity: number;
-        unitAmount: number;
-        lineAmount: number;
-        taxType?: string;
-        taxAmount?: number;
-      }>
-    >(),
+    lineItems:
+      jsonb("lineItems").$type<
+        Array<{
+          description: string;
+          accountCode?: string;
+          accountName?: string;
+          quantity: number;
+          unitAmount: number;
+          lineAmount: number;
+          taxType?: string;
+          taxAmount?: number;
+        }>
+      >(),
     metadata: jsonb("metadata").$type<Record<string, unknown>>(),
     createdAt: timestamp("createdAt").notNull().defaultNow(),
     updatedAt: timestamp("updatedAt").notNull().defaultNow(),
@@ -118,10 +113,9 @@ export const apBill = pgTable(
     statusIdx: index("ap_bill_status_idx").on(table.status),
     dueDateIdx: index("ap_bill_due_date_idx").on(table.dueDate),
     externalRefIdx: index("ap_bill_external_ref_idx").on(table.externalRef),
-    externalRefUserIdUnique: uniqueIndex("ap_bill_external_ref_user_id_unique").on(
-      table.externalRef,
-      table.userId
-    ),
+    externalRefUserIdUnique: uniqueIndex(
+      "ap_bill_external_ref_user_id_unique"
+    ).on(table.externalRef, table.userId),
   })
 );
 
@@ -215,13 +209,17 @@ export const apRiskAssessment = pgTable(
     billId: uuid("billId")
       .notNull()
       .references(() => apBill.id, { onDelete: "cascade" }),
-    riskLevel: varchar("riskLevel", { length: 20 })
-      .notNull()
-      .default("low"), // low, medium, high, critical
+    riskLevel: varchar("riskLevel", { length: 20 }).notNull().default("low"), // low, medium, high, critical
     riskScore: numeric("riskScore", { precision: 5, scale: 2 }).notNull(), // 0-100
-    riskFlags: jsonb("riskFlags").$type<string[]>().notNull().default(sql`'[]'::jsonb`), // missing_abn, duplicate_bill, etc.
+    riskFlags: jsonb("riskFlags")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`), // missing_abn, duplicate_bill, etc.
     isDuplicate: boolean("isDuplicate").default(false),
-    duplicateConfidence: numeric("duplicateConfidence", { precision: 3, scale: 2 }), // 0-1 confidence score
+    duplicateConfidence: numeric("duplicateConfidence", {
+      precision: 3,
+      scale: 2,
+    }), // 0-1 confidence score
     potentialDuplicates: jsonb("potentialDuplicates").$type<
       Array<{
         billId: string;
@@ -240,8 +238,12 @@ export const apRiskAssessment = pgTable(
   (table) => ({
     userIdIdx: index("ap_risk_assessment_user_id_idx").on(table.userId),
     billIdIdx: index("ap_risk_assessment_bill_id_idx").on(table.billId),
-    riskLevelIdx: index("ap_risk_assessment_risk_level_idx").on(table.riskLevel),
-    isDuplicateIdx: index("ap_risk_assessment_is_duplicate_idx").on(table.isDuplicate),
+    riskLevelIdx: index("ap_risk_assessment_risk_level_idx").on(
+      table.riskLevel
+    ),
+    isDuplicateIdx: index("ap_risk_assessment_is_duplicate_idx").on(
+      table.isDuplicate
+    ),
   })
 );
 
@@ -294,7 +296,9 @@ export const apNote = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     billId: uuid("billId").references(() => apBill.id, { onDelete: "cascade" }),
-    contactId: uuid("contactId").references(() => apContact.id, { onDelete: "cascade" }),
+    contactId: uuid("contactId").references(() => apContact.id, {
+      onDelete: "cascade",
+    }),
     body: text("body").notNull(),
     visibility: varchar("visibility", { length: 20 })
       .notNull()
@@ -328,9 +332,7 @@ export const apPaymentSchedule = pgTable(
     billIds: jsonb("billIds").$type<string[]>().notNull(),
     totalAmount: numeric("totalAmount", { precision: 10, scale: 2 }).notNull(),
     billCount: numeric("billCount", { precision: 5, scale: 0 }).notNull(),
-    status: varchar("status", { length: 20 })
-      .notNull()
-      .default("draft"), // draft, ready, processing, completed, failed
+    status: varchar("status", { length: 20 }).notNull().default("draft"), // draft, ready, processing, completed, failed
     riskSummary: jsonb("riskSummary").$type<{
       critical: number;
       high: number;

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq, gte, lt, lte, sql } from "drizzle-orm";
+import { and, desc, eq, lte, sql } from "drizzle-orm";
 import { ChatSDKError } from "@/lib/errors";
 import { db } from "../queries";
 import type {
@@ -94,7 +94,7 @@ export async function listInvoicesDue({
       invoices: invoicesWithOverdue,
       asOf: asOf.toISOString(),
     };
-  } catch (error) {
+  } catch (_error) {
     throw new ChatSDKError(
       "bad_request:database",
       "Failed to list invoices due"
@@ -119,13 +119,15 @@ export async function getInvoiceWithContact(
       .where(eq(arInvoice.id, invoiceId))
       .limit(1);
 
-    if (results.length === 0) return null;
+    if (results.length === 0) {
+      return null;
+    }
 
     const row = results[0];
     const daysOverdue = Math.max(
       0,
       Math.floor(
-        (new Date().getTime() - new Date(row.invoice.dueDate).getTime()) /
+        (Date.now() - new Date(row.invoice.dueDate).getTime()) /
           (1000 * 60 * 60 * 24)
       )
     );
@@ -135,7 +137,7 @@ export async function getInvoiceWithContact(
       contact: row.contact,
       daysOverdue,
     };
-  } catch (error) {
+  } catch (_error) {
     throw new ChatSDKError(
       "bad_request:database",
       "Failed to get invoice with contact"
@@ -190,7 +192,7 @@ export async function upsertContacts(
     }
 
     return results;
-  } catch (error) {
+  } catch (_error) {
     throw new ChatSDKError("bad_request:database", "Failed to upsert contacts");
   }
 }
@@ -289,7 +291,9 @@ export async function insertPayment(
 
     return { payment: newPayment, invoice: updatedInvoice };
   } catch (error) {
-    if (error instanceof ChatSDKError) throw error;
+    if (error instanceof ChatSDKError) {
+      throw error;
+    }
     throw new ChatSDKError("bad_request:database", "Failed to insert payment");
   }
 }
@@ -314,7 +318,9 @@ export async function markInvoicePaid(
     const { invoice } = await insertPayment(payment);
     return invoice;
   } catch (error) {
-    if (error instanceof ChatSDKError) throw error;
+    if (error instanceof ChatSDKError) {
+      throw error;
+    }
     throw new ChatSDKError(
       "bad_request:database",
       "Failed to mark invoice paid"
@@ -334,7 +340,7 @@ export async function createCommsArtefact(
       .values(artefact)
       .returning();
     return created;
-  } catch (error) {
+  } catch (_error) {
     throw new ChatSDKError(
       "bad_request:database",
       "Failed to create comms artefact"
@@ -354,7 +360,7 @@ export async function getInvoiceArtefacts(
       .from(arCommsArtefact)
       .where(eq(arCommsArtefact.invoiceId, invoiceId))
       .orderBy(desc(arCommsArtefact.createdAt));
-  } catch (error) {
+  } catch (_error) {
     throw new ChatSDKError(
       "bad_request:database",
       "Failed to get invoice artefacts"
@@ -369,7 +375,7 @@ export async function createNote(note: ArNoteInsert): Promise<ArNote> {
   try {
     const [created] = await db.insert(arNote).values(note).returning();
     return created;
-  } catch (error) {
+  } catch (_error) {
     throw new ChatSDKError("bad_request:database", "Failed to create note");
   }
 }
@@ -384,7 +390,7 @@ export async function getInvoiceNotes(invoiceId: string): Promise<ArNote[]> {
       .from(arNote)
       .where(eq(arNote.invoiceId, invoiceId))
       .orderBy(desc(arNote.createdAt));
-  } catch (error) {
+  } catch (_error) {
     throw new ChatSDKError(
       "bad_request:database",
       "Failed to get invoice notes"
@@ -401,7 +407,7 @@ export async function createReminder(
   try {
     const [created] = await db.insert(arReminder).values(reminder).returning();
     return created;
-  } catch (error) {
+  } catch (_error) {
     throw new ChatSDKError("bad_request:database", "Failed to create reminder");
   }
 }
@@ -418,7 +424,7 @@ export async function getInvoiceReminders(
       .from(arReminder)
       .where(eq(arReminder.invoiceId, invoiceId))
       .orderBy(desc(arReminder.plannedAt));
-  } catch (error) {
+  } catch (_error) {
     throw new ChatSDKError(
       "bad_request:database",
       "Failed to get invoice reminders"
@@ -436,7 +442,7 @@ export async function getUserContacts(userId: string): Promise<ArContact[]> {
       .from(arContact)
       .where(eq(arContact.userId, userId))
       .orderBy(arContact.name);
-  } catch (error) {
+  } catch (_error) {
     throw new ChatSDKError(
       "bad_request:database",
       "Failed to get user contacts"
@@ -458,7 +464,7 @@ export async function getUserRecentArtefacts(
       .where(eq(arCommsArtefact.userId, userId))
       .orderBy(desc(arCommsArtefact.createdAt))
       .limit(limit);
-  } catch (error) {
+  } catch (_error) {
     throw new ChatSDKError(
       "bad_request:database",
       "Failed to get user recent artefacts"

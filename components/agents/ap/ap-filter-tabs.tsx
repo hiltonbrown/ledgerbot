@@ -1,11 +1,11 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { AlertTriangle, Banknote, Clock, List } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export type FilterType = "all" | "high-risk" | "bank-changes" | "overdue";
 
-interface APFilterTabsProps {
+type APFilterTabsProps = {
   activeFilter: FilterType;
   onFilterChange: (filter: FilterType) => void;
   counts?: {
@@ -14,7 +14,7 @@ interface APFilterTabsProps {
     bankChanges: number;
     overdue: number;
   };
-}
+};
 
 export function APFilterTabs({
   activeFilter,
@@ -51,11 +51,11 @@ export function APFilterTabs({
 
         return (
           <Button
-            key={filter.id}
-            variant={isActive ? "default" : "outline"}
-            size="sm"
-            onClick={() => onFilterChange(filter.id)}
             className="gap-2"
+            key={filter.id}
+            onClick={() => onFilterChange(filter.id)}
+            size="sm"
+            variant={isActive ? "default" : "outline"}
           >
             <Icon className="h-4 w-4" />
             {filter.label}

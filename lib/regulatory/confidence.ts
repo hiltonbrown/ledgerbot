@@ -23,7 +23,9 @@ function getAverageRelevance(toolCalls: ToolCall[]): number {
     }
   }
 
-  if (relevanceScores.length === 0) return 0;
+  if (relevanceScores.length === 0) {
+    return 0;
+  }
 
   const sum = relevanceScores.reduce((acc, score) => acc + score, 0);
   return sum / relevanceScores.length;

@@ -5,13 +5,9 @@ import { z } from "zod";
 import { myProvider } from "@/lib/ai/providers";
 import { executeXeroMCPTool } from "@/lib/ai/xero-mcp-client";
 import type {
-  ABNValidation,
-  Bill,
-  BillStatus,
   CodingSuggestion,
   EmailDraft,
   GSTCode,
-  PaymentProposal,
   PaymentRiskFlag,
   SupplierRiskLevel,
 } from "@/types/ap";
@@ -35,7 +31,7 @@ export async function extractInvoiceData(
     let parsedUrl;
     try {
       parsedUrl = new URL(fileUrl);
-    } catch (e) {
+    } catch (_e) {
       throw new Error("Invalid fileUrl format");
     }
     // Ensure protocol and hostname match allow-list
@@ -369,7 +365,11 @@ export const suggestBillCodingTool = tool({
       .optional()
       .describe("Available GL accounts from Xero (if connected)"),
   }),
-  execute: async ({ supplierName, lineItems, chartOfAccounts }: {
+  execute: async ({
+    supplierName,
+    lineItems,
+    chartOfAccounts,
+  }: {
     supplierName: string;
     lineItems: Array<{ description: string; amount: number }>;
     chartOfAccounts?: Array<{ code: string; name: string; type: string }>;
@@ -381,89 +381,94 @@ export const suggestBillCodingTool = tool({
 
       // AI-powered coding suggestion logic
       // In production, this would use LLM with context about chart of accounts
-      const suggestions: CodingSuggestion[] = lineItems.map((item: { description: string; amount: number }, index: number) => {
-        const description = item.description.toLowerCase();
+      const suggestions: CodingSuggestion[] = lineItems.map(
+        (item: { description: string; amount: number }, index: number) => {
+          const description = item.description.toLowerCase();
 
-        // Rule-based suggestions (simplified - production would use ML)
-        let suggestedAccount = "400";
-        let suggestedAccountName = "Office Expenses";
-        let suggestedGSTCode: GSTCode = "INPUT_TAX";
-        let confidence = 0.6;
-        let reasoning = "Default expense categorization";
+          // Rule-based suggestions (simplified - production would use ML)
+          let suggestedAccount = "400";
+          let suggestedAccountName = "Office Expenses";
+          let suggestedGSTCode: GSTCode = "INPUT_TAX";
+          let confidence = 0.6;
+          let reasoning = "Default expense categorization";
 
-        // Match common patterns
-        if (
-          description.includes("software") ||
-          description.includes("subscription") ||
-          description.includes("saas")
-        ) {
-          suggestedAccount = "404";
-          suggestedAccountName = "Software & Subscriptions";
-          suggestedGSTCode = "INPUT_TAX";
-          confidence = 0.85;
-          reasoning =
-            "Software/SaaS subscription typically coded to IT expenses with GST";
-        } else if (
-          description.includes("rent") ||
-          description.includes("lease")
-        ) {
-          suggestedAccount = "420";
-          suggestedAccountName = "Rent";
-          suggestedGSTCode = "GST_FREE";
-          confidence = 0.9;
-          reasoning = "Commercial rent is typically GST-free in Australia";
-        } else if (
-          description.includes("advertising") ||
-          description.includes("marketing")
-        ) {
-          suggestedAccount = "450";
-          suggestedAccountName = "Advertising & Marketing";
-          suggestedGSTCode = "INPUT_TAX";
-          confidence = 0.88;
-          reasoning = "Marketing expenses with GST input tax credit";
-        } else if (
-          description.includes("stationery") ||
-          description.includes("supplies")
-        ) {
-          suggestedAccount = "461";
-          suggestedAccountName = "Office Supplies";
-          suggestedGSTCode = "INPUT_TAX";
-          confidence = 0.82;
-          reasoning = "Office supplies typically include GST";
-        } else if (
-          description.includes("professional fees") ||
-          description.includes("consulting")
-        ) {
-          suggestedAccount = "485";
-          suggestedAccountName = "Professional Fees";
-          suggestedGSTCode = "INPUT_TAX";
-          confidence = 0.87;
-          reasoning = "Professional services typically include GST";
-        }
-
-        // Override with actual chart of accounts if available
-        if (chartOfAccounts && chartOfAccounts.length > 0) {
-          const matchingAccount = chartOfAccounts.find((acc: { code: string; name: string; type: string }) =>
-            acc.name.toLowerCase().includes(suggestedAccountName.toLowerCase())
-          );
-          if (matchingAccount) {
-            suggestedAccount = matchingAccount.code;
-            suggestedAccountName = matchingAccount.name;
-            confidence = Math.min(0.95, confidence + 0.1);
-            reasoning += " (matched to your chart of accounts)";
+          // Match common patterns
+          if (
+            description.includes("software") ||
+            description.includes("subscription") ||
+            description.includes("saas")
+          ) {
+            suggestedAccount = "404";
+            suggestedAccountName = "Software & Subscriptions";
+            suggestedGSTCode = "INPUT_TAX";
+            confidence = 0.85;
+            reasoning =
+              "Software/SaaS subscription typically coded to IT expenses with GST";
+          } else if (
+            description.includes("rent") ||
+            description.includes("lease")
+          ) {
+            suggestedAccount = "420";
+            suggestedAccountName = "Rent";
+            suggestedGSTCode = "GST_FREE";
+            confidence = 0.9;
+            reasoning = "Commercial rent is typically GST-free in Australia";
+          } else if (
+            description.includes("advertising") ||
+            description.includes("marketing")
+          ) {
+            suggestedAccount = "450";
+            suggestedAccountName = "Advertising & Marketing";
+            suggestedGSTCode = "INPUT_TAX";
+            confidence = 0.88;
+            reasoning = "Marketing expenses with GST input tax credit";
+          } else if (
+            description.includes("stationery") ||
+            description.includes("supplies")
+          ) {
+            suggestedAccount = "461";
+            suggestedAccountName = "Office Supplies";
+            suggestedGSTCode = "INPUT_TAX";
+            confidence = 0.82;
+            reasoning = "Office supplies typically include GST";
+          } else if (
+            description.includes("professional fees") ||
+            description.includes("consulting")
+          ) {
+            suggestedAccount = "485";
+            suggestedAccountName = "Professional Fees";
+            suggestedGSTCode = "INPUT_TAX";
+            confidence = 0.87;
+            reasoning = "Professional services typically include GST";
           }
-        }
 
-        return {
-          lineItemIndex: index,
-          description: item.description,
-          suggestedAccount,
-          suggestedAccountName,
-          suggestedGSTCode,
-          confidence,
-          reasoning,
-        };
-      });
+          // Override with actual chart of accounts if available
+          if (chartOfAccounts && chartOfAccounts.length > 0) {
+            const matchingAccount = chartOfAccounts.find(
+              (acc: { code: string; name: string; type: string }) =>
+                acc.name
+                  .toLowerCase()
+                  .includes(suggestedAccountName.toLowerCase())
+            );
+            if (matchingAccount) {
+              suggestedAccount = matchingAccount.code;
+              suggestedAccountName = matchingAccount.name;
+              confidence = Math.min(0.95, confidence + 0.1);
+              reasoning += " (matched to your chart of accounts)";
+            }
+          }
+
+          return {
+            lineItemIndex: index,
+            description: item.description,
+            suggestedAccount,
+            suggestedAccountName,
+            suggestedGSTCode,
+            confidence,
+            reasoning,
+          };
+        }
+      );
 
       return {
         success: true,
@@ -499,7 +504,12 @@ export const checkDuplicateBillsTool = tool({
       .default(90)
       .describe("Number of days to look back for duplicates"),
   }),
-  execute: async ({ supplierName, amount, date, checkDays }: {
+  execute: async ({
+    supplierName,
+    amount,
+    date,
+    checkDays,
+  }: {
     supplierName: string;
     amount: number;
     date: string;
@@ -900,7 +910,15 @@ export const extractInvoiceDataTool = tool({
         "AI model to use for extraction (defaults to anthropic-claude-sonnet-4-5)"
       ),
   }),
-  execute: async ({ fileUrl, fileType, model }: { fileUrl: string; fileType: "pdf" | "image"; model?: string }) => {
+  execute: async ({
+    fileUrl,
+    fileType,
+    model,
+  }: {
+    fileUrl: string;
+    fileType: "pdf" | "image";
+    model?: string;
+  }) => {
     return extractInvoiceData(fileUrl, fileType, model);
   },
 });
@@ -920,7 +938,15 @@ export const matchVendorTool = tool({
       .optional()
       .describe("Supplier email if available"),
   }),
-  execute: async ({ supplierName, supplierABN, supplierEmail }: { supplierName: string; supplierABN?: string; supplierEmail?: string }) => {
+  execute: async ({
+    supplierName,
+    supplierABN,
+    supplierEmail,
+  }: {
+    supplierName: string;
+    supplierABN?: string;
+    supplierEmail?: string;
+  }) => {
     try {
       console.log(`[AP Agent] Matching vendor: ${supplierName}`);
 
@@ -982,7 +1008,13 @@ export function createAPXeroTools(userId: string) {
           .default(100)
           .describe("Maximum number of bills to return"),
       }),
-      execute: async (args: { status?: string; dateFrom?: string; dateTo?: string; contactId?: string; limit?: number }) => {
+      execute: async (args: {
+        status?: string;
+        dateFrom?: string;
+        dateTo?: string;
+        contactId?: string;
+        limit?: number;
+      }) => {
         const result = await executeXeroMCPTool(userId, "xero_list_invoices", {
           ...args,
           invoiceType: "ACCPAY", // Bills are ACCPAY type
@@ -1082,7 +1114,11 @@ export function createAPXeroTools(userId: string) {
           .default(100)
           .describe("Maximum number of payments to return"),
       }),
-      execute: async (args: { dateFrom?: string; dateTo?: string; limit?: number }) => {
+      execute: async (args: {
+        dateFrom?: string;
+        dateTo?: string;
+        limit?: number;
+      }) => {
         const result = await executeXeroMCPTool(
           userId,
           "xero_list_payments",
@@ -1138,7 +1174,13 @@ export function createAPXeroTools(userId: string) {
         date: string;
         dueDate: string;
         reference?: string;
-        lineItems: Array<{ description: string; quantity?: number; unitAmount: number; accountCode: string; taxType?: string }>;
+        lineItems: Array<{
+          description: string;
+          quantity?: number;
+          unitAmount: number;
+          accountCode: string;
+          taxType?: string;
+        }>;
       }) => {
         try {
           console.log(
@@ -1196,7 +1238,15 @@ export function createAPXeroTools(userId: string) {
         email: z.string().optional().describe("Supplier email address"),
         phone: z.string().optional().describe("Supplier phone number"),
       }),
-      execute: async ({ name, email, phone }: { name: string; email?: string; phone?: string }) => {
+      execute: async ({
+        name,
+        email,
+        phone,
+      }: {
+        name: string;
+        email?: string;
+        phone?: string;
+      }) => {
         try {
           console.log(`[AP Agent] Creating Xero contact: ${name}`);
 

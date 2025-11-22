@@ -38,13 +38,13 @@ test.describe("chat activity with reasoning", () => {
 
     const assistantMessage = await chatPage.getRecentAssistantMessage();
     const reasoningElement =
-      assistantMessage!.element.getByTestId("message-reasoning");
+      assistantMessage?.element.getByTestId("message-reasoning");
     expect(reasoningElement).toBeVisible();
 
-    await assistantMessage!.toggleReasoningVisibility();
+    await assistantMessage?.toggleReasoningVisibility();
     await expect(reasoningElement).not.toBeVisible();
 
-    await assistantMessage!.toggleReasoningVisibility();
+    await assistantMessage?.toggleReasoningVisibility();
     await expect(reasoningElement).toBeVisible();
   });
 
@@ -54,7 +54,7 @@ test.describe("chat activity with reasoning", () => {
 
     const assistantMessage = await chatPage.getRecentAssistantMessage();
     const reasoningElement =
-      assistantMessage!.element.getByTestId("message-reasoning");
+      assistantMessage?.element.getByTestId("message-reasoning");
     expect(reasoningElement).toBeVisible();
 
     const userMessage = await chatPage.getRecentUserMessage();
@@ -64,9 +64,9 @@ test.describe("chat activity with reasoning", () => {
 
     const updatedAssistantMessage = await chatPage.getRecentAssistantMessage();
 
-    expect(updatedAssistantMessage!.content).toBe("It's just green duh!");
+    expect(updatedAssistantMessage?.content).toBe("It's just green duh!");
 
-    expect(updatedAssistantMessage!.reasoning).toBe(
+    expect(updatedAssistantMessage?.reasoning).toBe(
       "Grass is green because of chlorophyll absorption!"
     );
   });

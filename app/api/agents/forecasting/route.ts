@@ -63,14 +63,12 @@ async function buildXeroContext({
     const tools = createForecastingXeroTools(userId);
 
     const [pnlResult, balanceResult] = await Promise.allSettled([
-      // biome-ignore lint/suspicious/noExplicitAny: Type workaround for AI SDK tool execution
       (tools.xero_get_profit_and_loss as any).execute({
         fromDate,
         toDate,
         periods: Math.min(periods, 12),
         timeframe: "MONTH",
       }),
-      // biome-ignore lint/suspicious/noExplicitAny: Type workaround for AI SDK tool execution
       (tools.xero_get_balance_sheet as any).execute({ fromDate, toDate }),
     ]);
 

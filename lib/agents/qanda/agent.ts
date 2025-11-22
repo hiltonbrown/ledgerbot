@@ -1,6 +1,5 @@
 import "server-only";
 
-import { myProvider } from "@/lib/ai/providers";
 import { createQandaXeroTools, regulatorySearchTool } from "./tools";
 
 const SYSTEM_INSTRUCTIONS = `You are an Australian regulatory compliance assistant specializing in employment law, taxation, and payroll obligations.

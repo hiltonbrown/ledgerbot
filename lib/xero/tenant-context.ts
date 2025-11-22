@@ -18,14 +18,14 @@ import type { DecryptedXeroConnection } from "./types";
  * Tenant context for making Xero API calls
  * This should be passed explicitly to all Xero API operations
  */
-export interface XeroTenantContext {
+export type XeroTenantContext = {
   tenantId: string;
   accessToken: string;
   tenantName: string | null;
   organisationId: string | null;
   shortCode: string | null; // For deep linking
   connectionId: string; // For logging and debugging
-}
+};
 
 /**
  * Create an explicit tenant context from a connection
@@ -186,9 +186,9 @@ export async function makeXeroApiCall(
   const minRemaining = response.headers.get("X-MinLimit-Remaining");
   const dayRemaining = response.headers.get("X-DayLimit-Remaining");
   if (minRemaining || dayRemaining) {
-    console.log(`[Xero API] Rate limits:`, {
-      minuteRemaining: minRemaining ? Number.parseInt(minRemaining) : null,
-      dayRemaining: dayRemaining ? Number.parseInt(dayRemaining) : null,
+    console.log("[Xero API] Rate limits:", {
+      minuteRemaining: minRemaining ? Number.parseInt(minRemaining, 10) : null,
+      dayRemaining: dayRemaining ? Number.parseInt(dayRemaining, 10) : null,
     });
   }
 

@@ -2,22 +2,25 @@
  * Shared Clerk appearance configuration for consistent styling
  * across all Clerk components (SignIn, SignUp, UserProfile, etc.)
  *
- * Uses CSS variables that automatically adapt to light/dark themes
+ * Uses dedicated Clerk CSS variables that adapt with light/dark themes
+ * so the components stay aligned with the app design tokens.
  */
+const clerkColor = (token: string) => `hsl(var(${token}))`;
+
 export const clerkAppearance = {
   variables: {
-    colorPrimary: "hsl(var(--primary))",
-    colorBackground: "hsl(var(--background))",
-    colorInputBackground: "hsl(var(--input))",
-    colorInputText: "hsl(var(--foreground))",
-    colorText: "hsl(var(--foreground))",
-    colorTextSecondary: "hsl(var(--muted-foreground))",
-    colorDanger: "hsl(var(--destructive))",
+    colorPrimary: clerkColor("--clerk-primary"),
+    colorBackground: clerkColor("--clerk-background"),
+    colorInputBackground: clerkColor("--clerk-input"),
+    colorInputText: clerkColor("--clerk-foreground"),
+    colorText: clerkColor("--clerk-foreground"),
+    colorTextSecondary: clerkColor("--clerk-muted-foreground"),
+    colorDanger: clerkColor("--destructive"),
     colorSuccess: "hsl(142 76% 36%)",
     colorWarning: "hsl(38 92% 50%)",
-    colorNeutral: "hsl(var(--muted))",
-    colorTextOnPrimaryBackground: "hsl(var(--primary-foreground))",
-    colorAlphaShade: "hsl(var(--muted))",
+    colorNeutral: clerkColor("--clerk-muted"),
+    colorTextOnPrimaryBackground: clerkColor("--primary-foreground"),
+    colorAlphaShade: clerkColor("--clerk-muted"),
     fontSize: "1rem",
     borderRadius: "var(--radius)",
   },
@@ -85,5 +88,30 @@ export const clerkAppearance = {
     // Accordion
     accordionTriggerButton: "text-foreground hover:bg-accent transition-colors",
     accordionContent: "text-foreground",
+  },
+} as const;
+
+/**
+ * Sidebar-specific appearance overrides for the UserButton trigger/popover
+ * so it matches the navigation chrome and uses sidebar-aware tokens.
+ */
+export const sidebarUserButtonAppearance = {
+  ...clerkAppearance,
+  elements: {
+    ...clerkAppearance.elements,
+    userButtonBox:
+      "bg-sidebar border border-sidebar-border text-sidebar-foreground shadow-sm transition-all hover:border-sidebar-ring/80 hover:shadow-md rounded-lg",
+    userButtonTrigger:
+      "w-full rounded-lg px-2 py-1.5 text-sm font-medium leading-tight data-[state=open]:ring-2 data-[state=open]:ring-sidebar-ring data-[state=open]:ring-offset-2 data-[state=open]:ring-offset-sidebar",
+    userButtonAvatarBox:
+      "border-2 border-sidebar-ring/40 bg-sidebar text-sidebar-foreground shadow-sm",
+    userButtonPopoverCard:
+      "bg-sidebar text-sidebar-foreground border border-sidebar-border shadow-xl",
+    userButtonPopoverActionButton:
+      "text-sm font-medium hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground transition-colors",
+    userButtonPopoverActionButtonText:
+      "text-sidebar-foreground text-sm font-medium leading-tight",
+    userButtonPopoverActionButtonIcon: "text-sidebar-foreground",
+    userButtonPopoverFooter: "border-t border-sidebar-border bg-sidebar",
   },
 } as const;

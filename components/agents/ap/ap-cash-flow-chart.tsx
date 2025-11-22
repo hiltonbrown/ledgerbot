@@ -1,19 +1,19 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
 import { TrendingDown, TrendingUp } from "lucide-react";
+import { Card } from "@/components/ui/card";
 
-interface CashFlowDataPoint {
+type CashFlowDataPoint = {
   date: string;
   billsDue: number;
   amountDue: number;
   cumulativeAmount: number;
-}
+};
 
-interface APCashFlowChartProps {
+type APCashFlowChartProps = {
   data: CashFlowDataPoint[];
   isLoading?: boolean;
-}
+};
 
 export function APCashFlowChart({ data, isLoading }: APCashFlowChartProps) {
   if (isLoading) {
@@ -31,7 +31,9 @@ export function APCashFlowChart({ data, isLoading }: APCashFlowChartProps) {
     return (
       <Card className="p-6">
         <h3 className="mb-4 font-semibold text-lg">Cash Flow Forecast</h3>
-        <p className="text-center text-muted-foreground">No forecast data available</p>
+        <p className="text-center text-muted-foreground">
+          No forecast data available
+        </p>
       </Card>
     );
   }
@@ -40,12 +42,13 @@ export function APCashFlowChart({ data, isLoading }: APCashFlowChartProps) {
   const maxAmount = Math.max(...data.map((d) => d.cumulativeAmount), 1);
 
   // Get total cumulative for period
-  const totalCumulative = data[data.length - 1]?.cumulativeAmount || 0;
+  const totalCumulative = data.at(-1)?.cumulativeAmount || 0;
   const avgDaily = totalCumulative / data.length;
 
   // Find peak day
-  const peakDay = data.reduce((max, d) =>
-    d.amountDue > max.amountDue ? d : max, data[0]
+  const peakDay = data.reduce(
+    (max, d) => (d.amountDue > max.amountDue ? d : max),
+    data[0]
   );
 
   return (
@@ -60,7 +63,8 @@ export function APCashFlowChart({ data, isLoading }: APCashFlowChartProps) {
         <div className="text-right">
           <p className="text-muted-foreground text-sm">Total Period</p>
           <p className="font-bold text-2xl">
-            ${totalCumulative.toLocaleString("en-AU", {
+            $
+            {totalCumulative.toLocaleString("en-AU", {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
             })}
@@ -70,21 +74,28 @@ export function APCashFlowChart({ data, isLoading }: APCashFlowChartProps) {
 
       {/* Chart */}
       <div className="mb-6 space-y-2">
-        {data.map((point, idx) => {
-          const percentage = maxAmount > 0 ? (point.cumulativeAmount / maxAmount) * 100 : 0;
+        {data.map((point, _idx) => {
+          const percentage =
+            maxAmount > 0 ? (point.cumulativeAmount / maxAmount) * 100 : 0;
           const hasPayments = point.amountDue > 0;
           const date = new Date(point.date);
           const isWeekend = date.getDay() === 0 || date.getDay() === 6;
 
           return (
-            <div key={point.date} className="group">
+            <div className="group" key={point.date}>
               <div className="mb-1 flex items-center justify-between text-xs">
-                <span className={`font-medium ${isWeekend ? "text-muted-foreground" : ""}`}>
+                <span
+                  className={`font-medium ${isWeekend ? "text-muted-foreground" : ""}`}
+                >
                   {date.toLocaleDateString("en-AU", {
                     month: "short",
-                    day: "numeric"
+                    day: "numeric",
                   })}
-                  {isWeekend && <span className="ml-1 text-muted-foreground">(Weekend)</span>}
+                  {isWeekend && (
+                    <span className="ml-1 text-muted-foreground">
+                      (Weekend)
+                    </span>
+                  )}
                 </span>
                 <div className="flex items-center gap-2">
                   {hasPayments && (
@@ -92,7 +103,11 @@ export function APCashFlowChart({ data, isLoading }: APCashFlowChartProps) {
                       {point.billsDue} {point.billsDue === 1 ? "bill" : "bills"}
                     </span>
                   )}
-                  <span className={hasPayments ? "font-semibold" : "text-muted-foreground"}>
+                  <span
+                    className={
+                      hasPayments ? "font-semibold" : "text-muted-foreground"
+                    }
+                  >
                     ${point.cumulativeAmount.toLocaleString("en-AU")}
                   </span>
                 </div>
@@ -112,7 +127,7 @@ export function APCashFlowChart({ data, isLoading }: APCashFlowChartProps) {
                 />
                 {hasPayments && (
                   <div className="absolute inset-0 flex items-center px-2">
-                    <span className="text-white text-xs font-medium drop-shadow-md">
+                    <span className="font-medium text-white text-xs drop-shadow-md">
                       +${point.amountDue.toLocaleString("en-AU")}
                     </span>
                   </div>
@@ -131,7 +146,8 @@ export function APCashFlowChart({ data, isLoading }: APCashFlowChartProps) {
             Average Daily
           </div>
           <p className="font-semibold text-lg">
-            ${avgDaily.toLocaleString("en-AU", {
+            $
+            {avgDaily.toLocaleString("en-AU", {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
             })}
@@ -143,7 +159,8 @@ export function APCashFlowChart({ data, isLoading }: APCashFlowChartProps) {
             Peak Day
           </div>
           <p className="font-semibold text-lg">
-            ${peakDay.amountDue.toLocaleString("en-AU", {
+            $
+            {peakDay.amountDue.toLocaleString("en-AU", {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
             })}

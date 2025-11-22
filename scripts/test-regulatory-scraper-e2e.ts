@@ -160,7 +160,7 @@ async function runTests() {
     }
 
     // TEST 6: Verify job record in database
-    console.log("\n" + "=".repeat(60));
+    console.log(`\n${"=".repeat(60)}`);
     console.log("TEST 6: Verifying job record in database");
     console.log("=".repeat(60));
 
@@ -200,7 +200,7 @@ async function runTests() {
     }
 
     // Final summary
-    console.log("\n" + "=".repeat(60));
+    console.log(`\n${"=".repeat(60)}`);
     console.log("🎉 ALL TESTS PASSED!");
     console.log("=".repeat(60));
     console.log("\n✅ End-to-End Pipeline Verified:");

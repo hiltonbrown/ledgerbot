@@ -125,7 +125,10 @@ export default async function Page({ searchParams }: PageProps) {
   return (
     <>
       {arContext && (
-        <div className="fixed right-0 left-0 z-40 px-4 pt-2" style={{ top: "var(--header-height, 4rem)" }}>
+        <div
+          className="fixed right-0 left-0 z-40 px-4 pt-2"
+          style={{ top: "var(--header-height, 4rem)" }}
+        >
           <div className="mx-auto max-w-4xl">
             <ArContextBanner
               customer={arContext.customer}

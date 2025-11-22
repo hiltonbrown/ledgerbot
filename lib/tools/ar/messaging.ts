@@ -7,7 +7,6 @@ import { z } from "zod";
 import {
   createCommsArtefact,
   createNote,
-  createReminder,
   getInvoiceWithContact,
   insertPayment,
   listInvoicesDue,
@@ -18,7 +17,6 @@ import type {
   ArCommsArtefactInsert,
   ArNoteInsert,
   ArPaymentInsert,
-  ArReminderInsert,
 } from "@/lib/db/schema/ar";
 import { asOfOrToday, formatDisplayDate } from "@/lib/util/dates";
 import { getXeroProvider } from "./xero";
@@ -26,7 +24,7 @@ import { getXeroProvider } from "./xero";
 // Stub function for call script generation
 function generateCallScript(
   contact: unknown,
-  invoices: unknown[],
+  _invoices: unknown[],
   totalDue: number,
   daysOverdue: number,
   tone: "polite" | "firm" | "final",
@@ -60,7 +58,17 @@ export const getInvoicesDueTool = tool({
       .describe("Minimum days overdue (0 = all due invoices)"),
     customerId: z.string().optional().describe("Filter by customer/contact ID"),
   }),
-  execute: async ({ userId, asOf, minDaysOverdue, customerId }: { userId: string; asOf?: string; minDaysOverdue?: number; customerId?: string }) => {
+  execute: async ({
+    userId,
+    asOf,
+    minDaysOverdue,
+    customerId,
+  }: {
+    userId: string;
+    asOf?: string;
+    minDaysOverdue?: number;
+    customerId?: string;
+  }) => {
     const asOfDate = asOfOrToday(asOf);
     const result = await listInvoicesDue({
       userId,
@@ -398,7 +406,9 @@ function generateEmailContent(
   invoice: Awaited<ReturnType<typeof getInvoiceWithContact>>,
   tone: "polite" | "firm" | "final"
 ): { subject: string; body: string } {
-  if (!invoice) throw new Error("Invoice not found");
+  if (!invoice) {
+    throw new Error("Invoice not found");
+  }
 
   const displayDate = formatDisplayDate(invoice.dueDate);
   const amountDue = (
@@ -452,7 +462,9 @@ function generateSmsContent(
   invoice: Awaited<ReturnType<typeof getInvoiceWithContact>>,
   tone: "polite" | "firm" | "final"
 ): string {
-  if (!invoice) throw new Error("Invoice not found");
+  if (!invoice) {
+    throw new Error("Invoice not found");
+  }
 
   const amountDue = (
     Number.parseFloat(invoice.total) - Number.parseFloat(invoice.amountPaid)
@@ -468,10 +480,18 @@ function generateSmsContent(
 }
 
 function mapXeroStatus(xeroStatus: string, hasAmountDue: boolean): string {
-  if (xeroStatus === "PAID") return "paid";
-  if (xeroStatus === "VOIDED") return "voided";
-  if (xeroStatus === "DRAFT") return "draft";
-  if (xeroStatus === "AUTHORISED" && hasAmountDue) return "awaiting_payment";
+  if (xeroStatus === "PAID") {
+    return "paid";
+  }
+  if (xeroStatus === "VOIDED") {
+    return "voided";
+  }
+  if (xeroStatus === "DRAFT") {
+    return "draft";
+  }
+  if (xeroStatus === "AUTHORISED" && hasAmountDue) {
+    return "awaiting_payment";
+  }
   return "awaiting_payment";
 }
 
