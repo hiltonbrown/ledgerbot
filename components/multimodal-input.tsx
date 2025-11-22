@@ -157,7 +157,22 @@ function PureMultimodalInput({
   const submitForm = useCallback(() => {
     window.history.replaceState({}, "", `/chat/${chatId}`);
 
-    const parts = [
+    const parts: Array<
+      | {
+          type: "file";
+          url: string;
+          name: string;
+          mediaType: string;
+          extractedText?: string;
+          fileSize?: number;
+          processingError?: string;
+          documentId?: string;
+        }
+      | {
+          type: "text";
+          text: string;
+        }
+    > = [
       ...attachments.map((attachment) => ({
         type: "file" as const,
         url: attachment.url,
@@ -173,7 +188,7 @@ function PureMultimodalInput({
     // Only add text part if there's actual text content
     if (input.trim()) {
       parts.push({
-        type: "text",
+        type: "text" as const,
         text: input,
       });
     }
