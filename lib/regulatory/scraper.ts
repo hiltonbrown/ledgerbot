@@ -12,7 +12,10 @@ import {
   parseRegulatoryConfig,
   type RegulatorySource,
 } from "./config-parser";
-import { runMastraRegulatorySummary } from "./mastra-scraper";
+import {
+  type RegulatoryScrapeSummary,
+  runRegulatorySummary,
+} from "./regulatory-summary";
 import { countTokens, extractTextFromHtml } from "./text-utils";
 
 /**
@@ -73,7 +76,7 @@ function parseOptionalDate(value?: string | null) {
 export async function scrapeRegulatoryDocument(
   source: RegulatorySource
 ): Promise<RegulatoryDocumentInsert | null> {
-  console.log(`[Scraper]  Scraping source via Mastra: ${source.url}`);
+  console.log(`[Scraper]  Scraping source: ${source.url}`);
   try {
     const { html, title: fallbackTitle } = await fetchSourceHtml(source.url);
 
@@ -84,17 +87,17 @@ export async function scrapeRegulatoryDocument(
 
     const extractedText = extractTextFromHtml(html);
     const tokenCount = countTokens(extractedText);
-    const mastraSummary = await runMastraRegulatorySummary({
+    const regulatorySummary = await runRegulatorySummary({
       source,
       extractedText,
     });
 
-    const effectiveDate = parseOptionalDate(mastraSummary?.effectiveDate);
+    const effectiveDate = parseOptionalDate(regulatorySummary?.effectiveDate);
 
     const documentData: RegulatoryDocumentInsert = {
       country: source.country,
       category: source.category,
-      title: mastraSummary?.title || fallbackTitle || source.subsection,
+      title: regulatorySummary?.title || fallbackTitle || source.subsection,
       sourceUrl: source.url,
       content: html,
       extractedText,
@@ -103,12 +106,12 @@ export async function scrapeRegulatoryDocument(
       scrapedAt: new Date(),
       lastCheckedAt: new Date(),
       effectiveDate,
-      metadata: mastraSummary
+      metadata: regulatorySummary
         ? {
-            summary: mastraSummary.summary,
-            obligations: mastraSummary.obligations,
-            citations: mastraSummary.citations,
-            mastraVersion: "v1",
+            summary: regulatorySummary.summary,
+            obligations: regulatorySummary.obligations,
+            citations: regulatorySummary.citations,
+            regulatoryVersion: "v1",
           }
         : undefined,
     };

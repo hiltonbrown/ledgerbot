@@ -47,6 +47,67 @@ export type DeepResearchMessageMetadata = z.infer<
 >;
 export type MessageMetadata = z.infer<typeof messageMetadataSchema>;
 
+// Deep Research Attachment Types
+export type DeepResearchSource = {
+  index: number;
+  title: string;
+  url: string;
+  snippet: string;
+  summary: string;
+  reliability: "high" | "medium" | "low";
+  confidence: number;
+  publishedAt?: string;
+  notes?: string;
+};
+
+export type DeepResearchHistoryEntry = {
+  timestamp: string;
+  note: string;
+};
+
+export type DeepResearchSummaryAttachment = {
+  type: "deep-research-summary";
+  sessionId: string;
+  question: string;
+  createdAt: string;
+  confidence: number;
+  plan: string[];
+  sources: DeepResearchSource[];
+  history: DeepResearchHistoryEntry[];
+  findings: string[];
+  recommendations: string[];
+  followUpQuestions: string[];
+  approvalMessage: string;
+  parentSessionId?: string;
+};
+
+export type DeepResearchReportAttachment = {
+  type: "deep-research-report";
+  sessionId: string;
+  question: string;
+  createdAt: string;
+  confidence: number;
+  plan: string[];
+  reportMarkdown: string;
+  sources: DeepResearchSource[];
+  history: DeepResearchHistoryEntry[];
+  parentSessionId?: string;
+};
+
+export type DeepResearchSessionAttachment = {
+  type: "deep-research-session";
+  sessionId: string;
+  status: "needs-details" | "awaiting-approval" | "report-generated" | "error";
+  createdAt: string;
+  question?: string;
+  parentSessionId?: string;
+};
+
+export type DeepResearchAttachment =
+  | DeepResearchSummaryAttachment
+  | DeepResearchReportAttachment
+  | DeepResearchSessionAttachment;
+
 type weatherTool = InferUITool<typeof getWeather>;
 type createDocumentTool = InferUITool<ReturnType<typeof createDocument>>;
 type updateDocumentTool = InferUITool<ReturnType<typeof updateDocument>>;

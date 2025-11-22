@@ -13,7 +13,7 @@ import type {
   DeepResearchReportAttachment,
   DeepResearchSource,
   DeepResearchSummaryAttachment,
-} from "./deep-research-types";
+} from "./types";
 
 const DEFAULT_SUMMARY_MODEL = "anthropic-claude-sonnet-4-5";
 const TAVILY_SEARCH_URL =
@@ -411,7 +411,7 @@ function mergeSearchResults(results: RawSearchHit[][]): RawSearchHit[] {
   return Array.from(byUrl.values());
 }
 
-export async function runMastraDeepResearchSummary({
+export async function runDeepResearchSummary({
   question,
   followUp,
   parentSessionId,
@@ -432,7 +432,7 @@ export async function runMastraDeepResearchSummary({
   const createdAt = nowIso();
   const history: DeepResearchHistoryEntry[] = [];
 
-  logHistory(history, "Initialising Mastra deep research workflow");
+  logHistory(history, "Initialising deep research workflow");
 
   const plan = await createResearchPlan({
     question,
@@ -480,7 +480,7 @@ export async function runMastraDeepResearchSummary({
       summary: evaluation.summary,
       reliability: evaluation.reliability,
       confidence: evaluation.confidence,
-      publishedAt: hit?.publishedDate,
+      publishedAt: hit?.publishedDate || undefined,
       notes: evaluation.notes,
     } satisfies DeepResearchSource;
   });
@@ -545,7 +545,7 @@ export async function runMastraDeepResearchSummary({
   return { message, attachment, metadata };
 }
 
-export async function runMastraDeepResearchReport({
+export async function runDeepResearchReport({
   summaryAttachment,
   modelId,
 }: {

@@ -57,7 +57,7 @@ export async function POST(req: Request) {
       const uniqueCategories = Array.from(new Set(requestedCategories));
       try {
         console.log(
-          "[Q&A Agent] Refreshing regulatory sources via Mastra",
+          "[Q&A Agent] Refreshing regulatory sources",
           uniqueCategories
         );
         await refreshSourcesForCategories({
@@ -95,14 +95,13 @@ export async function POST(req: Request) {
       ),
       system: SYSTEM_INSTRUCTIONS,
       messages,
-      maxSteps: 5,
       tools: {
         regulatorySearch: regulatorySearchTool,
         ...xeroTools,
       },
     });
 
-    return result.toDataStreamResponse();
+    return result.toTextStreamResponse();
   } catch (error) {
     console.error("[Q&A Agent] Error handling chat request:", error);
     return new NextResponse("Internal Server Error", { status: 500 });

@@ -6,7 +6,7 @@ import { executeXeroMCPTool } from "@/lib/ai/xero-mcp-client";
 import { searchRegulatoryDocuments } from "@/lib/regulatory/search";
 
 /**
- * Regulatory search tool for Mastra agents
+ * Regulatory search tool for agents
  */
 export const regulatorySearchTool = tool({
   description: `Searches the Australian regulatory knowledge base for information on employment law, taxation, and payroll.

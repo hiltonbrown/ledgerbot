@@ -1,36 +1,22 @@
 import "server-only";
 
-import { Agent } from "@mastra/core/agent";
-import { createTool } from "@mastra/core/tools";
+import { tool } from "ai";
 import { z } from "zod";
-import { myProvider } from "@/lib/ai/providers";
 import { executeXeroMCPTool } from "@/lib/ai/xero-mcp-client";
 
 /**
  * Calculate KPIs tool
  */
-const calculateKpisTool = createTool({
-  id: "calculateKpis",
+const calculateKpisTool = tool({
   description:
     "Calculate key performance indicators from financial data including gross margin, runway, burn rate, and revenue growth.",
-  inputSchema: z.object({
+  parameters: z.object({
     revenue: z.array(z.number()).describe("Monthly revenue values"),
     cogs: z.array(z.number()).optional().describe("Cost of goods sold"),
     expenses: z.array(z.number()).describe("Monthly expense values"),
     cash: z.number().optional().describe("Current cash balance"),
   }),
-  outputSchema: z.object({
-    kpis: z.object({
-      grossMargin: z.number().describe("Gross margin percentage"),
-      netBurn: z.number().describe("Monthly net burn rate"),
-      runway: z.number().describe("Runway in months"),
-      revenueGrowth: z.number().describe("Month-over-month revenue growth %"),
-    }),
-    insights: z.array(z.string()).describe("Key insights and recommendations"),
-  }),
-  execute: async ({ context }) => {
-    const { revenue, cogs = [], expenses, cash = 0 } = context;
-
+  execute: async ({ revenue, cogs = [], expenses, cash = 0 }) => {
     const latestRevenue = revenue[revenue.length - 1] || 0;
     const previousRevenue = revenue[revenue.length - 2] || 0;
     const latestCogs = cogs[cogs.length - 1] || 0;
@@ -83,11 +69,10 @@ const calculateKpisTool = createTool({
 /**
  * Generate narrative tool
  */
-const generateNarrativeTool = createTool({
-  id: "generateNarrative",
+const generateNarrativeTool = tool({
   description:
     "Generate executive narrative commentary for financial reports explaining trends, risks, and opportunities.",
-  inputSchema: z.object({
+  parameters: z.object({
     period: z.string().describe("Reporting period (e.g., 'October 2025')"),
     kpis: z
       .object({
@@ -99,13 +84,7 @@ const generateNarrativeTool = createTool({
       .describe("Key performance indicators"),
     context: z.string().optional().describe("Additional context or notes"),
   }),
-  outputSchema: z.object({
-    narrative: z.string().describe("Executive narrative summary"),
-    recommendations: z.array(z.string()).describe("Action items"),
-  }),
-  execute: async ({ context }) => {
-    const { period, kpis, context: additionalContext } = context;
-
+  execute: async ({ period, kpis, context: additionalContext }) => {
     const narrativeParts: string[] = [];
 
     narrativeParts.push(`# Financial Summary - ${period}`);
@@ -162,11 +141,10 @@ const generateNarrativeTool = createTool({
  */
 function createAnalyticsXeroTools(userId: string) {
   return {
-    xero_get_profit_and_loss: createTool({
-      id: "xero_get_profit_and_loss",
+    xero_get_profit_and_loss: tool({
       description:
         "Get the Profit & Loss report from Xero for financial analysis and reporting.",
-      inputSchema: z.object({
+      parameters: z.object({
         fromDate: z
           .string()
           .describe("Start date (ISO 8601 format YYYY-MM-DD)"),
@@ -181,33 +159,35 @@ function createAnalyticsXeroTools(userId: string) {
           .optional()
           .default("MONTH"),
       }),
-      outputSchema: z.string(),
-      execute: async ({ context }) => {
+      execute: async ({
+        fromDate,
+        toDate,
+        periods = 12,
+        timeframe = "MONTH",
+      }) => {
         const result = await executeXeroMCPTool(
           userId,
           "xero_get_profit_and_loss",
-          context
+          { fromDate, toDate, periods, timeframe }
         );
         return result.content[0].text;
       },
     }),
 
-    xero_get_balance_sheet: createTool({
-      id: "xero_get_balance_sheet",
+    xero_get_balance_sheet: tool({
       description:
         "Get the Balance Sheet from Xero for financial position analysis.",
-      inputSchema: z.object({
+      parameters: z.object({
         fromDate: z
           .string()
           .describe("Start date (ISO 8601 format YYYY-MM-DD)"),
         toDate: z.string().describe("End date (ISO 8601 format YYYY-MM-DD)"),
       }),
-      outputSchema: z.string(),
-      execute: async ({ context }) => {
+      execute: async ({ fromDate, toDate }) => {
         const result = await executeXeroMCPTool(
           userId,
           "xero_get_balance_sheet",
-          context
+          { fromDate, toDate }
         );
         return result.content[0].text;
       },
@@ -251,32 +231,31 @@ Reporting Best Practices:
 - Format for executive consumption (board packs, investor updates)`;
 
 /**
- * Base Analytics Agent (without Xero tools)
+ * Get base Analytics agent tools (without Xero integration)
  */
-export const analyticsAgent = new Agent({
-  name: "analytics-agent",
-  instructions: ANALYTICS_INSTRUCTIONS,
-  model: myProvider.languageModel("anthropic-claude-sonnet-4-5"),
-  tools: {
+export function getAnalyticsAgentTools() {
+  return {
     calculateKpis: calculateKpisTool,
     generateNarrative: generateNarrativeTool,
-  },
-});
+  };
+}
 
 /**
- * Create an Analytics agent instance with Xero tools for a specific user
+ * Get Analytics agent tools with Xero integration for a specific user
  */
-export function createAnalyticsAgentWithXero(userId: string) {
+export function getAnalyticsAgentToolsWithXero(userId: string) {
   const xeroTools = createAnalyticsXeroTools(userId);
 
-  return new Agent({
-    name: "analytics-agent-with-xero",
-    instructions: ANALYTICS_INSTRUCTIONS,
-    model: myProvider.languageModel("anthropic-claude-sonnet-4-5"),
-    tools: {
-      calculateKpis: calculateKpisTool,
-      generateNarrative: generateNarrativeTool,
-      ...xeroTools,
-    },
-  });
+  return {
+    calculateKpis: calculateKpisTool,
+    generateNarrative: generateNarrativeTool,
+    ...xeroTools,
+  };
+}
+
+/**
+ * Get Analytics agent system prompt
+ */
+export function getAnalyticsAgentSystemPrompt(): string {
+  return ANALYTICS_INSTRUCTIONS;
 }

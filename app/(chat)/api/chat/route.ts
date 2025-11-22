@@ -48,26 +48,28 @@ import {
   updateChatLastContextById,
   updateChatVisiblityById,
 } from "@/lib/db/queries";
-import { ChatSDKError } from "@/lib/errors";
 import {
   detectApprovalCommand,
   detectDeeperRequest,
   isLikelyDetailedQuestion,
-  runMastraDeepResearchReport,
-  runMastraDeepResearchSummary,
-} from "@/lib/mastra/deep-research";
-import type {
-  DeepResearchReportAttachment,
-  DeepResearchSessionAttachment,
-  DeepResearchSummaryAttachment,
-} from "@/lib/mastra/deep-research-types";
+  runDeepResearchReport,
+  runDeepResearchSummary,
+} from "@/lib/deep-research";
+import { ChatSDKError } from "@/lib/errors";
 import {
   createPublisherWithTtl,
   createSubscriberWrapper,
   getRedisClients,
   streamBufferTtlSeconds,
 } from "@/lib/redis/config";
-import type { ChatMessage, MessageMetadata } from "@/lib/types";
+
+import type {
+  ChatMessage,
+  DeepResearchReportAttachment,
+  DeepResearchSessionAttachment,
+  DeepResearchSummaryAttachment,
+  MessageMetadata,
+} from "@/lib/types";
 import type { UserType } from "@/lib/types/auth";
 import type { AppUsage } from "@/lib/usage";
 import {
@@ -559,7 +561,7 @@ export async function POST(request: Request) {
                 message: reportMessage,
                 attachment: reportAttachment,
                 metadata,
-              } = await runMastraDeepResearchReport({
+              } = await runDeepResearchReport({
                 summaryAttachment: attachment,
                 modelId: selectedChatModel,
               });
@@ -636,7 +638,7 @@ export async function POST(request: Request) {
               message: summaryMessage,
               attachment: summaryAttachment,
               metadata,
-            } = await runMastraDeepResearchSummary({
+            } = await runDeepResearchSummary({
               question: followUpQuestion,
               followUp: userText,
               parentSessionId: attachment.sessionId,
@@ -670,7 +672,7 @@ export async function POST(request: Request) {
             message: summaryMessage,
             attachment,
             metadata,
-          } = await runMastraDeepResearchSummary({
+          } = await runDeepResearchSummary({
             question: userText,
             modelId: selectedChatModel,
             requestHints,

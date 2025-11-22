@@ -2,8 +2,6 @@ import "server-only";
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { Agent } from "@mastra/core/agent";
-import { myProvider } from "@/lib/ai/providers";
 import {
   assessPaymentRiskTool,
   checkDuplicateBillsTool,
@@ -23,7 +21,7 @@ const SYSTEM_INSTRUCTIONS = readFileSync(
 );
 
 /**
- * Accounts Payable (AP) Agent
+ * Accounts Payable (AP) Agent Tools
  *
  * Assists with supplier bill management, vendor validation, coding suggestions,
  * approval workflows, payment runs, and vendor communication for Australian businesses.
@@ -36,11 +34,12 @@ const SYSTEM_INSTRUCTIONS = readFileSync(
  * - Email draft generation (no direct sending)
  * - Xero integration for real-time financial data (when connected)
  */
-export const apAgent = new Agent({
-  name: "ap-agent",
-  instructions: SYSTEM_INSTRUCTIONS,
-  model: myProvider.languageModel("anthropic-claude-sonnet-4-5"),
-  tools: {
+
+/**
+ * Get base AP agent tools (without Xero integration)
+ */
+export function getAPAgentTools() {
+  return {
     extractInvoiceData: extractInvoiceDataTool,
     matchVendor: matchVendorTool,
     validateABN: validateABNTool,
@@ -49,11 +48,11 @@ export const apAgent = new Agent({
     generatePaymentProposal: generatePaymentProposalTool,
     assessPaymentRisk: assessPaymentRiskTool,
     generateEmailDraft: generateEmailDraftTool,
-  },
-});
+  };
+}
 
 /**
- * Create an AP agent instance with Xero tools for a specific user
+ * Get AP agent tools with Xero integration for a specific user
  *
  * This variant includes additional Xero integration tools for users
  * with an active Xero connection, enabling real-time access to:
@@ -64,26 +63,27 @@ export const apAgent = new Agent({
  * - Payment history
  *
  * @param userId - User ID to fetch Xero connection for
- * @param modelId - Optional model ID to use (defaults to Claude Sonnet 4.5)
- * @returns Agent instance with Xero tools included
+ * @returns Tools object with Xero tools included
  */
-export function createAPAgentWithXero(userId: string, modelId?: string) {
+export function getAPAgentToolsWithXero(userId: string) {
   const xeroTools = createAPXeroTools(userId);
 
-  return new Agent({
-    name: "ap-agent-with-xero",
-    instructions: SYSTEM_INSTRUCTIONS,
-    model: myProvider.languageModel(modelId || "anthropic-claude-sonnet-4-5"),
-    tools: {
-      extractInvoiceData: extractInvoiceDataTool,
-      matchVendor: matchVendorTool,
-      validateABN: validateABNTool,
-      suggestBillCoding: suggestBillCodingTool,
-      checkDuplicateBills: checkDuplicateBillsTool,
-      generatePaymentProposal: generatePaymentProposalTool,
-      assessPaymentRisk: assessPaymentRiskTool,
-      generateEmailDraft: generateEmailDraftTool,
-      ...xeroTools,
-    },
-  });
+  return {
+    extractInvoiceData: extractInvoiceDataTool,
+    matchVendor: matchVendorTool,
+    validateABN: validateABNTool,
+    suggestBillCoding: suggestBillCodingTool,
+    checkDuplicateBills: checkDuplicateBillsTool,
+    generatePaymentProposal: generatePaymentProposalTool,
+    assessPaymentRisk: assessPaymentRiskTool,
+    generateEmailDraft: generateEmailDraftTool,
+    ...xeroTools,
+  };
+}
+
+/**
+ * Get AP agent system prompt
+ */
+export function getAPAgentSystemPrompt(): string {
+  return SYSTEM_INSTRUCTIONS;
 }

@@ -1,5 +1,5 @@
 /**
- * AR messaging and comms tools for Mastra agent
+ * AR messaging and comms tools for agent
  */
 
 import { tool } from "ai";

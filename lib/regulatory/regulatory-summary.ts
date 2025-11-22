@@ -23,15 +23,15 @@ const SCRAPER_OUTPUT_SCHEMA = z.object({
     .optional(),
 });
 
-export type MastraScrapeSummary = z.infer<typeof SCRAPER_OUTPUT_SCHEMA>;
+export type RegulatoryScrapeSummary = z.infer<typeof SCRAPER_OUTPUT_SCHEMA>;
 
-export async function runMastraRegulatorySummary({
+export async function runRegulatorySummary({
   source,
   extractedText,
 }: {
   source: RegulatorySource;
   extractedText: string;
-}): Promise<MastraScrapeSummary | null> {
+}): Promise<RegulatoryScrapeSummary | null> {
   const prompt = `Source URL: ${source.url}
 Country: ${source.country}
 Category: ${source.category}
@@ -58,7 +58,7 @@ Always respond with strict JSON matching the output schema. Do not add commentar
 
     return object;
   } catch (error) {
-    console.error("[regulatory] Mastra summary failed", error);
+    console.error("[regulatory] Summary generation failed", error);
   }
 
   return null;

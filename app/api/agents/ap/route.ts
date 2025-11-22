@@ -106,7 +106,6 @@ export async function POST(req: Request) {
       ),
       system: SYSTEM_INSTRUCTIONS,
       messages,
-      maxSteps: 5,
       tools: {
         extractInvoiceData: extractInvoiceDataTool,
         matchVendor: matchVendorTool,
@@ -118,23 +117,9 @@ export async function POST(req: Request) {
         generateEmailDraft: generateEmailDraftTool,
         ...xeroTools,
       },
-      onStepFinish: async ({ stepType, text, toolCalls, usage }) => {
-        // Log each step for observability
-        console.log(`[AP Agent] Step completed: ${stepType}`);
-        if (toolCalls && toolCalls.length > 0) {
-          console.log(
-            `[AP Agent] Tools called: ${toolCalls.map((tc) => tc.toolName).join(", ")}`
-          );
-        }
-        if (usage) {
-          console.log(
-            `[AP Agent] Token usage - Prompt: ${usage.promptTokens}, Completion: ${usage.completionTokens}`
-          );
-        }
-      },
     });
 
-    return result.toDataStreamResponse();
+    return result.toTextStreamResponse();
   } catch (error) {
     console.error("[AP Agent] Error handling chat request:", error);
 

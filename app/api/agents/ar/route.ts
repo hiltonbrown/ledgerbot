@@ -91,7 +91,6 @@ ${settings?.autoConfirm ? "Auto-confirm: enabled (generate artefacts without con
         settings?.model || "anthropic-claude-sonnet-4-5"
       ),
       messages: messagesWithContext,
-      maxSteps: 5,
       tools: {
         getInvoicesDue: getInvoicesDueTool,
         predictLateRisk: predictLateRiskTool,
@@ -111,7 +110,7 @@ ${settings?.autoConfirm ? "Auto-confirm: enabled (generate artefacts without con
       },
     });
 
-    return result.toDataStreamResponse();
+    return result.toTextStreamResponse();
   } catch (error) {
     console.error("[AR Agent] Error handling chat request:", error);
     return new NextResponse("Internal Server Error", { status: 500 });
