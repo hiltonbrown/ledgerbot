@@ -92,7 +92,7 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
           content: draftContent,
           kind: config.kind,
           userId: args.user.id,
-          chatId: args.document.chatId,
+          chatId: args.document.chatId ?? undefined,
         });
       }
 
