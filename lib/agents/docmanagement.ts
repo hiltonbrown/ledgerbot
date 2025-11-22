@@ -12,7 +12,6 @@ import type {
 } from "@/lib/agents/docmanagement/types";
 import { summarizePdfContent } from "@/lib/agents/docmanagement/workflow";
 import { myProvider } from "@/lib/ai/providers";
-import { executeXeroMCPTool, xeroMCPTools } from "@/lib/ai/xero-mcp-client";
 import {
   getContextFileById,
   touchContextFile,
@@ -36,7 +35,6 @@ const DOCUMENT_CACHE_TTL_MS = 1000 * 60 * 5; // 5 minutes
 const AVERAGE_CHARS_PER_PAGE = 1800;
 const CHARS_PER_TOKEN = 4;
 const MAX_CONTEXT_HIGHLIGHTS = 4;
-const allowedXeroResources = new Set(xeroMCPTools.map((tool) => tool.name));
 
 export type PdfLoadOutput = {
   docId: string;
@@ -655,44 +653,10 @@ const pdfLoadTool = tool({
   },
 });
 
-const ragSearchTool = tool({
-  description: "Search indexed PDF chunks to retrieve relevant clauses",
-  inputSchema: RagSearchSchema,
-  execute: async ({ query, k = 8, docId, contextFileId }: { query: string; k?: number; docId?: string; contextFileId?: string }): Promise<RagSearchOutput> => {
-    // Note: This legacy tool doesn't have access to runtimeContext
-    // In production, userId should be passed explicitly or derived from session
-    throw new Error("Legacy tool - requires migration to new agent pattern");
-  },
-});
-
-const pdfCiteTool = tool({
-  description:
-    "Find the closest clause and page reference for a given answer span",
-  inputSchema: PdfCiteSchema,
-  execute: async ({ docId, contextFileId, answerSpan }: { docId?: string; contextFileId?: string; answerSpan: string }): Promise<PdfCiteOutput> => {
-    // Note: This legacy tool doesn't have access to runtimeContext
-    // In production, userId should be passed explicitly or derived from session
-    throw new Error("Legacy tool - requires migration to new agent pattern");
-  },
-});
-
-const xeroQueryTool = tool({
-  description: "Call an allow-listed Xero MCP resource for accounting context",
-  inputSchema: XeroQuerySchema,
-  execute: async ({ resource, params }: { resource: string; params?: Record<string, unknown> }): Promise<string> => {
-    // Note: This legacy tool doesn't have access to runtimeContext
-    // In production, userId should be passed explicitly or derived from session
-    throw new Error("Legacy tool - requires migration to new agent pattern");
-  },
-});
-
 export function getDocManagementTools() {
   return {
     pdf_load: pdfLoadTool,
-    // TODO: Convert remaining tools to Vercel AI SDK
-    // rag_search: ragSearchTool,
-    // pdf_cite: pdfCiteTool,
-    // xero_query: xeroQueryTool,
+    // TODO: Implement remaining tools (rag_search, pdf_cite, xero_query) with proper migration to new agent pattern
   };
 }
 
@@ -731,7 +695,7 @@ export async function respondWithCitations({
     throw new Error("A user message is required.");
   }
 
-  const { activeDoc, messages } = await prepareDocAgentRun({
+  const { activeDoc } = await prepareDocAgentRun({
     userId,
     message,
     docId,
