@@ -24,7 +24,7 @@ export async function POST(request: Request) {
       return new Response("Not authenticated", { status: 401 });
     }
 
-    const { messages, chatId } = (await request.json()) as {
+    const { messages } = (await request.json()) as {
       messages: any[];
       chatId?: string;
     };
