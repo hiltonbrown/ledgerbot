@@ -8,7 +8,7 @@ const settingsLinks = [
   { href: "/settings", label: "Overview" },
   { href: "/settings/personalisation", label: "Personalisation" },
   { href: "/settings/usage", label: "Usage" },
-  { href: "/settings/files", label: "Context Files" },
+  { href: "/settings/files", label: "Context Files (Coming Soon)" },
   { href: "/settings/integrations", label: "Integrations" },
   { href: "/settings/agents", label: "Agents" },
   { href: "/settings/chartofaccounts", label: "Chart of Accounts" },
