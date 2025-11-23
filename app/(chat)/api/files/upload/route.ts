@@ -3,12 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
-import {
-  getChatById,
-  saveChat,
-  saveDocument,
-  saveMessages,
-} from "@/lib/db/queries";
+import { getChatById, saveChat, saveDocument } from "@/lib/db/queries";
 import {
   extractCsvData,
   extractDocxText,
@@ -124,7 +119,6 @@ export async function POST(request: Request) {
       try {
         // Generate IDs
         const documentId = generateUUID();
-        const messageId = generateUUID();
 
         // Ensure chat exists (create if needed)
         if (!chatId) {
@@ -159,34 +153,8 @@ export async function POST(request: Request) {
         });
         console.log("[files/upload] Created document:", documentId);
 
-        // Create assistant message showing spreadsheet was imported
-        await saveMessages({
-          messages: [
-            {
-              chatId,
-              id: messageId,
-              role: "assistant" as const,
-              parts: [
-                {
-                  type: "tool-result",
-                  toolCallId: generateUUID(),
-                  toolName: "createDocument",
-                  result: {
-                    id: documentId,
-                    title,
-                    kind: "sheet",
-                  },
-                },
-              ],
-              attachments: [],
-              createdAt: new Date(),
-              confidence: null,
-              citations: null,
-              needsReview: null,
-            },
-          ],
-        });
-        console.log("[files/upload] Created assistant message:", messageId);
+        // NOTE: No assistant message needed - spreadsheet artifact will be visible
+        // and user can start asking questions immediately
 
         // Return spreadsheet-specific response
         return NextResponse.json({
