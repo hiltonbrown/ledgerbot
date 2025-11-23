@@ -106,7 +106,7 @@ function PureMultimodalInput({
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
-  const { setArtifact } = useArtifact();
+  const { artifact, setArtifact } = useArtifact();
 
   const adjustHeight = useCallback(() => {
     if (textareaRef.current) {
@@ -395,7 +395,8 @@ function PureMultimodalInput({
     <div className={cn("relative flex w-full flex-col gap-4", className)}>
       {messages.length === 0 &&
         attachments.length === 0 &&
-        uploadQueue.length === 0 && (
+        uploadQueue.length === 0 &&
+        !artifact.isVisible && (
           <SuggestedActions
             chatId={chatId}
             selectedVisibilityType={selectedVisibilityType}
