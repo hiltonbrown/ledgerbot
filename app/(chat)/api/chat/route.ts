@@ -43,7 +43,6 @@ import {
   deleteChatById,
   getActiveXeroConnection,
   getChatById,
-  getDocumentById,
   getMessageCountByUserId,
   getMessagesByChatId,
   saveChat,
@@ -421,52 +420,8 @@ export async function POST(request: Request) {
       ],
     });
 
-    // If the user message contains a spreadsheet file with documentId,
-    // create an assistant message showing the document was created
-    const spreadsheetParts = message.parts.filter(
-      (part: any) =>
-        part.type === "file" &&
-        part.documentId &&
-        (part.mediaType === "text/csv" || part.mediaType?.includes("spreadsheetml"))
-    );
-
-    if (spreadsheetParts.length > 0) {
-      const spreadsheetMessages = await Promise.all(
-        spreadsheetParts.map(async (part: any) => {
-          const doc = await getDocumentById({ id: part.documentId });
-          if (doc) {
-            return {
-              chatId: id,
-              id: generateUUID(),
-              role: "assistant" as const,
-              parts: [
-                {
-                  type: "tool-result",
-                  toolCallId: generateUUID(),
-                  toolName: "createDocument",
-                  result: {
-                    id: doc.id,
-                    title: doc.title,
-                    kind: doc.kind,
-                  },
-                },
-              ],
-              attachments: [],
-              createdAt: new Date(),
-              confidence: null,
-              citations: null,
-              needsReview: null,
-            };
-          }
-          return null;
-        })
-      );
-
-      const validMessages = spreadsheetMessages.filter(Boolean);
-      if (validMessages.length > 0) {
-        await saveMessages({ messages: validMessages as any });
-      }
-    }
+    // NOTE: Spreadsheet document creation and assistant messages now happen
+    // server-side in /api/files/upload. This eliminates race conditions.
 
     const streamId = generateUUID();
     await createStreamId({ streamId, chatId: id });

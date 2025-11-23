@@ -3,13 +3,19 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
-import { getChatById, saveChat } from "@/lib/db/queries";
+import {
+  getChatById,
+  saveChat,
+  saveDocument,
+  saveMessages,
+} from "@/lib/db/queries";
 import {
   extractCsvData,
   extractDocxText,
   extractPdfText,
   extractXlsxData,
 } from "@/lib/files/parsers";
+import { generateUUID } from "@/lib/utils";
 
 const SUPPORTED_TYPES = [
   "image/jpeg",
@@ -74,7 +80,7 @@ export async function POST(request: Request) {
   try {
     const formData = await request.formData();
     const file = formData.get("file") as Blob;
-    const chatId = formData.get("chatId") as string | null;
+    let chatId = formData.get("chatId") as string | null;
     const visibility = (formData.get("visibility") as string) || "private";
 
     if (!file) {
@@ -91,12 +97,41 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: errorMessage }, { status: 400 });
     }
 
-    // If chatId is provided and it's a spreadsheet, ensure the chat exists in the database
-    if (chatId && (file.type === "text/csv" || file.type.includes("spreadsheetml"))) {
-      try {
-        const existingChat = await getChatById({ id: chatId });
+    // Get filename from formData since Blob doesn't have name property
+    const filename = (formData.get("file") as File).name;
+    const fileBuffer = await file.arrayBuffer();
 
-        // If chat doesn't exist, create it
+    // Check if this is a spreadsheet
+    const isSpreadsheet =
+      file.type === "text/csv" || file.type.includes("spreadsheetml");
+
+    // Upload to blob storage
+    let blobData;
+    try {
+      blobData = await put(`${filename}`, fileBuffer, {
+        access: "public",
+      });
+    } catch (_error) {
+      return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+    }
+
+    // Extract text content
+    const { extractedText, error: processingError } =
+      await extractDocumentText(file, file.type);
+
+    // For spreadsheets, create everything server-side
+    if (isSpreadsheet && extractedText && !processingError) {
+      try {
+        // Generate IDs
+        const documentId = generateUUID();
+        const messageId = generateUUID();
+
+        // Ensure chat exists (create if needed)
+        if (!chatId) {
+          chatId = generateUUID();
+        }
+
+        const existingChat = await getChatById({ id: chatId });
         if (!existingChat) {
           await saveChat({
             id: chatId,
@@ -106,34 +141,86 @@ export async function POST(request: Request) {
           });
           console.log("[files/upload] Created chat:", chatId);
         }
+
+        // Extract title from filename
+        const baseName = filename.replace(/\.[^.]+$/, "") || "Imported Spreadsheet";
+        const title =
+          baseName.replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim() ||
+          "Imported Spreadsheet";
+
+        // Create document with spreadsheet content
+        await saveDocument({
+          id: documentId,
+          title,
+          kind: "sheet",
+          content: extractedText,
+          userId: user.id,
+          chatId,
+        });
+        console.log("[files/upload] Created document:", documentId);
+
+        // Create assistant message showing spreadsheet was imported
+        await saveMessages({
+          messages: [
+            {
+              chatId,
+              id: messageId,
+              role: "assistant" as const,
+              parts: [
+                {
+                  type: "tool-result",
+                  toolCallId: generateUUID(),
+                  toolName: "createDocument",
+                  result: {
+                    id: documentId,
+                    title,
+                    kind: "sheet",
+                  },
+                },
+              ],
+              attachments: [],
+              createdAt: new Date(),
+              confidence: null,
+              citations: null,
+              needsReview: null,
+            },
+          ],
+        });
+        console.log("[files/upload] Created assistant message:", messageId);
+
+        // Return spreadsheet-specific response
+        return NextResponse.json({
+          ...blobData,
+          contentType: file.type,
+          extractedText,
+          fileSize: file.size,
+          // Spreadsheet-specific fields
+          isSpreadsheet: true,
+          chatId,
+          documentId,
+          title,
+        });
       } catch (error) {
-        console.error("[files/upload] Failed to check/create chat:", error);
-        // Continue anyway - the document will be created with chatId and linked later
+        console.error("[files/upload] Failed to create spreadsheet:", error);
+        // Fall back to returning basic upload response
+        return NextResponse.json({
+          ...blobData,
+          contentType: file.type,
+          extractedText,
+          fileSize: file.size,
+          processingError: "Failed to create spreadsheet document",
+        });
       }
     }
 
-    // Get filename from formData since Blob doesn't have name property
-    const filename = (formData.get("file") as File).name;
-    const fileBuffer = await file.arrayBuffer();
-
-    try {
-      const data = await put(`${filename}`, fileBuffer, {
-        access: "public",
-      });
-
-      const { extractedText, error: processingError } =
-        await extractDocumentText(file, file.type);
-
-      return NextResponse.json({
-        ...data,
-        contentType: file.type,
-        extractedText,
-        fileSize: file.size,
-        processingError,
-      });
-    } catch (_error) {
-      return NextResponse.json({ error: "Upload failed" }, { status: 500 });
-    }
+    // For non-spreadsheet files, return basic response
+    return NextResponse.json({
+      ...blobData,
+      contentType: file.type,
+      extractedText,
+      fileSize: file.size,
+      processingError,
+    });
   } catch (_error) {
     return NextResponse.json(
       { error: "Failed to process request" },
