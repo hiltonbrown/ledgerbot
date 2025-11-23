@@ -253,6 +253,7 @@ const PurePreviewMessage = ({
 
               return (
                 <DocumentPreview
+                  chatId={chatId}
                   isReadonly={isReadonly}
                   key={toolCallId}
                   result={part.output}
@@ -278,6 +279,7 @@ const PurePreviewMessage = ({
                 <div className="relative" key={toolCallId}>
                   <DocumentPreview
                     args={{ ...part.output, isUpdate: true }}
+                    chatId={chatId}
                     isReadonly={isReadonly}
                     result={part.output}
                   />
@@ -446,9 +448,7 @@ export const ThinkingMessage = () => {
         </div>
 
         <div className="flex w-full flex-col gap-2 md:gap-4">
-          <div className="p-0 text-muted-foreground text-sm">
-            Thinking...
-          </div>
+          <div className="p-0 text-muted-foreground text-sm">Thinking...</div>
         </div>
       </div>
     </motion.div>

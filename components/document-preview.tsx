@@ -26,14 +26,16 @@ type DocumentPreviewProps = {
   isReadonly: boolean;
   result?: any;
   args?: any;
+  chatId?: string;
 };
 
 export function DocumentPreview({
   isReadonly,
   result,
   args,
+  chatId,
 }: DocumentPreviewProps) {
-  const { artifact, setArtifact } = useArtifact();
+  const { artifact, setArtifact } = useArtifact({ chatId });
 
   const { data: documents, isLoading: isDocumentsFetching } = useSWR<
     Document[]

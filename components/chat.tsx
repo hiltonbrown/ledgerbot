@@ -246,8 +246,8 @@ export function Chat({
   );
 
   const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const isArtifactVisible = useArtifactSelector((state) => state.isVisible);
-  const { setArtifact } = useArtifact();
+  const isArtifactVisible = useArtifactSelector((state) => state.isVisible, id);
+  const { setArtifact } = useArtifact({ chatId: id });
 
   // Restore the most recent artifact when loading the chat
   useEffect(() => {

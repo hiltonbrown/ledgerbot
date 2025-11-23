@@ -95,7 +95,9 @@ function PureArtifact({
   isDeepResearchEnabled: boolean;
   onDeepResearchChange?: (enabled: boolean) => void;
 }) {
-  const { artifact, setArtifact, metadata, setMetadata } = useArtifact();
+  const { artifact, setArtifact, metadata, setMetadata } = useArtifact({
+    chatId,
+  });
 
   const {
     data: documents,
@@ -435,7 +437,7 @@ function PureArtifact({
           >
             <div className="flex flex-row items-start justify-between p-2">
               <div className="flex flex-row items-start gap-4">
-                <ArtifactCloseButton />
+                <ArtifactCloseButton chatId={chatId} />
 
                 <div className="flex flex-col">
                   <div className="font-medium">{artifact.title}</div>

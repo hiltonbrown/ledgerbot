@@ -3,8 +3,8 @@ import { initialArtifactData, useArtifact } from "@/hooks/use-artifact";
 import { CrossIcon } from "./icons";
 import { Button } from "./ui/button";
 
-function PureArtifactCloseButton() {
-  const { setArtifact } = useArtifact();
+function PureArtifactCloseButton({ chatId }: { chatId: string }) {
+  const { setArtifact } = useArtifact({ chatId });
 
   return (
     <Button

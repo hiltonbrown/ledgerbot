@@ -5,10 +5,10 @@ import { initialArtifactData, useArtifact } from "@/hooks/use-artifact";
 import { artifactDefinitions } from "./artifact";
 import { useDataStream } from "./data-stream-provider";
 
-export function DataStreamHandler() {
+export function DataStreamHandler({ chatId }: { chatId: string }) {
   const { dataStream, setDataStream } = useDataStream();
 
-  const { artifact, setArtifact, setMetadata } = useArtifact();
+  const { artifact, setArtifact, setMetadata } = useArtifact({ chatId });
 
   useEffect(() => {
     if (!dataStream?.length) {

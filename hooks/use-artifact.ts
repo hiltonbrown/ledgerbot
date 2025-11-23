@@ -21,8 +21,12 @@ export const initialArtifactData: UIArtifact = {
 
 type Selector<T> = (state: UIArtifact) => T;
 
-export function useArtifactSelector<Selected>(selector: Selector<Selected>) {
-  const { data: localArtifact } = useSWR<UIArtifact>("artifact", null, {
+export function useArtifactSelector<Selected>(
+  selector: Selector<Selected>,
+  chatId?: string
+) {
+  const key = chatId ? `artifact-${chatId}` : "artifact";
+  const { data: localArtifact } = useSWR<UIArtifact>(key, null, {
     fallbackData: initialArtifactData,
   });
 
@@ -36,9 +40,11 @@ export function useArtifactSelector<Selected>(selector: Selector<Selected>) {
   return selectedValue;
 }
 
-export function useArtifact() {
+export function useArtifact({ chatId }: { chatId?: string } = {}) {
+  const key = chatId ? `artifact-${chatId}` : "artifact";
+
   const { data: localArtifact, mutate: setLocalArtifact } = useSWR<UIArtifact>(
-    "artifact",
+    key,
     null,
     {
       fallbackData: initialArtifactData,

@@ -26,14 +26,22 @@ export type ConsoleOutput = {
 type ConsoleProps = {
   consoleOutputs: ConsoleOutput[];
   setConsoleOutputs: Dispatch<SetStateAction<ConsoleOutput[]>>;
+  chatId: string;
 };
 
-export function Console({ consoleOutputs, setConsoleOutputs }: ConsoleProps) {
+export function Console({
+  consoleOutputs,
+  setConsoleOutputs,
+  chatId,
+}: ConsoleProps) {
   const [height, setHeight] = useState<number>(300);
   const [isResizing, setIsResizing] = useState(false);
   const consoleEndRef = useRef<HTMLDivElement>(null);
 
-  const isArtifactVisible = useArtifactSelector((state) => state.isVisible);
+  const isArtifactVisible = useArtifactSelector(
+    (state) => state.isVisible,
+    chatId
+  );
 
   const minHeight = 100;
   const maxHeight = 800;

@@ -106,7 +106,7 @@ function PureMultimodalInput({
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
-  const { artifact } = useArtifact();
+  const { artifact } = useArtifact({ chatId });
 
   const adjustHeight = useCallback(() => {
     if (textareaRef.current) {
