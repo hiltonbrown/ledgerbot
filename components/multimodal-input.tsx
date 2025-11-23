@@ -259,22 +259,22 @@ function PureMultimodalInput({
             title,
           });
 
-          // Set artifact state immediately
+          // Set artifact state but don't show it automatically
           setArtifact({
             ...initialArtifactData,
             documentId,
             title,
             kind: "sheet",
             content: extractedText ?? "",
-            isVisible: true,
+            isVisible: false,
             status: "idle",
           });
 
-          // Show success message - user can start asking questions immediately
+          // Show success message - spreadsheet is ready but not auto-previewed
           toast.success(`Spreadsheet "${title}" imported!`);
 
-          // NOTE: No navigation - user stays on current page (home or existing chat)
-          // The spreadsheet artifact is visible in the side panel and ready to use
+          // NOTE: Spreadsheet artifact is created but NOT shown automatically
+          // User can open it manually or it will appear when AI references it
 
           // Don't return attachment for spreadsheets - they're already in the chat as artifacts
           return undefined;
