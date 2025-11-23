@@ -71,6 +71,7 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
     const description = formData.get("description") as string | null;
+    const chatId = formData.get("chatId") as string | null;
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
@@ -110,6 +111,7 @@ export async function POST(request: Request) {
 
     const [record] = await createContextFile({
       userId: user.id,
+      chatId: chatId ?? undefined,
       name: blob.pathname,
       originalName: file.name,
       blobUrl: blob.url,
