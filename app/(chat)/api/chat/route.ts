@@ -43,6 +43,7 @@ import {
   deleteChatById,
   getActiveXeroConnection,
   getChatById,
+  getDocumentById,
   getMessageCountByUserId,
   getMessagesByChatId,
   saveChat,
