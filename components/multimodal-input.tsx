@@ -4,7 +4,6 @@ import type { UseChatHelpers } from "@ai-sdk/react";
 import { Trigger } from "@radix-ui/react-select";
 import type { UIMessage } from "ai";
 import equal from "fast-deep-equal";
-import { useRouter } from "next/navigation";
 import {
   type ChangeEvent,
   type Dispatch,
@@ -219,8 +218,6 @@ function PureMultimodalInput({
     resetHeight,
   ]);
 
-  const router = useRouter();
-
   const uploadFile = useCallback(async (file: File) => {
     const formData = new FormData();
     formData.append("file", file);
@@ -273,13 +270,11 @@ function PureMultimodalInput({
             status: "idle",
           });
 
-          // Navigate to the chat if this is a new chat (no messages yet)
-          if (messages.length === 0) {
-            toast.success(`Spreadsheet "${title}" imported!`);
-            router.push(`/chat/${returnedChatId}`);
-          } else {
-            toast.success(`Spreadsheet "${title}" imported!`);
-          }
+          // Show success message - user can start asking questions immediately
+          toast.success(`Spreadsheet "${title}" imported!`);
+
+          // NOTE: No navigation - user stays on current page (home or existing chat)
+          // The spreadsheet artifact is visible in the side panel and ready to use
 
           // Don't return attachment for spreadsheets - they're already in the chat as artifacts
           return undefined;
@@ -300,7 +295,7 @@ function PureMultimodalInput({
     } catch (_error) {
       toast.error("Failed to upload file, please try again!");
     }
-  }, [chatId, selectedVisibilityType, messages.length, router, setArtifact]);
+  }, [chatId, selectedVisibilityType, setArtifact]);
 
   const _modelResolver = useMemo(() => {
     return myProvider.languageModel(selectedModelId);
