@@ -50,6 +50,16 @@ const PurePreviewMessage = ({
   const attachmentsFromMessage = message.parts.filter(
     (part) => part.type === "file"
   );
+
+  // Debug: log file parts
+  if (attachmentsFromMessage.length > 0) {
+    console.log("[Message] File attachments:", {
+      messageId: message.id,
+      role: message.role,
+      attachments: attachmentsFromMessage,
+    });
+  }
+
   const deepResearchMetadata =
     message.role === "assistant" ? message.metadata?.deepResearch : undefined;
 
@@ -103,15 +113,18 @@ const PurePreviewMessage = ({
               {attachmentsFromMessage.map((attachment) => (
                 <PreviewAttachment
                   attachment={{
-                    name: attachment.filename ?? "file",
-                    contentType: attachment.mediaType,
-                    url: attachment.url,
+                    name: (attachment as any).name ?? (attachment as any).filename ?? "file",
+                    contentType: (attachment as any).mediaType ?? (attachment as any).contentType,
+                    url: (attachment as any).url,
                     processingError: (
                       attachment as { processingError?: string }
                     ).processingError,
-                    documentId: (attachment as { documentId?: string }).documentId,
+                    documentId: (attachment as { documentId?: string })
+                      .documentId,
+                    extractedText: (attachment as any).extractedText,
+                    fileSize: (attachment as any).fileSize,
                   }}
-                  key={attachment.url}
+                  key={(attachment as any).url}
                 />
               ))}
             </div>

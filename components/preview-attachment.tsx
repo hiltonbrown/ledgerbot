@@ -93,11 +93,9 @@ export const PreviewAttachment = ({
 
   return (
     <div
-      className={`group relative size-16 overflow-hidden rounded-lg border bg-muted ${isClickable ? "cursor-pointer hover:border-primary transition-colors" : ""}`}
+      className={`group relative size-16 overflow-hidden rounded-lg border bg-muted ${isClickable ? "cursor-pointer transition-colors hover:border-primary" : ""}`}
       data-testid="input-attachment-preview"
       onClick={isClickable ? handleClick : undefined}
-      role={isClickable ? "button" : undefined}
-      tabIndex={isClickable ? 0 : undefined}
       onKeyDown={
         isClickable
           ? (e) => {
@@ -108,6 +106,8 @@ export const PreviewAttachment = ({
             }
           : undefined
       }
+      role={isClickable ? "button" : undefined}
+      tabIndex={isClickable ? 0 : undefined}
     >
       <div className="flex size-full items-center justify-center">
         {renderPreview()}

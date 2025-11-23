@@ -130,13 +130,18 @@ export const textArtifact = new Artifact<"text", TextArtifactMetadata>({
       setArtifact((draftArtifact) => {
         const newContentLength =
           draftArtifact.content.length + streamPart.data.length;
+
+        // Don't auto-show text artifacts if there's already a sheet artifact visible
+        // Users uploaded the sheet and want to keep seeing it
+        const shouldAutoShow =
+          draftArtifact.status === "streaming" &&
+          newContentLength > 400 &&
+          draftArtifact.kind !== "sheet";
+
         return {
           ...draftArtifact,
           content: draftArtifact.content + streamPart.data,
-          isVisible:
-            draftArtifact.status === "streaming" && newContentLength > 400
-              ? true
-              : draftArtifact.isVisible,
+          isVisible: shouldAutoShow ? true : draftArtifact.isVisible,
           status: "streaming",
         };
       });

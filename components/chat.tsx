@@ -258,7 +258,9 @@ export function Chat({
         kind: initialDocument.kind as "text" | "code" | "image" | "sheet",
         content: initialDocument.content,
         status: "idle",
-        isVisible: false, // Don't auto-show on load, user can open it
+        // Auto-show sheet artifacts (uploaded spreadsheets) on load since they don't have
+        // a DocumentToolResult button to open them. Other artifacts can be opened via their buttons.
+        isVisible: initialDocument.kind === "sheet",
         boundingBox: {
           top: 0,
           left: 0,

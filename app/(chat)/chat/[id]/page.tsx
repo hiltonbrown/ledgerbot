@@ -47,6 +47,17 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
 
   const documents = await getDocumentsByChatId({ chatId: id });
 
+  console.log("[DEBUG] Loading chat page:", {
+    chatId: id,
+    documentsCount: documents.length,
+    documents: documents.map((d) => ({
+      id: d.id,
+      title: d.title,
+      kind: d.kind,
+      chatId: d.chatId,
+    })),
+  });
+
   const cookieStore = await cookies();
   const chatModelFromCookie = cookieStore.get("chat-model");
   const initialModelId = chatModelFromCookie?.value;
@@ -55,6 +66,13 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
 
   // Get the most recent document to restore artifact
   const latestDocument = documents.length > 0 ? documents.at(-1) : null;
+
+  console.log("[DEBUG] Latest document for artifact:", {
+    hasDocument: !!latestDocument,
+    documentId: latestDocument?.id,
+    documentKind: latestDocument?.kind,
+    documentTitle: latestDocument?.title,
+  });
 
   if (!isValidModelId) {
     return (

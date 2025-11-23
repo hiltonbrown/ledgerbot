@@ -533,9 +533,35 @@ export async function saveDocument({
       userId,
       chatId,
       error: error instanceof Error ? error.message : String(error),
+      errorName: error instanceof Error ? error.name : undefined,
+      errorCode: (error as any)?.code,
+      errorDetail: (error as any)?.detail,
+      errorConstraint: (error as any)?.constraint,
+      fullError: JSON.stringify(error, null, 2),
       stack: error instanceof Error ? error.stack : undefined,
     });
     throw new ChatSDKError("bad_request:database", "Failed to save document");
+  }
+}
+
+export async function updateDocumentChatId({
+  documentId,
+  chatId,
+}: {
+  documentId: string;
+  chatId: string;
+}) {
+  try {
+    return await db
+      .update(document)
+      .set({ chatId })
+      .where(eq(document.id, documentId))
+      .returning();
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to update document chatId"
+    );
   }
 }
 

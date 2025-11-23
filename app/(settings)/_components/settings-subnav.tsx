@@ -30,7 +30,7 @@ export function SettingsSubnav() {
                 <Link
                   aria-current={isActive ? "page" : undefined}
                   className={cn(
-                    "flex h-full items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold transition-colors",
+                    "flex h-full items-center justify-center rounded-lg px-3 py-2 font-semibold text-sm transition-colors",
                     "border border-transparent bg-muted/50 hover:bg-muted",
                     isActive
                       ? "border-primary/70 bg-primary/10 text-foreground"

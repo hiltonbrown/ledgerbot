@@ -221,6 +221,8 @@ function PureMultimodalInput({
   const uploadFile = useCallback(async (file: File) => {
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("chatId", chatId);
+    formData.append("visibility", selectedVisibilityType);
 
     try {
       const response = await fetch("/api/files/upload", {
@@ -259,7 +261,7 @@ function PureMultimodalInput({
     } catch (_error) {
       toast.error("Failed to upload file, please try again!");
     }
-  }, []);
+  }, [chatId, selectedVisibilityType]);
 
   const _modelResolver = useMemo(() => {
     return myProvider.languageModel(selectedModelId);
@@ -305,7 +307,7 @@ function PureMultimodalInput({
               title,
               kind: "sheet",
               content: attachment.extractedText ?? "",
-              chatId: undefined, // Chat doesn't exist yet - will be updated when message is sent
+              chatId, // Chat was created by file upload endpoint
             }),
           });
 
