@@ -166,35 +166,19 @@ function includeAttachmentText(messages: ChatMessage[]): ChatMessage[] {
     const newParts: any[] = [];
 
     for (const part of message.parts) {
-      if (
-        part.type === "file" &&
-        (part.mediaType?.includes("csv") ||
-          part.mediaType?.includes("spreadsheetml"))
-      ) {
-        const spreadsheetPreview = (
-          (part as { extractedText?: string }).extractedText ?? ""
-        )
-          .split("\n")
-          .slice(0, 40)
-          .join("\n");
-        const documentId = (part as { documentId?: string }).documentId;
-        const name = (part as { name?: string }).name ?? "spreadsheet";
-        const instruction = documentId
-          ? `Use the createDocument tool with { "action": "analyze", "documentId": "${documentId}", "question": "<your question>" } to analyze, summarize, or update this spreadsheet.`
-          : "Use the createDocument tool with action `analyze` to analyze, summarize, or update this spreadsheet.";
+      // NOTE: Spreadsheet handling removed - spreadsheets are now created as documents
+      // server-side during upload and never appear as file parts in messages
 
-        // Replace file part with text instructions for the AI (AI doesn't support file URLs)
-        newParts.push({
-          type: "text" as const,
-          text: `[Spreadsheet Attachment: ${name}]\n${instruction}\n\nPreview (first rows):\n${spreadsheetPreview}\n[End Spreadsheet Attachment]`,
-        });
-      } else if (
+      if (
         part.type === "file" &&
         "extractedText" in part &&
         part.extractedText &&
-        !part.mediaType?.startsWith("image/")
+        !part.mediaType?.startsWith("image/") &&
+        !part.mediaType?.includes("csv") &&
+        !part.mediaType?.includes("spreadsheetml")
       ) {
-        // Replace file part with extracted text for the AI (AI doesn't support file URLs)
+        // Replace file part with extracted text for non-spreadsheet files (PDF, DOCX)
+        // AI doesn't support file URLs, so we send the extracted text instead
         newParts.push({
           type: "text" as const,
           text: `[Attachment: ${(part as any).name ?? "file"}]\n${part.extractedText}\n[End Attachment]`,
