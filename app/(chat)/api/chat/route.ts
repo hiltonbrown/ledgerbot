@@ -166,19 +166,15 @@ function includeAttachmentText(messages: ChatMessage[]): ChatMessage[] {
     const newParts: any[] = [];
 
     for (const part of message.parts) {
-      // NOTE: Spreadsheet handling removed - spreadsheets are now created as documents
-      // server-side during upload and never appear as file parts in messages
-
       if (
         part.type === "file" &&
         "extractedText" in part &&
         part.extractedText &&
-        !part.mediaType?.startsWith("image/") &&
-        !part.mediaType?.includes("csv") &&
-        !part.mediaType?.includes("spreadsheetml")
+        !part.mediaType?.startsWith("image/")
       ) {
-        // Replace file part with extracted text for non-spreadsheet files (PDF, DOCX)
+        // Convert file parts with extracted text to text parts
         // AI doesn't support file URLs, so we send the extracted text instead
+        // This includes PDFs, DOCX, CSV, and XLSX files
         newParts.push({
           type: "text" as const,
           text: `[Attachment: ${(part as any).name ?? "file"}]\n${part.extractedText}\n[End Attachment]`,
