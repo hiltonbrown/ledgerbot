@@ -52,7 +52,8 @@ export default async function SettingsPage() {
     },
     {
       title: "Context Files",
-      description: "Manage files for persistent AI context",
+      description:
+        "Context file uploads are temporarily unavailable while we rebuild",
       icon: FileText,
       href: "/settings/files",
       iconColor: "text-green-600",

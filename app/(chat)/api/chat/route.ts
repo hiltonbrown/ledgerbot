@@ -168,33 +168,13 @@ function includeAttachmentText(messages: ChatMessage[]): ChatMessage[] {
     for (const part of message.parts) {
       if (
         part.type === "file" &&
-        (part.mediaType?.includes("csv") ||
-          part.mediaType?.includes("spreadsheetml"))
-      ) {
-        const spreadsheetPreview = (
-          (part as { extractedText?: string }).extractedText ?? ""
-        )
-          .split("\n")
-          .slice(0, 40)
-          .join("\n");
-        const documentId = (part as { documentId?: string }).documentId;
-        const name = (part as { name?: string }).name ?? "spreadsheet";
-        const instruction = documentId
-          ? `Use the createDocument tool with { "action": "analyze", "documentId": "${documentId}", "question": "<your question>" } to analyze, summarize, or update this spreadsheet.`
-          : "Use the createDocument tool with action `analyze` to analyze, summarize, or update this spreadsheet.";
-
-        // Replace file part with text instructions for the AI (AI doesn't support file URLs)
-        newParts.push({
-          type: "text" as const,
-          text: `[Spreadsheet Attachment: ${name}]\n${instruction}\n\nPreview (first rows):\n${spreadsheetPreview}\n[End Spreadsheet Attachment]`,
-        });
-      } else if (
-        part.type === "file" &&
         "extractedText" in part &&
         part.extractedText &&
         !part.mediaType?.startsWith("image/")
       ) {
-        // Replace file part with extracted text for the AI (AI doesn't support file URLs)
+        // Convert file parts with extracted text to text parts
+        // AI doesn't support file URLs, so we send the extracted text instead
+        // This includes PDFs, DOCX, CSV, and XLSX files
         newParts.push({
           type: "text" as const,
           text: `[Attachment: ${(part as any).name ?? "file"}]\n${part.extractedText}\n[End Attachment]`,
@@ -371,13 +351,8 @@ export async function POST(request: Request) {
       .filter(Boolean);
 
     if (documentIds.length > 0) {
-      console.log("[DEBUG] Updating document chatIds:", {
-        documentIds,
-        chatId: id,
-        userId: user.id,
-      });
       try {
-        const updatedDocs = await db
+        await db
           .update(schema.document)
           .set({ chatId: id })
           .where(
@@ -388,21 +363,10 @@ export async function POST(request: Request) {
             )
           )
           .returning();
-        console.log("[DEBUG] Updated documents:", updatedDocs);
       } catch (error) {
         console.warn("Failed to update document chatIds:", error);
       }
     }
-
-    console.log("[DEBUG] Saving user message:", {
-      messageId: message.id,
-      partsCount: message.parts.length,
-      parts: message.parts.map((p: any) => ({
-        type: p.type,
-        hasDocumentId: "documentId" in p,
-        documentId: (p as any).documentId,
-      })),
-    });
 
     await saveMessages({
       messages: [
@@ -420,52 +384,8 @@ export async function POST(request: Request) {
       ],
     });
 
-    // If the user message contains a spreadsheet file with documentId,
-    // create an assistant message showing the document was created
-    const spreadsheetParts = message.parts.filter(
-      (part: any) =>
-        part.type === "file" &&
-        part.documentId &&
-        (part.mediaType === "text/csv" || part.mediaType?.includes("spreadsheetml"))
-    );
-
-    if (spreadsheetParts.length > 0) {
-      const spreadsheetMessages = await Promise.all(
-        spreadsheetParts.map(async (part: any) => {
-          const doc = await getDocumentById({ id: part.documentId });
-          if (doc) {
-            return {
-              chatId: id,
-              id: generateUUID(),
-              role: "assistant" as const,
-              parts: [
-                {
-                  type: "tool-result",
-                  toolCallId: generateUUID(),
-                  toolName: "createDocument",
-                  result: {
-                    id: doc.id,
-                    title: doc.title,
-                    kind: doc.kind,
-                  },
-                },
-              ],
-              attachments: [],
-              createdAt: new Date(),
-              confidence: null,
-              citations: null,
-              needsReview: null,
-            };
-          }
-          return null;
-        })
-      );
-
-      const validMessages = spreadsheetMessages.filter(Boolean);
-      if (validMessages.length > 0) {
-        await saveMessages({ messages: validMessages as any });
-      }
-    }
+    // NOTE: Spreadsheet document creation and assistant messages now happen
+    // server-side in /api/files/upload. This eliminates race conditions.
 
     const streamId = generateUUID();
     await createStreamId({ streamId, chatId: id });
@@ -569,9 +489,6 @@ export async function POST(request: Request) {
           );
 
           if (resumableStream) {
-            console.log("[debug] Returning resumable deep-research stream", {
-              streamId,
-            });
             return new Response(resumableStream);
           }
 
@@ -589,7 +506,6 @@ export async function POST(request: Request) {
         }
       }
 
-      console.log("[debug] Deep-research stream (non-resumable)", { streamId });
       return new Response(sseStream);
     };
 
@@ -813,12 +729,6 @@ export async function POST(request: Request) {
           ? [...activeTools, ...xeroToolNames]
           : activeTools;
 
-        console.log(
-          "[debug] Starting streamText with model:",
-          selectedChatModel,
-          { chatId: id, streamId }
-        );
-
         const result = streamText({
           model: myProvider.languageModel(selectedChatModel),
           system: systemPrompt({
@@ -888,11 +798,6 @@ export async function POST(request: Request) {
           },
         });
 
-        console.log("[debug] Merging stream to dataStream", {
-          chatId: id,
-          streamId,
-        });
-
         dataStream.merge(
           result.toUIMessageStream({
             sendReasoning,
@@ -938,11 +843,6 @@ export async function POST(request: Request) {
     const streamContext = await getStreamContext();
     const sseStream = stream.pipeThrough(new JsonToSseTransformStream());
 
-    console.log("[debug] Stream created, context available:", !!streamContext, {
-      streamId,
-      chatId: id,
-    });
-
     if (streamContext) {
       const [resumableSource, fallbackSource] = sseStream.tee();
 
@@ -953,7 +853,6 @@ export async function POST(request: Request) {
         );
 
         if (resumableStream) {
-          console.log("[debug] Returning resumable stream", { streamId });
           return new Response(resumableStream);
         }
 
@@ -971,9 +870,6 @@ export async function POST(request: Request) {
       }
     }
 
-    console.log("[debug] No stream context, returning direct SSE stream", {
-      streamId,
-    });
     return new Response(sseStream);
   } catch (error) {
     const vercelId = request.headers.get("x-vercel-id");

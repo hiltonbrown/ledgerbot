@@ -51,15 +51,6 @@ const PurePreviewMessage = ({
     (part) => part.type === "file"
   );
 
-  // Debug: log file parts
-  if (attachmentsFromMessage.length > 0) {
-    console.log("[Message] File attachments:", {
-      messageId: message.id,
-      role: message.role,
-      attachments: attachmentsFromMessage,
-    });
-  }
-
   const deepResearchMetadata =
     message.role === "assistant" ? message.metadata?.deepResearch : undefined;
 
@@ -119,8 +110,6 @@ const PurePreviewMessage = ({
                     processingError: (
                       attachment as { processingError?: string }
                     ).processingError,
-                    documentId: (attachment as { documentId?: string })
-                      .documentId,
                     extractedText: (attachment as any).extractedText,
                     fileSize: (attachment as any).fileSize,
                   }}

@@ -3,7 +3,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
-import { getChatById, saveChat } from "@/lib/db/queries";
 import {
   extractCsvData,
   extractDocxText,
@@ -74,8 +73,6 @@ export async function POST(request: Request) {
   try {
     const formData = await request.formData();
     const file = formData.get("file") as Blob;
-    const chatId = formData.get("chatId") as string | null;
-    const visibility = (formData.get("visibility") as string) || "private";
 
     if (!file) {
       return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
@@ -91,49 +88,32 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: errorMessage }, { status: 400 });
     }
 
-    // If chatId is provided and it's a spreadsheet, ensure the chat exists in the database
-    if (chatId && (file.type === "text/csv" || file.type.includes("spreadsheetml"))) {
-      try {
-        const existingChat = await getChatById({ id: chatId });
-
-        // If chat doesn't exist, create it
-        if (!existingChat) {
-          await saveChat({
-            id: chatId,
-            userId: user.id,
-            title: "New Chat",
-            visibility: visibility as "private" | "public",
-          });
-          console.log("[files/upload] Created chat:", chatId);
-        }
-      } catch (error) {
-        console.error("[files/upload] Failed to check/create chat:", error);
-        // Continue anyway - the document will be created with chatId and linked later
-      }
-    }
-
     // Get filename from formData since Blob doesn't have name property
     const filename = (formData.get("file") as File).name;
     const fileBuffer = await file.arrayBuffer();
 
+    // Upload to blob storage
+    let blobData;
     try {
-      const data = await put(`${filename}`, fileBuffer, {
+      blobData = await put(`${filename}`, fileBuffer, {
         access: "public",
-      });
-
-      const { extractedText, error: processingError } =
-        await extractDocumentText(file, file.type);
-
-      return NextResponse.json({
-        ...data,
-        contentType: file.type,
-        extractedText,
-        fileSize: file.size,
-        processingError,
       });
     } catch (_error) {
       return NextResponse.json({ error: "Upload failed" }, { status: 500 });
     }
+
+    // Extract text content for all file types (available as context)
+    const { extractedText, error: processingError } =
+      await extractDocumentText(file, file.type);
+
+    // Return standard attachment response for all file types
+    return NextResponse.json({
+      ...blobData,
+      contentType: file.type,
+      extractedText,
+      fileSize: file.size,
+      processingError,
+    });
   } catch (_error) {
     return NextResponse.json(
       { error: "Failed to process request" },

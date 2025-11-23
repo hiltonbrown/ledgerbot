@@ -21,13 +21,13 @@ import { toast } from "sonner";
 import { useLocalStorage, useWindowSize } from "usehooks-ts";
 import { saveChatModelAsCookie } from "@/app/(chat)/actions";
 import { SelectItem } from "@/components/ui/select";
-import { initialArtifactData, useArtifact } from "@/hooks/use-artifact";
+import { useArtifact } from "@/hooks/use-artifact";
 import { chatModels, isReasoningModelId } from "@/lib/ai/models";
 import { myProvider } from "@/lib/ai/providers";
 import type { VisibilityType } from "@/lib/chat/visibility";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
-import { cn, generateUUID } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { Context } from "./elements/context";
 import {
   PromptInput,
@@ -106,7 +106,7 @@ function PureMultimodalInput({
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
-  const { setArtifact } = useArtifact();
+  const { artifact } = useArtifact();
 
   const adjustHeight = useCallback(() => {
     if (textareaRef.current) {
@@ -221,8 +221,6 @@ function PureMultimodalInput({
   const uploadFile = useCallback(async (file: File) => {
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("chatId", chatId);
-    formData.append("visibility", selectedVisibilityType);
 
     try {
       const response = await fetch("/api/files/upload", {
@@ -247,6 +245,7 @@ function PureMultimodalInput({
           );
         }
 
+        // Return attachment for all file types (including spreadsheets)
         return {
           url,
           name: pathname,
@@ -261,7 +260,7 @@ function PureMultimodalInput({
     } catch (_error) {
       toast.error("Failed to upload file, please try again!");
     }
-  }, [chatId, selectedVisibilityType]);
+  }, []);
 
   const _modelResolver = useMemo(() => {
     return myProvider.languageModel(selectedModelId);
@@ -275,85 +274,6 @@ function PureMultimodalInput({
     }),
     [usage, isReasoningEnabled, isDeepResearchEnabled]
   );
-
-  useEffect(() => {
-    const spreadsheetAttachments = attachments.filter(
-      (attachment) =>
-        (attachment.contentType.includes("csv") ||
-          attachment.contentType.includes("spreadsheetml")) &&
-        attachment.extractedText &&
-        !attachment.documentId &&
-        !attachment.processingError
-    );
-
-    if (spreadsheetAttachments.length === 0) {
-      return;
-    }
-
-    spreadsheetAttachments.forEach((attachment) => {
-      const documentId = generateUUID();
-      const baseName =
-        attachment.name?.replace(/\.[^.]+$/, "") ?? "Imported Spreadsheet";
-      const title =
-        baseName.replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim() ||
-        "Imported Spreadsheet";
-
-      void (async () => {
-        try {
-          const response = await fetch(`/api/document?id=${documentId}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              title,
-              kind: "sheet",
-              content: attachment.extractedText ?? "",
-              chatId, // Chat was created by file upload endpoint
-            }),
-          });
-
-          if (!response.ok) {
-            let errorText = "";
-            try {
-              errorText = await response.text();
-            } catch (e) {
-              errorText = "Could not read response body";
-            }
-            console.error("Document creation failed");
-            console.error("Status:", response.status);
-            console.error("StatusText:", response.statusText);
-            console.error("Body:", errorText);
-            console.error("URL:", response.url);
-            console.error("OK:", response.ok);
-            throw new Error(
-              `Failed to persist spreadsheet (${response.status}): ${errorText}`
-            );
-          }
-
-          setAttachments((currentAttachments) =>
-            currentAttachments.map((item) =>
-              item.url === attachment.url ? { ...item, documentId } : item
-            )
-          );
-
-          setArtifact({
-            ...initialArtifactData,
-            documentId,
-            title,
-            kind: "sheet",
-            content: attachment.extractedText ?? "",
-            isVisible: true,
-            status: "idle",
-          });
-        } catch (error) {
-          console.error("Failed to import CSV attachment", error);
-          toast.error(
-            `Unable to open ${attachment.name ?? "spreadsheet"} in the editor. Please try again.`,
-            { id: `csv-import-${documentId}` }
-          );
-        }
-      })();
-    });
-  }, [attachments, setAttachments, setArtifact, chatId]);
 
   const handleFileChange = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
@@ -437,7 +357,8 @@ function PureMultimodalInput({
     <div className={cn("relative flex w-full flex-col gap-4", className)}>
       {messages.length === 0 &&
         attachments.length === 0 &&
-        uploadQueue.length === 0 && (
+        uploadQueue.length === 0 &&
+        !artifact.isVisible && (
           <SuggestedActions
             chatId={chatId}
             selectedVisibilityType={selectedVisibilityType}
