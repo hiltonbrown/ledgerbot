@@ -4,7 +4,10 @@ import { after, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
-import { createContextFile } from "@/lib/db/queries";
+import {
+  createContextFile,
+  saveChatIfNotExists,
+} from "@/lib/db/queries";
 import { processContextFile } from "@/lib/files/context-processor";
 import {
   extractCsvData,
@@ -12,6 +15,9 @@ import {
   extractPdfText,
   extractXlsxData,
 } from "@/lib/files/parsers";
+
+// Required for after() to work
+export const dynamic = "force-dynamic";
 
 const SUPPORTED_TYPES = [
   "image/jpeg",
@@ -76,7 +82,10 @@ export async function POST(request: Request) {
   try {
     const formData = await request.formData();
     const file = formData.get("file") as Blob;
-    const chatId = formData.get("chatId") as string | null;
+    const chatIdRaw = formData.get("chatId") as string | null;
+
+    // Validate chatId - ensure it's either null or a non-empty string
+    const chatId = chatIdRaw && chatIdRaw.trim() !== "" ? chatIdRaw : null;
 
     if (!file) {
       return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
@@ -96,6 +105,24 @@ export async function POST(request: Request) {
     const filename = (formData.get("file") as File).name;
     const fileBuffer = await file.arrayBuffer();
 
+    // Create chat if provided (if it doesn't exist)
+    // This ensures the file can be linked to the chat even if the chat hasn't been created yet
+    let validChatId: string | undefined;
+    if (chatId) {
+      try {
+        await saveChatIfNotExists({
+          id: chatId,
+          userId: user.id,
+          title: "New Chat",
+          visibility: "private",
+        });
+        validChatId = chatId;
+      } catch (error) {
+        console.error(`Failed to create chat ${chatId}:`, error);
+        // Continue without associating with chat
+      }
+    }
+
     // Upload to blob storage
     const blobPath = `context-files/${user.id}/${Date.now()}-${filename}`;
     let blobData: PutBlobResult;
@@ -108,15 +135,24 @@ export async function POST(request: Request) {
     }
 
     // Save to database
-    const [record] = await createContextFile({
-      userId: user.id,
-      chatId: chatId ?? undefined,
-      name: blobData.pathname,
-      originalName: filename,
-      blobUrl: blobData.url,
-      fileType: file.type,
-      fileSize: file.size,
-    });
+    let record;
+    try {
+      [record] = await createContextFile({
+        userId: user.id,
+        chatId: validChatId,
+        name: blobData.pathname,
+        originalName: filename,
+        blobUrl: blobData.url,
+        fileType: file.type,
+        fileSize: file.size,
+      });
+    } catch (error) {
+      console.error("Failed to save file to database:", error);
+      return NextResponse.json(
+        { error: "Failed to save file metadata" },
+        { status: 500 }
+      );
+    }
 
     // Process file asynchronously
     after(() => processContextFile(record.id, blobData.url, file.type));
@@ -135,7 +171,8 @@ export async function POST(request: Request) {
       fileSize: file.size,
       processingError,
     });
-  } catch (_error) {
+  } catch (error) {
+    console.error("File upload error:", error);
     return NextResponse.json(
       { error: "Failed to process request" },
       { status: 500 }

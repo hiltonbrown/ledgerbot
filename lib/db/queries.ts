@@ -86,6 +86,33 @@ export async function saveChat({
   }
 }
 
+export async function saveChatIfNotExists({
+  id,
+  userId,
+  title,
+  visibility,
+}: {
+  id: string;
+  userId: string;
+  title: string;
+  visibility: VisibilityType;
+}) {
+  try {
+    return await db
+      .insert(chat)
+      .values({
+        id,
+        createdAt: new Date(),
+        userId,
+        title,
+        visibility,
+      })
+      .onConflictDoNothing();
+  } catch (_error) {
+    throw new ChatSDKError("bad_request:database", "Failed to save chat");
+  }
+}
+
 export async function deleteChatById({ id }: { id: string }) {
   try {
     await db.delete(vote).where(eq(vote.chatId, id));
@@ -235,7 +262,8 @@ export async function createContextFile({
         description,
       })
       .returning();
-  } catch (_error) {
+  } catch (error) {
+    console.error("Database error creating context file:", error);
     throw new ChatSDKError(
       "bad_request:database",
       "Failed to create context file"

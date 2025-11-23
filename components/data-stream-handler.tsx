@@ -9,7 +9,6 @@ export function DataStreamHandler() {
   const { dataStream, setDataStream } = useDataStream();
 
   const { artifact, setArtifact, setMetadata } = useArtifact();
-  const _lastProcessedIndex = useRef(-1);
 
   useEffect(() => {
     if (!dataStream?.length) {
@@ -27,22 +26,12 @@ export function DataStreamHandler() {
         }
 
         switch (delta.type) {
-          case "data-id": {
-            // If a new artifact is being created while a sheet is visible,
-            // keep the sheet visible (don't auto-show the new artifact)
-            const preserveSheetVisibility =
-              draftArtifact.kind === "sheet" && draftArtifact.isVisible;
-
+          case "data-id":
             return {
               ...draftArtifact,
               documentId: delta.data,
               status: "streaming",
-              // Keep sheet visible if it was visible before
-              isVisible: preserveSheetVisibility
-                ? true
-                : draftArtifact.isVisible,
             };
-          }
 
           case "data-title": {
             // Extract short title (before pipe) if present
@@ -98,7 +87,7 @@ export function DataStreamHandler() {
         });
       }
     }
-  }, [dataStream, setArtifact, setMetadata, artifact, setDataStream]);
+  }, [dataStream, setArtifact, setMetadata, artifact]);
 
   return null;
 }

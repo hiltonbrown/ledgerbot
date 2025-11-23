@@ -2,12 +2,10 @@
 
 import { useEffect, useState } from "react";
 import {
-  ChainOfThought,
-  ChainOfThoughtContent,
-  ChainOfThoughtHeader,
-  ChainOfThoughtStep,
-} from "./elements/chain-of-thought";
-import { Response } from "./elements/response";
+  Reasoning,
+  ReasoningContent,
+  ReasoningTrigger,
+} from "./elements/reasoning";
 
 type MessageReasoningProps = {
   isLoading: boolean;
@@ -58,32 +56,13 @@ export function MessageReasoning({
   const steps = parseReasoningSteps(reasoning);
 
   return (
-    <ChainOfThought data-testid="message-reasoning" defaultOpen={defaultOpen}>
-      <ChainOfThoughtHeader>
-        {isLoading ? "Thinking..." : "Chain of Thought"}
-      </ChainOfThoughtHeader>
-      <ChainOfThoughtContent>
-        {steps.map((step, index) => (
-          <ChainOfThoughtStep
-            key={`step-${index}-${step.substring(0, 20)}`}
-            label={
-              index === 0 && steps.length === 1
-                ? "Reasoning"
-                : `Step ${index + 1}`
-            }
-            status={
-              isLoading && index === steps.length - 1 ? "active" : "complete"
-            }
-          >
-            <Response className="text-sm">{step}</Response>
-          </ChainOfThoughtStep>
-        ))}
-        {isLoading && steps.length === 0 && (
-          <ChainOfThoughtStep label="Processing" status="active">
-            <Response className="text-sm">Analyzing your request...</Response>
-          </ChainOfThoughtStep>
-        )}
-      </ChainOfThoughtContent>
-    </ChainOfThought>
+    <Reasoning
+      data-testid="message-reasoning"
+      defaultOpen={hasBeenStreaming}
+      isStreaming={isLoading}
+    >
+      <ReasoningTrigger />
+      <ReasoningContent>{reasoning}</ReasoningContent>
+    </Reasoning>
   );
 }

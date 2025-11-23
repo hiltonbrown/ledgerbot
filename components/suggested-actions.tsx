@@ -27,19 +27,19 @@ function PureSuggestedActions({
   const defaultSuggestions = [
     {
       id: "default-1",
-      text: "How do I resolve duplicate transactions in Xero?",
+      text: "",
     },
     {
       id: "default-2",
-      text: "How do I properly record GST on imported supplier invoices?",
+      text: "",
     },
     {
       id: "default-3",
-      text: "Help me plan a healthy meal preparation for the week.",
+      text: "",
     },
     {
       id: "default-4",
-      text: "Draft a professional email to clients about overdue invoices.",
+      text: "",
     },
   ];
 

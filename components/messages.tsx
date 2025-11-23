@@ -1,5 +1,6 @@
 import type { UseChatHelpers } from "@ai-sdk/react";
 import equal from "fast-deep-equal";
+import { AnimatePresence } from "framer-motion";
 import { ArrowDownIcon } from "lucide-react";
 import { memo, useEffect } from "react";
 import { useMessages } from "@/hooks/use-messages";
@@ -8,7 +9,7 @@ import type { ChatMessage } from "@/lib/types";
 import { useDataStream } from "./data-stream-provider";
 import { Conversation, ConversationContent } from "./elements/conversation";
 import { Greeting } from "./greeting";
-import { PreviewMessage } from "./message";
+import { PreviewMessage, ThinkingMessage } from "./message";
 
 type MessagesProps = {
   chatId: string;
@@ -90,6 +91,10 @@ function PureMessages({
               }
             />
           ))}
+
+          <AnimatePresence mode="wait">
+            {status === "submitted" && <ThinkingMessage key="thinking" />}
+          </AnimatePresence>
 
           <div
             className="min-h-[24px] min-w-[24px] shrink-0"
