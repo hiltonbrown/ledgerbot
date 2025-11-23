@@ -1,8 +1,11 @@
+import type { PutBlobResult } from "@vercel/blob";
 import { put } from "@vercel/blob";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
+import { createContextFile } from "@/lib/db/queries";
+import { processContextFile } from "@/lib/files/context-processor";
 import {
   extractCsvData,
   extractDocxText,
@@ -73,6 +76,7 @@ export async function POST(request: Request) {
   try {
     const formData = await request.formData();
     const file = formData.get("file") as Blob;
+    const chatId = formData.get("chatId") as string | null;
 
     if (!file) {
       return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
@@ -93,18 +97,35 @@ export async function POST(request: Request) {
     const fileBuffer = await file.arrayBuffer();
 
     // Upload to blob storage
-    let blobData;
+    const blobPath = `context-files/${user.id}/${Date.now()}-${filename}`;
+    let blobData: PutBlobResult;
     try {
-      blobData = await put(`${filename}`, fileBuffer, {
+      blobData = await put(blobPath, fileBuffer, {
         access: "public",
       });
     } catch (_error) {
       return NextResponse.json({ error: "Upload failed" }, { status: 500 });
     }
 
+    // Save to database
+    const [record] = await createContextFile({
+      userId: user.id,
+      chatId: chatId ?? undefined,
+      name: blobData.pathname,
+      originalName: filename,
+      blobUrl: blobData.url,
+      fileType: file.type,
+      fileSize: file.size,
+    });
+
+    // Process file asynchronously
+    after(() => processContextFile(record.id, blobData.url, file.type));
+
     // Extract text content for all file types (available as context)
-    const { extractedText, error: processingError } =
-      await extractDocumentText(file, file.type);
+    const { extractedText, error: processingError } = await extractDocumentText(
+      file,
+      file.type
+    );
 
     // Return standard attachment response for all file types
     return NextResponse.json({

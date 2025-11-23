@@ -27,7 +27,7 @@ export function DataStreamHandler() {
         }
 
         switch (delta.type) {
-          case "data-id":
+          case "data-id": {
             // If a new artifact is being created while a sheet is visible,
             // keep the sheet visible (don't auto-show the new artifact)
             const preserveSheetVisibility =
@@ -42,6 +42,7 @@ export function DataStreamHandler() {
                 ? true
                 : draftArtifact.isVisible,
             };
+          }
 
           case "data-title": {
             // Extract short title (before pipe) if present

@@ -9,9 +9,9 @@ export default function FilesPage() {
   return (
     <ChatLayout>
       <PageHeader
+        description="Manage your context files and control which files are used in all conversations"
         icon={Files}
         title="File Manager"
-        description="Manage your context files and control which files are used in all conversations"
       />
       <FileManager />
     </ChatLayout>

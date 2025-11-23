@@ -218,49 +218,55 @@ function PureMultimodalInput({
     resetHeight,
   ]);
 
-  const uploadFile = useCallback(async (file: File) => {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-      const response = await fetch("/api/files/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const {
-          url,
-          pathname,
-          contentType,
-          extractedText,
-          fileSize,
-          processingError,
-        } = data;
-
-        if (processingError) {
-          toast.warning(
-            `${file.name} uploaded, but could not be processed: ${processingError}`
-          );
-        }
-
-        // Return attachment for all file types (including spreadsheets)
-        return {
-          url,
-          name: pathname,
-          contentType,
-          extractedText,
-          fileSize,
-          processingError,
-        };
+  const uploadFile = useCallback(
+    async (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      if (chatId) {
+        formData.append("chatId", chatId);
       }
-      const { error } = await response.json();
-      toast.error(error);
-    } catch (_error) {
-      toast.error("Failed to upload file, please try again!");
-    }
-  }, []);
+
+      try {
+        const response = await fetch("/api/files/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const {
+            url,
+            pathname,
+            contentType,
+            extractedText,
+            fileSize,
+            processingError,
+          } = data;
+
+          if (processingError) {
+            toast.warning(
+              `${file.name} uploaded, but could not be processed: ${processingError}`
+            );
+          }
+
+          // Return attachment for all file types (including spreadsheets)
+          return {
+            url,
+            name: pathname,
+            contentType,
+            extractedText,
+            fileSize,
+            processingError,
+          };
+        }
+        const { error } = await response.json();
+        toast.error(error);
+      } catch (_error) {
+        toast.error("Failed to upload file, please try again!");
+      }
+    },
+    [chatId]
+  );
 
   const _modelResolver = useMemo(() => {
     return myProvider.languageModel(selectedModelId);

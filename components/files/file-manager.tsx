@@ -210,7 +210,7 @@ export function FileManager() {
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{file.originalName}</span>
                         {file.isPinned && (
-                          <Badge variant="secondary" className="text-xs">
+                          <Badge className="text-xs" variant="secondary">
                             <Pin className="mr-1 h-3 w-3" />
                             Pinned
                           </Badge>
@@ -224,7 +224,7 @@ export function FileManager() {
                     </TableCell>
                     <TableCell>
                       {file.status === "ready" && (
-                        <Badge variant="default" className="bg-green-500">
+                        <Badge className="bg-green-500" variant="default">
                           Ready
                         </Badge>
                       )}
@@ -240,10 +240,10 @@ export function FileManager() {
                     <TableCell>
                       {file.chatId ? (
                         <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 px-2"
                           asChild
+                          className="h-8 px-2"
+                          size="sm"
+                          variant="ghost"
                         >
                           <Link href={`/chat/${file.chatId}`}>
                             <ExternalLink className="mr-1 h-3 w-3" />
@@ -257,15 +257,17 @@ export function FileManager() {
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button
-                          variant="ghost"
-                          size="sm"
+                          disabled={togglingPinId === file.id}
                           onClick={() =>
                             handleTogglePin(file.id, file.isPinned ?? false)
                           }
-                          disabled={togglingPinId === file.id}
+                          size="sm"
                           title={
-                            file.isPinned ? "Unpin from all chats" : "Pin to all chats"
+                            file.isPinned
+                              ? "Unpin from all chats"
+                              : "Pin to all chats"
                           }
+                          variant="ghost"
                         >
                           {togglingPinId === file.id ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -276,19 +278,19 @@ export function FileManager() {
                           )}
                         </Button>
                         <Button
-                          variant="ghost"
-                          size="sm"
                           onClick={() => handleDownload(file)}
+                          size="sm"
                           title="Download file"
+                          variant="ghost"
                         >
                           <Download className="h-4 w-4" />
                         </Button>
                         <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(file.id)}
                           disabled={deletingId === file.id}
+                          onClick={() => handleDelete(file.id)}
+                          size="sm"
                           title="Delete file"
+                          variant="ghost"
                         >
                           {deletingId === file.id ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
