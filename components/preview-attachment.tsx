@@ -1,6 +1,4 @@
 import Image from "next/image";
-import { useCallback } from "react";
-import { useArtifact } from "@/hooks/use-artifact";
 import type { Attachment } from "@/lib/types";
 import { Loader } from "./elements/loader";
 import { CrossSmallIcon, FileIcon, FileTextIcon, TableIcon } from "./icons";
@@ -15,49 +13,7 @@ export const PreviewAttachment = ({
   isUploading?: boolean;
   onRemove?: () => void;
 }) => {
-  const { name, url, contentType, processingError, documentId } = attachment;
-  const { setArtifact } = useArtifact();
-
-  const handleClick = useCallback(async () => {
-    // Only handle spreadsheet attachments with documentId
-    if (
-      !documentId ||
-      (!contentType?.includes("spreadsheetml") && contentType !== "text/csv")
-    ) {
-      return;
-    }
-
-    try {
-      // Fetch the document to get its content
-      const response = await fetch(`/api/document?id=${documentId}`);
-      if (!response.ok) {
-        console.error("Failed to fetch document");
-        return;
-      }
-
-      const documents = await response.json();
-      const document = documents[0];
-
-      if (document) {
-        setArtifact({
-          documentId,
-          title: document.title,
-          kind: "sheet",
-          content: document.content,
-          isVisible: true,
-          status: "idle",
-          boundingBox: {
-            top: 0,
-            left: 0,
-            width: 0,
-            height: 0,
-          },
-        });
-      }
-    } catch (error) {
-      console.error("Error opening spreadsheet:", error);
-    }
-  }, [documentId, contentType, setArtifact]);
+  const { name, url, contentType, processingError } = attachment;
 
   const renderPreview = () => {
     if (contentType?.startsWith("image")) {
@@ -87,27 +43,10 @@ export const PreviewAttachment = ({
     return <FileIcon className="size-8 text-muted-foreground" />;
   };
 
-  const isClickable =
-    documentId &&
-    (contentType?.includes("spreadsheetml") || contentType === "text/csv");
-
   return (
     <div
-      className={`group relative size-16 overflow-hidden rounded-lg border bg-muted ${isClickable ? "cursor-pointer transition-colors hover:border-primary" : ""}`}
+      className="group relative size-16 overflow-hidden rounded-lg border bg-muted"
       data-testid="input-attachment-preview"
-      onClick={isClickable ? handleClick : undefined}
-      onKeyDown={
-        isClickable
-          ? (e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                handleClick();
-              }
-            }
-          : undefined
-      }
-      role={isClickable ? "button" : undefined}
-      tabIndex={isClickable ? 0 : undefined}
     >
       <div className="flex size-full items-center justify-center">
         {renderPreview()}

@@ -21,13 +21,13 @@ import { toast } from "sonner";
 import { useLocalStorage, useWindowSize } from "usehooks-ts";
 import { saveChatModelAsCookie } from "@/app/(chat)/actions";
 import { SelectItem } from "@/components/ui/select";
-import { initialArtifactData, useArtifact } from "@/hooks/use-artifact";
+import { useArtifact } from "@/hooks/use-artifact";
 import { chatModels, isReasoningModelId } from "@/lib/ai/models";
 import { myProvider } from "@/lib/ai/providers";
 import type { VisibilityType } from "@/lib/chat/visibility";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
-import { cn, generateUUID } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { Context } from "./elements/context";
 import {
   PromptInput,
@@ -106,7 +106,7 @@ function PureMultimodalInput({
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
-  const { artifact, setArtifact } = useArtifact();
+  const { artifact } = useArtifact();
 
   const adjustHeight = useCallback(() => {
     if (textareaRef.current) {
@@ -221,8 +221,6 @@ function PureMultimodalInput({
   const uploadFile = useCallback(async (file: File) => {
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("chatId", chatId);
-    formData.append("visibility", selectedVisibilityType);
 
     try {
       const response = await fetch("/api/files/upload", {
@@ -239,10 +237,6 @@ function PureMultimodalInput({
           extractedText,
           fileSize,
           processingError,
-          isSpreadsheet,
-          chatId: returnedChatId,
-          documentId,
-          title,
         } = data;
 
         if (processingError) {
@@ -251,36 +245,7 @@ function PureMultimodalInput({
           );
         }
 
-        // Handle spreadsheet uploads - everything is already created server-side
-        if (isSpreadsheet && documentId && returnedChatId) {
-          console.log("[multimodal-input] Spreadsheet uploaded:", {
-            chatId: returnedChatId,
-            documentId,
-            title,
-          });
-
-          // Set artifact state but don't show it automatically
-          setArtifact({
-            ...initialArtifactData,
-            documentId,
-            title,
-            kind: "sheet",
-            content: extractedText ?? "",
-            isVisible: false,
-            status: "idle",
-          });
-
-          // Show success message - spreadsheet is ready but not auto-previewed
-          toast.success(`Spreadsheet "${title}" imported!`);
-
-          // NOTE: Spreadsheet artifact is created but NOT shown automatically
-          // User can open it manually or it will appear when AI references it
-
-          // Don't return attachment for spreadsheets - they're already in the chat as artifacts
-          return undefined;
-        }
-
-        // For non-spreadsheet files, return attachment as usual
+        // Return attachment for all file types (including spreadsheets)
         return {
           url,
           name: pathname,
@@ -295,7 +260,7 @@ function PureMultimodalInput({
     } catch (_error) {
       toast.error("Failed to upload file, please try again!");
     }
-  }, [chatId, selectedVisibilityType, setArtifact]);
+  }, []);
 
   const _modelResolver = useMemo(() => {
     return myProvider.languageModel(selectedModelId);
@@ -309,9 +274,6 @@ function PureMultimodalInput({
     }),
     [usage, isReasoningEnabled, isDeepResearchEnabled]
   );
-
-  // NOTE: Spreadsheet document creation now happens server-side in /api/files/upload
-  // This eliminates race conditions and complex client-side state management
 
   const handleFileChange = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {

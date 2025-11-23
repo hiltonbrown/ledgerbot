@@ -3,14 +3,12 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
-import { getChatById, saveChat, saveDocument } from "@/lib/db/queries";
 import {
   extractCsvData,
   extractDocxText,
   extractPdfText,
   extractXlsxData,
 } from "@/lib/files/parsers";
-import { generateUUID } from "@/lib/utils";
 
 const SUPPORTED_TYPES = [
   "image/jpeg",
@@ -75,8 +73,6 @@ export async function POST(request: Request) {
   try {
     const formData = await request.formData();
     const file = formData.get("file") as Blob;
-    let chatId = formData.get("chatId") as string | null;
-    const visibility = (formData.get("visibility") as string) || "private";
 
     if (!file) {
       return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
@@ -96,10 +92,6 @@ export async function POST(request: Request) {
     const filename = (formData.get("file") as File).name;
     const fileBuffer = await file.arrayBuffer();
 
-    // Check if this is a spreadsheet
-    const isSpreadsheet =
-      file.type === "text/csv" || file.type.includes("spreadsheetml");
-
     // Upload to blob storage
     let blobData;
     try {
@@ -110,78 +102,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Upload failed" }, { status: 500 });
     }
 
-    // Extract text content
+    // Extract text content for all file types (available as context)
     const { extractedText, error: processingError } =
       await extractDocumentText(file, file.type);
 
-    // For spreadsheets, create everything server-side
-    if (isSpreadsheet && extractedText && !processingError) {
-      try {
-        // Generate IDs
-        const documentId = generateUUID();
-
-        // Ensure chat exists (create if needed)
-        if (!chatId) {
-          chatId = generateUUID();
-        }
-
-        const existingChat = await getChatById({ id: chatId });
-        if (!existingChat) {
-          await saveChat({
-            id: chatId,
-            userId: user.id,
-            title: "New Chat",
-            visibility: visibility as "private" | "public",
-          });
-          console.log("[files/upload] Created chat:", chatId);
-        }
-
-        // Extract title from filename
-        const baseName = filename.replace(/\.[^.]+$/, "") || "Imported Spreadsheet";
-        const title =
-          baseName.replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim() ||
-          "Imported Spreadsheet";
-
-        // Create document with spreadsheet content
-        await saveDocument({
-          id: documentId,
-          title,
-          kind: "sheet",
-          content: extractedText,
-          userId: user.id,
-          chatId,
-        });
-        console.log("[files/upload] Created document:", documentId);
-
-        // NOTE: No assistant message needed - spreadsheet artifact will be visible
-        // and user can start asking questions immediately
-
-        // Return spreadsheet-specific response
-        return NextResponse.json({
-          ...blobData,
-          contentType: file.type,
-          extractedText,
-          fileSize: file.size,
-          // Spreadsheet-specific fields
-          isSpreadsheet: true,
-          chatId,
-          documentId,
-          title,
-        });
-      } catch (error) {
-        console.error("[files/upload] Failed to create spreadsheet:", error);
-        // Fall back to returning basic upload response
-        return NextResponse.json({
-          ...blobData,
-          contentType: file.type,
-          extractedText,
-          fileSize: file.size,
-          processingError: "Failed to create spreadsheet document",
-        });
-      }
-    }
-
-    // For non-spreadsheet files, return basic response
+    // Return standard attachment response for all file types
     return NextResponse.json({
       ...blobData,
       contentType: file.type,
