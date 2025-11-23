@@ -204,6 +204,7 @@ export async function saveMessages({ messages }: { messages: DBMessage[] }) {
 
 export async function createContextFile({
   userId,
+  chatId,
   name,
   originalName,
   blobUrl,
@@ -212,6 +213,7 @@ export async function createContextFile({
   description,
 }: {
   userId: string;
+  chatId?: string;
   name: string;
   originalName: string;
   blobUrl: string;
@@ -224,6 +226,7 @@ export async function createContextFile({
       .insert(contextFile)
       .values({
         userId,
+        chatId,
         name,
         originalName,
         blobUrl,

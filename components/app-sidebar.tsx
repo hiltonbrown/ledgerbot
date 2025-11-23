@@ -1,6 +1,6 @@
 "use client";
 
-import { Bot, LifeBuoy, Lightbulb, MessageSquare, Send } from "lucide-react";
+import { Bot, Files, LifeBuoy, Lightbulb, MessageSquare, Send } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -143,6 +143,11 @@ export function AppSidebar({
           url: "/agents/workflow",
         },
       ],
+    },
+    {
+      title: "Files",
+      url: "/files",
+      icon: Files,
     },
   ];
 

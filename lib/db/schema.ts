@@ -186,6 +186,7 @@ export const contextFile = pgTable("ContextFile", {
   userId: uuid("userId")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
+  chatId: uuid("chatId").references(() => chat.id, { onDelete: "set null" }),
   name: varchar("name", { length: 255 }).notNull(),
   originalName: varchar("originalName", { length: 255 }).notNull(),
   blobUrl: text("blobUrl").notNull(),

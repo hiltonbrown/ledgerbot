@@ -51,15 +51,6 @@ export default async function SettingsPage() {
       iconBg: "bg-blue-500/10",
     },
     {
-      title: "Context Files",
-      description:
-        "Context file uploads are temporarily unavailable while we rebuild",
-      icon: FileText,
-      href: "/settings/files",
-      iconColor: "text-green-600",
-      iconBg: "bg-green-500/10",
-    },
-    {
       title: "Integrations",
       description: "Connect accounting and payroll systems",
       icon: Plug,
