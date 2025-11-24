@@ -30,6 +30,19 @@ const loadDefaultToneGrammar = () => {
   }
 };
 
+// Helper function to add timeout to promises
+const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(
+        () => reject(new Error(`Operation timed out after ${ms}ms`)),
+        ms
+      )
+    ),
+  ]);
+};
+
 export type UserSettings = {
   name: string;
   email: string;
@@ -161,7 +174,10 @@ export async function getUserSettings(): Promise<UserSettings> {
 
       // Fetch and format chart of accounts
       try {
-        const chartData = await getChartOfAccounts(xeroConnection.id);
+        const chartData = await withTimeout(
+          getChartOfAccounts(xeroConnection.id),
+          5000 // 5 second timeout to prevent login hang
+        );
         if (
           chartData?.accounts &&
           Array.isArray(chartData.accounts) &&
@@ -181,7 +197,8 @@ export async function getUserSettings(): Promise<UserSettings> {
         // Log chart fetch error separately but don't fail the entire request
         console.error(
           `[getUserSettings] Failed to fetch chart of accounts for connection ${xeroConnection.id}:`,
-          chartError instanceof Error ? chartError.message : String(chartError)
+          chartError instanceof Error ? chartError.message : String(chartError),
+          "This may be due to timeout or Xero API issues"
         );
       }
     }
