@@ -219,38 +219,6 @@ const PurePreviewMessage = ({
                 );
               }
 
-              if (
-                part.output &&
-                typeof part.output === "object" &&
-                "action" in part.output &&
-                part.output.action === "analyze"
-              ) {
-                return (
-                  <Tool defaultOpen={true} key={toolCallId}>
-                    <ToolHeader state={state} type="tool-createDocument" />
-                    <ToolContent>
-                      {state === "input-available" && "input" in part && (
-                        <ToolInput input={(part as any).input} />
-                      )}
-                      {state === "output-available" && (
-                        <ToolOutput
-                          errorText={undefined}
-                          output={
-                            "error" in part.output ? (
-                              <div className="rounded border p-2 text-red-500">
-                                Error: {String(part.output.error)}
-                              </div>
-                            ) : (
-                              <SpreadsheetAnalysisResult result={part.output} />
-                            )
-                          }
-                        />
-                      )}
-                    </ToolContent>
-                  </Tool>
-                );
-              }
-
               return (
                 <DocumentPreview
                   chatId={chatId}
@@ -448,7 +416,9 @@ export const ThinkingMessage = () => {
         </div>
 
         <div className="flex w-full flex-col gap-2 md:gap-4">
-          <div className="p-0 text-muted-foreground text-sm">Thinking...</div>
+          <div className="p-0 text-muted-foreground text-sm">
+            Thinking...
+          </div>
         </div>
       </div>
     </motion.div>
