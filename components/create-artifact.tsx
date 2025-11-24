@@ -47,6 +47,7 @@ type ArtifactContent<M = any> = {
   isLoading: boolean;
   metadata: M;
   setMetadata: Dispatch<SetStateAction<M>>;
+  chatId: string;
 };
 
 type InitializeParameters<M = any> = {

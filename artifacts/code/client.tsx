@@ -88,7 +88,7 @@ export const codeArtifact = new Artifact<"code", Metadata>({
       }));
     }
   },
-  content: ({ metadata, setMetadata, ...props }) => {
+  content: ({ metadata, setMetadata, chatId, ...props }) => {
     return (
       <>
         <div className="px-1">
@@ -97,6 +97,7 @@ export const codeArtifact = new Artifact<"code", Metadata>({
 
         {metadata?.outputs && (
           <Console
+            chatId={chatId}
             consoleOutputs={metadata.outputs}
             setConsoleOutputs={() => {
               setMetadata({

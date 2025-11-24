@@ -475,6 +475,7 @@ function PureArtifact({
 
             <div className="h-full max-w-full! items-center overflow-y-scroll bg-background dark:bg-muted">
               <artifactDefinition.content
+                chatId={chatId}
                 content={
                   isCurrentVersion
                     ? artifact.content
