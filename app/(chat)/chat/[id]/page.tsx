@@ -71,7 +71,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
           isReadonly={user.id !== chat.userId}
           key={chat.id}
         />
-        <DataStreamHandler />
+        <DataStreamHandler chatId={chat.id} />
       </>
     );
   }
@@ -90,7 +90,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         isReadonly={user.id !== chat.userId}
         key={chat.id}
       />
-      <DataStreamHandler />
+      <DataStreamHandler chatId={chat.id} />
     </>
   );
 }

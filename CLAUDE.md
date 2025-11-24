@@ -1,125 +1,331 @@
 # CLAUDE.md
 
-LedgerBot is an AI-powered accounting workspace built on Next.js 16 with Vercel AI SDK, PostgreSQL, Clerk auth, and Xero integration.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Key Technologies
-- **Framework**: Next.js 16 (PPR), Vercel AI SDK (Anthropic Claude, OpenAI GPT-5, Google Gemini, xAI Grok)
-- **Database**: PostgreSQL with Drizzle ORM
-- **Auth**: Clerk | **Storage**: Vercel Blob | **Lint**: Ultracite (Biome) | **Test**: Playwright
-- **Monitoring**: TokenLens | **Integration**: MCP SDK
+## Project Overview
 
-⚠️ Never edit node_modules. Use configuration overrides or adapter layers.
+LedgerBot is an AI-powered accounting workspace built for Australian businesses using Next.js 15, React 19, TypeScript, and the Vercel AI SDK. It provides specialized AI agents for accounting workflows with native Xero integration and multi-model AI support (Claude, GPT-5, Gemini, Grok).
 
-## Commands
-`pnpm dev` | `pnpm build` | `pnpm start` | `pnpm lint` | `pnpm format` | `pnpm test`
-`pnpm db:generate` | `pnpm db:migrate` | `pnpm db:studio`
+## Development Commands
 
-## Environment
-Required: `CLERK_*`, `POSTGRES_URL`, `BLOB_READ_WRITE_TOKEN`, `AI_GATEWAY_API_KEY`, `FIRECRAWL_API_KEY`, `CRON_SECRET`
-Optional: `REDIS_URL`, `AI_GATEWAY_URL`
+```bash
+# Development
+pnpm dev                 # Start dev server with Turbo
+pnpm build              # Run migrations and production build
+pnpm start              # Start production server
+
+# Code Quality
+pnpm lint               # Run Ultracite linter (Biome-based)
+pnpm format             # Auto-fix with Ultracite
+
+# Database
+pnpm db:generate        # Generate Drizzle migrations from schema changes
+pnpm db:migrate         # Run pending migrations
+pnpm db:studio          # Launch Drizzle Studio (DB GUI)
+pnpm db:push            # Push schema changes directly
+pnpm db:pull            # Pull schema from database
+
+# Testing
+pnpm test               # Run Playwright E2E tests (sets PLAYWRIGHT=True)
+```
 
 ## Architecture
 
-### Routes
-**Chat**: `(chat)/api/chat`, `api/document`, `api/files/upload`, `api/history`, `api/suggestions`, `api/vote`
-**Agents**: `agents/{analytics,ap,ar,docmanagement,forecasting,qanda,workflow}` - See agent sections
-**Settings**: `settings/{personalisation,usage,integrations,chartofaccounts,files,agents}`
-**API**: `api/context-files`, `api/regulatory/{stats,search,scrape}`, `api/xero/{auth,callback,disconnect,status,switch,connections,chart-of-accounts}`, `api/agents/*`
+### Directory Structure
 
-### AI Stack
-**Models**: Claude Sonnet 4.5 (default), Haiku 4.5, GPT-5, GPT-5 Mini, Gemini 2.5 Flash
-**Prompts**: `prompts/{default-system-prompt.md, ap-system-prompt.md, ar-system-prompt.md}` with template vars `{{INDUSTRY_CONTEXT}}`, `{{CHART_OF_ACCOUNTS}}`
-**Tools**: `createDocument`, `updateDocument`, `getWeather`, `requestSuggestions` + Xero tools when connected
-**Xero Tools**: `xero_list_invoices`, `xero_get_invoice`, `xero_list_contacts`, `xero_get_contact`, `xero_list_accounts` (cached), `xero_list_journal_entries`, `xero_get_bank_transactions`, `xero_get_organisation`
+```
+app/
+├── (auth)/              # Clerk authentication routes
+├── (chat)/              # Main chat interface with streaming API
+│   └── api/chat/        # Core chat endpoint (route.ts)
+├── (settings)/          # User settings (personalisation, usage, integrations)
+├── agents/              # 8 specialized agent workspaces (analytics, ar, ap, etc.)
+└── api/                 # API routes (xero, context-files, regulatory, user)
 
-### Xero Integration
-**OAuth2**: Authorization Code Flow + PKCE, AES-256-GCM encrypted tokens, proactive token refresh (20-min threshold)
-**Security**: CSRF protection (nonce + timestamp), state expiry (10 min), correlation ID tracking, optimistic locking
-**Token Management**: Refresh token rotation (60-day window reset), concurrency protection (lock map), 5-sec refresh throttle
-**Tenant Context**: Explicit context passing (no globals/thread-locals), immutable context objects, per-request validation
-**API Best Practices**: Pagination (100-1000/page), If-Modified-Since headers, rate limit tracking, exponential backoff retry
-**Architecture**: Multi-org support, connection health monitoring, chart of accounts caching (DB-first), conditional tool integration
-**Error Handling**: 7 error types (validation, authorization, token, rate_limit, server, network, unknown), user-friendly messages, auto-retry
-**Connection Management**: Proactive refresh cron (15-min), cleanup cron (daily), health checks, staleness tracking
-**Files**: `lib/xero/{connection-manager,encryption,error-handler,connection-health,tenant-context,rate-limit-handler,chart-of-accounts-sync}.ts`, `lib/ai/xero-mcp-client.ts`
-**Cron**: `api/cron/xero-token-refresh` (15-min), `api/cron/xero-connection-cleanup` (daily)
-**Env**: `XERO_CLIENT_ID`, `XERO_CLIENT_SECRET`, `XERO_REDIRECT_URI`, `XERO_ENCRYPTION_KEY`
-**Scopes**: `offline_access`, `accounting.{transactions,contacts,settings,reports.read,journals.read,attachments}`, `payroll.*`
+lib/
+├── ai/                  # AI configuration and tools
+│   ├── providers.ts     # AI Gateway config (multi-provider)
+│   ├── models.ts        # Available chat models
+│   ├── prompts.ts       # System prompt management
+│   ├── context-manager.ts  # Context file selection logic
+│   ├── xero-mcp-client.ts  # Xero MCP integration
+│   └── tools/           # AI tool implementations (create-document, xero-tools, etc.)
+├── agents/              # Agent business logic (docmanagement, ar, ap, etc.)
+├── db/                  # Database schema, queries, migrations
+├── xero/                # Xero OAuth, encryption, error handling
+├── files/               # File processing utilities
+└── clerk/               # Clerk authentication helpers
 
-### Artifacts
-Types: text, code, image, sheet | Location: `lib/artifacts/` | Real-time updates, never auto-update after creation
+components/
+├── agents/              # Agent-specific UI components
+├── ui/                  # Reusable UI components (Radix-based)
+└── [chat components]    # chat.tsx, artifact.tsx, multimodal-input.tsx, etc.
 
-### Agents (AI SDK)
-All agents use `streamText()` with `tool()`, conditional Xero integration, `.toTextStreamResponse()` streaming
+artifacts/               # Artifact renderers (text, code, sheet, image)
+prompts/                 # System prompt templates
+```
 
-**Implemented** (7): Q&A ✅ | Forecasting ✅ | Analytics ✅ | Workflow ✅ | AP ✅ | AR ✅ | DocManagement ⚠️(legacy)
-**Planned** (2): Reconciliations ❌ | Compliance ❌
+### Key Architecture Patterns
 
-**Q&A**: Regulatory RAG (Fair Work/ATO/State tax), confidence scoring, citations, human review | DB: regulatoryDocument
-**Forecasting**: Base/Upside/Downside scenarios, Xero P&L/Balance Sheet | Memory system, 4 models
-**Analytics**: KPI calculation (margin, burn, runway), narrative generation, Xero integration
-**Workflow**: Month-End Close, Investor Update, ATO Audit Pack orchestration
-**AP**: ABN validation, bill coding, duplicate detection, payment proposals, risk assessment | DB: 6 tables | API: 8 routes | Prompt: `prompts/ap-system-prompt.md`
-**AR**: Late risk prediction, reminders (email/SMS), payment reconciliation, DSO tracking | DB: 6 tables | API: 5 routes | Prompt: `prompts/ar-system-prompt.md`
-**DocManagement**: OCR, RAG search, citation (legacy standalone agent)
+1. **Server-First with RSC**: Next.js 15 App Router with React Server Components for initial loads, Client Components for interactivity
+2. **Streaming AI Responses**: `app/(chat)/api/chat/route.ts` handles streaming responses with tool execution
+3. **Multi-Model Support**: AI Gateway (`lib/ai/providers.ts`) routes requests to different AI providers
+4. **Database Schema**: PostgreSQL with Drizzle ORM (`lib/db/schema.ts`)
+   - `User`, `Chat`, `Message_v2` (new format), `Message` (deprecated), `Document`, `ContextFile`, `XeroConnection`, etc.
+   - Foreign keys with cascade deletes for user data cleanup
+5. **Authentication Flow**: Clerk → webhook → user sync in database
+6. **Artifact System**: AI-generated content (documents, code, spreadsheets, images) displayed in side panel with real-time updates, state scoped by chat ID
+7. **Xero Integration**: OAuth2 with encrypted token storage (AES-256-GCM), MCP client for tool execution
 
-**API Pattern**: `streamText()` with conditional Xero tools, system prompt from markdown (AP/AR), `.toTextStreamResponse()`
-**Structure**: `lib/agents/[name]/{agent,tools,types}.ts`
+## Database
 
-### Database
-**Core**: User (Clerk sync), Chat, Message_v2, Document, Suggestion, Vote_v2, Stream, ContextFile (OCR, tokens), UserSettings, XeroConnection (encrypted tokens, multi-org)
-**AP** (6): apContact (ABN, risk), apBill (approval workflow, line items), apPayment, apApprovalLog, apBankAccountChange, apPaymentRun
-**AR** (6): arContact, arInvoice (status, Xero sync), arPayment, arReminder (email/SMS), arNote, arCommsArtefact
-**Regulatory** (3): regulatoryDocument (full-text search, GIN index), regulatoryScrapeJob, qaReviewRequest
+### Schema Changes
 
-### Auth & Files
-**Auth**: Clerk with auto-sync | Helpers: `getAuthUser()`, `requireAuth()`, `isAuthenticated()` | Entitlements per user type
-**Context Files**: RAG uploads (images, PDF, DOCX, XLSX) | 10MB max | OCR extraction | Status: processing → ready/failed
+1. Modify `lib/db/schema.ts`
+2. Generate migration: `pnpm db:generate`
+3. Review migration in `lib/db/migrations/`
+4. Apply locally: `pnpm db:migrate`
+5. Production migrations run automatically during build (`build` script runs `tsx lib/db/migrate`)
 
-### Lib Structure
-`agents/{qanda,forecasting,analytics,ap,ar,workflow,docmanagement}` | `ai/{providers,models,prompts,entitlements,context-manager,tools,xero-mcp-client}` | `db/{schema,queries,migrate}` (+ `schema/{ap,ar}`, `queries/{ap,ar}`) | `xero/{connection-manager,encryption,rate-limit-handler,chart-of-accounts-sync}` | `regulatory/{confidence,scraper,search,config-parser}` | `files/{context-processor,pdf-ocr,parsers}` | `artifacts/` | `auth/clerk-helpers.ts`
+### Key Tables
 
-### Components
-`components/agents/` | `components/ui/` (Radix) | Chat: `{chat,chat-header,artifact,message,multimodal-input}.tsx` | Data: `{data-stream-handler,data-stream-provider}.tsx` | Editor: `{code-editor,document-preview,diffview}.tsx`
+- `User`: User accounts (synced from Clerk via `clerkId`)
+- `Chat`: Chat sessions with title, visibility, and last context
+- `Message_v2`: Chat messages with parts, attachments, confidence, citations (for Q&A agent)
+- `Document`: AI-generated artifacts (text, code, sheet, image)
+- `ContextFile`: User-uploaded files for AI context
+- `XeroConnection`: Encrypted Xero OAuth tokens per user
+- `Vote_v2`: Message upvotes/downvotes
 
-### Streaming
-Chat API flow: Validate → Load history → Stream with tools → Save → Track tokens (TokenLens)
-Config: 60s max, word-level chunks, 5-step limit | Redis resumable streams: disabled (optional via `REDIS_URL`)
+## AI Integration
 
-## Code Standards
-**Ultracite** (Biome-based): No enums/namespaces/!, hooks at top level, no array keys, ARIA support, no `any`, optional chaining, arrow functions
-`pnpm lint` | `pnpm format` (auto-fix) | Excludes: `components/ui`, `lib/utils.ts`, `hooks/use-mobile.ts`
+### Adding a New AI Tool
+
+1. Create tool definition in `lib/ai/tools/your-tool.ts`:
+   ```typescript
+   import { tool } from 'ai';
+   import { z } from 'zod';
+
+   export const yourTool = tool({
+     description: 'Describe what this tool does',
+     parameters: z.object({
+       param1: z.string().describe('Parameter description'),
+     }),
+     execute: async ({ param1 }) => {
+       // Tool implementation
+       return { result: 'success' };
+     },
+   });
+   ```
+
+2. Export in `lib/ai/tools/index.ts`
+3. Import and add to `tools` object in `app/(chat)/api/chat/route.ts`
+4. Add to `experimental_activeTools` array if needed (for proactive tool calling)
+
+### System Prompts
+
+- Default system prompt: `prompts/default-system-prompt.md`
+- Supports variable interpolation: `{{FIRST_NAME}}`, `{{COMPANY_NAME}}`, `{{BASE_CURRENCY}}`, etc.
+- Template engine: `lib/ai/template-engine.ts`
+- Users can customize in settings → personalisation
+
+## Xero Integration
+
+### Key Files
+
+- `lib/xero/connection-manager.ts`: OAuth flow, token management
+- `lib/xero/encryption.ts`: AES-256-GCM encryption for tokens
+- `lib/xero/error-handler.ts`: Xero API error handling
+- `lib/xero/rate-limit-handler.ts`: Rate limit management
+- `lib/xero/tenant-context.ts`: Multi-tenant context management
+- `lib/ai/xero-mcp-client.ts`: MCP client for AI tool execution
+- `lib/ai/tools/xero-tools.ts`: AI SDK tool wrappers for Xero operations
+
+### OAuth Flow
+
+1. User clicks "Connect Xero" in `/settings/integrations`
+2. Redirects to `/api/xero/auth/initiate` → Xero authorization
+3. Xero redirects to `/api/xero/callback` with code
+4. Tokens encrypted and stored in `XeroConnection` table
+5. Tokens automatically refreshed when expiring within 5 minutes
+
+### Available Xero Tools
+
+- `xero_list_invoices`, `xero_get_invoice`
+- `xero_list_contacts`, `xero_get_contact`
+- `xero_list_accounts`, `xero_list_journal_entries`
+- `xero_get_bank_transactions`, `xero_get_organisation`
+
+## Specialized Agents
+
+Located in `app/agents/` (UI) and `lib/agents/` (business logic):
+
+1. **Document Processing** (`/agents/docmanagement`): OCR, invoice validation, auto-categorization
+2. **Analytics** (`/agents/analytics`): KPI narratives, drill-down tables, exports
+3. **Accounts Payable** (`/agents/ap`): Bill management, supplier payments
+4. **Accounts Receivable** (`/agents/ar`): Invoice dunning, late payment risk, email generation (COMMS_ENABLED=false by default)
+5. **Forecasting** (`/agents/forecasting`): Scenario modeling, cash flow projections
+6. **Q&A** (`/agents/qanda`): Regulatory questions with citations and confidence scores
+7. **Workflow Supervisor** (`/agents/workflow`): Multi-agent orchestration
+
+### Adding a New Agent
+
+1. Create directory: `app/agents/your-agent/page.tsx`
+2. Add business logic: `lib/agents/your-agent/` (if needed)
+3. Add entry to `app/agents/page.tsx` (`agentSnapshots` array)
+4. Create settings section in `app/(settings)/settings/agents/page.tsx`
+5. Add API route: `app/api/agents/your-agent/route.ts` (if streaming is needed)
+
+## Code Standards (Ultracite/Biome)
+
+Configuration: `biome.jsonc` (extends "ultracite")
+
+### DO:
+- Use `const` by default
+- Use `export type` and `import type` for types
+- Use arrow functions
+- Handle async/await properly (no `await` in loops)
+- Use optional chaining (`?.`) and nullish coalescing (`??`)
+
+### DON'T:
+- Use `any` type (use `unknown` instead)
+- Use enums (use const objects or union types)
+- Use non-null assertions (`!`) unless necessary
+- Use array index as React keys
+- Use `<img>` or `<head>` in Next.js (use `next/image`, `next/head`)
+
+### Exceptions Configured:
+- `noExplicitAny`: off (needs cleanup)
+- `noConsole`: off (debugging allowed)
+- `noMagicNumbers`: off
+- `noNestedTernary`: off (needs cleanup)
+
+Run `pnpm lint` before committing. Most issues auto-fix with `pnpm format`.
 
 ## Testing
-Playwright (`tests/`): `e2e/`, `routes/`, `pages/`, `prompts/` | `pnpm test` | 240s timeout, HTML reporter
 
-## Workflows
-**AI Tool**: Create in `lib/ai/tools/`, add to chat route tools object, update system prompt
-**Artifact**: Schema → server/client components → update `ArtifactKind` → renderer
-**Agent**: See below for full pattern
+- Framework: Playwright
+- Run: `pnpm test` (automatically sets `PLAYWRIGHT=True`)
+- Enables mock AI providers and test database when `PLAYWRIGHT=True`
+- Tests located in `tests/` directory
 
-### Adding Agent
-1. Create `lib/agents/[name]/{agent,tools,types}.ts` with `tool()` from 'ai'
-2. Create system prompt in `prompts/[name]-system-prompt.md`
-3. Create API route: `streamText()` with conditional Xero tools, `.toTextStreamResponse()`
-4. Create DB schema in `lib/db/schema/[name].ts` if needed
-5. Create UI page in `app/agents/[name]/page.tsx`
-6. Add to `app/agents/page.tsx` agent snapshots
+## Context File Management
 
-**DB Schema**: Modify → `pnpm db:generate` → Review migration → `pnpm db:migrate` (prod: auto in build)
-**AI Model**: Add to `lib/ai/models.ts` with `isReasoning` flag + entitlements
-**Context Files**: POST `/api/context-files` (multipart) → Async OCR → GET with status filter
+- Upload: `app/api/context-files/upload/route.ts`
+- Processing: `lib/files/` (PDF, DOCX, XLSX extraction)
+- Storage: Vercel Blob (10MB max per file)
+- Selection: `lib/ai/context-manager.ts` selects relevant files for each chat
+- Pinning: Users can pin important files (chart of accounts, policies)
 
-### Adding Integration (OAuth)
-1. DB: Connection table with encrypted tokens (AES-256-GCM) + migration
-2. Lib: `lib/[service]/{connection-manager,encryption,types}.ts` with OAuth client + token refresh
-3. API: `app/api/[service]/{auth,callback,disconnect}/route.ts` with state verification
-4. MCP: `lib/ai/[service]-mcp-client.ts` with tool interfaces + execution
-5. Tools: `lib/ai/tools/[service]-tools.ts` using `tool()` with Zod schemas
-6. Chat: Conditional tool inclusion based on connection status
-7. UI: Integration card in settings with OAuth flow
-8. Queries: getActiveConnection, createConnection, updateTokens, deactivateConnection
+## Environment Variables
 
-## MCP & Practices
-**Context7 MCP**: `resolve-library-id` → `get-library-docs` for current library documentation
-⚠️ Never edit `node_modules` - use wrappers/patches
+Required:
+- `POSTGRES_URL`: PostgreSQL connection string
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`: Clerk auth
+- `AI_GATEWAY_API_KEY`: Vercel AI Gateway (auto-configured on Vercel)
+
+Optional:
+- `XERO_CLIENT_ID`, `XERO_CLIENT_SECRET`, `XERO_ENCRYPTION_KEY`: Xero integration
+- `BLOB_READ_WRITE_TOKEN`: Vercel Blob storage
+- `REDIS_URL`: Resumable chat streams (optional in dev)
+- `FIRECRAWL_API_KEY`: Web scraping for regulatory sources
+- `COMMS_ENABLED`: AR agent communications (must be 'false')
+- `AR_DEFAULT_TONE`: AR reminder tone (polite, firm, final)
+
+See `.env.example` for complete list.
+
+## Australian Compliance Features
+
+- **GST-Aware**: Automatic GST calculations and validation
+- **BAS Lodgment**: Automated reminders and preparation assistance
+- **Fair Work Awards**: Minimum wage calculations
+- **ATO Terminology**: Uses Australian accounting standards (e.g., "creditor" not "accounts payable")
+- **Currency**: Base currency from Xero organisation (defaults to AUD)
+- **Date Format**: DD/MM/YYYY (Australian standard)
+
+## Deployment
+
+- **Preferred Platform**: Vercel (optimized for Next.js 15)
+- **Build Process**: `pnpm build` runs migrations then builds
+- **Database Migrations**: Automatically run during build via `tsx lib/db/migrate`
+- **Edge Runtime**: Configured for Vercel Edge where applicable
+
+## Common Patterns
+
+### Streaming AI Responses
+
+```typescript
+// In route.ts
+import { streamText } from 'ai';
+
+const result = streamText({
+  model: getModel(modelId),
+  system: systemPrompt,
+  messages: convertedMessages,
+  tools: { ...tools },
+  onFinish: async (event) => {
+    // Save to database
+  },
+});
+
+return result.toDataStreamResponse();
+```
+
+### Database Queries
+
+```typescript
+// Use Drizzle ORM with type safety
+import { db } from '@/lib/db/db';
+import { chat, message } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
+
+const chats = await db
+  .select()
+  .from(chat)
+  .where(eq(chat.userId, userId));
+```
+
+### Authentication
+
+```typescript
+// In Server Components or Server Actions
+import { auth } from '@clerk/nextjs/server';
+
+const { userId } = await auth();
+if (!userId) throw new Error('Unauthorized');
+```
+
+### Xero API Calls
+
+```typescript
+// Use connection manager for authenticated requests
+import { XeroConnectionManager } from '@/lib/xero/connection-manager';
+
+const xero = new XeroConnectionManager(userId);
+const invoices = await xero.accounting.invoices.get({
+  where: 'Status=="UNPAID"'
+});
+```
+
+## Important Notes
+
+- **Message Format Migration**: `Message` table is deprecated, use `Message_v2` for new code
+- **Vote Format Migration**: `Vote` table is deprecated, use `Vote_v2` for new code
+- **Artifact State**: Scoped by chat ID via `useArtifact(chatId)` and `useArtifactSelector(chatId, selector)`
+- **PPR Support**: Partial Prerendering enabled via `NEXT_EXPERIMENTAL_PPR=true`
+- **Token Encryption**: Xero tokens encrypted with AES-256-GCM, key must be 32 bytes (64 hex chars)
+- **AR Communications**: Always disabled (`COMMS_ENABLED=false`), generates copy-ready artifacts only
+
+## Debugging Tips
+
+1. **Xero OAuth Issues**: Check redirect URI exact match, encryption key length (64 hex chars), scopes in Xero app
+2. **Database Connection**: Ensure `POSTGRES_URL` is correct and accessible
+3. **AI Streaming**: Check browser console for stream errors, verify AI Gateway API key
+4. **Build Failures**: Check migration files, ensure `tsx` is installed for build script
+5. **Context Files**: Check Blob token and 10MB size limit
+
+## References
+
+- Main README: `README.md` (comprehensive feature documentation)
+- Xero Guide: `docs/xero-authentication-guide.md`
+- Prompt Maintenance: `prompts/README.md`

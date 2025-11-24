@@ -149,7 +149,7 @@ export default async function Page({ searchParams }: PageProps) {
         key={id}
         suggestions={suggestions}
       />
-      <DataStreamHandler />
+      <DataStreamHandler chatId={id} />
     </>
   );
 }
