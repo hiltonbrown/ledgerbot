@@ -33,17 +33,12 @@ export function DataStreamHandler({ chatId }: { chatId: string }) {
               status: "streaming",
             };
 
-          case "data-title": {
-            // Extract short title (before pipe) if present
-            const shortTitle = delta.data.includes("|")
-              ? delta.data.split("|")[0].trim()
-              : delta.data;
+          case "data-title":
             return {
               ...draftArtifact,
-              title: shortTitle,
+              title: delta.data,
               status: "streaming",
             };
-          }
 
           case "data-kind":
             return {

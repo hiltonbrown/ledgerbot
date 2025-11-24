@@ -5,7 +5,7 @@ import { createDocumentHandler } from "@/lib/artifacts/server";
 
 export const textDocumentHandler = createDocumentHandler<"text">({
   kind: "text",
-  onCreateDocument: async ({ title, dataStream, modelId }) => {
+  onCreateDocument: async ({ prompt, dataStream, modelId }) => {
     let draftContent = "";
 
     const { fullStream } = streamText({
@@ -15,7 +15,7 @@ export const textDocumentHandler = createDocumentHandler<"text">({
       experimental_transform: smoothStream({
         chunking: "word",
       }),
-      prompt: title,
+      prompt,
     });
 
     for await (const delta of fullStream) {

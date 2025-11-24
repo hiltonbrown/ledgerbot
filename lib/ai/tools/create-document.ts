@@ -24,7 +24,20 @@ const inputSchema = z
       .describe(
         "Choose `create` to draft a new document or `analyze` to answer questions about an existing spreadsheet."
       ),
-    title: z.string().min(1).describe("Title for the new document").optional(),
+    title: z
+      .string()
+      .min(1)
+      .max(50)
+      .describe(
+        "Short, descriptive title (2-5 words) displayed in the UI. Examples: 'August Invoices', 'Customer Revenue Report', 'GST Calculator'"
+      )
+      .optional(),
+    prompt: z
+      .string()
+      .describe(
+        "Detailed generation instructions including any data needed. This is used to generate the artifact content and can be as long as necessary."
+      )
+      .optional(),
     kind: z
       .enum(artifactKinds)
       .describe("Type of document: text, code, or sheet")
@@ -47,6 +60,14 @@ const inputSchema = z
           code: z.ZodIssueCode.custom,
           message: "title is required when action is `create`",
           path: ["title"],
+        });
+      }
+
+      if (!value.prompt) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "prompt is required when action is `create`",
+          path: ["prompt"],
         });
       }
 
@@ -150,6 +171,7 @@ export const createDocument = ({
       }
 
       const title = input.title!;
+      const prompt = input.prompt!;
       const kind = input.kind!;
 
       const id = generateUUID();
@@ -190,6 +212,7 @@ export const createDocument = ({
       await documentHandler.onCreateDocument({
         id,
         title,
+        prompt,
         dataStream,
         user,
         modelId,

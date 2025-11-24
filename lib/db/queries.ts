@@ -528,13 +528,10 @@ export async function saveDocument({
   userId: string;
   chatId?: string;
 }) {
-  // Extract short title (before pipe) if present
-  const shortTitle = title.includes("|") ? title.split("|")[0].trim() : title;
-
   try {
     console.log("saveDocument: Attempting to insert document", {
       id,
-      title: shortTitle,
+      title,
       kind,
       userId,
       chatId,
@@ -545,7 +542,7 @@ export async function saveDocument({
       .insert(document)
       .values({
         id,
-        title: shortTitle,
+        title,
         kind,
         content,
         userId,
@@ -559,7 +556,7 @@ export async function saveDocument({
   } catch (error) {
     console.error("saveDocument: Insert failed", {
       id,
-      title: shortTitle,
+      title,
       kind,
       userId,
       chatId,
