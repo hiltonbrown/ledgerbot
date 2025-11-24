@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { chatModels } from "@/lib/ai/models";
+import { chatModelIds, chatModels } from "@/lib/ai/models";
 import { toast } from "../toast";
 
 export function AIPreferencesForm({ data }: { data: UserSettings }) {
@@ -27,6 +27,11 @@ export function AIPreferencesForm({ data }: { data: UserSettings }) {
   const router = useRouter();
 
   const handleModelChange = (value: string) => {
+    // Validate that the selected model is valid
+    if (!chatModelIds.includes(value)) {
+      console.error(`Invalid model ID selected: ${value}`);
+      return;
+    }
     setFormState((state) => ({
       ...state,
       defaultModel: value,
@@ -125,7 +130,8 @@ export function AIPreferencesForm({ data }: { data: UserSettings }) {
                   </SelectContent>
                 </Select>
                 <p className="text-muted-foreground text-xs">
-                  This model will be used by default when starting new chats.
+                  This model will be used for new chats unless you change it on
+                  the chat screen.
                 </p>
               </div>
               <div className="flex flex-col items-end gap-2 pt-6">
@@ -141,7 +147,8 @@ export function AIPreferencesForm({ data }: { data: UserSettings }) {
                   />
                 </div>
                 <p className="text-right text-muted-foreground text-xs">
-                  Enable extended thinking
+                  When enabled, new chats will start with reasoning mode turned
+                  on by default.
                 </p>
               </div>
             </div>

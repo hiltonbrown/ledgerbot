@@ -80,6 +80,11 @@ export function Chat({
   const [input, setInput] = useState<string>("");
   const [usage, setUsage] = useState<AppUsage | undefined>(initialLastContext);
   const [showCreditCardAlert, setShowCreditCardAlert] = useState(false);
+
+  // Initialize chat state with AI preferences from user settings
+  // - Model selector: Uses initialChatModel (from cookie or user preference)
+  // - Reasoning toggle: Uses initialDefaultReasoning (from user settings)
+  // These values match the defaults set in /settings/personalisation for new chats
   const [currentModelId, setCurrentModelId] = useState(initialChatModel);
   const [reasoningPreferences, setReasoningPreferences] = useState<
     Record<string, boolean>

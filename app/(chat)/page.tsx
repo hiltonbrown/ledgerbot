@@ -111,6 +111,8 @@ export default async function Page({ searchParams }: PageProps) {
     }
   }
 
+  // Initialize model selector with user's AI preferences
+  // Priority: 1) Valid cookie value, 2) User's default model, 3) System default
   const cookieStore = await cookies();
   const modelIdFromCookie = cookieStore.get("chat-model");
   const initialModelId = modelIdFromCookie?.value;

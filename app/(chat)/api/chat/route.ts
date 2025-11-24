@@ -21,7 +21,12 @@ import { getUsage } from "tokenlens/helpers";
 import { getUserSettings } from "@/app/(settings)/api/user/data";
 import { buildUserContext } from "@/lib/ai/context-manager";
 import { entitlementsByUserType } from "@/lib/ai/entitlements";
-import { type ChatModel, isReasoningModelId } from "@/lib/ai/models";
+import {
+  type ChatModel,
+  chatModelIds,
+  DEFAULT_CHAT_MODEL,
+  isReasoningModelId,
+} from "@/lib/ai/models";
 import {
   buildLedgerbotSystemPrompt,
   type RequestHints,
@@ -263,14 +268,14 @@ export async function POST(request: Request) {
     const {
       id,
       message,
-      selectedChatModel,
+      selectedChatModel: requestedChatModel,
       selectedVisibilityType,
-      streamReasoning,
+      streamReasoning: requestedStreamReasoning,
       deepResearch,
     }: {
       id: string;
       message: ChatMessage;
-      selectedChatModel: ChatModel["id"];
+      selectedChatModel?: ChatModel["id"];
       selectedVisibilityType: VisibilityType;
       streamReasoning?: boolean;
       deepResearch?: boolean;
@@ -286,6 +291,24 @@ export async function POST(request: Request) {
 
     // Fetch user settings for custom system prompt with template substitution
     const userSettings = await getUserSettings();
+
+    // Extract AI preferences with fallbacks to system defaults
+    const defaultModelId =
+      userSettings.personalisation.defaultModel || DEFAULT_CHAT_MODEL;
+    const defaultReasoning =
+      userSettings.personalisation.defaultReasoning ?? false;
+
+    // Apply user preferences as fallbacks when not explicitly provided
+    let selectedChatModel = requestedChatModel || defaultModelId;
+    const streamReasoning = requestedStreamReasoning ?? defaultReasoning;
+
+    // Validate that the final model is valid, fall back to system default if not
+    if (!chatModelIds.includes(selectedChatModel)) {
+      console.error(
+        `[chat/route] Invalid model ID: ${selectedChatModel}, falling back to ${DEFAULT_CHAT_MODEL}`
+      );
+      selectedChatModel = DEFAULT_CHAT_MODEL;
+    }
 
     const userType: UserType = user.type;
 

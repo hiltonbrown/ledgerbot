@@ -28,6 +28,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   }
 
   const userSettings = await getUserSettings();
+  const defaultReasoning = userSettings.personalisation.defaultReasoning;
 
   if (chat.visibility === "private") {
     if (!user) {
@@ -47,6 +48,10 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
 
   const documents = await getDocumentsByChatId({ chatId: id });
 
+  // Initialize model selector for existing chat
+  // Priority: 1) Valid cookie value (last used model), 2) System default
+  // Note: For existing chats, we use the cookie to remember the last-used model
+  // across sessions, rather than always resetting to the user's default preference
   const cookieStore = await cookies();
   const chatModelFromCookie = cookieStore.get("chat-model");
   const initialModelId = chatModelFromCookie?.value;
@@ -64,6 +69,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
           firstName={userSettings.personalisation.firstName}
           id={chat.id}
           initialChatModel={DEFAULT_CHAT_MODEL}
+          initialDefaultReasoning={defaultReasoning}
           initialDocument={latestDocument}
           initialLastContext={chat.lastContext ?? undefined}
           initialMessages={uiMessages}
@@ -83,6 +89,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         firstName={userSettings.personalisation.firstName}
         id={chat.id}
         initialChatModel={initialModelId}
+        initialDefaultReasoning={defaultReasoning}
         initialDocument={latestDocument}
         initialLastContext={chat.lastContext ?? undefined}
         initialMessages={uiMessages}
