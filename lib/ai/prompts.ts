@@ -1,5 +1,27 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { Geo } from "@vercel/functions";
+import type { UserSettings } from "@/app/(settings)/api/user/data";
 import type { ArtifactKind } from "@/components/artifact";
+import type { LedgerbotPromptVars } from "./prompt-types";
+
+interface SystemPromptOptions {
+  requestHints: RequestHints;
+  activeTools: string[];
+  /** @deprecated No longer used. All user-defined settings come from userSettings.personalisation */
+  userSystemPrompt?: string | null;
+  userId: string;
+  userSettings: UserSettings;
+  xeroOrgSnapshot?: {
+    organisationName?: string | null;
+    organisationType?: string | null;
+    isDemoCompany?: boolean | null;
+    baseCurrency?: string | null;
+    xeroShortCode?: string | null;
+    industryContext?: string | null;
+    chartOfAccountsSummary?: string | null;
+  };
+}
 
 export const artifactsPrompt = `
 Artifacts is a special user interface mode that helps users with writing, editing, and other content creation tasks. When artifact is open, it is on the right side of the screen, while the conversation is on the left side. When creating or updating documents, changes are reflected in real-time on the artifacts and visible to the user.
@@ -188,6 +210,7 @@ export const buildActiveDocumentsContext = (
 When users refer to "the document", "it", or "this", they most likely mean the most recent document above.`;
 };
 
+// TODO(legacy-system-prompt-cleanup): This function is deprecated. Use buildLedgerbotSystemPrompt instead.
 export const systemPrompt = ({
   requestHints,
   activeTools = [],
@@ -283,3 +306,237 @@ export const updateDocumentPrompt = (
 
 ${currentContent}`;
 };
+
+// --- System Prompt Template Architecture ---
+
+export const LEDGERBOT_SYSTEM_TEMPLATE = (() => {
+  try {
+    const promptPath = join(
+      process.cwd(),
+      "prompts",
+      "ledgerbot-system-prompt.md"
+    );
+    return readFileSync(promptPath, "utf-8");
+  } catch (error) {
+    console.error("Failed to load Ledgerbot system prompt template:", error);
+    return "Error: System prompt template could not be loaded.";
+  }
+})();
+
+/**
+ * Renders a template by substituting variables.
+ * Preserves unknown placeholders ({{KEY}}) and logs a warning.
+ */
+export function renderTemplate(
+  template: string,
+  vars: Record<string, string>
+): string {
+  let result = template;
+
+  // 1. Replace known variables
+  for (const [key, value] of Object.entries(vars)) {
+    const placeholder = `{{${key}}}`;
+    // Replace all occurrences
+    result = result.replaceAll(placeholder, value || "");
+  }
+
+  // 2. Check for remaining placeholders
+  const remainingPlaceholders = result.match(/\{\{[^}]+\}\}/g);
+  if (remainingPlaceholders && remainingPlaceholders.length > 0) {
+    console.warn(
+      `[renderTemplate] Warning: Unresolved placeholders in system prompt: ${remainingPlaceholders.join(
+        ", "
+      )}`
+    );
+  }
+
+  return result;
+}
+
+export function renderLedgerbotSystemPrompt(vars: LedgerbotPromptVars): string {
+  return renderTemplate(
+    LEDGERBOT_SYSTEM_TEMPLATE,
+    vars as unknown as Record<string, string>
+  );
+}
+
+export function sanitisePromptFragment(
+  input: string | null | undefined,
+  maxLength = 400
+): string {
+  if (!input || !input.trim()) {
+    return "";
+  }
+
+  let cleaned = input.trim();
+
+  // Strip potential injection phrases
+  const injectionPatterns = [
+    /ignore previous instructions/gi,
+    /system override/gi,
+    /ignore all rules/gi,
+    /you are now/gi,
+    /disregard all rules/gi,
+  ];
+
+  for (const pattern of injectionPatterns) {
+    cleaned = cleaned.replace(pattern, "");
+  }
+
+  // Strip conflicting template characters
+  cleaned = cleaned.replace(/[{}]/g, "");
+  cleaned = cleaned.replace(/[<>]/g, ""); // Also strip angle brackets as requested
+
+  // Truncate length
+  if (cleaned.length > maxLength) {
+    cleaned = cleaned.slice(0, maxLength) + "...";
+  }
+
+  return cleaned.trim();
+}
+
+function getToneGuidelines(preset?: string): string {
+  switch (preset?.toLowerCase()) {
+    case "friendly":
+      return "- Use a warm, approachable tone\n- Use simple, clear language\n- Be encouraging and supportive";
+    case "formal":
+      return "- Use a professional, objective tone\n- Use precise accounting terminology\n- Maintain strict professional distance";
+    case "concise":
+      return "- Be extremely brief and direct\n- Use bullet points where possible\n- Avoid pleasantries and filler words";
+    default:
+      // Professional default
+      return "- Use a balanced, professional tone\n- Be clear and helpful\n- Maintain accuracy and precision";
+  }
+}
+
+export async function buildLedgerbotSystemPrompt(
+  opts: SystemPromptOptions
+): Promise<string> {
+  const { userSettings, xeroOrgSnapshot, requestHints, activeTools } = opts;
+  const personalisation = userSettings.personalisation;
+
+  // Map data sources to template variables
+  const firstName =
+    personalisation.firstName || (requestHints.userContext ? "User" : "User"); // Fallback
+  const lastName = personalisation.lastName || "";
+
+  const companyName =
+    personalisation.companyName ||
+    xeroOrgSnapshot?.organisationName ||
+    "your organisation";
+
+  // Date and Time
+  const timezone =
+    personalisation.timezone ||
+    (requestHints.city && requestHints.country
+      ? `${requestHints.city}, ${requestHints.country}`
+      : "Australia/Sydney");
+
+  const todayDate = new Date().toLocaleDateString("en-AU", {
+    timeZone: timezone.includes("/") ? timezone : undefined, // specific IANA zone or system default
+  });
+
+  // Xero Data
+  const baseCurrency = xeroOrgSnapshot?.baseCurrency || "AUD";
+  const organisationType =
+    xeroOrgSnapshot?.organisationType || "Australian business";
+  const isDemoCompany =
+    String(xeroOrgSnapshot?.isDemoCompany) === "true" ? "true" : "false";
+  const xeroShortCode = xeroOrgSnapshot?.xeroShortCode || "";
+  const industryContextSource =
+    personalisation.industryContext ||
+    xeroOrgSnapshot?.industryContext ||
+    "General Australian small business context.";
+  const industryContext =
+    sanitisePromptFragment(industryContextSource, 200) ||
+    "General Australian small business context.";
+
+  const chartOfAccountsSource =
+    personalisation.chartOfAccounts ||
+    xeroOrgSnapshot?.chartOfAccountsSummary ||
+    "Standard Australian chart of accounts structure.";
+  // Truncate CoA to 1000 chars to avoid token explosion. Full detail should be accessed via tools.
+  const chartOfAccounts =
+    sanitisePromptFragment(chartOfAccountsSource, 1000) ||
+    "Standard Australian chart of accounts structure.";
+
+  // Custom Instructions - only from personalisation settings
+  const customInstructionsSource =
+    personalisation.customSystemInstructions || "";
+  const customInstructions =
+    sanitisePromptFragment(customInstructionsSource, 400) ||
+    "No special working preferences have been provided.";
+
+  // Tone
+  // Assuming tonePreset might be stored in toneAndGrammar or we map from a preset field if it existed.
+  // The prompt says "based on userSettings.personalisation.tonePreset".
+  // Looking at UserSettings type, there isn't a strict 'tonePreset' field, but 'toneAndGrammar' string.
+  // If 'toneAndGrammar' contains a preset name, we could map it, otherwise use it directly if it's long?
+  // The prompt instructions say: "map each preset to a short bullet list... in plain text".
+  // Let's assume 'toneAndGrammar' might hold the preset name OR the full text.
+  // For now, I'll use the helper if it matches a known preset, otherwise use the text as is.
+  let toneAndGrammar = personalisation.toneAndGrammar || "";
+  if (
+    ["friendly", "formal", "concise", "professional"].includes(
+      toneAndGrammar.toLowerCase()
+    )
+  ) {
+    toneAndGrammar = getToneGuidelines(toneAndGrammar);
+  } else if (!toneAndGrammar) {
+    toneAndGrammar = getToneGuidelines("professional");
+  }
+
+  const vars: LedgerbotPromptVars = {
+    FIRST_NAME: firstName,
+    LAST_NAME: lastName,
+    COMPANY_NAME: companyName,
+    TODAY_DATE: todayDate,
+    TIMEZONE: timezone,
+    USER_EMAIL: userSettings.email,
+    BASE_CURRENCY: baseCurrency,
+    ORGANISATION_TYPE: organisationType,
+    IS_DEMO_COMPANY: isDemoCompany,
+    XERO_SHORT_CODE: xeroShortCode,
+    INDUSTRY_CONTEXT: industryContext,
+    CHART_OF_ACCOUNTS: chartOfAccounts,
+    CUSTOM_SYSTEM_INSTRUCTIONS: customInstructions,
+    TONE_AND_GRAMMAR: toneAndGrammar,
+  };
+
+  let finalPrompt = renderLedgerbotSystemPrompt(vars);
+
+  // Final check for unresolved placeholders
+  if (finalPrompt.includes("{{")) {
+    const remaining = finalPrompt.match(/\{\{[^}]+\}\}/g);
+    if (remaining) {
+      console.warn(
+        `[buildLedgerbotSystemPrompt] Warning: Final prompt still contains placeholders: ${remaining.join(
+          ", "
+        )}`
+      );
+    }
+  }
+
+  // Append tools summary
+  if (activeTools.length > 0) {
+    finalPrompt += `\n\nTools available: ${activeTools.join(", ")}`;
+  }
+
+  const hasArtifactTools = activeTools.some((tool) =>
+    ["createDocument", "updateDocument"].includes(tool)
+  );
+
+  if (hasArtifactTools) {
+    const activeDocumentsContext = buildActiveDocumentsContext(
+      requestHints.activeDocuments
+    );
+    finalPrompt += `\n\n${artifactsPrompt}${activeDocumentsContext}`;
+  }
+
+  const requestPrompt = getRequestPromptFromHints(requestHints);
+  if (requestPrompt.trim()) {
+    finalPrompt += `\n\n${requestPrompt}`;
+  }
+
+  return finalPrompt;
+}

@@ -2,10 +2,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { currentUser } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
-import {
-  substituteTemplateVariables,
-  type TemplateVariables,
-} from "@/lib/ai/template-engine";
 import { requireAuth } from "@/lib/auth/clerk-helpers";
 import { db } from "@/lib/db/queries";
 import { userSettings } from "@/lib/db/schema";
@@ -15,49 +11,8 @@ import {
 } from "@/lib/xero/chart-of-accounts-sync";
 import { getDecryptedConnection } from "@/lib/xero/connection-manager";
 
-// Load default system prompt from markdown file
-const loadDefaultSystemPrompt = () => {
-  try {
-    const promptPath = join(
-      process.cwd(),
-      "prompts",
-      "default-system-prompt.md"
-    );
-    return readFileSync(promptPath, "utf-8");
-  } catch (error) {
-    console.error("Failed to load default system prompt:", error);
-    // Fallback to basic prompt if file can't be read
-    return "You are Ledgerbot, an expert accounting assistant for Australian businesses. Keep your responses concise and helpful.";
-  }
-};
-
-// Load default spreadsheet prompt from markdown file
-const loadDefaultSpreadsheetPrompt = () => {
-  try {
-    const promptPath = join(
-      process.cwd(),
-      "prompts",
-      "default-spreadsheet-prompt.md"
-    );
-    return readFileSync(promptPath, "utf-8");
-  } catch (error) {
-    console.error("Failed to load default spreadsheet prompt:", error);
-    // Fallback to basic prompt if file can't be read
-    return "You are a spreadsheet creation assistant. Create a spreadsheet in csv format based on the given prompt. The spreadsheet should contain meaningful column headers and data.";
-  }
-};
-
-// Load default code generation prompt from markdown file
-const loadDefaultCodePrompt = () => {
-  try {
-    const promptPath = join(process.cwd(), "prompts", "default-code-prompt.md");
-    return readFileSync(promptPath, "utf-8");
-  } catch (error) {
-    console.error("Failed to load default code prompt:", error);
-    // Fallback to basic prompt if file can't be read
-    return "You are a Python code generator that creates self-contained, executable code snippets. When writing code:\n\n1. Each snippet should be complete and runnable on its own\n2. Prefer using print() statements to display outputs\n3. Include helpful comments explaining the code\n4. Keep snippets concise (generally under 15 lines)\n5. Avoid external dependencies - use Python standard library\n6. Handle potential errors gracefully\n7. Return meaningful output that demonstrates the code's functionality\n8. Don't use input() or other interactive functions\n9. Don't access files or network resources\n10. Don't use infinite loops\n\nExamples of good snippets:\n\n# Calculate factorial iteratively\ndef factorial(n):\n    result = 1\n    for i in range(1, n + 1):\n        result *= i\n    return result\n\nprint(f\"Factorial of 5 is: {factorial(5)}\")";
-  }
-};
+// Helper functions for default prompts have been removed as they are no longer used.
+// The system prompt is now dynamically generated via buildLedgerbotSystemPrompt.
 
 // Load default tone and grammar guide from markdown file
 const loadDefaultToneGrammar = () => {
@@ -107,11 +62,7 @@ export type UserSettings = {
     securityAlerts: boolean;
     weeklySummary: boolean;
   };
-  prompts: {
-    systemPrompt: string;
-    codePrompt: string;
-    sheetPrompt: string;
-  };
+
   suggestions: {
     id: string;
     text: string;
@@ -142,11 +93,7 @@ const USER_SETTINGS: UserSettings = {
     securityAlerts: true,
     weeklySummary: false,
   },
-  prompts: {
-    systemPrompt: loadDefaultSystemPrompt(),
-    codePrompt: loadDefaultCodePrompt(),
-    sheetPrompt: loadDefaultSpreadsheetPrompt(),
-  },
+
   suggestions: [
     {
       id: "1",
@@ -269,47 +216,6 @@ export async function getUserSettings(): Promise<UserSettings> {
     weekday: "long",
   });
 
-  // Build template variables for substitution
-  const templateVars: TemplateVariables = {
-    FIRST_NAME: firstName,
-    LAST_NAME: lastName,
-    USER_EMAIL: user.email,
-    COMPANY_NAME: companyName,
-    INDUSTRY_CONTEXT: dbSettings?.industryContext || "",
-    CHART_OF_ACCOUNTS: chartOfAccountsText,
-    // Date and timezone context
-    TODAY_DATE: todayDate,
-    TIMEZONE: userTimezone,
-    // Xero organisation metadata (Xero best practice fields)
-    BASE_CURRENCY: baseCurrency,
-    ORGANISATION_TYPE: organisationType,
-    IS_DEMO_COMPANY: isDemoCompany ? "true" : "false",
-    XERO_SHORT_CODE: shortCode,
-    // Tone and grammar guide (with fallback to default)
-    TONE_AND_GRAMMAR: dbSettings?.toneAndGrammar || loadDefaultToneGrammar(),
-    // Custom instructions (user-editable additions to locked base prompts)
-    CUSTOM_SYSTEM_INSTRUCTIONS: dbSettings?.customSystemInstructions || "",
-    CUSTOM_CODE_INSTRUCTIONS: dbSettings?.customCodeInstructions || "",
-    CUSTOM_SHEET_INSTRUCTIONS: dbSettings?.customSheetInstructions || "",
-    // Spread custom variables if they exist
-    ...(dbSettings?.customVariables || {}),
-  };
-
-  // Always load base prompts from files (ignore database systemPrompt/codePrompt/sheetPrompt)
-  // This ensures users get the latest base prompt with their custom instructions added
-  const systemPrompt = substituteTemplateVariables(
-    USER_SETTINGS.prompts.systemPrompt,
-    templateVars
-  );
-  const codePrompt = substituteTemplateVariables(
-    USER_SETTINGS.prompts.codePrompt,
-    templateVars
-  );
-  const sheetPrompt = substituteTemplateVariables(
-    USER_SETTINGS.prompts.sheetPrompt,
-    templateVars
-  );
-
   // Merge database settings with defaults
   return {
     name: `${firstName} ${lastName}`,
@@ -343,11 +249,7 @@ export async function getUserSettings(): Promise<UserSettings> {
       customSheetInstructions: dbSettings?.customSheetInstructions || undefined,
     },
     notifications: USER_SETTINGS.notifications,
-    prompts: {
-      systemPrompt, // Already substituted
-      codePrompt, // Already substituted
-      sheetPrompt, // Already substituted
-    },
+
     suggestions: dbSettings?.suggestions || USER_SETTINGS.suggestions,
   };
 }

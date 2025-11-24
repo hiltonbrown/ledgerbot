@@ -21,6 +21,7 @@ export function AIPreferencesForm({ data }: { data: UserSettings }) {
   const [formState, setFormState] = useState({
     defaultModel: data.personalisation.defaultModel,
     defaultReasoning: data.personalisation.defaultReasoning,
+    toneAndGrammar: data.personalisation.toneAndGrammar,
   });
   const [isSaving, setIsSaving] = useState(false);
   const router = useRouter();
@@ -66,6 +67,7 @@ export function AIPreferencesForm({ data }: { data: UserSettings }) {
           // AI preferences
           defaultModel: formState.defaultModel,
           defaultReasoning: formState.defaultReasoning,
+          toneAndGrammar: formState.toneAndGrammar,
         }),
       });
 
@@ -143,6 +145,30 @@ export function AIPreferencesForm({ data }: { data: UserSettings }) {
                 </p>
               </div>
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="toneAndGrammar">Tone & Style</Label>
+              <Select
+                disabled={data.personalisation.isLocked || isSaving}
+                onValueChange={(value) =>
+                  setFormState((state) => ({ ...state, toneAndGrammar: value }))
+                }
+                value={formState.toneAndGrammar || "professional"}
+              >
+                <SelectTrigger id="toneAndGrammar">
+                  <SelectValue placeholder="Select tone" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="professional">Professional</SelectItem>
+                  <SelectItem value="friendly">Friendly</SelectItem>
+                  <SelectItem value="formal">Formal</SelectItem>
+                  <SelectItem value="concise">Concise</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-muted-foreground text-xs">
+                Choose the personality and writing style for LedgerBot.
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center justify-end gap-3">
@@ -152,6 +178,7 @@ export function AIPreferencesForm({ data }: { data: UserSettings }) {
                 setFormState({
                   defaultModel: data.personalisation.defaultModel,
                   defaultReasoning: data.personalisation.defaultReasoning,
+                  toneAndGrammar: data.personalisation.toneAndGrammar,
                 });
               }}
               type="button"

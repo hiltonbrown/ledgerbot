@@ -24,9 +24,6 @@ export async function POST(request: Request) {
       isLocked,
       defaultModel,
       defaultReasoning,
-      systemPrompt, // Legacy: kept for migration, not used
-      codePrompt, // Legacy: kept for migration, not used
-      sheetPrompt, // Legacy: kept for migration, not used
       suggestions,
       // Template variables
       companyName,
@@ -57,9 +54,6 @@ export async function POST(request: Request) {
           isLocked,
           defaultModel,
           defaultReasoning,
-          systemPrompt,
-          codePrompt,
-          sheetPrompt,
           suggestions,
           // Template variables
           companyName,
@@ -84,9 +78,6 @@ export async function POST(request: Request) {
         isLocked,
         defaultModel,
         defaultReasoning,
-        systemPrompt,
-        codePrompt,
-        sheetPrompt,
         suggestions,
         // Template variables
         companyName,

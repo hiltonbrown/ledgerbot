@@ -200,7 +200,6 @@ export function TemplateVariableForm({
       xeroConnection?.tenantName || data.personalisation.companyName || "",
     industryContext: data.personalisation.industryContext || "",
     chartOfAccounts: data.personalisation.chartOfAccounts || "",
-    toneAndGrammar: data.personalisation.toneAndGrammar || "",
     customVariables: data.personalisation.customVariables || {},
   });
   const [isSaving, setIsSaving] = useState(false);
@@ -208,7 +207,6 @@ export function TemplateVariableForm({
 
   const industryContextRef = useRef<HTMLTextAreaElement>(null);
   const chartOfAccountsRef = useRef<HTMLTextAreaElement>(null);
-  const toneAndGrammarRef = useRef<HTMLTextAreaElement>(null);
 
   // Get all defined variables (standard + custom)
   const definedVariables = useMemo(() => {
@@ -315,8 +313,8 @@ export function TemplateVariableForm({
           companyName: xeroConnection ? "" : formState.companyName,
           industryContext: formState.industryContext,
           // Only save manual chart if no Xero connection
+          // Only save manual chart if no Xero connection
           chartOfAccounts: xeroConnection ? "" : formState.chartOfAccounts,
-          toneAndGrammar: formState.toneAndGrammar,
           customVariables: formState.customVariables,
         }),
       });
@@ -528,12 +526,16 @@ export function TemplateVariableForm({
               <Textarea
                 disabled={data.personalisation.isLocked || isSaving}
                 id="industryContext"
+                maxLength={200}
                 onChange={handleInputChange("industryContext")}
                 placeholder="e.g., Retail business selling office supplies with 3 locations across NSW. We have 15 staff members and turnover approximately $2M annually. Main customers are small businesses and schools."
                 ref={industryContextRef}
                 rows={6}
                 value={formState.industryContext}
               />
+              <div className="text-right text-muted-foreground text-xs">
+                {formState.industryContext.length}/200 characters
+              </div>
               <VariableValidationWarning
                 undefinedVariables={
                   industryContextValidation.undefinedVariables
@@ -628,6 +630,7 @@ export function TemplateVariableForm({
                   data.personalisation.isLocked || isSaving || !!xeroConnection
                 }
                 id="chartOfAccounts"
+                maxLength={1000}
                 onChange={handleInputChange("chartOfAccounts")}
                 placeholder={
                   xeroConnection
@@ -638,6 +641,11 @@ export function TemplateVariableForm({
                 rows={8}
                 value={formState.chartOfAccounts}
               />
+              {!xeroConnection && (
+                <div className="text-right text-muted-foreground text-xs">
+                  {formState.chartOfAccounts.length}/1000 characters
+                </div>
+              )}
               {!xeroConnection && (
                 <VariableValidationWarning
                   undefinedVariables={
@@ -665,47 +673,6 @@ export function TemplateVariableForm({
                 <code className="rounded bg-muted px-1 py-0.5">
                   {"{"}
                   {"{"}CHART_OF_ACCOUNTS{"}"}
-                  {"}"}
-                </code>
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="toneAndGrammar">
-                  Tone and Grammar
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <HelpCircle className="ml-1 inline h-3.5 w-3.5 text-muted-foreground" />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-md">
-                        <p>
-                          Define your preferred writing style for business
-                          communications (emails, reports, correspondence). The
-                          AI will use these guidelines when generating content.
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </Label>
-              </div>
-              <Textarea
-                className="font-mono text-sm"
-                disabled={data.personalisation.isLocked || isSaving}
-                id="toneAndGrammar"
-                onChange={handleInputChange("toneAndGrammar")}
-                placeholder="Example: Use formal, professional tone with British spelling conventions. Keep sentences concise and direct..."
-                ref={toneAndGrammarRef}
-                rows={12}
-                value={formState.toneAndGrammar}
-              />
-              <p className="text-muted-foreground text-xs">
-                Customize writing style, grammar, and tone preferences for
-                business communications. Available in prompts as{" "}
-                <code className="rounded bg-muted px-1 py-0.5">
-                  {"{"}
-                  {"{"}TONE_AND_GRAMMAR{"}"}
                   {"}"}
                 </code>
               </p>
@@ -742,7 +709,6 @@ export function TemplateVariableForm({
                       "",
                     industryContext: data.personalisation.industryContext || "",
                     chartOfAccounts: data.personalisation.chartOfAccounts || "",
-                    toneAndGrammar: data.personalisation.toneAndGrammar || "",
                     customVariables: data.personalisation.customVariables || {},
                   });
                 }}

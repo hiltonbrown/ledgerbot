@@ -78,10 +78,13 @@ export function UserPreferencesForm({ data }: { data: UserSettings }) {
           isLocked: formState.personalisation.isLocked,
           defaultModel: formState.personalisation.defaultModel,
           defaultReasoning: formState.personalisation.defaultReasoning,
-          systemPrompt: formState.prompts.systemPrompt,
-          codePrompt: formState.prompts.codePrompt,
-          sheetPrompt: formState.prompts.sheetPrompt,
           suggestions: formState.suggestions,
+          // New personalisation fields
+          companyName: formState.personalisation.companyName,
+          industryContext: formState.personalisation.industryContext,
+          toneAndGrammar: formState.personalisation.toneAndGrammar,
+          customSystemInstructions:
+            formState.personalisation.customSystemInstructions,
         }),
       });
 
@@ -195,31 +198,81 @@ export function UserPreferencesForm({ data }: { data: UserSettings }) {
           </Select>
         </div>
       </div>
+
       <div className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="defaultModel">Default Model</Label>
-          <Select
-            onValueChange={handlePersonalisationChange("defaultModel")}
-            value={formState.personalisation.defaultModel}
-          >
-            <SelectTrigger id="defaultModel">
-              <SelectValue placeholder="Select default model" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="anthropic-claude-sonnet-4-5">
-                Claude Sonnet 4.5
-              </SelectItem>
-              <SelectItem value="anthropic-claude-haiku-4-5">
-                Claude Haiku 4.5
-              </SelectItem>
-              <SelectItem value="anthropic-claude-sonnet-3-5">
-                Claude Sonnet 3.5
-              </SelectItem>
-              <SelectItem value="openai-gpt-4o">GPT-4o</SelectItem>
-              <SelectItem value="openai-gpt-4o-mini">GPT-4o Mini</SelectItem>
-            </SelectContent>
-          </Select>
+        <h3 className="font-medium text-lg">Organisation</h3>
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="companyName">Company Name</Label>
+            <Input
+              id="companyName"
+              onChange={(e) =>
+                handlePersonalisationChange("companyName")(e.target.value)
+              }
+              placeholder="Acme Corp"
+              value={formState.personalisation.companyName || ""}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="industryContext">Industry Context</Label>
+            <Input
+              id="industryContext"
+              onChange={(e) =>
+                handlePersonalisationChange("industryContext")(e.target.value)
+              }
+              placeholder="e.g. Retail, Construction, Tech"
+              value={formState.personalisation.industryContext || ""}
+            />
+          </div>
         </div>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="font-medium text-lg">AI Behavior</h3>
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="defaultModel">Default Model</Label>
+            <Select
+              onValueChange={handlePersonalisationChange("defaultModel")}
+              value={formState.personalisation.defaultModel}
+            >
+              <SelectTrigger id="defaultModel">
+                <SelectValue placeholder="Select default model" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="anthropic-claude-sonnet-4-5">
+                  Claude Sonnet 4.5
+                </SelectItem>
+                <SelectItem value="anthropic-claude-haiku-4-5">
+                  Claude Haiku 4.5
+                </SelectItem>
+                <SelectItem value="anthropic-claude-sonnet-3-5">
+                  Claude Sonnet 3.5
+                </SelectItem>
+                <SelectItem value="openai-gpt-4o">GPT-4o</SelectItem>
+                <SelectItem value="openai-gpt-4o-mini">GPT-4o Mini</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="toneAndGrammar">Tone & Style</Label>
+            <Select
+              onValueChange={handlePersonalisationChange("toneAndGrammar")}
+              value={formState.personalisation.toneAndGrammar || "professional"}
+            >
+              <SelectTrigger id="toneAndGrammar">
+                <SelectValue placeholder="Select tone" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="professional">Professional</SelectItem>
+                <SelectItem value="friendly">Friendly</SelectItem>
+                <SelectItem value="formal">Formal</SelectItem>
+                <SelectItem value="concise">Concise</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
             <Label htmlFor="defaultReasoning">
@@ -236,6 +289,25 @@ export function UserPreferencesForm({ data }: { data: UserSettings }) {
               handlePersonalisationChange("defaultReasoning")(checked)
             }
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="customSystemInstructions">Custom Instructions</Label>
+          <Textarea
+            id="customSystemInstructions"
+            maxLength={400}
+            onChange={(e) =>
+              handlePersonalisationChange("customSystemInstructions")(
+                e.target.value
+              )
+            }
+            placeholder="e.g. Always explain accounting terms, prefer bullet points..."
+            value={formState.personalisation.customSystemInstructions || ""}
+          />
+          <p className="text-muted-foreground text-xs">
+            Specific instructions for how Ledgerbot should respond (max 400
+            chars).
+          </p>
         </div>
       </div>
       <div className="space-y-2">

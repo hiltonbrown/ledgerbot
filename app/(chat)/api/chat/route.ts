@@ -22,7 +22,10 @@ import { getUserSettings } from "@/app/(settings)/api/user/data";
 import { buildUserContext } from "@/lib/ai/context-manager";
 import { entitlementsByUserType } from "@/lib/ai/entitlements";
 import { type ChatModel, isReasoningModelId } from "@/lib/ai/models";
-import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
+import {
+  buildLedgerbotSystemPrompt,
+  type RequestHints,
+} from "@/lib/ai/prompts";
 import { myProvider } from "@/lib/ai/providers";
 import { defaultSelectedTools, type ToolId } from "@/lib/ai/tools";
 import { createDocument } from "@/lib/ai/tools/create-document";
@@ -719,7 +722,7 @@ export async function POST(request: Request) {
     const xeroTools = xeroConnection ? createXeroTools(user.id) : {};
 
     const stream = createUIMessageStream({
-      execute: ({ writer: dataStream }) => {
+      execute: async ({ writer: dataStream }) => {
         // Always use all default tools
         const activeTools: ToolId[] = defaultSelectedTools;
 
@@ -729,13 +732,28 @@ export async function POST(request: Request) {
           ? [...activeTools, ...xeroToolNames]
           : activeTools;
 
+        const xeroOrgSnapshot = xeroConnection
+          ? {
+              organisationName: xeroConnection.tenantName,
+              organisationType: xeroConnection.organisationType,
+              isDemoCompany: xeroConnection.isDemoCompany,
+              baseCurrency: xeroConnection.baseCurrency,
+              xeroShortCode: xeroConnection.shortCode,
+            }
+          : undefined;
+
+        const system = await buildLedgerbotSystemPrompt({
+          requestHints,
+          activeTools: finalActiveTools,
+          userSystemPrompt: undefined, // Don't use the old full prompt as a fallback
+          userId: user.id,
+          userSettings,
+          xeroOrgSnapshot,
+        });
+
         const result = streamText({
           model: myProvider.languageModel(selectedChatModel),
-          system: systemPrompt({
-            requestHints,
-            activeTools: finalActiveTools,
-            userSystemPrompt: userSettings.prompts.systemPrompt,
-          }),
+          system,
           messages: convertToModelMessages(includeAttachmentText(uiMessages)),
           stopWhen: stepCountIs(5),
           experimental_activeTools: finalActiveTools as any,

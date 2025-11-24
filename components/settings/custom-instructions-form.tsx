@@ -115,11 +115,15 @@ export function CustomInstructionsForm({ data }: { data: UserSettings }) {
             <Textarea
               disabled={data.personalisation.isLocked || isSaving}
               id="customSystemInstructions"
+              maxLength={400}
               onChange={handleChange("systemInstructions")}
               placeholder="Add your custom instructions here (optional)..."
               rows={4}
               value={formState.systemInstructions}
             />
+            <div className="text-right text-muted-foreground text-xs">
+              {formState.systemInstructions.length}/400 characters
+            </div>
             <p className="text-muted-foreground text-xs">
               Add specific instructions for your business context. These will be
               combined with the base LedgerBot system prompt.
@@ -145,11 +149,15 @@ export function CustomInstructionsForm({ data }: { data: UserSettings }) {
             <Textarea
               disabled={data.personalisation.isLocked || isSaving}
               id="customCodeInstructions"
+              maxLength={400}
               onChange={handleChange("codeInstructions")}
               placeholder="Add your custom code instructions here (optional)..."
               rows={4}
               value={formState.codeInstructions}
             />
+            <div className="text-right text-muted-foreground text-xs">
+              {formState.codeInstructions.length}/400 characters
+            </div>
             <p className="text-muted-foreground text-xs">
               Add specific coding preferences or requirements. These will be
               combined with the base code generation prompt.
@@ -174,11 +182,15 @@ export function CustomInstructionsForm({ data }: { data: UserSettings }) {
             <Textarea
               disabled={data.personalisation.isLocked || isSaving}
               id="customSheetInstructions"
+              maxLength={400}
               onChange={handleChange("sheetInstructions")}
               placeholder="Add your custom spreadsheet instructions here (optional)..."
               rows={4}
               value={formState.sheetInstructions}
             />
+            <div className="text-right text-muted-foreground text-xs">
+              {formState.sheetInstructions.length}/400 characters
+            </div>
             <p className="text-muted-foreground text-xs">
               Add specific spreadsheet formatting or data preferences. These
               will be combined with the base spreadsheet prompt.
