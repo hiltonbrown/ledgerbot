@@ -46,6 +46,7 @@ export function Chat({
   initialDefaultReasoning,
   firstName,
   initialDocument,
+  autoSendInput,
 }: {
   id: string;
   initialMessages: ChatMessage[];
@@ -68,6 +69,7 @@ export function Chat({
     kind: string;
     content: string | null;
   } | null;
+  autoSendInput?: string;
 }) {
   const { visibilityType } = useChatVisibility({
     chatId: id,
@@ -227,16 +229,17 @@ export function Chat({
   const [hasAppendedQuery, setHasAppendedQuery] = useState(false);
 
   useEffect(() => {
-    if (query && !hasAppendedQuery) {
+    const textToSend = autoSendInput || query;
+    if (textToSend && !hasAppendedQuery) {
       sendMessage({
         role: "user" as const,
-        parts: [{ type: "text", text: query }],
+        parts: [{ type: "text", text: textToSend }],
       });
 
       setHasAppendedQuery(true);
       window.history.replaceState({}, "", `/chat/${id}`);
     }
-  }, [query, sendMessage, hasAppendedQuery, id]);
+  }, [query, autoSendInput, sendMessage, hasAppendedQuery, id]);
 
   const { data: votes } = useSWR<Vote[]>(
     messages.length >= 2 ? `/api/vote?chatId=${id}` : null,

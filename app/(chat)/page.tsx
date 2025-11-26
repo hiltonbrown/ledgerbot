@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ArContextBanner } from "@/components/ar-context-banner";
@@ -5,6 +6,9 @@ import { Chat } from "@/components/chat";
 import { DataStreamHandler } from "@/components/data-stream-handler";
 import { chatModelIds, DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
+import { db } from "@/lib/db/queries";
+import { arContact } from "@/lib/db/schema/ar";
+import { generateFollowUpPrompt } from "@/lib/logic/ar-chat";
 import { generateUUID } from "@/lib/utils";
 import { getUserSettings } from "../(settings)/api/user/data";
 
@@ -30,6 +34,34 @@ export default async function Page({ searchParams }: PageProps) {
   let suggestions = userSettings.suggestions;
   const defaultModel = userSettings.personalisation.defaultModel;
   const defaultReasoning = userSettings.personalisation.defaultReasoning;
+
+  // AR Follow-up Context
+  const context = params.context as string | undefined;
+  let autoSendInput: string | undefined;
+
+  if (context === "ar_followup") {
+    const customerId = params.customerId as string;
+    const outstanding = Number(params.outstanding || 0);
+    const riskScore = Number(params.riskScore || 0);
+
+    // Fetch customer name if not provided (though it should be in params or we can fetch)
+    let customerName = "Customer";
+    if (customerId) {
+      const contact = await db.query.arContact.findFirst({
+        where: eq(arContact.id, customerId),
+        columns: { name: true },
+      });
+      if (contact) {
+        customerName = contact.name;
+      }
+    }
+
+    autoSendInput = generateFollowUpPrompt({
+      customerName,
+      totalOutstanding: outstanding,
+      riskScore,
+    });
+  }
 
   // Fetch AR context if parameters are present
   let arContext: {
@@ -141,6 +173,7 @@ export default async function Page({ searchParams }: PageProps) {
       )}
       <Chat
         autoResume={false}
+        autoSendInput={autoSendInput}
         firstName={userSettings.personalisation.firstName}
         id={id}
         initialChatModel={selectedModel}

@@ -331,45 +331,40 @@ LedgerBot includes dedicated agent workspaces optimized for specific accounting 
 
 ### 8. 💰 Accounts Receivable (`/agents/ar`)
 
-**Purpose**: Reduce Days Sales Outstanding (DSO) with AI-powered dunning and risk assessment
+**Purpose**: Intelligent AR management with risk scoring and automated follow-up generation
 
 **Features:**
-- Due/overdue invoice monitoring
-- Late payment risk prediction
-- Copy-ready email and SMS reminders (polite/firm/final tones)
-- Payment reconciliation
-- Xero invoice synchronisation (or mock data for testing)
-- Internal notes and status tracking
+- **Interactive Ageing Report**: Real-time dashboard with sorting/filtering by risk, outstanding amount, overdue buckets
+- **Risk Scoring (0-1 scale)**: AI-powered assessment based on payment history, days late, invoice age
+- **Xero Integration**: Automated nightly sync of invoices, payments, contacts (last 24 months)
+- **AI-Powered Follow-Up**: Generate risk-appropriate collection messages (polite/firm/final tones)
+- **Monitoring Dashboard**: Track sync jobs, DSO metrics, data freshness alerts
+- **Customer Insights**: Invoice details, payment history, credit terms analysis
 
-**Use Case**: View 15 overdue invoices → AI predicts late payment risk → Generate professional reminder emails → Copy and send to customers → Record payments as they arrive
+**Key Metrics:**
+- Days Sales Outstanding (DSO)
+- % customers with >90 days overdue
+- Risk distribution (Low/Medium/High)
+- High-risk customer alerts
+
+**Workflow:**
+1. View ageing report at `/agents/ar`
+2. Filter/sort by risk, outstanding amount, or ageing bucket
+3. Click customer row to see invoice details
+4. Click "Start Follow-Up Chat" to generate AI-powered collection message
+5. Monitor sync status at `/agents/ar/monitoring`
+
+**Technical Details:**
+- **Database Schema**: `ArContact`, `ArInvoice`, `ArPayment`, `ArCustomerHistory`, `ArJobRun`
+- **Cron Job**: Nightly sync at 4 AM via `/api/cron/ar-sync`
+- **Risk Algorithm**: Weighted scoring on 7 factors (late payment rate, avg days late, max days late, 90+ bucket %, outstanding ratio, days since last payment, credit terms)
+
+**Documentation**: See [`docs/AR_AGENT.md`](docs/AR_AGENT.md) for full setup guide, architecture diagrams, and developer documentation.
 
 **Important Guardrails:**
-- ⚠️ **Communications are DISABLED** - Agent generates copy-ready artefacts only
-- ✅ Users must manually copy and send emails/SMS
-- ✅ `COMMS_ENABLED=false` enforced at environment level
+- ⚠️ **Follow-up messages are AI-generated drafts only** - users must manually send
+- ✅ No automatic email/SMS sending capabilities
 - ✅ Respects Australian consumer protection expectations
-- ✅ PII redaction in logs (emails/phones masked)
-
-**Workflow States:**
-1. **Triage**: Validate inputs (asOf date, minDaysOverdue, tone, autoConfirm)
-2. **Fetch**: Retrieve invoices from database (synced from Xero or mock)
-3. **Assess**: Calculate late payment risk (0-1 probability)
-4. **Propose**: Present dunning plan with recommended actions
-5. **Confirm**: Wait for user approval (unless autoConfirm=true)
-6. **Act**: Generate artefacts (email subject + body, SMS text)
-7. **Summarise**: Provide artefact IDs and next steps
-
-**API Endpoints:**
-- `POST /api/agents/ar` - Chat interface with streaming
-- `POST /api/agents/ar/run-dunning` - Batch dunning cycle
-
-**Environment Variables:**
-```bash
-COMMS_ENABLED=false           # Hard guard (must be false)
-AR_DEFAULT_TONE=polite        # Default reminder tone
-XERO_CLIENT_ID=***            # Optional - uses mock data if not configured
-XERO_CLIENT_SECRET=***
-```
 
 ---
 
