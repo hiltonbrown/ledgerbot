@@ -312,17 +312,15 @@ export function validateCell(
   }
 
   // If normalisation failed, fallback to string
-  if (normalisedValue === null && detectedType !== "empty") {
+  if (normalisedValue === null) {
     normalisedValue = trimmed;
     detectedType = "string";
   }
 
-  // Validate required (if not already checked)
-  if (detectedType !== "empty") {
-    const requiredIssue = validateRequired(normalisedValue, field);
-    if (requiredIssue) {
-      issues.push(requiredIssue);
-    }
+  // Validate required
+  const requiredIssue = validateRequired(normalisedValue, field);
+  if (requiredIssue) {
+    issues.push(requiredIssue);
   }
 
   return {
