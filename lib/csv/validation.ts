@@ -45,8 +45,8 @@ export function normaliseNumber(value: string): number | null {
     cleaned = cleaned.slice(1, -1);
   }
 
-  // Remove currency symbols ($, £, €, AUD, etc.)
-  cleaned = cleaned.replace(/[$£€A-Z]/g, "");
+  // Remove currency symbols ($, £, €, ¥, ₹) and common 3-letter currency codes (USD, AUD, etc.)
+  cleaned = cleaned.replace(/[$£€¥₹]|(?:USD|AUD|EUR|GBP|NZD|CAD)\s*/gi, "");
 
   // Remove commas and spaces (thousand separators)
   cleaned = cleaned.replace(/[,\s]/g, "");
