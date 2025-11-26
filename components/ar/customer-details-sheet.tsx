@@ -20,15 +20,15 @@ import {
 } from "@/components/ui/table";
 import { getCustomerInvoiceDetails } from "@/lib/actions/ar";
 
-interface CustomerDetailsSheetProps {
+type CustomerDetailsSheetProps = {
   contactId: string | null;
   customerName: string;
   totalOutstanding: number;
   riskScore: number;
   onOpenChange: (open: boolean) => void;
-}
+};
 
-interface InvoiceDetail {
+type InvoiceDetail = {
   id: string;
   invoiceNumber: string;
   issueDate: Date;
@@ -37,7 +37,7 @@ interface InvoiceDetail {
   amountOutstanding: number;
   status: string;
   ageingBucket: string | null;
-}
+};
 
 export function CustomerDetailsSheet({
   contactId,
@@ -60,7 +60,9 @@ export function CustomerDetailsSheet({
   }, [contactId]);
 
   const handleStartChat = () => {
-    if (!contactId) return;
+    if (!contactId) {
+      return;
+    }
 
     const params = new URLSearchParams({
       context: "ar_followup",

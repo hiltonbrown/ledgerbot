@@ -19,9 +19,9 @@ export const arContact = pgTable(
   "ArContact",
   {
     id: uuid("id").primaryKey().notNull().defaultRandom(),
-    userId: uuid("userId")
+    userId: text("userId")
       .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+      .references(() => user.clerkId, { onDelete: "cascade" }),
     name: varchar("name", { length: 255 }).notNull(),
     email: varchar("email", { length: 255 }),
     phone: varchar("phone", { length: 50 }),
@@ -43,9 +43,9 @@ export const arInvoice = pgTable(
   "ArInvoice",
   {
     id: uuid("id").primaryKey().notNull().defaultRandom(),
-    userId: uuid("userId")
+    userId: text("userId")
       .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+      .references(() => user.clerkId, { onDelete: "cascade" }),
     contactId: uuid("contactId")
       .notNull()
       .references(() => arContact.id),
@@ -129,6 +129,9 @@ export const arCustomerHistory = pgTable(
   "ArCustomerHistory",
   {
     id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.clerkId, { onDelete: "cascade" }),
     customerId: uuid("customerId")
       .notNull()
       .references(() => arContact.id, { onDelete: "cascade" }),
@@ -163,6 +166,7 @@ export const arCustomerHistory = pgTable(
     computedAt: timestamp("computedAt").notNull().defaultNow(),
   },
   (table) => ({
+    userIdIdx: index("ar_customer_history_user_id_idx").on(table.userId),
     customerIdIdx: index("ar_customer_history_customer_id_idx").on(
       table.customerId
     ),
@@ -204,9 +208,9 @@ export const arJobRun = pgTable(
   "ArJobRun",
   {
     id: uuid("id").primaryKey().notNull().defaultRandom(),
-    userId: uuid("userId")
+    userId: text("userId")
       .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+      .references(() => user.clerkId, { onDelete: "cascade" }),
     startedAt: timestamp("startedAt").notNull().defaultNow(),
     completedAt: timestamp("completedAt"),
     status: varchar("status", { length: 20 }).notNull().default("running"), // running, success, failed

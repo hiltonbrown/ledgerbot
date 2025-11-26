@@ -202,21 +202,15 @@ export async function syncXeroData(userId: string) {
       .from(arPayment)
       .where(eq(arPayment.contactId, contact.id));
 
-    const stats = calculateCustomerHistory(contactInvoices, contactPayments);
+    // Calculate and store customer history
+    const history = calculateCustomerHistory(contactInvoices, contactPayments);
 
     await db.insert(arCustomerHistory).values({
+      userId,
       customerId: contact.id,
       startDate,
       endDate: new Date(),
-      numInvoices: stats.numInvoices,
-      numLatePayments: stats.numLatePayments,
-      avgDaysLate: stats.avgDaysLate,
-      totalOutstanding: stats.totalOutstanding.toString(),
-      maxInvoiceOutstanding: stats.maxInvoiceOutstanding.toString(),
-      lastPaymentDate: stats.lastPaymentDate,
-      creditTermsDays: stats.creditTermsDays,
-      riskScore: stats.riskScore,
-      computedAt: new Date(),
+      ...history,
     });
   }
 

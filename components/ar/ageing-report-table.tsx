@@ -22,9 +22,9 @@ import {
 import type { AgeingReportItem } from "@/lib/actions/ar";
 import { CustomerDetailsSheet } from "./customer-details-sheet";
 
-interface AgeingReportTableProps {
+type AgeingReportTableProps = {
   initialData: AgeingReportItem[];
-}
+};
 
 type SortField =
   | "customerName"
@@ -56,10 +56,15 @@ export function AgeingReportTable({ initialData }: AgeingReportTableProps) {
   };
 
   const filteredData = data.filter((item) => {
-    if (filterMinBalance && item.totalOutstanding < Number(filterMinBalance))
+    if (filterMinBalance && item.totalOutstanding < Number(filterMinBalance)) {
       return false;
-    if (filterMinRisk && item.riskScore < Number(filterMinRisk)) return false;
-    if (filterHas90Plus === "yes" && item.ageing90Plus <= 0) return false;
+    }
+    if (filterMinRisk && item.riskScore < Number(filterMinRisk)) {
+      return false;
+    }
+    if (filterHas90Plus === "yes" && item.ageing90Plus <= 0) {
+      return false;
+    }
     return true;
   });
 
@@ -67,8 +72,12 @@ export function AgeingReportTable({ initialData }: AgeingReportTableProps) {
     const aValue = a[sortField];
     const bValue = b[sortField];
 
-    if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
-    if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
+    if (aValue < bValue) {
+      return sortDirection === "asc" ? -1 : 1;
+    }
+    if (aValue > bValue) {
+      return sortDirection === "asc" ? 1 : -1;
+    }
     return 0;
   });
 

@@ -124,7 +124,7 @@ export default async function ARMonitoringPage() {
           <h2 className="mb-4 font-semibold text-lg text-red-900">Errors</h2>
           <ul className="space-y-2">
             {latestJob.errors.map((error, idx) => (
-              <li className="text-red-800 text-sm" key={idx}>
+              <li className="text-red-800 text-sm" key={`error-${error.customerId || ""}-${idx}`}>
                 <span className="font-mono">{error.message}</span>
                 {error.customerId && (
                   <span className="ml-2 text-muted-foreground">

@@ -1,11 +1,12 @@
 "use server";
 
 import { auth } from "@clerk/nextjs/server";
+import { differenceInDays } from "date-fns";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db/queries";
 import { arContact, arCustomerHistory, arInvoice } from "@/lib/db/schema/ar";
 
-export interface AgeingReportItem {
+export type AgeingReportItem = {
   contactId: string;
   customerName: string;
   email: string | null;
@@ -19,7 +20,7 @@ export interface AgeingReportItem {
   lastPaymentDate: Date | null;
   creditTermsDays: number;
   lastUpdated: Date;
-}
+};
 
 export async function getAgeingReportData(): Promise<AgeingReportItem[]> {
   const { userId } = await auth();
@@ -68,7 +69,11 @@ export async function getAgeingReportData(): Promise<AgeingReportItem[]> {
         "90+": 0,
       });
     }
-    const buckets = bucketMap.get(inv.contactId)!;
+    const buckets = bucketMap.get(inv.contactId);
+    if (!buckets) {
+      continue;
+    }
+
     const amount = Number(inv.amountOutstanding);
     if (inv.ageingBucket && amount > 0) {
       buckets[inv.ageingBucket as keyof typeof buckets] =
@@ -90,7 +95,7 @@ export async function getAgeingReportData(): Promise<AgeingReportItem[]> {
       customerName: contact.name,
       email: contact.email,
       totalOutstanding: Number(history.totalOutstanding),
-      ageingCurrent: buckets["Current"],
+      ageingCurrent: buckets.Current,
       ageing1_30: buckets["1-30"],
       ageing31_60: buckets["31-60"],
       ageing61_90: buckets["61-90"],
@@ -125,4 +130,103 @@ export async function getCustomerInvoiceDetails(contactId: string) {
     status: inv.status,
     ageingBucket: inv.ageingBucket,
   }));
+}
+
+export type ARKPIs = {
+  totalOutstanding: number;
+  activeDebtors: number;
+  daysReceivableOutstanding: number;
+  overdueInvoices: number;
+  overdueAmount: number;
+  ageingSummary: Array<{
+    bucket: string;
+    count: number;
+    total: number;
+  }>;
+};
+
+export async function getARKPIs(): Promise<ARKPIs> {
+  const { userId } = await auth();
+  if (!userId) {
+    throw new Error("Unauthorized");
+  }
+
+  // Get all invoices with outstanding amounts
+  const invoices = await db
+    .select()
+    .from(arInvoice)
+    .where(eq(arInvoice.userId, userId));
+
+  // Calculate total outstanding
+  const totalOutstanding = invoices.reduce(
+    (sum, inv) => sum + Number(inv.amountOutstanding),
+    0
+  );
+
+  // Count active debtors (contacts with outstanding invoices)
+  const activeDebtorIds = new Set(
+    invoices
+      .filter((inv) => Number(inv.amountOutstanding) > 0)
+      .map((inv) => inv.contactId)
+  );
+  const activeDebtors = activeDebtorIds.size;
+
+  // Calculate overdue invoices and amounts
+  const today = new Date();
+  const overdueInvoices = invoices.filter(
+    (inv) => Number(inv.amountOutstanding) > 0 && inv.dueDate < today
+  );
+  const overdueAmount = overdueInvoices.reduce(
+    (sum, inv) => sum + Number(inv.amountOutstanding),
+    0
+  );
+
+  // Calculate Days Receivable Outstanding (DRO)
+  // DRO = (Accounts Receivable / Total Credit Sales) * Number of Days
+  // Simplified: Average days between invoice date and today for outstanding invoices
+  let daysReceivableOutstanding = 0;
+  const outstandingInvoices = invoices.filter(
+    (inv) => Number(inv.amountOutstanding) > 0
+  );
+
+  if (outstandingInvoices.length > 0) {
+    const totalDays = outstandingInvoices.reduce((sum, inv) => {
+      const daysOutstanding = differenceInDays(today, inv.issueDate);
+      return sum + daysOutstanding;
+    }, 0);
+    daysReceivableOutstanding = Math.round(
+      totalDays / outstandingInvoices.length
+    );
+  }
+
+  // Calculate ageing summary
+  const ageingSummary = [
+    { bucket: "Current", count: 0, total: 0 },
+    { bucket: "1-30", count: 0, total: 0 },
+    { bucket: "31-60", count: 0, total: 0 },
+    { bucket: "61-90", count: 0, total: 0 },
+    { bucket: "90+", count: 0, total: 0 },
+  ];
+
+  for (const inv of outstandingInvoices) {
+    const amount = Number(inv.amountOutstanding);
+    const bucket = inv.ageingBucket;
+
+    if (bucket) {
+      const bucketIndex = ageingSummary.findIndex((b) => b.bucket === bucket);
+      if (bucketIndex !== -1) {
+        ageingSummary[bucketIndex].count++;
+        ageingSummary[bucketIndex].total += amount;
+      }
+    }
+  }
+
+  return {
+    totalOutstanding,
+    activeDebtors,
+    daysReceivableOutstanding,
+    overdueInvoices: overdueInvoices.length,
+    overdueAmount,
+    ageingSummary,
+  };
 }
