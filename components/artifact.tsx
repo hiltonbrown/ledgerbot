@@ -71,8 +71,6 @@ function PureArtifact({
   selectedModelId,
   isReasoningEnabled,
   onReasoningChange,
-  isDeepResearchEnabled,
-  onDeepResearchChange,
 }: {
   chatId: string;
   input: string;
@@ -92,8 +90,6 @@ function PureArtifact({
   selectedModelId: string;
   isReasoningEnabled: boolean;
   onReasoningChange?: (enabled: boolean) => void;
-  isDeepResearchEnabled: boolean;
-  onDeepResearchChange?: (enabled: boolean) => void;
 }) {
   const { artifact, setArtifact, metadata, setMetadata } = useArtifact({
     chatId,
@@ -349,10 +345,8 @@ function PureArtifact({
                     className="bg-background dark:bg-muted"
                     clearError={clearError}
                     input={input}
-                    isDeepResearchEnabled={isDeepResearchEnabled}
                     isReasoningEnabled={isReasoningEnabled}
                     messages={messages}
-                    onDeepResearchChange={onDeepResearchChange}
                     onReasoningChange={onReasoningChange}
                     selectedModelId={selectedModelId}
                     selectedVisibilityType={selectedVisibilityType}

@@ -19,7 +19,7 @@ describe("normaliseNumber", () => {
 
   it("should handle thousand separators", () => {
     expect(normaliseNumber("1,000")).toBe(1000);
-    expect(normaliseNumber("1,000,000")).toBe(1000000);
+    expect(normaliseNumber("1,000,000")).toBe(1_000_000);
     expect(normaliseNumber("1 000")).toBe(1000);
   });
 

@@ -59,13 +59,6 @@ import {
   updateChatVisiblityById,
 } from "@/lib/db/queries";
 import * as schema from "@/lib/db/schema";
-import {
-  detectApprovalCommand,
-  detectDeeperRequest,
-  isLikelyDetailedQuestion,
-  runDeepResearchReport,
-  runDeepResearchSummary,
-} from "@/lib/deep-research";
 import { ChatSDKError } from "@/lib/errors";
 import {
   createPublisherWithTtl,
@@ -74,24 +67,12 @@ import {
   streamBufferTtlSeconds,
 } from "@/lib/redis/config";
 
-import type {
-  ChatMessage,
-  DeepResearchReportAttachment,
-  DeepResearchSessionAttachment,
-  DeepResearchSummaryAttachment,
-  MessageMetadata,
-} from "@/lib/types";
+import type { ChatMessage } from "@/lib/types";
 import type { UserType } from "@/lib/types/auth";
 import type { AppUsage } from "@/lib/usage";
-import {
-  convertToUIMessages,
-  generateUUID,
-  getTextFromMessage,
-} from "@/lib/utils";
+import { convertToUIMessages, generateUUID } from "@/lib/utils";
 import { generateTitleFromUserMessage } from "../../actions";
 import { type PostRequestBody, postRequestBodySchema } from "./schema";
-
-const WHITESPACE_REGEX = /\s+/;
 
 export const maxDuration = 60;
 
@@ -199,56 +180,6 @@ function includeAttachmentText(messages: ChatMessage[]): ChatMessage[] {
   });
 }
 
-type DeepResearchAttachment =
-  | DeepResearchSummaryAttachment
-  | DeepResearchReportAttachment
-  | DeepResearchSessionAttachment;
-
-function toAttachmentArray(attachments: unknown): unknown[] {
-  if (Array.isArray(attachments)) {
-    return attachments;
-  }
-  return [];
-}
-
-function extractDeepResearchAttachment(
-  attachments: unknown
-): DeepResearchAttachment | null {
-  for (const attachment of toAttachmentArray(attachments)) {
-    if (
-      attachment &&
-      typeof attachment === "object" &&
-      "type" in attachment &&
-      typeof (attachment as { type?: unknown }).type === "string"
-    ) {
-      const type = (attachment as { type: string }).type;
-      if (type === "deep-research-summary") {
-        return attachment as DeepResearchSummaryAttachment;
-      }
-      if (type === "deep-research-report") {
-        return attachment as DeepResearchReportAttachment;
-      }
-    }
-  }
-
-  return null;
-}
-
-function findLatestDeepResearchSummaryAttachment(
-  messages: Array<{ attachments: unknown }>
-): { attachment: DeepResearchSummaryAttachment } | null {
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const candidate = extractDeepResearchAttachment(
-      messages[index]?.attachments
-    );
-    if (candidate && candidate.type === "deep-research-summary") {
-      return { attachment: candidate };
-    }
-  }
-
-  return null;
-}
-
 export async function POST(request: Request) {
   let requestBody: PostRequestBody;
   let json: any;
@@ -271,14 +202,12 @@ export async function POST(request: Request) {
       selectedChatModel: requestedChatModel,
       selectedVisibilityType,
       streamReasoning: requestedStreamReasoning,
-      deepResearch,
     }: {
       id: string;
       message: ChatMessage;
       selectedChatModel?: ChatModel["id"];
       selectedVisibilityType: VisibilityType;
       streamReasoning?: boolean;
-      deepResearch?: boolean;
     } = requestBody;
 
     const sanitizedVisibility = sanitizeVisibility(selectedVisibilityType);
@@ -350,10 +279,6 @@ export async function POST(request: Request) {
 
     const messagesFromDb = await getMessagesByChatId({ id });
     const uiMessages = [...convertToUIMessages(messagesFromDb), message];
-    const deepResearchEnabled = deepResearch ?? false;
-    const userText = getTextFromMessage(message).trim();
-    const latestDeepResearchSummary =
-      findLatestDeepResearchSummaryAttachment(messagesFromDb);
 
     const userContext = await buildUserContext(user.id);
 
@@ -425,7 +350,7 @@ export async function POST(request: Request) {
     // Always show reasoning steps when available
     const preferenceForDisplay = true;
 
-    const respondWithManualStream = async (
+    const _respondWithManualStream = async (
       build: (
         writer: UIMessageStreamWriter<ChatMessage>,
         helpers: {
@@ -449,39 +374,8 @@ export async function POST(request: Request) {
               },
             });
           } catch (error) {
-            console.error("[deep-research] Workflow failed", error);
-            const createdAt = new Date().toISOString();
-            const sessionId = generateUUID();
-            const fallbackMetadata: MessageMetadata = {
-              createdAt,
-              deepResearch: {
-                sessionId,
-                status: "error",
-              },
-            };
-            const messageId = generateUUID();
-            const textChunkId = generateUUID();
-            writer.write({
-              type: "start",
-              messageId,
-              messageMetadata: fallbackMetadata,
-            });
-            writer.write({ type: "text-start", id: textChunkId });
-            writer.write({
-              type: "text-delta",
-              id: textChunkId,
-              delta:
-                "Deep Research encountered an unexpected error. Please try again or adjust your request.",
-            });
-            writer.write({ type: "text-end", id: textChunkId });
-            writer.write({ type: "finish", messageMetadata: fallbackMetadata });
-            const attachment: DeepResearchSessionAttachment = {
-              type: "deep-research-session",
-              sessionId,
-              status: "error",
-              createdAt,
-            };
-            attachmentMap.set(messageId, [attachment]);
+            console.error("[workflow] Failed", error);
+            // Error is logged but not returned to maintain stream
           }
         },
         generateId: generateUUID,
@@ -544,200 +438,6 @@ export async function POST(request: Request) {
         preferenceForDisplay,
         sendReasoning,
       });
-    }
-
-    if (deepResearchEnabled) {
-      if (!latestDeepResearchSummary && !isLikelyDetailedQuestion(userText)) {
-        return respondWithManualStream((writer, { registerAttachments }) => {
-          const createdAt = new Date().toISOString();
-          const sessionId = generateUUID();
-          const questionText =
-            userText.length > 0
-              ? userText
-              : "A detailed research question has not been provided.";
-          const metadata: MessageMetadata = {
-            createdAt,
-            deepResearch: {
-              sessionId,
-              status: "needs-details",
-              question: questionText,
-            },
-          };
-          const messageId = generateUUID();
-          const textChunkId = generateUUID();
-          const promptText =
-            "### Deep Research Setup Required\nDeep Research is enabled. Share a specific question so I can investigate. Please include:\n\n- Topic and context (industry, region, stakeholders)\n- Timeframe or regulatory window you care about\n- What decision or deliverable you need support for\n\nOnce you provide those details I'll run automated searches and summarise the findings.";
-
-          writer.write({
-            type: "start",
-            messageId,
-            messageMetadata: metadata,
-          });
-          writer.write({ type: "text-start", id: textChunkId });
-          writer.write({
-            type: "text-delta",
-            id: textChunkId,
-            delta: promptText,
-          });
-          writer.write({ type: "text-end", id: textChunkId });
-          writer.write({ type: "finish", messageMetadata: metadata });
-
-          const attachment: DeepResearchSessionAttachment = {
-            type: "deep-research-session",
-            sessionId,
-            status: "needs-details",
-            createdAt,
-            question: questionText,
-          };
-          registerAttachments(messageId, [attachment]);
-          return Promise.resolve();
-        });
-      }
-
-      if (latestDeepResearchSummary) {
-        const { attachment } = latestDeepResearchSummary;
-        const sessionId = attachment.sessionId;
-        const approval = detectApprovalCommand(userText, sessionId);
-
-        if (approval) {
-          return respondWithManualStream(
-            async (writer, { registerAttachments }) => {
-              const {
-                message: reportMessage,
-                attachment: reportAttachment,
-                metadata,
-              } = await runDeepResearchReport({
-                summaryAttachment: attachment,
-                modelId: selectedChatModel,
-              });
-
-              const messageId = generateUUID();
-              const textChunkId = generateUUID();
-              writer.write({
-                type: "start",
-                messageId,
-                messageMetadata: metadata,
-              });
-              writer.write({ type: "text-start", id: textChunkId });
-              writer.write({
-                type: "text-delta",
-                id: textChunkId,
-                delta: reportMessage,
-              });
-              writer.write({ type: "text-end", id: textChunkId });
-              writer.write({ type: "finish", messageMetadata: metadata });
-              registerAttachments(messageId, [reportAttachment]);
-            }
-          );
-        }
-
-        const hasFollowUpIntent =
-          detectDeeperRequest(userText) ||
-          isLikelyDetailedQuestion(userText) ||
-          userText.split(WHITESPACE_REGEX).filter(Boolean).length >= 6;
-
-        if (!hasFollowUpIntent) {
-          return respondWithManualStream((writer) => {
-            const metadata: MessageMetadata = {
-              createdAt: new Date().toISOString(),
-              deepResearch: {
-                sessionId,
-                status: "awaiting-approval",
-                question: attachment.question,
-                plan: attachment.plan,
-                confidence: attachment.confidence,
-                sources: attachment.sources.map((source) => ({
-                  index: source.index,
-                  title: source.title,
-                  url: source.url,
-                  reliability: source.reliability,
-                  confidence: source.confidence,
-                })),
-                parentSessionId: attachment.parentSessionId,
-              },
-            };
-            const messageId = generateUUID();
-            const textChunkId = generateUUID();
-            const reminder = `### Awaiting Deep Research Direction\nSession ${sessionId} is ready. Reply "approve ${sessionId}" to generate the full report, or describe what to investigate further.`;
-
-            writer.write({
-              type: "start",
-              messageId,
-              messageMetadata: metadata,
-            });
-            writer.write({ type: "text-start", id: textChunkId });
-            writer.write({
-              type: "text-delta",
-              id: textChunkId,
-              delta: reminder,
-            });
-            writer.write({ type: "text-end", id: textChunkId });
-            writer.write({ type: "finish", messageMetadata: metadata });
-            return Promise.resolve();
-          });
-        }
-
-        const followUpQuestion = `${attachment.question}\n\nFollow-up request:\n${userText}`;
-        return respondWithManualStream(
-          async (writer, { registerAttachments }) => {
-            const {
-              message: summaryMessage,
-              attachment: summaryAttachment,
-              metadata,
-            } = await runDeepResearchSummary({
-              question: followUpQuestion,
-              followUp: userText,
-              parentSessionId: attachment.sessionId,
-              modelId: selectedChatModel,
-              requestHints,
-            });
-
-            const messageId = generateUUID();
-            const textChunkId = generateUUID();
-            writer.write({
-              type: "start",
-              messageId,
-              messageMetadata: metadata,
-            });
-            writer.write({ type: "text-start", id: textChunkId });
-            writer.write({
-              type: "text-delta",
-              id: textChunkId,
-              delta: summaryMessage,
-            });
-            writer.write({ type: "text-end", id: textChunkId });
-            writer.write({ type: "finish", messageMetadata: metadata });
-            registerAttachments(messageId, [summaryAttachment]);
-          }
-        );
-      }
-
-      return respondWithManualStream(
-        async (writer, { registerAttachments }) => {
-          const {
-            message: summaryMessage,
-            attachment,
-            metadata,
-          } = await runDeepResearchSummary({
-            question: userText,
-            modelId: selectedChatModel,
-            requestHints,
-          });
-
-          const messageId = generateUUID();
-          const textChunkId = generateUUID();
-          writer.write({ type: "start", messageId, messageMetadata: metadata });
-          writer.write({ type: "text-start", id: textChunkId });
-          writer.write({
-            type: "text-delta",
-            id: textChunkId,
-            delta: summaryMessage,
-          });
-          writer.write({ type: "text-end", id: textChunkId });
-          writer.write({ type: "finish", messageMetadata: metadata });
-          registerAttachments(messageId, [attachment]);
-        }
-      );
     }
 
     // Check if user has Xero connection

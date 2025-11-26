@@ -105,7 +105,7 @@ export function parseCsv(
 
   // Parse with PapaParse
   const parseResult = papaParse<string[]>(content, {
-    delimiter: delimiter, // undefined = auto-detect
+    delimiter, // undefined = auto-detect
     header: false, // We handle header manually
     skipEmptyLines: false, // We need to preserve empty lines for accurate line numbers
     dynamicTyping: false, // NEVER auto-infer types

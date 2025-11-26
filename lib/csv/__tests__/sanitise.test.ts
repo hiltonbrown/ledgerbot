@@ -3,7 +3,10 @@
  */
 
 import { describe, expect, it } from "@jest/globals";
-import type { SpreadsheetCell, SpreadsheetRow } from "@/lib/artifacts/spreadsheet/types";
+import type {
+  SpreadsheetCell,
+  SpreadsheetRow,
+} from "@/lib/artifacts/spreadsheet/types";
 import {
   artifactNeedsSanitisation,
   countSanitisationNeeded,
@@ -62,9 +65,9 @@ describe("sanitiseCellForExport", () => {
 
     expect(sanitised.value).toBe("'=SUM(A1:A10)");
     expect(sanitised.securitySanitised).toBe(true);
-    expect(
-      sanitised.issues?.some((i) => i.code === "SECURITY_SANITISED")
-    ).toBe(true);
+    expect(sanitised.issues?.some((i) => i.code === "SECURITY_SANITISED")).toBe(
+      true
+    );
   });
 
   it("should preserve original raw value", () => {
@@ -103,12 +106,10 @@ describe("sanitiseCellForExport", () => {
     const sanitised = sanitiseCellForExport(cell);
 
     expect(sanitised.issues).toHaveLength(2);
-    expect(
-      sanitised.issues?.some((i) => i.code === "INVALID_TYPE")
-    ).toBe(true);
-    expect(
-      sanitised.issues?.some((i) => i.code === "SECURITY_SANITISED")
-    ).toBe(true);
+    expect(sanitised.issues?.some((i) => i.code === "INVALID_TYPE")).toBe(true);
+    expect(sanitised.issues?.some((i) => i.code === "SECURITY_SANITISED")).toBe(
+      true
+    );
   });
 
   it("should not duplicate SECURITY_SANITISED issue", () => {
@@ -149,9 +150,7 @@ describe("sanitiseRowForExport", () => {
   it("should update row status from valid to warning", () => {
     const row: SpreadsheetRow = {
       lineNumber: 1,
-      cells: [
-        { raw: "=SUM(A1)", value: "=SUM(A1)", type: "string" },
-      ],
+      cells: [{ raw: "=SUM(A1)", value: "=SUM(A1)", type: "string" }],
       rowStatus: "valid",
     };
 
@@ -163,17 +162,13 @@ describe("sanitiseRowForExport", () => {
   it("should not change row status if already warning or error", () => {
     const row1: SpreadsheetRow = {
       lineNumber: 1,
-      cells: [
-        { raw: "=SUM(A1)", value: "=SUM(A1)", type: "string" },
-      ],
+      cells: [{ raw: "=SUM(A1)", value: "=SUM(A1)", type: "string" }],
       rowStatus: "warning",
     };
 
     const row2: SpreadsheetRow = {
       lineNumber: 2,
-      cells: [
-        { raw: "=SUM(A1)", value: "=SUM(A1)", type: "string" },
-      ],
+      cells: [{ raw: "=SUM(A1)", value: "=SUM(A1)", type: "string" }],
       rowStatus: "error",
     };
 
@@ -324,9 +319,7 @@ describe("artifactNeedsSanitisation", () => {
       rows: [
         {
           lineNumber: 1,
-          cells: [
-            { raw: "Normal", value: "Normal", type: "string" as const },
-          ],
+          cells: [{ raw: "Normal", value: "Normal", type: "string" as const }],
           rowStatus: "valid" as const,
         },
       ],

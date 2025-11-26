@@ -69,8 +69,7 @@ describe("buildSpreadsheetArtifactFromCsv", () => {
     });
 
     it("should detect missing required fields", async () => {
-      const csv =
-        "Date,Description,Amount,Balance\n,Payment,1000.50,5000.00";
+      const csv = "Date,Description,Amount,Balance\n,Payment,1000.50,5000.00";
       const artifact = await buildSpreadsheetArtifactFromCsv({
         input: csv,
         sourceFileName: "bank.csv",
@@ -80,9 +79,7 @@ describe("buildSpreadsheetArtifactFromCsv", () => {
       const firstRow = artifact.rows[0];
       expect(firstRow.rowStatus).toBe("error");
       expect(
-        firstRow.cells[0].issues?.some(
-          (i) => i.code === "MISSING_REQUIRED"
-        )
+        firstRow.cells[0].issues?.some((i) => i.code === "MISSING_REQUIRED")
       ).toBe(true);
     });
 

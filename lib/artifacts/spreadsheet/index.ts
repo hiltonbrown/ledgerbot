@@ -7,11 +7,11 @@
  */
 
 export type {
-  CellType,
-  CellIssueCode,
   CellIssue,
+  CellIssueCode,
+  CellType,
+  SpreadsheetArtifact,
   SpreadsheetCell,
   SpreadsheetRow,
   SpreadsheetSummary,
-  SpreadsheetArtifact,
 } from "./types";

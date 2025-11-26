@@ -7,7 +7,6 @@ import type { Vote } from "@/lib/db/schema";
 import type { ChatMessage } from "@/lib/types";
 import { cn, sanitizeText } from "@/lib/utils";
 import { useDataStream } from "./data-stream-provider";
-import { DeepResearchStatus } from "./deep-research-status";
 import { DocumentToolResult } from "./document";
 import { DocumentPreview } from "./document-preview";
 import { MessageContent } from "./elements/message";
@@ -51,9 +50,6 @@ const PurePreviewMessage = ({
     (part) => part.type === "file"
   );
 
-  const deepResearchMetadata =
-    message.role === "assistant" ? message.metadata?.deepResearch : undefined;
-
   useDataStream();
 
   return (
@@ -92,10 +88,6 @@ const PurePreviewMessage = ({
               message.role === "user" && mode !== "edit",
           })}
         >
-          {message.role === "assistant" && deepResearchMetadata ? (
-            <DeepResearchStatus metadata={deepResearchMetadata} />
-          ) : null}
-
           {attachmentsFromMessage.length > 0 && (
             <div
               className="flex flex-row justify-end gap-2"
@@ -416,9 +408,7 @@ export const ThinkingMessage = () => {
         </div>
 
         <div className="flex w-full flex-col gap-2 md:gap-4">
-          <div className="p-0 text-muted-foreground text-sm">
-            Thinking...
-          </div>
+          <div className="p-0 text-muted-foreground text-sm">Thinking...</div>
         </div>
       </div>
     </motion.div>

@@ -15,7 +15,6 @@ export type ContextProps = ComponentProps<"button"> & {
   /** Optional full usage payload to enable breakdown view */
   usage?: AppUsage;
   reasoningEnabled?: boolean;
-  deepResearchEnabled?: boolean;
 };
 
 const _THOUSAND = 1000;
@@ -105,7 +104,6 @@ export const Context = ({
   className,
   usage,
   reasoningEnabled,
-  deepResearchEnabled,
   ...props
 }: ContextProps) => {
   const used = usage?.totalTokens ?? 0;
@@ -189,25 +187,14 @@ export const Context = ({
                 </div>
               </>
             )}
-            {(reasoningEnabled !== undefined ||
-              deepResearchEnabled !== undefined) && (
+            {reasoningEnabled !== undefined && (
               <>
                 <Separator className="mt-2" />
                 <div className="space-y-1 pt-1 text-xs">
-                  {reasoningEnabled !== undefined && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Reasoning</span>
-                      <span>{reasoningEnabled ? "On" : "Off"}</span>
-                    </div>
-                  )}
-                  {deepResearchEnabled !== undefined && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">
-                        Deep Research
-                      </span>
-                      <span>{deepResearchEnabled ? "On" : "Off"}</span>
-                    </div>
-                  )}
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Reasoning</span>
+                    <span>{reasoningEnabled ? "On" : "Off"}</span>
+                  </div>
                 </div>
               </>
             )}

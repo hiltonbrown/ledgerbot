@@ -181,9 +181,7 @@ export function sanitiseSpreadsheetForExport(
  * @param artifact - Artifact to analyse
  * @returns Number of cells requiring sanitisation
  */
-export function countSanitisationNeeded(
-  artifact: SpreadsheetArtifact
-): number {
+export function countSanitisationNeeded(artifact: SpreadsheetArtifact): number {
   let count = 0;
   for (const row of artifact.rows) {
     for (const cell of row.cells) {

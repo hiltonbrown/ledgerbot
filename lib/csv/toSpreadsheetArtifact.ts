@@ -15,7 +15,7 @@ import type {
   SpreadsheetRow,
 } from "@/lib/artifacts/spreadsheet/types";
 import { parseCsv } from "./parser";
-import { getGenericSchema, getSchemaById, type CsvSchema } from "./schema";
+import { type CsvSchema, getGenericSchema, getSchemaById } from "./schema";
 import { validateCell } from "./validation";
 
 /**
@@ -98,8 +98,8 @@ function determineRowStatus(
 function matchHeaderToSchema(
   header: string[] | null,
   schema: CsvSchema
-): Map<number, typeof schema.fields[0] | null> {
-  const fieldMap = new Map<number, typeof schema.fields[0] | null>();
+): Map<number, (typeof schema.fields)[0] | null> {
+  const fieldMap = new Map<number, (typeof schema.fields)[0] | null>();
 
   if (!header) {
     return fieldMap;

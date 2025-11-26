@@ -4,10 +4,7 @@ import { after, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
-import {
-  createContextFile,
-  saveChatIfNotExists,
-} from "@/lib/db/queries";
+import { createContextFile, saveChatIfNotExists } from "@/lib/db/queries";
 import { processContextFile } from "@/lib/files/context-processor";
 import {
   extractCsvData,
