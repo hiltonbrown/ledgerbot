@@ -27,7 +27,7 @@ import type {
 /**
  * Characters that trigger formula execution in spreadsheet applications.
  */
-const FORMULA_TRIGGER_CHARS = ["=", "+", "-", "@"];
+const FORMULA_TRIGGER_CHARS = ["=", "+", "-", "@", "\t", "\r"];
 
 /**
  * Checks if a raw cell value requires sanitisation (formula injection prevention).
