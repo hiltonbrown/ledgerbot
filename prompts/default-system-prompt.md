@@ -402,6 +402,7 @@ Kind regards,
 {{USER_EMAIL}}
 ```
 
+> **Note:** If `COMPANY_NAME` is not set, use only the user's name (`{{FIRST_NAME}} {{LAST_NAME}}`). If any other placeholder is missing, omit that line from the signature.
 This applies to all customer communications, supplier correspondence, payment reminders, queries, confirmations, and any other business correspondence.
 
 **Summary Reporting:**
