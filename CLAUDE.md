@@ -129,6 +129,99 @@ prompts/                 # System prompt templates
 - Template engine: `lib/ai/template-engine.ts`
 - Users can customize in settings → personalisation
 
+## CSV Processing and Spreadsheet Artifacts
+
+LedgerBot provides a comprehensive CSV processing pipeline with validation, schema enforcement, and security sanitisation. This system is used for bank feed imports, invoice processing, chart of accounts uploads, and other structured data workflows.
+
+### Key Modules
+
+**Location**: `lib/csv/` and `lib/artifacts/spreadsheet/`
+
+1. **Parser** (`lib/csv/parser.ts`): Battle-tested CSV parsing using PapaParse
+   - Supports string and ArrayBuffer input
+   - Detects encoding issues (� character)
+   - Auto-detects delimiters (comma, semicolon, tab)
+   - Never auto-infers types (always returns strings)
+   - Captures all parsing errors with line numbers
+
+2. **Schema** (`lib/csv/schema.ts`): Pre-defined schemas for different CSV types
+   - `GENERIC_SCHEMA`: Accepts all columns as strings (default)
+   - `BANK_FEED_SCHEMA_V1`: Bank transactions (Date, Description, Amount, Balance)
+   - `INVOICE_IMPORT_SCHEMA_V1`: Invoice data with validation
+   - `CHART_OF_ACCOUNTS_SCHEMA_V1`: Account codes and types
+   - Supports custom schema registration
+
+3. **Validation** (`lib/csv/validation.ts`): Type normalisation and field validation
+   - Number parsing (handles currency symbols, thousand separators, percentages, accounting format)
+   - Date parsing (DD/MM/YYYY, YYYY-MM-DD, MM/DD/YYYY using date-fns)
+   - Boolean parsing (true/false, yes/no, 1/0)
+   - Required field checks
+   - Range validation (min/max)
+
+4. **Sanitisation** (`lib/csv/sanitise.ts`): Formula injection prevention
+   - Detects cells starting with `=`, `+`, `-`, `@`
+   - Prefixes with single quote (`'`) to force literal interpretation
+   - Adds `SECURITY_SANITISED` issue flag
+   - Safe for Excel/Google Sheets export
+
+5. **SpreadsheetArtifact** (`lib/artifacts/spreadsheet/types.ts`): Canonical data structure
+   - Metadata: id, title, sourceFileName, encoding, delimiter, schemaId, createdAt
+   - Header row (optional)
+   - Rows with cells containing: raw value, normalised value, type, issues, security flags
+   - Summary statistics: totalRows, validRows, warningRows, errorRows
+   - Row status: `valid`, `warning`, `error`
+
+### Usage in Agents and Tools
+
+```typescript
+import { buildSpreadsheetArtifactFromCsv } from '@/lib/csv';
+
+// Basic usage (no schema validation)
+const artifact = await buildSpreadsheetArtifactFromCsv({
+  input: csvString, // or ArrayBuffer
+  sourceFileName: 'upload.csv',
+});
+
+// With schema validation
+const artifact = await buildSpreadsheetArtifactFromCsv({
+  input: csvString,
+  sourceFileName: 'bank-feed.csv',
+  importType: 'bank-feed-v1',
+  hasHeader: true,
+});
+
+// Access validated data
+const validRows = artifact.rows.filter(row => row.rowStatus === 'valid');
+for (const row of validRows) {
+  const date = row.cells[0].value; // Date object
+  const amount = row.cells[2].value; // number
+}
+
+// Security: Sanitise before export
+import { sanitiseSpreadsheetForExport } from '@/lib/csv';
+const safeArtifact = sanitiseSpreadsheetForExport(artifact);
+```
+
+### Cell Issue Codes
+
+- `MISSING_REQUIRED`: Required field is empty (error)
+- `INVALID_TYPE`: Value doesn't match expected type (error)
+- `PARSING_ERROR`: CSV parser encountered malformed data (error)
+- `OUT_OF_RANGE`: Numeric value outside min/max bounds (warning)
+- `COLUMN_MISMATCH`: Row has different column count (warning)
+- `SECURITY_SANITISED`: Formula injection prevented (warning)
+- `ENCODING_WARNING`: Encoding corruption detected (warning)
+
+### Testing
+
+Comprehensive test suite in `lib/csv/__tests__/`:
+- `parser.test.ts`: CSV parsing edge cases
+- `validation.test.ts`: Type normalisation and validation
+- `sanitise.test.ts`: Security sanitisation
+- `toSpreadsheetArtifact.test.ts`: Integration tests
+
+Run tests: `pnpm test`
+
 ## Xero Integration
 
 ### Key Files

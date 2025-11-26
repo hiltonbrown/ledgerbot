@@ -156,7 +156,7 @@ export default function QandAAgentPage() {
 
   const handleManualRefresh = async () => {
     setIsRefreshingSources(true);
-    setRefreshStatus("Triggering Mastra scraping job...");
+    setRefreshStatus("Triggering regulatory data refresh...");
     try {
       const response = await fetch("/api/regulatory/scrape", {
         method: "POST",
@@ -542,7 +542,7 @@ export default function QandAAgentPage() {
                       Refresh before answering
                     </p>
                     <p className="text-muted-foreground text-xs">
-                      Trigger Mastra to re-scrape selected sources in-line
+                      Re-scrape selected regulatory sources in-line
                     </p>
                   </div>
                   <Switch

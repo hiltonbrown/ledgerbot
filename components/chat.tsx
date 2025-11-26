@@ -93,9 +93,7 @@ export function Chat({
       ? { [initialChatModel]: initialDefaultReasoning ?? true }
       : {}
   );
-  const [isDeepResearchEnabled, setIsDeepResearchEnabled] = useState(false);
   const currentModelIdRef = useRef(currentModelId);
-  const deepResearchRef = useRef(isDeepResearchEnabled);
 
   useEffect(() => {
     currentModelIdRef.current = currentModelId;
@@ -106,10 +104,6 @@ export function Chat({
   useEffect(() => {
     reasoningPreferencesRef.current = reasoningPreferences;
   }, [reasoningPreferences]);
-
-  useEffect(() => {
-    deepResearchRef.current = isDeepResearchEnabled;
-  }, [isDeepResearchEnabled]);
 
   const currentReasoningEnabled = useMemo(() => {
     if (!isReasoningModelId(currentModelId)) {
@@ -187,7 +181,6 @@ export function Chat({
             showReasoningPreference: getReasoningPreferenceForModel(
               currentModelIdRef.current
             ),
-            deepResearch: deepResearchRef.current,
             ...request.body,
           },
         };
@@ -324,10 +317,8 @@ export function Chat({
               chatId={id}
               clearError={clearError}
               input={input}
-              isDeepResearchEnabled={isDeepResearchEnabled}
               isReasoningEnabled={currentReasoningEnabled}
               messages={messages}
-              onDeepResearchChange={setIsDeepResearchEnabled}
               onModelChange={handleModelChange}
               onReasoningChange={handleReasoningPreferenceChange}
               selectedModelId={currentModelId}
@@ -350,11 +341,9 @@ export function Chat({
         chatId={id}
         clearError={clearError}
         input={input}
-        isDeepResearchEnabled={isDeepResearchEnabled}
         isReadonly={isReadonly}
         isReasoningEnabled={currentReasoningEnabled}
         messages={messages}
-        onDeepResearchChange={setIsDeepResearchEnabled}
         onReasoningChange={handleReasoningPreferenceChange}
         regenerate={regenerate}
         selectedModelId={currentModelId}

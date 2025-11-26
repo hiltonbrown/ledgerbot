@@ -16,7 +16,7 @@ export default function WorkflowAgentPage() {
           </h1>
           <p className="text-muted-foreground">
             Graph orchestrations across document, reconciliation, and compliance
-            agents with Mastra workflows and traceability
+            agents with workflow traceability
           </p>
         </div>
         <div className="flex gap-2">
@@ -42,8 +42,7 @@ export default function WorkflowAgentPage() {
             <p className="mb-6 max-w-md text-muted-foreground">
               The Workflow Supervisor workspace is under development. This agent
               will orchestrate multi-step processes across document management,
-              reconciliation, and compliance agents using Mastra workflows with
-              full traceability.
+              reconciliation, and compliance agents with full traceability.
             </p>
             <p className="text-muted-foreground text-sm">
               Configure settings via{" "}
