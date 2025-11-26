@@ -250,7 +250,7 @@ export function validateCell(
 
   // Normalise based on expected type
   let normalisedValue: string | number | Date | boolean | null = null;
-  let detectedType: CellType = "string";
+  let detectedType: CellType;
 
   switch (field.type) {
     case "number": {
