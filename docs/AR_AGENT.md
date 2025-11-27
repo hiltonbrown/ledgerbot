@@ -208,7 +208,9 @@ lib/
 
 app/
 ├── agents/ar/
-│   └── page.tsx           # Ageing report UI
+│   ├── page.tsx           # Ageing report UI
+│   └── monitoring/
+│       └── page.tsx       # Job monitoring dashboard
 └── api/agents/ar/sync/
     └── route.ts           # Manual sync endpoint
 

@@ -351,6 +351,7 @@ LedgerBot includes dedicated agent workspaces optimized for specific accounting 
 2. Filter/sort by risk, outstanding amount, or ageing bucket
 3. Click customer row to see invoice details
 4. Click "Start Follow-Up Chat" to generate AI-powered collection message
+5. Monitor sync status at `/agents/ar/monitoring`
 
 **Technical Details:**
 - **Database Schema**: `ArContact`, `ArInvoice`, `ArPayment`, `ArCustomerHistory`, `ArJobRun`
