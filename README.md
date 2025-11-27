@@ -338,7 +338,6 @@ LedgerBot includes dedicated agent workspaces optimized for specific accounting 
 - **Risk Scoring (0-1 scale)**: AI-powered assessment based on payment history, days late, invoice age
 - **Xero Integration**: Sync invoices, payments, and contacts on demand via the "Sync from Xero" button
 - **AI-Powered Follow-Up**: Generate risk-appropriate collection messages (polite/firm/final tones)
-- **Monitoring Dashboard**: Track sync jobs, DSO metrics, data freshness alerts
 - **Customer Insights**: Invoice details, payment history, credit terms analysis
 
 **Key Metrics:**

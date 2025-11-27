@@ -70,8 +70,6 @@ After conducting a comprehensive audit of the `/agents/ar` page and associated c
 ```
 /app/agents/ar/
 ├── page.tsx                  # Server Component (data fetching)
-├── monitoring/
-│   └── page.tsx             # Monitoring dashboard
 └── customer/
     └── [id]/                 # (If needed for detail pages)
 
