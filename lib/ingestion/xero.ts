@@ -1,7 +1,7 @@
 import "server-only";
 
 import { subMonths } from "date-fns";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import type { XeroClient } from "xero-node";
 import { db } from "@/lib/db/queries";
 import {
@@ -55,27 +55,36 @@ export async function syncXeroData(userId: string) {
 
   // Upsert contacts
   for (const contact of contacts) {
-    await db
-      .insert(arContact)
-      .values({
-        userId,
+    await db.transaction(async (tx) => {
+      const existingContact = await tx.query.arContact.findFirst({
+        where: (table, { and, eq }) =>
+          and(
+            eq(table.userId, userId),
+            eq(table.externalRef, contact.contactID!)
+          ),
+      });
+
+      const contactData = {
         name: contact.name || "Unknown",
         email: contact.emailAddress,
         phone: contact.phones?.[0]?.phoneNumber,
-        externalRef: contact.contactID!,
         metadata: { xeroContact: contact },
         updatedAt: new Date(),
-      })
-      .onConflictDoUpdate({
-        target: arContact.externalRef,
-        set: {
-          name: contact.name || "Unknown",
-          email: contact.emailAddress,
-          phone: contact.phones?.[0]?.phoneNumber,
-          metadata: { xeroContact: contact },
-          updatedAt: new Date(),
-        },
-      });
+      };
+
+      if (existingContact) {
+        await tx
+          .update(arContact)
+          .set(contactData)
+          .where(eq(arContact.id, existingContact.id));
+      } else {
+        await tx.insert(arContact).values({
+          userId,
+          externalRef: contact.contactID!,
+          ...contactData,
+        });
+      }
+    });
   }
 
   // 2. Fetch Invoices (Last 24 Months)

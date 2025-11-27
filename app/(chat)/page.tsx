@@ -67,7 +67,10 @@ export default async function Page({ searchParams }: PageProps) {
     if (customerId) {
       // Fetch contact details from AR tables scoped to the current user
       const contact = await db.query.arContact.findFirst({
-        where: and(eq(arContact.id, customerId), eq(arContact.userId, user.id)),
+        where: and(
+          eq(arContact.id, customerId),
+          eq(arContact.userId, user.clerkId)
+        ),
         columns: { name: true, email: true, phone: true },
       });
 
@@ -85,7 +88,7 @@ export default async function Page({ searchParams }: PageProps) {
           .where(
             and(
               eq(arInvoice.contactId, customerId),
-              eq(arInvoice.userId, user.id)
+              eq(arInvoice.userId, user.clerkId)
             )
           )
           .orderBy(desc(arInvoice.dueDate));
