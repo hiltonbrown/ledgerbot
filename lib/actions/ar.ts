@@ -2,7 +2,7 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { differenceInDays } from "date-fns";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db/queries";
 import { arContact, arCustomerHistory, arInvoice } from "@/lib/db/schema/ar";
 
@@ -126,7 +126,7 @@ export async function getCustomerInvoiceDetails(contactId: string) {
   const invoices = await db
     .select()
     .from(arInvoice)
-    .where(eq(arInvoice.contactId, contactId))
+    .where(and(eq(arInvoice.contactId, contactId), eq(arInvoice.userId, userId)))
     .orderBy(desc(arInvoice.dueDate));
 
   return invoices.map((inv) => ({
