@@ -53,3 +53,4 @@ tsconfig.tsbuildinfo
 .roo
 .next
 .vercel
+package-lock.json
