@@ -216,20 +216,18 @@ handleStartChat() {
 
 ### 4. `components/ar/stale-data-banner.tsx`
 
-**Type**: Client Component  
-**Purpose**: Alert users if data is stale or sync failed
+**Type**: Client Component
+**Purpose**: Alert users if data is stale or needs manual sync
 
 **Props**:
 ```typescript
 interface StaleDataBannerProps {
   lastSyncDate: Date | null;
-  syncStatus: string | null;
 }
 ```
 
 **Logic**:
-- No sync: Show error
-- Failed sync: Show error with link to monitoring
+- No sync: Show prompt to trigger manual sync
 - > 24 hours old: Show warning
 - Otherwise: Render null (no banner)
 

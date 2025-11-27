@@ -17,15 +17,6 @@ type Story = StoryObj<typeof meta>;
 export const NoSync: Story = {
   args: {
     lastSyncDate: null,
-    syncStatus: null,
-  },
-};
-
-// Story: Failed sync
-export const FailedSync: Story = {
-  args: {
-    lastSyncDate: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-    syncStatus: "failed",
   },
 };
 
@@ -33,7 +24,6 @@ export const FailedSync: Story = {
 export const StaleData: Story = {
   args: {
     lastSyncDate: new Date(Date.now() - 30 * 60 * 60 * 1000), // 30 hours ago
-    syncStatus: "success",
   },
 };
 
@@ -41,7 +31,6 @@ export const StaleData: Story = {
 export const FreshData: Story = {
   args: {
     lastSyncDate: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-    syncStatus: "success",
   },
 };
 
@@ -49,6 +38,5 @@ export const FreshData: Story = {
 export const VeryStale: Story = {
   args: {
     lastSyncDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
-    syncStatus: "success",
   },
 };

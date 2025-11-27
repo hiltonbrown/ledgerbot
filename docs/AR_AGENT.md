@@ -6,7 +6,7 @@ The A/R Agent is an intelligent accounts receivable management system integrated
 
 ### Key Features
 
-- **Data Ingestion**: Automated nightly sync from Xero API for invoices, payments, and contacts
+- **Data Ingestion**: Manual sync from Xero via the "Sync from Xero" button
 - **Risk Scoring**: 0-1 scale risk assessment based on payment history and ageing patterns
 - **Interactive Ageing Report**: Real-time dashboard at `/agents/ar` with sorting and filtering
 - **AI-Powered Follow-Up**: Generate tailored collection messages via integrated chat
@@ -21,16 +21,16 @@ The A/R Agent is an intelligent accounts receivable management system integrated
 │  (Source Data)  │
 └────────┬────────┘
          │
-         │ Nightly Cron (4 AM)
+         │ Manual Sync (Sync from Xero button)
          ▼
 ┌─────────────────────────────────┐
 │  Data Ingestion Pipeline        │
-│  (/app/api/cron/ar-sync)        │
+│  (/app/api/agents/ar/sync)      │
 │  - Fetch invoices (24 months)   │
-│  - Fetch payments                │
-│  - Fetch contacts                │
-│  - Calculate ageing buckets      │
-│  - Compute risk scores           │
+│  - Fetch payments               │
+│  - Fetch contacts               │
+│  - Calculate ageing buckets     │
+│  - Compute risk scores          │
 └────────┬────────────────────────┘
          │
          ▼
@@ -93,9 +93,6 @@ AI_GATEWAY_API_KEY="your-vercel-ai-gateway-key"
 # Clerk Authentication
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="..."
 CLERK_SECRET_KEY="..."
-
-# Cron Security
-CRON_SECRET="generate-random-secret-here"
 ```
 
 ### Database Setup
@@ -125,12 +122,12 @@ pnpm dev
 
 ### Initial Data Sync
 
-The A/R data syncs automatically via cron, but for local testing:
+Use the in-product "Sync from Xero" button or trigger the API directly:
 
 ```bash
-# Manually trigger sync (requires CRON_SECRET)
-curl -H "Authorization: Bearer $CRON_SECRET" \
-  http://localhost:3000/api/cron/ar-sync
+curl -X POST http://localhost:3000/api/agents/ar/sync \
+  -H "Content-Type: application/json" \
+  -d '{}'
 ```
 
 ## Developer Guide
@@ -215,8 +212,8 @@ app/
 │   ├── page.tsx           # Ageing report UI
 │   └── monitoring/
 │       └── page.tsx       # Job monitoring dashboard
-└── api/cron/ar-sync/
-    └── route.ts           # Scheduled sync job
+└── api/agents/ar/sync/
+    └── route.ts           # Manual sync endpoint
 
 components/ar/
 ├── ageing-report-table.tsx      # Main table component
