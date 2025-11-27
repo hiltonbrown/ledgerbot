@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ArContextBanner } from "@/components/ar-context-banner";
@@ -67,7 +67,10 @@ export default async function Page({ searchParams }: PageProps) {
     if (customerId) {
       // Fetch contact details from AR tables
       const contact = await db.query.arContact.findFirst({
-        where: eq(arContact.id, customerId),
+        where: and(
+          eq(arContact.id, customerId),
+          eq(arContact.userId, user.clerkId)
+        ),
         columns: { name: true, email: true, phone: true },
       });
 
@@ -82,7 +85,12 @@ export default async function Page({ searchParams }: PageProps) {
         const arInvoices = await db
           .select()
           .from(arInvoice)
-          .where(eq(arInvoice.contactId, customerId))
+          .where(
+            and(
+              eq(arInvoice.contactId, customerId),
+              eq(arInvoice.userId, user.clerkId)
+            )
+          )
           .orderBy(desc(arInvoice.dueDate));
 
         // Filter to unpaid invoices and map to expected format
