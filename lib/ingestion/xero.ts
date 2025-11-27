@@ -214,13 +214,24 @@ export async function syncXeroData(userId: string) {
     // Calculate and store customer history
     const history = calculateCustomerHistory(contactInvoices, contactPayments);
 
-    await db.insert(arCustomerHistory).values({
-      userId,
-      customerId: contact.id,
-      startDate,
-      endDate: new Date(),
-      ...history,
-    });
+    await db
+      .insert(arCustomerHistory)
+      .values({
+        userId,
+        customerId: contact.id,
+        startDate,
+        endDate: new Date(),
+        ...history,
+      })
+      .onConflictDoUpdate({
+        target: [arCustomerHistory.userId, arCustomerHistory.customerId],
+        set: {
+          startDate,
+          endDate: new Date(),
+          ...history,
+          computedAt: new Date(),
+        },
+      });
   }
 
   console.log(`[AR Ingestion] Sync complete for user ${userId}`);
