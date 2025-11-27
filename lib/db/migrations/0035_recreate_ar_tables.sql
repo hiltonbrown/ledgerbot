@@ -1,5 +1,15 @@
 -- Recreate AR tables with correct userId type (text instead of uuid)
 -- Note: ArNote still uses uuid for userId due to schema definition
+
+DROP TABLE IF EXISTS "ArCommsArtefact" CASCADE;
+DROP TABLE IF EXISTS "ArContact" CASCADE;
+DROP TABLE IF EXISTS "ArInvoice" CASCADE;
+DROP TABLE IF EXISTS "ArNote" CASCADE;
+DROP TABLE IF EXISTS "ArPayment" CASCADE;
+DROP TABLE IF EXISTS "ArReminder" CASCADE;
+DROP TABLE IF EXISTS "ArCustomerHistory" CASCADE;
+DROP TABLE IF EXISTS "ArJobRun" CASCADE;
+
 CREATE TABLE "ArCommsArtefact" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"userId" text NOT NULL,
