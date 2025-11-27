@@ -239,9 +239,9 @@ export const arCommsArtefact = pgTable(
   "ArCommsArtefact",
   {
     id: uuid("id").primaryKey().notNull().defaultRandom(),
-    userId: uuid("userId")
+    userId: text("userId")
       .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+      .references(() => user.clerkId, { onDelete: "cascade" }),
     invoiceId: uuid("invoiceId")
       .notNull()
       .references(() => arInvoice.id, { onDelete: "cascade" }),
@@ -267,9 +267,9 @@ export const arNote = pgTable(
   "ArNote",
   {
     id: uuid("id").primaryKey().notNull().defaultRandom(),
-    userId: uuid("userId")
+    userId: text("userId")
       .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+      .references(() => user.clerkId, { onDelete: "cascade" }),
     invoiceId: uuid("invoiceId")
       .notNull()
       .references(() => arInvoice.id, { onDelete: "cascade" }),
