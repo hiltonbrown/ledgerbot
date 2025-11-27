@@ -17,7 +17,8 @@ export function calculateAgeingBucket(
     startOfDay(dueDate)
   );
 
-  if (daysOverdue <= 0) return "Current";
+  if (daysOverdue < 0) return "Current"; // Not yet due
+  if (daysOverdue === 0) return "Current"; // Due today
   if (daysOverdue <= 30) return "1-30";
   if (daysOverdue <= 60) return "31-60";
   if (daysOverdue <= 90) return "61-90";
