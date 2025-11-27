@@ -2,9 +2,11 @@ import type { InferSelectModel } from "drizzle-orm";
 import {
   boolean,
   index,
+  integer,
   jsonb,
   numeric,
   pgTable,
+  real,
   text,
   timestamp,
   uniqueIndex,
@@ -17,9 +19,9 @@ export const arContact = pgTable(
   "ArContact",
   {
     id: uuid("id").primaryKey().notNull().defaultRandom(),
-    userId: uuid("userId")
+    userId: text("userId")
       .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+      .references(() => user.clerkId, { onDelete: "cascade" }),
     name: varchar("name", { length: 255 }).notNull(),
     email: varchar("email", { length: 255 }),
     phone: varchar("phone", { length: 50 }),
@@ -41,9 +43,9 @@ export const arInvoice = pgTable(
   "ArInvoice",
   {
     id: uuid("id").primaryKey().notNull().defaultRandom(),
-    userId: uuid("userId")
+    userId: text("userId")
       .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+      .references(() => user.clerkId, { onDelete: "cascade" }),
     contactId: uuid("contactId")
       .notNull()
       .references(() => arContact.id),
@@ -57,9 +59,25 @@ export const arInvoice = pgTable(
     amountPaid: numeric("amountPaid", { precision: 10, scale: 2 })
       .notNull()
       .default("0"),
+    amountOutstanding: numeric("amountOutstanding", {
+      precision: 10,
+      scale: 2,
+    })
+      .notNull()
+      .default("0"),
+    creditNoteAmount: numeric("creditNoteAmount", {
+      precision: 10,
+      scale: 2,
+    })
+      .notNull()
+      .default("0"),
     status: varchar("status", { length: 20 })
       .notNull()
       .default("awaiting_payment"),
+    ageingBucket: varchar("ageingBucket", {
+      length: 20,
+      enum: ["Current", "1-30", "31-60", "61-90", "90+"],
+    }),
     externalRef: varchar("externalRef", { length: 255 }).notNull(), // Xero invoice ID
     metadata: jsonb("metadata").$type<Record<string, unknown>>(),
     createdAt: timestamp("createdAt").notNull().defaultNow(),
@@ -87,21 +105,82 @@ export const arPayment = pgTable(
     invoiceId: uuid("invoiceId")
       .notNull()
       .references(() => arInvoice.id, { onDelete: "cascade" }),
+    contactId: uuid("contactId").references(() => arContact.id), // Denormalized for easier querying
     amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
     paidAt: timestamp("paidAt").notNull(),
     method: varchar("method", { length: 50 }),
     reference: varchar("reference", { length: 255 }),
+    externalRef: varchar("externalRef", { length: 255 }), // Xero payment ID
     metadata: jsonb("metadata").$type<Record<string, unknown>>(),
     createdAt: timestamp("createdAt").notNull().defaultNow(),
   },
   (table) => ({
     invoiceIdIdx: index("ar_payment_invoice_id_idx").on(table.invoiceId),
+    contactIdIdx: index("ar_payment_contact_id_idx").on(table.contactId),
     paidAtIdx: index("ar_payment_paid_at_idx").on(table.paidAt),
+    externalRefIdx: index("ar_payment_external_ref_idx").on(table.externalRef),
   })
 );
 
 export type ArPayment = InferSelectModel<typeof arPayment>;
 export type ArPaymentInsert = typeof arPayment.$inferInsert;
+
+export const arCustomerHistory = pgTable(
+  "ArCustomerHistory",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.clerkId, { onDelete: "cascade" }),
+    customerId: uuid("customerId")
+      .notNull()
+      .references(() => arContact.id, { onDelete: "cascade" }),
+    startDate: timestamp("startDate").notNull(),
+    endDate: timestamp("endDate").notNull(),
+    numInvoices: integer("numInvoices").notNull().default(0),
+    numLatePayments: integer("numLatePayments").notNull().default(0),
+    avgDaysLate: real("avgDaysLate").notNull().default(0),
+    maxDaysLate: integer("maxDaysLate").notNull().default(0),
+    percentInvoices90Plus: real("percentInvoices90Plus").notNull().default(0),
+    totalOutstanding: numeric("totalOutstanding", {
+      precision: 10,
+      scale: 2,
+    })
+      .notNull()
+      .default("0"),
+    maxInvoiceOutstanding: numeric("maxInvoiceOutstanding", {
+      precision: 10,
+      scale: 2,
+    })
+      .notNull()
+      .default("0"),
+    totalBilledLast12Months: numeric("totalBilledLast12Months", {
+      precision: 10,
+      scale: 2,
+    })
+      .notNull()
+      .default("0"),
+    lastPaymentDate: timestamp("lastPaymentDate"),
+    creditTermsDays: integer("creditTermsDays").default(0),
+    riskScore: real("riskScore").default(0),
+    computedAt: timestamp("computedAt").notNull().defaultNow(),
+  },
+  (table) => ({
+    userIdIdx: index("ar_customer_history_user_id_idx").on(table.userId),
+    customerIdIdx: index("ar_customer_history_customer_id_idx").on(
+      table.customerId
+    ),
+    computedAtIdx: index("ar_customer_history_computed_at_idx").on(
+      table.computedAt
+    ),
+    userIdCustomerIdUnique: uniqueIndex(
+      "ar_customer_history_user_id_customer_id_unique"
+    ).on(table.userId, table.customerId),
+  })
+);
+
+export type ArCustomerHistory = InferSelectModel<typeof arCustomerHistory>;
+export type ArCustomerHistoryInsert = typeof arCustomerHistory.$inferInsert;
 
 export const arReminder = pgTable(
   "ArReminder",
@@ -128,13 +207,44 @@ export const arReminder = pgTable(
 export type ArReminder = InferSelectModel<typeof arReminder>;
 export type ArReminderInsert = typeof arReminder.$inferInsert;
 
+export const arJobRun = pgTable(
+  "ArJobRun",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.clerkId, { onDelete: "cascade" }),
+    startedAt: timestamp("startedAt").notNull().defaultNow(),
+    completedAt: timestamp("completedAt"),
+    status: varchar("status", { length: 20 }).notNull().default("running"), // running, success, failed
+    customersProcessed: integer("customersProcessed").default(0),
+    highRiskFlagged: integer("highRiskFlagged").default(0),
+    errors:
+      jsonb("errors").$type<Array<{ message: string; customerId?: string }>>(),
+    stats: jsonb("stats").$type<{
+      dso: number; // Days Sales Outstanding
+      percentOver90Days: number;
+      riskDistribution: { low: number; medium: number; high: number };
+    }>(),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+  },
+  (table) => ({
+    userIdIdx: index("ar_job_run_user_id_idx").on(table.userId),
+    statusIdx: index("ar_job_run_status_idx").on(table.status),
+    startedAtIdx: index("ar_job_run_started_at_idx").on(table.startedAt),
+  })
+);
+
+export type ArJobRun = InferSelectModel<typeof arJobRun>;
+export type ArJobRunInsert = typeof arJobRun.$inferInsert;
+
 export const arCommsArtefact = pgTable(
   "ArCommsArtefact",
   {
     id: uuid("id").primaryKey().notNull().defaultRandom(),
-    userId: uuid("userId")
+    userId: text("userId")
       .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+      .references(() => user.clerkId, { onDelete: "cascade" }),
     invoiceId: uuid("invoiceId")
       .notNull()
       .references(() => arInvoice.id, { onDelete: "cascade" }),
@@ -160,9 +270,9 @@ export const arNote = pgTable(
   "ArNote",
   {
     id: uuid("id").primaryKey().notNull().defaultRandom(),
-    userId: uuid("userId")
+    userId: text("userId")
       .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+      .references(() => user.clerkId, { onDelete: "cascade" }),
     invoiceId: uuid("invoiceId")
       .notNull()
       .references(() => arInvoice.id, { onDelete: "cascade" }),

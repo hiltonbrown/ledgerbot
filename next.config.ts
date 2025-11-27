@@ -4,6 +4,8 @@ const enablePartialPrerendering = process.env.NEXT_EXPERIMENTAL_PPR === "true";
 
 const nextConfig: NextConfig = {
   ...(enablePartialPrerendering ? { experimental: { ppr: true } } : {}),
+  // Explicitly enable Turbopack (Next.js 16 default)
+  turbopack: {},
   images: {
     remotePatterns: [
       {

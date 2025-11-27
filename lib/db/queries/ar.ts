@@ -185,6 +185,8 @@ export async function upsertContacts(
           .values({
             ...contact,
             userId,
+            createdAt: new Date(),
+            updatedAt: new Date(),
           })
           .returning();
         results.push(inserted);
@@ -192,7 +194,8 @@ export async function upsertContacts(
     }
 
     return results;
-  } catch (_error) {
+  } catch (error) {
+    console.error("[upsertContacts] Database error:", error);
     throw new ChatSDKError("bad_request:database", "Failed to upsert contacts");
   }
 }
@@ -230,7 +233,10 @@ export async function upsertInvoices(
           tax: sql`excluded."tax"`,
           total: sql`excluded."total"`,
           amountPaid: sql`excluded."amountPaid"`,
+          amountOutstanding: sql`excluded."amountOutstanding"`,
+          creditNoteAmount: sql`excluded."creditNoteAmount"`,
           status: sql`excluded."status"`,
+          ageingBucket: sql`excluded."ageingBucket"`,
           metadata: sql`excluded."metadata"`,
           updatedAt: sql`excluded."updatedAt"`,
         },
