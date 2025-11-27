@@ -1,7 +1,7 @@
 import "server-only";
 
 import { subMonths } from "date-fns";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import type { XeroClient } from "xero-node";
 import { db } from "@/lib/db/queries";
 import {
