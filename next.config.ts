@@ -14,20 +14,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  webpack: (config, { isServer }) => {
-    // Suppress Node.js deprecation warnings in development
-    if (isServer && process.env.NODE_ENV === "development") {
-      const originalWarn = process.emitWarning;
-      // biome-ignore lint/suspicious/noExplicitAny: emitWarning has complex overloads
-      process.emitWarning = (warning: any, ...args: any[]) => {
-        if (typeof warning === "string" && warning.includes("DEP0169")) {
-          return;
-        }
-        return originalWarn.call(process, warning, ...args);
-      };
-    }
-    return config;
-  },
 };
 
 export default nextConfig;

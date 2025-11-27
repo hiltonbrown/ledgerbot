@@ -121,8 +121,11 @@ describe("AR Logic", () => {
       ] as any[];
 
       const stats = calculateCustomerHistory(invoices, payments);
-      assert.strictEqual(stats.numLatePayments, 0);
+      // Overdue invoices with outstanding balance count as late payments
+      assert.strictEqual(stats.numLatePayments, 1);
       assert.strictEqual(stats.totalOutstanding, 50);
+      assert.strictEqual(stats.maxDaysLate, 10);
+      assert.strictEqual(stats.avgDaysLate, 10);
     });
   });
 

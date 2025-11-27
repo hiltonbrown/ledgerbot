@@ -2,7 +2,7 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { differenceInDays } from "date-fns";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db/queries";
 import { arContact, arCustomerHistory, arInvoice } from "@/lib/db/schema/ar";
 
@@ -114,10 +114,18 @@ export async function getCustomerInvoiceDetails(contactId: string) {
     throw new Error("Unauthorized");
   }
 
+  // Verify the contact belongs to the authenticated user
+  const contact = await db.query.arContact.findFirst({
+    where: (table) => and(eq(table.id, contactId), eq(table.userId, userId)),
+  });
+  if (!contact) {
+    throw new Error("Contact not found or unauthorized");
+  }
+
   const invoices = await db
     .select()
     .from(arInvoice)
-    .where(eq(arInvoice.contactId, contactId))
+    .where(and(eq(arInvoice.contactId, contactId), eq(arInvoice.userId, userId)))
     .orderBy(desc(arInvoice.dueDate));
 
   return invoices.map((inv) => ({

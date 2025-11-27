@@ -173,6 +173,9 @@ export const arCustomerHistory = pgTable(
     computedAtIdx: index("ar_customer_history_computed_at_idx").on(
       table.computedAt
     ),
+    userIdCustomerIdUnique: uniqueIndex(
+      "ar_customer_history_user_id_customer_id_unique"
+    ).on(table.userId, table.customerId),
   })
 );
 

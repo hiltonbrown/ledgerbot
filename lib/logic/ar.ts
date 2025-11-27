@@ -111,15 +111,14 @@ export function calculateCustomerHistory(
       outstanding > 0 &&
       isAfter(startOfDay(now), startOfDay(invoice.dueDate))
     ) {
-      // Currently overdue - consider this for maxDaysLate?
-      // Requirement says "late defined as payment_date > due_date".
-      // If not paid yet, technically it's not a "late payment" event yet, but it IS late.
-      // For risk scoring, current overdue days is very relevant.
-      // Let's include current overdue days in maxDaysLate calculation.
+      // Currently overdue - this IS a late payment for risk scoring purposes.
+      // Even though it's not yet fully paid, it counts as late for risk assessment.
       const currentDaysLate = differenceInDays(
         startOfDay(now),
         startOfDay(invoice.dueDate)
       );
+      numLatePayments++;
+      totalDaysLate += currentDaysLate;
       if (currentDaysLate > maxDaysLate) {
         maxDaysLate = currentDaysLate;
       }
