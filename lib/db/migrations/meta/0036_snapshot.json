@@ -3347,7 +3347,7 @@
         },
         "userId": {
           "name": "userId",
-          "type": "uuid",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         },
@@ -3458,8 +3458,8 @@
         }
       },
       "foreignKeys": {
-        "ArCommsArtefact_userId_User_id_fk": {
-          "name": "ArCommsArtefact_userId_User_id_fk",
+        "ArCommsArtefact_invoiceId_ArInvoice_id_fk": {
+          "name": "ArCommsArtefact_invoiceId_ArInvoice_id_fk",
           "tableFrom": "ArCommsArtefact",
           "tableTo": "User",
           "columnsFrom": [
@@ -3471,8 +3471,8 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "ArCommsArtefact_invoiceId_ArInvoice_id_fk": {
-          "name": "ArCommsArtefact_invoiceId_ArInvoice_id_fk",
+        "ArCommsArtefact_userId_User_clerkId_fk": {
+          "name": "ArCommsArtefact_userId_User_clerkId_fk",
           "tableFrom": "ArCommsArtefact",
           "tableTo": "ArInvoice",
           "columnsFrom": [
@@ -4239,7 +4239,7 @@
         },
         "userId": {
           "name": "userId",
-          "type": "uuid",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         },
@@ -4309,8 +4309,8 @@
         }
       },
       "foreignKeys": {
-        "ArNote_userId_User_id_fk": {
-          "name": "ArNote_userId_User_id_fk",
+        "ArNote_invoiceId_ArInvoice_id_fk": {
+          "name": "ArNote_invoiceId_ArInvoice_id_fk",
           "tableFrom": "ArNote",
           "tableTo": "User",
           "columnsFrom": [
@@ -4322,8 +4322,8 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "ArNote_invoiceId_ArInvoice_id_fk": {
-          "name": "ArNote_invoiceId_ArInvoice_id_fk",
+        "ArNote_userId_User_clerkId_fk": {
+          "name": "ArNote_userId_User_clerkId_fk",
           "tableFrom": "ArNote",
           "tableTo": "ArInvoice",
           "columnsFrom": [
