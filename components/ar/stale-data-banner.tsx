@@ -31,7 +31,8 @@ export function StaleDataBanner({ lastSyncDate }: StaleDataBannerProps) {
         <AlertTriangle className="h-4 w-4 text-yellow-600" />
         <AlertTitle className="text-yellow-900">Stale Data</AlertTitle>
         <AlertDescription className="text-yellow-800">
-          AR data is {Math.floor(hoursSinceSync)} hours old. Last synced {lastSyncDate.toLocaleString()}. Use "Sync from Xero" to refresh.
+          AR data is {Math.floor(hoursSinceSync)} hours old. Last synced{" "}
+          {lastSyncDate.toLocaleString()}. Use "Sync from Xero" to refresh.
         </AlertDescription>
       </Alert>
     );

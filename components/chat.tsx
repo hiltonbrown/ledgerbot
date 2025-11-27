@@ -2,7 +2,7 @@
 
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import { unstable_serialize } from "swr/infinite";
@@ -226,20 +226,23 @@ export function Chat({
   const searchParams = useSearchParams();
   const query = searchParams.get("query");
 
-  const [hasAppendedQuery, setHasAppendedQuery] = useState(false);
+  const hasAppendedQueryRef = useRef(false);
+
+  const router = useRouter();
 
   useEffect(() => {
     const textToSend = autoSendInput || query;
-    if (textToSend && !hasAppendedQuery) {
+    if (textToSend && !hasAppendedQueryRef.current) {
+      hasAppendedQueryRef.current = true;
+
       sendMessage({
         role: "user" as const,
         parts: [{ type: "text", text: textToSend }],
       });
 
-      setHasAppendedQuery(true);
-      window.history.replaceState({}, "", `/chat/${id}`);
+      router.replace(`/chat/${id}`);
     }
-  }, [query, autoSendInput, sendMessage, hasAppendedQuery, id]);
+  }, [query, autoSendInput, sendMessage, id, router]);
 
   const { data: votes } = useSWR<Vote[]>(
     messages.length >= 2 ? `/api/vote?chatId=${id}` : null,

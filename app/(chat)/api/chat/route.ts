@@ -53,7 +53,7 @@ import {
   getChatById,
   getMessageCountByUserId,
   getMessagesByChatId,
-  saveChat,
+  saveChatIfNotExists,
   saveMessages,
   updateChatLastContextById,
   updateChatVisiblityById,
@@ -269,7 +269,7 @@ export async function POST(request: Request) {
         modelId: selectedChatModel,
       });
 
-      await saveChat({
+      await saveChatIfNotExists({
         id,
         userId: user.id,
         title,

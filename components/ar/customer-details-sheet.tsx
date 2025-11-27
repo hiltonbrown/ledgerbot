@@ -71,7 +71,7 @@ export function CustomerDetailsSheet({
       riskScore: riskScore.toString(),
     });
 
-    router.push(`/chat/new?${params.toString()}`);
+    router.push(`/?${params.toString()}`);
   };
 
   return (

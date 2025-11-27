@@ -1822,7 +1822,7 @@ async function executeXeroToolOperation(
         );
 
         const where = searchTerm
-          ? `Name.Contains("${searchTerm}") OR EmailAddress.Contains("${searchTerm}")`
+          ? `(Name != null AND Name.Contains("${searchTerm}")) OR (EmailAddress != null AND EmailAddress.Contains("${searchTerm}"))`
           : undefined;
 
         // If specific page requested, fetch that page only
