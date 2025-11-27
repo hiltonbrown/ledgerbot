@@ -142,7 +142,6 @@ export default async function Page({ searchParams }: PageProps) {
           chatId: id,
           id: generateUUID(),
           role: "system",
-          content: contextPrompt,
           createdAt: new Date(),
           parts: [{ type: "text", text: contextPrompt }],
           attachments: [],

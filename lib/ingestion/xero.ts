@@ -128,7 +128,7 @@ export async function syncXeroData(userId: string) {
         number: invoice.invoiceNumber!,
         issueDate: new Date(invoice.date || new Date()),
         dueDate,
-        currency: invoice.currencyCode || "AUD",
+        currency: String(invoice.currencyCode || "AUD"),
         subtotal: (invoice.subTotal || 0).toString(),
         tax: (invoice.totalTax || 0).toString(),
         total: (invoice.total || 0).toString(),
@@ -185,7 +185,7 @@ export async function syncXeroData(userId: string) {
         contactId: localInvoice.contactId,
         amount: (payment.amount || 0).toString(),
         paidAt: new Date(payment.date || new Date()),
-        method: payment.paymentType || "Unknown",
+        method: payment.paymentType ? String(payment.paymentType) : "Unknown",
         reference: payment.reference,
         externalRef: payment.paymentID!,
         metadata: { xeroPayment: payment },
@@ -214,6 +214,14 @@ export async function syncXeroData(userId: string) {
     // Calculate and store customer history
     const history = calculateCustomerHistory(contactInvoices, contactPayments);
 
+    // Convert numeric fields to strings for database
+    const historyForDb = {
+      ...history,
+      totalOutstanding: history.totalOutstanding.toString(),
+      maxInvoiceOutstanding: history.maxInvoiceOutstanding.toString(),
+      totalBilledLast12Months: history.totalBilledLast12Months.toString(),
+    };
+
     await db
       .insert(arCustomerHistory)
       .values({
@@ -221,14 +229,14 @@ export async function syncXeroData(userId: string) {
         customerId: contact.id,
         startDate,
         endDate: new Date(),
-        ...history,
+        ...historyForDb,
       })
       .onConflictDoUpdate({
         target: [arCustomerHistory.userId, arCustomerHistory.customerId],
         set: {
           startDate,
           endDate: new Date(),
-          ...history,
+          ...historyForDb,
           computedAt: new Date(),
         },
       });
@@ -333,11 +341,11 @@ async function getContactMap(userId: string) {
   return map;
 }
 
-function mapInvoiceStatus(status?: string): string {
+function mapInvoiceStatus(status?: string | { toString(): string }): string {
   // Map Xero status to our status
   // DRAFT, SUBMITTED, AUTHORISED, PAID, VOIDED
   if (!status) return "unknown";
-  const s = status.toUpperCase();
+  const s = status.toString().toUpperCase();
   if (s === "PAID") return "paid";
   if (s === "VOIDED") return "voided";
   if (s === "AUTHORISED") return "awaiting_payment";

@@ -253,13 +253,6 @@
       "when": 1764162779884,
       "tag": "0035_recreate_ar_tables",
       "breakpoints": true
-    },
-    {
-      "idx": 36,
-      "version": "7",
-      "when": 1764244611576,
-      "tag": "0036_slim_mongu",
-      "breakpoints": true
     }
   ]
 }
