@@ -116,8 +116,7 @@ export async function getCustomerInvoiceDetails(contactId: string) {
 
   // Verify the contact belongs to the authenticated user
   const contact = await db.query.arContact.findFirst({
-    where: (table, { and, eq }) =>
-      and(eq(table.id, contactId), eq(table.userId, userId)),
+    where: (table) => and(eq(table.id, contactId), eq(table.userId, userId)),
   });
   if (!contact) {
     throw new Error("Contact not found or unauthorized");
