@@ -65,7 +65,7 @@ export default async function Page({ searchParams }: PageProps) {
     }> = [];
 
     if (customerId) {
-      // Fetch contact details from AR tables
+      // Fetch contact details from AR tables scoped to the current user
       const contact = await db.query.arContact.findFirst({
         where: and(
           eq(arContact.id, customerId),
