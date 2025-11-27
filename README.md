@@ -336,7 +336,7 @@ LedgerBot includes dedicated agent workspaces optimized for specific accounting 
 **Features:**
 - **Interactive Ageing Report**: Real-time dashboard with sorting/filtering by risk, outstanding amount, overdue buckets
 - **Risk Scoring (0-1 scale)**: AI-powered assessment based on payment history, days late, invoice age
-- **Xero Integration**: Automated nightly sync of invoices, payments, contacts (last 24 months)
+- **Xero Integration**: Sync invoices, payments, and contacts on demand via the "Sync from Xero" button
 - **AI-Powered Follow-Up**: Generate risk-appropriate collection messages (polite/firm/final tones)
 - **Monitoring Dashboard**: Track sync jobs, DSO metrics, data freshness alerts
 - **Customer Insights**: Invoice details, payment history, credit terms analysis
@@ -356,7 +356,6 @@ LedgerBot includes dedicated agent workspaces optimized for specific accounting 
 
 **Technical Details:**
 - **Database Schema**: `ArContact`, `ArInvoice`, `ArPayment`, `ArCustomerHistory`, `ArJobRun`
-- **Cron Job**: Nightly sync at 4 AM via `/api/cron/ar-sync`
 - **Risk Algorithm**: Weighted scoring on 7 factors (late payment rate, avg days late, max days late, 90+ bucket %, outstanding ratio, days since last payment, credit terms)
 
 **Documentation**: See [`docs/AR_AGENT.md`](docs/AR_AGENT.md) for full setup guide, architecture diagrams, and developer documentation.

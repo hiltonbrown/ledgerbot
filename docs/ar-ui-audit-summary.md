@@ -167,7 +167,6 @@ export function useCustomerInvoices(contactId: string | null) {
 
 Running `pnpm lint` on AR component showed existing lint warnings are **unrelated to AR components**:
 - ✅ No AR-specific lint errors
-- ✅ Existing warnings in `app/api/cron/ar-sync/route.ts` (schema type issues, already documented, non-blocking)
 
 ## Conclusion
 

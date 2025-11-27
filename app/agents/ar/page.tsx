@@ -1,5 +1,4 @@
 import { auth } from "@clerk/nextjs/server";
-import { desc, eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import { AgeingReportTable } from "@/components/ar/ageing-report-table";
 import { ARAgeingChart } from "@/components/ar/ar-ageing-chart";
@@ -7,8 +6,6 @@ import { ARKPICards } from "@/components/ar/ar-kpi-cards";
 import { StaleDataBanner } from "@/components/ar/stale-data-banner";
 import { SyncButton } from "@/components/ar/sync-button";
 import { getAgeingReportData, getARKPIs } from "@/lib/actions/ar";
-import { db } from "@/lib/db/queries";
-import { arJobRun } from "@/lib/db/schema/ar";
 
 export const metadata: Metadata = {
   title: "Accounts Receivable | LedgerBot",
@@ -16,22 +13,10 @@ export const metadata: Metadata = {
 };
 
 export default async function AgeingReportPage() {
-  const { userId } = await auth();
+  await auth();
   const data = await getAgeingReportData();
   const kpis = await getARKPIs();
-  const lastUpdated = data.length > 0 ? data[0].lastUpdated : new Date();
-
-  // Fetch latest job run for stale data check
-  let latestJob: typeof arJobRun.$inferSelect | null = null;
-  if (userId) {
-    const jobs = await db
-      .select()
-      .from(arJobRun)
-      .where(eq(arJobRun.userId, userId))
-      .orderBy(desc(arJobRun.startedAt))
-      .limit(1);
-    latestJob = jobs[0] || null;
-  }
+  const lastUpdated = data.length > 0 ? data[0].lastUpdated : null;
 
   return (
     <div className="container mx-auto py-10">
@@ -46,16 +31,13 @@ export default async function AgeingReportPage() {
         </div>
         <div className="flex items-center gap-4">
           <div className="text-muted-foreground text-sm">
-            Last updated: {lastUpdated.toLocaleString()}
+            Last updated: {lastUpdated ? lastUpdated.toLocaleString() : "N/A"}
           </div>
           <SyncButton />
         </div>
       </div>
 
-      <StaleDataBanner
-        lastSyncDate={latestJob?.completedAt || null}
-        syncStatus={latestJob?.status || null}
-      />
+      <StaleDataBanner lastSyncDate={lastUpdated} />
 
       {/* KPI Cards */}
       <div className="mb-6">
