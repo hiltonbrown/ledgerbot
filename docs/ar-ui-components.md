@@ -10,9 +10,7 @@ The AR (Accounts Receivable) UI provides an interactive dashboard for viewing cu
 
 ```
 app/agents/ar/
-├── page.tsx                          # Server Component - Main page
-├── monitoring/
-│   └── page.tsx                      # Monitoring dashboard
+└── page.tsx                          # Server Component - Main page
 └── customer/
     └── [id]/                         # (Future) Customer detail pages
 
@@ -40,7 +38,6 @@ lib/db/schema/
 ```
 page.tsx (Server Component)
 ├── data fetching via getAgeingReportData()
-├── job status fetching via database query
 └── renders:
     ├── StaleDataBanner (Client)
     └── AgeingReportTable (Client)
@@ -57,8 +54,7 @@ User navigates to /agents/ar
 page.tsx (Server Component) executes
     ↓
 Fetches data in parallel:
-├── getAgeingReportData() → Customer AR summary
-└── Database query → Latest job run status
+└── getAgeingReportData() → Customer AR summary
     ↓
 Server renders HTML with data
     ↓
@@ -121,16 +117,14 @@ Auto-sends prompt to chat
 
 **Key Features**:
 - Fetches ageing report data
-- Fetches latest job run status
 - Server-side rendering for fast initial load
-- Passes data to client components
+- Passes data to client components, including stale data metadata
 
 **Props**: None (uses searchParams from Next.js)
 
 **Data Dependencies**:
 ```typescript
 - getAgeingReportData(): AgeingReportItem[]
-- arJobRun database query: ArJobRun | null
 ```
 
 ---
@@ -216,20 +210,18 @@ handleStartChat() {
 
 ### 4. `components/ar/stale-data-banner.tsx`
 
-**Type**: Client Component  
-**Purpose**: Alert users if data is stale or sync failed
+**Type**: Client Component
+**Purpose**: Alert users if data is stale or needs manual sync
 
 **Props**:
 ```typescript
 interface StaleDataBannerProps {
   lastSyncDate: Date | null;
-  syncStatus: string | null;
 }
 ```
 
 **Logic**:
-- No sync: Show error
-- Failed sync: Show error with link to monitoring
+- No sync: Show prompt to trigger manual sync
 - > 24 hours old: Show warning
 - Otherwise: Render null (no banner)
 
@@ -382,9 +374,9 @@ pnpm test:a11y
 3. Failed data sync
 
 **Solutions**:
-1. Check monitoring dashboard: `/agents/ar/monitoring`
+1. Trigger "Sync from Xero" to refresh data
 2. Clear all filters
-3. Manually trigger sync or seed test data
+3. Seed test data if developing locally
 
 ---
 

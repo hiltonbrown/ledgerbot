@@ -74,9 +74,7 @@ export const Details = () => { }    // Too generic
 ```
 app/
 └── agents/ar/
-    ├── page.tsx              # Route component (Server)
-    └── monitoring/
-        └── page.tsx          # Nested route
+    └── page.tsx              # Route component (Server)
 
 components/
 └── ar/

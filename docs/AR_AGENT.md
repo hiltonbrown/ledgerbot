@@ -6,11 +6,10 @@ The A/R Agent is an intelligent accounts receivable management system integrated
 
 ### Key Features
 
-- **Data Ingestion**: Automated nightly sync from Xero API for invoices, payments, and contacts
+- **Data Ingestion**: Manual sync from Xero via the "Sync from Xero" button
 - **Risk Scoring**: 0-1 scale risk assessment based on payment history and ageing patterns
 - **Interactive Ageing Report**: Real-time dashboard at `/agents/ar` with sorting and filtering
 - **AI-Powered Follow-Up**: Generate tailored collection messages via integrated chat
-- **Monitoring Dashboard**: Track sync jobs and data freshness at `/agents/ar/monitoring`
 - **Automated Alerts**: Stale data warnings and high-risk customer notifications
 
 ## System Architecture
@@ -21,16 +20,16 @@ The A/R Agent is an intelligent accounts receivable management system integrated
 │  (Source Data)  │
 └────────┬────────┘
          │
-         │ Nightly Cron (4 AM)
+         │ Manual Sync (Sync from Xero button)
          ▼
 ┌─────────────────────────────────┐
 │  Data Ingestion Pipeline        │
-│  (/app/api/cron/ar-sync)        │
+│  (/app/api/agents/ar/sync)      │
 │  - Fetch invoices (24 months)   │
-│  - Fetch payments                │
-│  - Fetch contacts                │
-│  - Calculate ageing buckets      │
-│  - Compute risk scores           │
+│  - Fetch payments               │
+│  - Fetch contacts               │
+│  - Calculate ageing buckets     │
+│  - Compute risk scores          │
 └────────┬────────────────────────┘
          │
          ▼
@@ -46,13 +45,13 @@ The A/R Agent is an intelligent accounts receivable management system integrated
          ├────────────────────────┐
          │                        │
          ▼                        ▼
-┌──────────────────┐    ┌─────────────────────┐
-│  Ageing Report   │    │  Monitoring         │
-│  /agents/ar      │    │  /agents/ar/monitor │
-│  - Table view    │    │  - Job stats        │
-│  - Risk badges   │    │  - Error logs       │
-│  - Filters       │    │  - DSO metrics      │
-└────────┬─────────┘    └─────────────────────┘
+┌──────────────────┐
+│  Ageing Report   │
+│  /agents/ar      │
+│  - Table view    │
+│  - Risk badges   │
+│  - Filters       │
+└────────┬─────────┘
          │
          │ Click "Start Follow-Up"
          ▼
@@ -93,9 +92,6 @@ AI_GATEWAY_API_KEY="your-vercel-ai-gateway-key"
 # Clerk Authentication
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="..."
 CLERK_SECRET_KEY="..."
-
-# Cron Security
-CRON_SECRET="generate-random-secret-here"
 ```
 
 ### Database Setup
@@ -125,12 +121,12 @@ pnpm dev
 
 ### Initial Data Sync
 
-The A/R data syncs automatically via cron, but for local testing:
+Use the in-product "Sync from Xero" button or trigger the API directly:
 
 ```bash
-# Manually trigger sync (requires CRON_SECRET)
-curl -H "Authorization: Bearer $CRON_SECRET" \
-  http://localhost:3000/api/cron/ar-sync
+curl -X POST http://localhost:3000/api/agents/ar/sync \
+  -H "Content-Type: application/json" \
+  -d '{}'
 ```
 
 ## Developer Guide
@@ -212,11 +208,9 @@ lib/
 
 app/
 ├── agents/ar/
-│   ├── page.tsx           # Ageing report UI
-│   └── monitoring/
-│       └── page.tsx       # Job monitoring dashboard
-└── api/cron/ar-sync/
-    └── route.ts           # Scheduled sync job
+│   └── page.tsx           # Ageing report UI
+└── api/agents/ar/sync/
+    └── route.ts           # Manual sync endpoint
 
 components/ar/
 ├── ageing-report-table.tsx      # Main table component
@@ -257,7 +251,7 @@ Aggregated customer stats including:
 - `percentInvoices90Plus`: % of severely overdue invoices
 
 #### `ArJobRun`
-Job execution logs with stats and errors.
+Job execution logs with stats and errors (legacy; no new rows are written without scheduled jobs).
 
 ## Risk Scoring Algorithm
 
@@ -292,20 +286,12 @@ See [`docs/ar-test-plan.md`](./ar-test-plan.md) for comprehensive test coverage.
 
 ## Troubleshooting
 
-### Sync Job Failures
-
-Check `/agents/ar/monitoring` for error details. Common issues:
-
-- **Xero token expired**: Re-authorize Xero connection
-- **Rate limit (429)**: Job will retry with backoff
-- **Invalid data**: Check error logs for specific invoice/contact IDs
-
 ### Stale Data Warning
 
 If data is >24 hours old:
-1. Check job status in monitoring dashboard
-2. Review error logs for last failed job
-3. Manually trigger sync if needed
+1. Trigger a manual sync from `/agents/ar` using "Sync from Xero"
+2. Confirm success via the stale data banner timestamps
+3. Review server logs if sync fails
 
 ### Missing Customers in Report
 
