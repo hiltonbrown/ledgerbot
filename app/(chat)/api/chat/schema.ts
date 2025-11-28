@@ -43,7 +43,6 @@ export const postRequestBodySchema = z.object({
     .transform(() => "private" as const),
   streamReasoning: z.boolean().optional(),
   showReasoningPreference: z.boolean().optional(),
-  deepResearch: z.boolean().optional(),
 });
 
 export type PostRequestBody = z.infer<typeof postRequestBodySchema>;
