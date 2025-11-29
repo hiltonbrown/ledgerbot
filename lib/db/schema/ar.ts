@@ -310,6 +310,60 @@ export const arNote = pgTable(
 export type ArNote = InferSelectModel<typeof arNote>;
 export type ArNoteInsert = typeof arNote.$inferInsert;
 
+export const arCreditNote = pgTable(
+  "ArCreditNote",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.clerkId, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    contactId: uuid("contactId")
+      .notNull()
+      .references(() => arContact.id, { onDelete: "cascade" }),
+    number: varchar("number", { length: 50 }).notNull(),
+    issueDate: timestamp("issueDate").notNull(),
+    currency: varchar("currency", { length: 3 }).notNull().default("AUD"),
+    subtotal: numeric("subtotal", { precision: 10, scale: 2 }).notNull(),
+    tax: numeric("tax", { precision: 10, scale: 2 }).notNull().default("0"),
+    total: numeric("total", { precision: 10, scale: 2 }).notNull(),
+    amountAllocated: numeric("amountAllocated", {
+      precision: 10,
+      scale: 2,
+    })
+      .notNull()
+      .default("0"),
+    amountRemaining: numeric("amountRemaining", {
+      precision: 10,
+      scale: 2,
+    })
+      .notNull()
+      .default("0"),
+    status: varchar("status", { length: 20 }).notNull().default("draft"), // draft, authorised, paid, voided
+    externalRef: varchar("externalRef", { length: 255 }).notNull(), // Xero credit note ID
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  },
+  (table) => ({
+    userIdIdx: index("ar_credit_note_user_id_idx").on(table.userId),
+    contactIdIdx: index("ar_credit_note_contact_id_idx").on(table.contactId),
+    statusIdx: index("ar_credit_note_status_idx").on(table.status),
+    issueDateIdx: index("ar_credit_note_issue_date_idx").on(table.issueDate),
+    externalRefIdx: index("ar_credit_note_external_ref_idx").on(
+      table.externalRef
+    ),
+    externalRefUserIdUnique: uniqueIndex(
+      "ar_credit_note_external_ref_user_id_unique"
+    ).on(table.externalRef, table.userId),
+  })
+);
+
+export type ArCreditNote = InferSelectModel<typeof arCreditNote>;
+export type ArCreditNoteInsert = typeof arCreditNote.$inferInsert;
+
 // Follow-up Context Types
 export type FollowUpTone = "polite" | "firm" | "final";
 

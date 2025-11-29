@@ -267,6 +267,13 @@
       "when": 1764419895498,
       "tag": "0037_fast_supreme_intelligence",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1764455772113,
+      "tag": "0038_short_killer_shrike",
+      "breakpoints": true
     }
   ]
 }

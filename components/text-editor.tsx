@@ -134,22 +134,21 @@ function PureEditor({
   }, [content, status]);
 
   useEffect(() => {
-    if (editorRef.current?.state.doc && content) {
+    const view = editorRef.current;
+
+    if (view?.state?.doc && content) {
       const projectedSuggestions = projectWithPositions(
-        editorRef.current.state.doc,
+        view.state.doc,
         suggestions
       ).filter(
         (suggestion) => suggestion.selectionStart && suggestion.selectionEnd
       );
 
-      const decorations = createDecorations(
-        projectedSuggestions,
-        editorRef.current
-      );
+      const decorations = createDecorations(projectedSuggestions, view);
 
-      const transaction = editorRef.current.state.tr;
+      const transaction = view.state.tr;
       transaction.setMeta(suggestionsPluginKey, { decorations });
-      editorRef.current.dispatch(transaction);
+      view.dispatch(transaction);
     }
   }, [suggestions, content]);
 

@@ -6,6 +6,7 @@ import type { XeroClient } from "xero-node";
 import { db } from "@/lib/db/queries";
 import {
   arContact,
+  arCreditNote,
   arCustomerHistory,
   arInvoice,
   arPayment,
@@ -193,7 +194,68 @@ export async function syncXeroData(userId: string) {
       .onConflictDoNothing(); // Payments are immutable usually, but we could update if needed
   }
 
-  // 4. Calculate Customer History
+  // 4. Fetch Credit Notes (Last 24 Months)
+  console.log("[AR Ingestion] Fetching credit notes...");
+  const creditNotes = await fetchAllCreditNotes(
+    xeroClient,
+    tenantId,
+    whereClause
+  );
+  console.log(`[AR Ingestion] Fetched ${creditNotes.length} credit notes`);
+
+  for (const creditNote of creditNotes) {
+    if (
+      !creditNote.contact?.contactID ||
+      !contactMap.has(creditNote.contact.contactID)
+    ) {
+      console.warn(
+        `[AR Ingestion] Skipping credit note ${creditNote.creditNoteID} - Contact not found`
+      );
+      continue;
+    }
+
+    const contactId = contactMap.get(creditNote.contact.contactID)!;
+    const total = creditNote.total || 0;
+
+    // Calculate allocated amount from allocations array
+    const amountAllocated =
+      creditNote.allocations?.reduce(
+        (sum: number, alloc: any) => sum + (alloc.appliedAmount || 0),
+        0
+      ) || 0;
+    const amountRemaining = total - amountAllocated;
+
+    await db
+      .insert(arCreditNote)
+      .values({
+        userId,
+        contactId,
+        number: creditNote.creditNoteNumber || "UNKNOWN",
+        issueDate: new Date(creditNote.date || new Date()),
+        currency: String(creditNote.currencyCode || "AUD"),
+        subtotal: (creditNote.subTotal || 0).toString(),
+        tax: (creditNote.totalTax || 0).toString(),
+        total: total.toString(),
+        amountAllocated: amountAllocated.toString(),
+        amountRemaining: amountRemaining.toString(),
+        status: mapCreditNoteStatus(creditNote.status),
+        externalRef: creditNote.creditNoteID!,
+        metadata: { xeroCreditNote: creditNote },
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: [arCreditNote.externalRef, arCreditNote.userId],
+        set: {
+          amountAllocated: amountAllocated.toString(),
+          amountRemaining: amountRemaining.toString(),
+          status: mapCreditNoteStatus(creditNote.status),
+          metadata: { xeroCreditNote: creditNote },
+          updatedAt: new Date(),
+        },
+      });
+  }
+
+  // 5. Calculate Customer History
   console.log("[AR Ingestion] Calculating customer history...");
   const allContacts = await db
     .select()
@@ -249,7 +311,7 @@ export async function syncXeroData(userId: string) {
 
 async function fetchAllContacts(xeroClient: XeroClient, tenantId: string) {
   let page = 1;
-  const allContacts = [];
+  const allContacts: any[] = [];
   while (true) {
     const response = await xeroClient.accountingApi.getContacts(
       tenantId,
@@ -260,7 +322,9 @@ async function fetchAllContacts(xeroClient: XeroClient, tenantId: string) {
       page
     );
     const contacts = response.body.contacts || [];
-    if (contacts.length === 0) break;
+    if (contacts.length === 0) {
+      break;
+    }
     allContacts.push(...contacts);
     page++;
   }
@@ -273,7 +337,7 @@ async function fetchAllInvoices(
   where?: string
 ) {
   let page = 1;
-  const allInvoices = [];
+  const allInvoices: any[] = [];
   while (true) {
     // getInvoices(xeroTenantId: string, ifModifiedSince?: Date, where?: string, order?: string, iDs?: string[], invoiceNumbers?: string[], contactIDs?: string[], statuses?: string[], page?: number, includeArchived?: boolean, createdByMyApp?: boolean, unitdp?: number)
     const response = await xeroClient.accountingApi.getInvoices(
@@ -288,7 +352,9 @@ async function fetchAllInvoices(
       page
     );
     const invoices = response.body.invoices || [];
-    if (invoices.length === 0) break;
+    if (invoices.length === 0) {
+      break;
+    }
     allInvoices.push(...invoices);
     page++;
   }
@@ -336,18 +402,76 @@ async function getContactMap(userId: string) {
 
   const map = new Map<string, string>();
   for (const c of contacts) {
-    if (c.externalRef) map.set(c.externalRef, c.id);
+    if (c.externalRef) {
+      map.set(c.externalRef, c.id);
+    }
   }
   return map;
+}
+
+async function fetchAllCreditNotes(
+  xeroClient: XeroClient,
+  tenantId: string,
+  where?: string
+) {
+  let page = 1;
+  const allCreditNotes: any[] = [];
+  while (true) {
+    const response = await xeroClient.accountingApi.getCreditNotes(
+      tenantId,
+      undefined,
+      where,
+      undefined,
+      undefined,
+      page
+    );
+    const creditNotes = response.body.creditNotes || [];
+    if (creditNotes.length === 0) {
+      break;
+    }
+    // Filter for ACCRECCREDIT (sales credit notes)
+    allCreditNotes.push(
+      ...creditNotes.filter((cn) => String(cn.type) === "ACCRECCREDIT")
+    );
+    page++;
+  }
+  return allCreditNotes;
 }
 
 function mapInvoiceStatus(status?: string | { toString(): string }): string {
   // Map Xero status to our status
   // DRAFT, SUBMITTED, AUTHORISED, PAID, VOIDED
-  if (!status) return "unknown";
+  if (!status) {
+    return "unknown";
+  }
   const s = status.toString().toUpperCase();
-  if (s === "PAID") return "paid";
-  if (s === "VOIDED") return "voided";
-  if (s === "AUTHORISED") return "awaiting_payment";
+  if (s === "PAID") {
+    return "paid";
+  }
+  if (s === "VOIDED") {
+    return "voided";
+  }
+  if (s === "AUTHORISED") {
+    return "awaiting_payment";
+  }
+  return s.toLowerCase();
+}
+
+function mapCreditNoteStatus(status?: string | { toString(): string }): string {
+  // Map Xero credit note status to our status
+  // DRAFT, SUBMITTED, AUTHORISED, PAID, VOIDED
+  if (!status) {
+    return "draft";
+  }
+  const s = status.toString().toUpperCase();
+  if (s === "AUTHORISED") {
+    return "authorised";
+  }
+  if (s === "PAID") {
+    return "paid";
+  }
+  if (s === "VOIDED") {
+    return "voided";
+  }
   return s.toLowerCase();
 }

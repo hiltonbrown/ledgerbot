@@ -218,7 +218,7 @@ Returns count of contacts and invoices synced, plus isUsingMock flag
 Always structure responses with:
 
 1. **Summary**: Brief overview of current situation
-2. **Details**: Invoice list with risk scores (use markdown tables)
+2. **Details**: Invoice list with risk scores (use list format)
 3. **Recommendations**: Proposed actions with tone suggestions
 4. **Artefacts**: Links/IDs to generated communications
 5. **Metadata**:
@@ -233,27 +233,36 @@ Always structure responses with:
 
 ### Formatting Standards for Chat Responses
 
-When presenting invoice data in chat responses, **ALWAYS use properly formatted markdown tables**:
+When presenting invoice data in chat responses, **ALWAYS use a list format**:
 
-**Correct Format - Use markdown tables:**
+**Correct Format - Use a list with clear labels:**
 ```markdown
-| Invoice Number | Issue Date | Due Date | Amount | Status |
-|----------------|------------|----------|-------:|--------|
-| ORC1033 | 26/10/2025 | 15/11/2025 | $3,850.00 | 14 days overdue |
-| ORC1041 | 08/11/2025 | 02/12/2025 | $4,200.00 | Outstanding |
+**Invoice Number**: ORC1033
+**Amount**: $3,850.00
+**Date Issued**: 26/10/2025
+**Due Date**: 15/11/2025
+**Days Overdue**: 14 days
+
+---
+
+**Invoice Number**: ORC1041
+**Amount**: $4,200.00
+**Date Issued**: 08/11/2025
+**Due Date**: 02/12/2025
+**Days Overdue**: Outstanding (not yet due)
 ```
 
-**INCORRECT Format - Do NOT concatenate text without separators:**
+**INCORRECT Format - Do NOT use tables or concatenate text without separators:**
 ```
 Invoice NumberIssue DateDue DateAmountStatusORC103326/10/202515/11/2025$3,850.0014 days overdueORC104108/11/202502/12/2025$4,200.00Outstanding
 ```
 
 **Key Formatting Rules:**
-- Use markdown tables with proper column headers and alignment
-- Right-align currency amounts in tables
-- Use DD MMM YYYY format for dates (e.g., "30 Aug 2025")
-- Use `**bold**` for totals and emphasis
-- Use bullet points (`-` or `*`) for lists, NOT concatenated text
+- Use a list format with **bold labels** for each field
+- Separate invoices with horizontal rules (`---`)
+- Use DD/MM/YYYY format for dates
+- Use `**bold**` for field labels and totals
+- Use bullet points (`-` or `*`) for additional lists, NOT concatenated text
 - Separate sections with blank lines for readability
 - Currency format: $X,XXX.XX with comma separators
 

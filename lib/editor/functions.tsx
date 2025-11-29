@@ -1,33 +1,22 @@
 "use client";
 
-import { defaultMarkdownSerializer } from "prosemirror-markdown";
-import { DOMParser, type Node } from "prosemirror-model";
+import {
+  defaultMarkdownParser,
+  defaultMarkdownSerializer,
+} from "prosemirror-markdown";
+import type { Node } from "prosemirror-model";
 import { Decoration, DecorationSet, type EditorView } from "prosemirror-view";
-import { renderToString } from "react-dom/server";
-
-import { Response } from "@/components/elements/response";
 
 import { documentSchema } from "./config";
 import { createSuggestionWidget, type UISuggestion } from "./suggestions";
 
 export const buildDocumentFromContent = (content: string) => {
-  // Safety check for browser environment
-  if (typeof document === "undefined") {
-    console.error("buildDocumentFromContent called in non-browser environment");
-    // Return empty document as fallback
-    return documentSchema.node("doc", null, [
-      documentSchema.node("paragraph", null, [
-        documentSchema.text(content || ""),
-      ]),
-    ]);
-  }
-
   try {
-    const parser = DOMParser.fromSchema(documentSchema);
-    const stringFromMarkdown = renderToString(<Response>{content}</Response>);
-    const tempContainer = document.createElement("div");
-    tempContainer.innerHTML = stringFromMarkdown;
-    return parser.parse(tempContainer);
+    const document = defaultMarkdownParser.parse(content);
+    if (!document) {
+      throw new Error("Failed to parse markdown content");
+    }
+    return documentSchema.nodeFromJSON(document.toJSON());
   } catch (error) {
     console.error("Error building document from content:", error);
     // Return simple text document as fallback
@@ -47,6 +36,10 @@ export const createDecorations = (
   suggestions: UISuggestion[],
   view: EditorView
 ) => {
+  if (!view || !view.state) {
+    return DecorationSet.empty;
+  }
+
   const decorations: Decoration[] = [];
 
   for (const suggestion of suggestions) {

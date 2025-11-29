@@ -2,9 +2,14 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { differenceInDays } from "date-fns";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db/queries";
-import { arContact, arCustomerHistory, arInvoice } from "@/lib/db/schema/ar";
+import {
+  arContact,
+  arCreditNote,
+  arCustomerHistory,
+  arInvoice,
+} from "@/lib/db/schema/ar";
 
 export type AgeingReportItem = {
   contactId: string;
@@ -16,6 +21,8 @@ export type AgeingReportItem = {
   ageing31_60: number;
   ageing61_90: number;
   ageing90Plus: number;
+  unallocatedCreditNotes: number;
+  netOutstanding: number;
   riskScore: number;
   lastPaymentDate: Date | null;
   creditTermsDays: number;
@@ -81,6 +88,26 @@ export async function getAgeingReportData(): Promise<AgeingReportItem[]> {
     }
   }
 
+  // Fetch unallocated credit notes
+  const creditNotes = await db
+    .select({
+      contactId: arCreditNote.contactId,
+      amountRemaining: arCreditNote.amountRemaining,
+    })
+    .from(arCreditNote)
+    .where(
+      and(
+        eq(arCreditNote.userId, userId),
+        sql`${arCreditNote.amountRemaining} > 0`
+      )
+    );
+
+  const creditNoteMap = new Map<string, number>();
+  for (const cn of creditNotes) {
+    const current = creditNoteMap.get(cn.contactId) || 0;
+    creditNoteMap.set(cn.contactId, current + Number(cn.amountRemaining));
+  }
+
   return results
     .map(({ contact, history }) => {
       const buckets = bucketMap.get(contact.id) || {
@@ -90,24 +117,28 @@ export async function getAgeingReportData(): Promise<AgeingReportItem[]> {
         "61-90": 0,
         "90+": 0,
       };
+      const unallocatedCredit = creditNoteMap.get(contact.id) || 0;
+      const totalOutstanding = Number(history.totalOutstanding);
 
       return {
         contactId: contact.id,
         customerName: contact.name,
         email: contact.email,
-        totalOutstanding: Number(history.totalOutstanding),
+        totalOutstanding,
         ageingCurrent: buckets.Current,
         ageing1_30: buckets["1-30"],
         ageing31_60: buckets["31-60"],
         ageing61_90: buckets["61-90"],
         ageing90Plus: buckets["90+"],
+        unallocatedCreditNotes: unallocatedCredit,
+        netOutstanding: totalOutstanding - unallocatedCredit,
         riskScore: history.riskScore || 0,
         lastPaymentDate: history.lastPaymentDate,
         creditTermsDays: history.creditTermsDays || 0,
         lastUpdated: history.computedAt,
       };
     })
-    .filter((item) => item.totalOutstanding !== 0);
+    .filter((item) => item.netOutstanding !== 0);
 }
 
 export async function getCustomerInvoiceDetails(contactId: string) {
@@ -175,6 +206,20 @@ export async function getARKPIs(): Promise<ARKPIs> {
     0
   );
 
+  // Get unallocated credit notes
+  const creditNotes = await db
+    .select()
+    .from(arCreditNote)
+    .where(eq(arCreditNote.userId, userId));
+
+  const totalUnallocatedCredit = creditNotes.reduce(
+    (sum, cn) => sum + Number(cn.amountRemaining),
+    0
+  );
+
+  // Net outstanding = total outstanding - unallocated credit
+  const netOutstanding = totalOutstanding - totalUnallocatedCredit;
+
   // Count active debtors (contacts with outstanding invoices)
   const activeDebtorIds = new Set(
     invoices
@@ -234,7 +279,7 @@ export async function getARKPIs(): Promise<ARKPIs> {
   }
 
   return {
-    totalOutstanding,
+    totalOutstanding: netOutstanding, // Use net outstanding (after credits)
     activeDebtors,
     daysReceivableOutstanding,
     overdueInvoices: overdueInvoices.length,

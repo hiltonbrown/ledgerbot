@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Bot,
   Files,
   LifeBuoy,
   Lightbulb,
@@ -111,45 +110,6 @@ export function AppSidebar({
       title: "Chat",
       url: "/",
       icon: MessageSquare,
-    },
-    {
-      title: "Agents",
-      url: "/agents",
-      icon: Bot,
-      items: [
-        {
-          title: "Overview",
-          url: "/agents",
-        },
-        {
-          title: "Document Processing",
-          url: "/agents/docmanagement",
-        },
-        {
-          title: "Analytics",
-          url: "/agents/analytics",
-        },
-        {
-          title: "Forecasting",
-          url: "/agents/forecasting",
-        },
-        {
-          title: "Accounts Payable",
-          url: "/agents/ap",
-        },
-        {
-          title: "Accounts Receivable",
-          url: "/agents/ar",
-        },
-        {
-          title: "Q&A",
-          url: "/agents/qanda",
-        },
-        {
-          title: "Workflow",
-          url: "/agents/workflow",
-        },
-      ],
     },
     {
       title: "Files",
