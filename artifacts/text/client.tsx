@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { toast } from "sonner";
 import { Artifact } from "@/components/create-artifact";
 import { DiffView } from "@/components/diffview";
@@ -17,94 +16,6 @@ import { getSuggestions } from "../actions";
 
 type TextArtifactMetadata = {
   suggestions: Suggestion[];
-};
-
-const INSTRUCTION_PREFIXES = [
-  "create ",
-  "draft ",
-  "write ",
-  "generate ",
-  "please ",
-  "kindly ",
-  "compose ",
-];
-
-const INSTRUCTION_HINTS = [
-  "include ",
-  "ensure ",
-  "following ",
-  "based on ",
-  "using ",
-  "provide ",
-  "should ",
-  "must ",
-  "context",
-  "requirements",
-];
-
-const isConversationRoleLine = (line: string) => {
-  return /^(user|assistant|system)\s*:/i.test(line);
-};
-
-const sanitizeDocumentContent = (value: string) => {
-  if (!value) {
-    return value;
-  }
-
-  const lines = value.split("\n");
-
-  let startIndex = 0;
-  let removedInstructionBlock = false;
-
-  while (startIndex < lines.length) {
-    const line = lines[startIndex].trim();
-
-    if (!line) {
-      startIndex += 1;
-      continue;
-    }
-
-    const lower = line.toLowerCase();
-    const startsWithKeyword = INSTRUCTION_PREFIXES.some((prefix) =>
-      lower.startsWith(prefix)
-    );
-    const hasInstructionHint =
-      INSTRUCTION_HINTS.some((hint) => lower.includes(hint)) ||
-      lower.endsWith(":");
-    const isConversationLine =
-      lower.startsWith("conversation") ||
-      lower.startsWith("prompt") ||
-      isConversationRoleLine(line);
-    const isBulletInstruction =
-      (line.startsWith("-") || line.startsWith("•")) &&
-      (removedInstructionBlock || startsWithKeyword) &&
-      INSTRUCTION_HINTS.some((hint) => lower.includes(hint));
-
-    if (isConversationLine) {
-      removedInstructionBlock = true;
-      startIndex += 1;
-      continue;
-    }
-
-    if (startsWithKeyword && hasInstructionHint) {
-      removedInstructionBlock = true;
-      startIndex += 1;
-      continue;
-    }
-
-    if (removedInstructionBlock && isBulletInstruction) {
-      startIndex += 1;
-      continue;
-    }
-
-    break;
-  }
-
-  if (startIndex === 0) {
-    return value;
-  }
-
-  return lines.slice(startIndex).join("\n").trimStart();
 };
 
 export const textArtifact = new Artifact<"text", TextArtifactMetadata>({
@@ -128,20 +39,15 @@ export const textArtifact = new Artifact<"text", TextArtifactMetadata>({
 
     if (streamPart.type === "data-textDelta") {
       setArtifact((draftArtifact) => {
-        const newContentLength =
-          draftArtifact.content.length + streamPart.data.length;
-
-        // Don't auto-show text artifacts if there's already a sheet artifact visible
-        // Users uploaded the sheet and want to keep seeing it
-        const shouldAutoShow =
-          draftArtifact.status === "streaming" &&
-          newContentLength > 400 &&
-          draftArtifact.kind !== "sheet";
-
         return {
           ...draftArtifact,
           content: draftArtifact.content + streamPart.data,
-          isVisible: shouldAutoShow ? true : draftArtifact.isVisible,
+          isVisible:
+            draftArtifact.status === "streaming" &&
+            draftArtifact.content.length > 400 &&
+            draftArtifact.content.length < 450
+              ? true
+              : draftArtifact.isVisible,
           status: "streaming",
         };
       });
@@ -158,22 +64,13 @@ export const textArtifact = new Artifact<"text", TextArtifactMetadata>({
     isLoading,
     metadata,
   }) => {
-    const sanitizedContent = useMemo(
-      () => sanitizeDocumentContent(content),
-      [content]
-    );
-
     if (isLoading) {
       return <DocumentSkeleton artifactKind="text" />;
     }
 
     if (mode === "diff") {
-      const oldContent = sanitizeDocumentContent(
-        getDocumentContentById(currentVersionIndex - 1)
-      );
-      const newContent = sanitizeDocumentContent(
-        getDocumentContentById(currentVersionIndex)
-      );
+      const oldContent = getDocumentContentById(currentVersionIndex - 1);
+      const newContent = getDocumentContentById(currentVersionIndex);
 
       return <DiffView newContent={newContent} oldContent={oldContent} />;
     }
@@ -181,7 +78,7 @@ export const textArtifact = new Artifact<"text", TextArtifactMetadata>({
     return (
       <div className="flex flex-row px-4 py-8 md:p-20">
         <Editor
-          content={sanitizedContent}
+          content={content}
           currentVersionIndex={currentVersionIndex}
           isCurrentVersion={isCurrentVersion}
           onSaveContent={onSaveContent}
@@ -242,7 +139,7 @@ export const textArtifact = new Artifact<"text", TextArtifactMetadata>({
       icon: <CopyIcon size={18} />,
       description: "Copy to clipboard",
       onClick: ({ content }) => {
-        navigator.clipboard.writeText(sanitizeDocumentContent(content));
+        navigator.clipboard.writeText(content);
         toast.success("Copied to clipboard!");
       },
     },

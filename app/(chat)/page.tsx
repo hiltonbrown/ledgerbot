@@ -25,16 +25,19 @@ export default async function Page({ searchParams }: PageProps) {
   const arContactId = params.ar_contact as string | undefined;
   const arContactName = params.ar_name as string | undefined;
 
-  const id = generateUUID();
+  // Check if this is an AR follow-up chat with pre-created chat ID
+  const existingChatId = params.chatId as string | undefined;
+  const autoSendMessage = params.autoSend as string | undefined;
+
+  const id = existingChatId || generateUUID();
   const userSettings = await getUserSettings();
   let suggestions = userSettings.suggestions;
   const defaultModel = userSettings.personalisation.defaultModel;
   const defaultReasoning = userSettings.personalisation.defaultReasoning;
 
   // Note: AR follow-up context is now handled by the new API endpoints
-  // The old URL parameter approach (context=ar_followup) is deprecated
-  // New flow: CustomerDetailsSheet -> /api/ar/followup/prepare -> /api/ar/followup/create -> /chat/[id]
-  const autoSendInput: string | undefined = undefined;
+  // New flow: CustomerDetailsSheet -> /api/ar/followup/prepare -> /api/ar/followup/create -> /?chatId=X&autoSend=Y
+  const autoSendInput: string | undefined = autoSendMessage;
   const initialMessages: any[] = [];
 
   // Fetch AR context if parameters are present

@@ -6,7 +6,6 @@ import {
   saveChatIfNotExists,
   saveMessages,
 } from "@/lib/db/queries";
-import { generateFollowUpRequest } from "@/lib/logic/ar-chat";
 import { generateUUID } from "@/lib/utils";
 
 const requestSchema = z.object({
@@ -104,15 +103,13 @@ export async function POST(request: NextRequest) {
       "[AR Follow-up Create] Generating user message for action:",
       actionType
     );
+
     if (!userMessage) {
       const { customerName, totalOutstanding } = context.contextData.metadata;
 
       switch (actionType) {
         case "email":
-          userMessage = generateFollowUpRequest({
-            customer: { name: customerName, email: null, phone: null },
-            totalOutstanding,
-          });
+          userMessage = `Draft a follow-up email to ${customerName} regarding their outstanding balance of $${totalOutstanding.toFixed(2)}.`;
           break;
         case "sms":
           userMessage = `Draft a brief SMS reminder for ${customerName} about their outstanding balance of $${totalOutstanding.toFixed(2)}.`;
@@ -121,24 +118,38 @@ export async function POST(request: NextRequest) {
           userMessage = `Create a call script for following up with ${customerName} about their outstanding balance of $${totalOutstanding.toFixed(2)}.`;
           break;
         default:
-          userMessage = generateFollowUpRequest({
-            customer: { name: customerName, email: null, phone: null },
-            totalOutstanding,
-          });
+          userMessage = `Draft a follow-up email to ${customerName} regarding their outstanding balance of $${totalOutstanding.toFixed(2)}.`;
       }
     }
+
+    // Save the initial user message
+    console.log("[AR Follow-up Create] Saving initial user message");
+    await saveMessages({
+      messages: [
+        {
+          chatId,
+          id: generateUUID(),
+          role: "user",
+          createdAt: new Date(),
+          parts: [{ type: "text", text: userMessage }],
+          attachments: [],
+          confidence: null,
+          citations: null,
+          needsReview: null,
+        },
+      ],
+    });
+    console.log("[AR Follow-up Create] Initial user message saved");
 
     console.log(
       "[AR Follow-up Create] Returning response with chatId:",
       chatId
     );
 
-    // Encode the message for URL
-    const encodedMessage = encodeURIComponent(userMessage);
-
+    // Return the chat ID and initial message for the client to send
     return NextResponse.json({
       chatId,
-      redirectUrl: `/chat/${chatId}?query=${encodedMessage}`,
+      initialMessage: userMessage,
     });
   } catch (error) {
     console.error("[AR Follow-up Create] Error occurred:", error);

@@ -182,10 +182,17 @@ export function CustomerDetailsSheet({
         );
       }
 
-      const { chatId, redirectUrl } = await response.json();
+      const { chatId, initialMessage } = await response.json();
       console.log("[CustomerDetailsSheet] Chat created:", chatId);
-      console.log("[CustomerDetailsSheet] Redirecting to:", redirectUrl);
-      router.push(redirectUrl);
+      console.log("[CustomerDetailsSheet] Initial message:", initialMessage);
+
+      // Navigate to the root chat page with the chat ID and initial message
+      // The root page supports autoSendInput which will send the message automatically
+      const params = new URLSearchParams({
+        chatId,
+        autoSend: initialMessage,
+      });
+      router.push(`/?${params.toString()}`);
     } catch (error) {
       console.error(
         "[CustomerDetailsSheet] Failed to create follow-up chat:",
@@ -201,16 +208,6 @@ export function CustomerDetailsSheet({
     }
   };
 
-  const getRiskBadgeVariant = (score: number) => {
-    if (score > 0.7) {
-      return "destructive";
-    }
-    if (score > 0.3) {
-      return "secondary";
-    }
-    return "default";
-  };
-
   return (
     <Sheet onOpenChange={onOpenChange} open={!!contactId}>
       <SheetContent className="w-[800px] sm:max-w-[800px]">
@@ -218,9 +215,7 @@ export function CustomerDetailsSheet({
           <SheetTitle>{customerName}</SheetTitle>
           <SheetDescription>
             Outstanding: ${totalOutstanding.toFixed(2)} | Risk Score:{" "}
-            <Badge variant={getRiskBadgeVariant(riskScore)}>
-              {riskScore.toFixed(2)}
-            </Badge>
+            {riskScore.toFixed(2)}
           </SheetDescription>
         </SheetHeader>
 
