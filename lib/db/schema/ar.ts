@@ -21,7 +21,10 @@ export const arContact = pgTable(
     id: uuid("id").primaryKey().notNull().defaultRandom(),
     userId: text("userId")
       .notNull()
-      .references(() => user.clerkId, { onDelete: "cascade" }),
+      .references(() => user.clerkId, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
     name: varchar("name", { length: 255 }).notNull(),
     email: varchar("email", { length: 255 }),
     phone: varchar("phone", { length: 50 }),
@@ -45,7 +48,10 @@ export const arInvoice = pgTable(
     id: uuid("id").primaryKey().notNull().defaultRandom(),
     userId: text("userId")
       .notNull()
-      .references(() => user.clerkId, { onDelete: "cascade" }),
+      .references(() => user.clerkId, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
     contactId: uuid("contactId")
       .notNull()
       .references(() => arContact.id),
@@ -131,7 +137,10 @@ export const arCustomerHistory = pgTable(
     id: uuid("id").primaryKey().notNull().defaultRandom(),
     userId: text("userId")
       .notNull()
-      .references(() => user.clerkId, { onDelete: "cascade" }),
+      .references(() => user.clerkId, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
     customerId: uuid("customerId")
       .notNull()
       .references(() => arContact.id, { onDelete: "cascade" }),
@@ -213,7 +222,10 @@ export const arJobRun = pgTable(
     id: uuid("id").primaryKey().notNull().defaultRandom(),
     userId: text("userId")
       .notNull()
-      .references(() => user.clerkId, { onDelete: "cascade" }),
+      .references(() => user.clerkId, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
     startedAt: timestamp("startedAt").notNull().defaultNow(),
     completedAt: timestamp("completedAt"),
     status: varchar("status", { length: 20 }).notNull().default("running"), // running, success, failed
@@ -244,7 +256,10 @@ export const arCommsArtefact = pgTable(
     id: uuid("id").primaryKey().notNull().defaultRandom(),
     userId: text("userId")
       .notNull()
-      .references(() => user.clerkId, { onDelete: "cascade" }),
+      .references(() => user.clerkId, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
     invoiceId: uuid("invoiceId")
       .notNull()
       .references(() => arInvoice.id, { onDelete: "cascade" }),
@@ -272,7 +287,10 @@ export const arNote = pgTable(
     id: uuid("id").primaryKey().notNull().defaultRandom(),
     userId: text("userId")
       .notNull()
-      .references(() => user.clerkId, { onDelete: "cascade" }),
+      .references(() => user.clerkId, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
     invoiceId: uuid("invoiceId")
       .notNull()
       .references(() => arInvoice.id, { onDelete: "cascade" }),
@@ -313,7 +331,10 @@ export const arFollowUpContext = pgTable(
     id: uuid("id").primaryKey().notNull().defaultRandom(),
     userId: text("userId")
       .notNull()
-      .references(() => user.clerkId, { onDelete: "cascade" }),
+      .references(() => user.clerkId, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
     contactId: uuid("contactId")
       .notNull()
       .references(() => arContact.id, { onDelete: "cascade" }),
