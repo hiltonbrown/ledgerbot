@@ -11,11 +11,32 @@ import { documentSchema } from "./config";
 import { createSuggestionWidget, type UISuggestion } from "./suggestions";
 
 export const buildDocumentFromContent = (content: string) => {
-  const parser = DOMParser.fromSchema(documentSchema);
-  const stringFromMarkdown = renderToString(<Response>{content}</Response>);
-  const tempContainer = document.createElement("div");
-  tempContainer.innerHTML = stringFromMarkdown;
-  return parser.parse(tempContainer);
+  // Safety check for browser environment
+  if (typeof document === "undefined") {
+    console.error("buildDocumentFromContent called in non-browser environment");
+    // Return empty document as fallback
+    return documentSchema.node("doc", null, [
+      documentSchema.node("paragraph", null, [
+        documentSchema.text(content || ""),
+      ]),
+    ]);
+  }
+
+  try {
+    const parser = DOMParser.fromSchema(documentSchema);
+    const stringFromMarkdown = renderToString(<Response>{content}</Response>);
+    const tempContainer = document.createElement("div");
+    tempContainer.innerHTML = stringFromMarkdown;
+    return parser.parse(tempContainer);
+  } catch (error) {
+    console.error("Error building document from content:", error);
+    // Return simple text document as fallback
+    return documentSchema.node("doc", null, [
+      documentSchema.node("paragraph", null, [
+        documentSchema.text(content || "Error loading content"),
+      ]),
+    ]);
+  }
 };
 
 export const buildContentFromDocument = (document: Node) => {

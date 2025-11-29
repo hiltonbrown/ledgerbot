@@ -4,7 +4,7 @@ import { exampleSetup } from "prosemirror-example-setup";
 import { inputRules } from "prosemirror-inputrules";
 import { EditorState } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
-import { memo, useEffect, useRef } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 
 import type { Suggestion } from "@/lib/db/schema";
 import {
@@ -40,36 +40,44 @@ function PureEditor({
 }: EditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<EditorView | null>(null);
+  const [isEditorInitialized, setIsEditorInitialized] = useState(false);
 
   useEffect(() => {
     if (containerRef.current && !editorRef.current) {
-      const state = EditorState.create({
-        doc: buildDocumentFromContent(content),
-        plugins: [
-          ...exampleSetup({ schema: documentSchema, menuBar: false }),
-          inputRules({
-            rules: [
-              headingRule(1),
-              headingRule(2),
-              headingRule(3),
-              headingRule(4),
-              headingRule(5),
-              headingRule(6),
-            ],
-          }),
-          suggestionsPlugin,
-        ],
-      });
+      try {
+        const state = EditorState.create({
+          doc: buildDocumentFromContent(content),
+          plugins: [
+            ...exampleSetup({ schema: documentSchema, menuBar: false }),
+            inputRules({
+              rules: [
+                headingRule(1),
+                headingRule(2),
+                headingRule(3),
+                headingRule(4),
+                headingRule(5),
+                headingRule(6),
+              ],
+            }),
+            suggestionsPlugin,
+          ],
+        });
 
-      editorRef.current = new EditorView(containerRef.current, {
-        state,
-      });
+        editorRef.current = new EditorView(containerRef.current, {
+          state,
+        });
+        setIsEditorInitialized(true);
+      } catch (error) {
+        console.error("Failed to initialize editor:", error);
+        setIsEditorInitialized(false);
+      }
     }
 
     return () => {
       if (editorRef.current) {
         editorRef.current.destroy();
         editorRef.current = null;
+        setIsEditorInitialized(false);
       }
     };
     // NOTE: we only want to run this effect once
@@ -146,10 +154,18 @@ function PureEditor({
   }, [suggestions, content]);
 
   return (
-    <div
-      className="prose prose-sm md:prose-base lg:prose-lg dark:prose-invert relative w-full max-w-none px-4 py-2"
-      ref={containerRef}
-    />
+    <>
+      <div
+        className="prose prose-sm md:prose-base lg:prose-lg dark:prose-invert relative w-full max-w-none px-4 py-2"
+        ref={containerRef}
+      />
+      {/* Fallback content display - shown only when editor fails to initialize */}
+      {!isEditorInitialized && content && (
+        <div className="prose prose-sm md:prose-base lg:prose-lg dark:prose-invert relative w-full max-w-none px-4 py-2">
+          <div className="whitespace-pre-wrap">{content}</div>
+        </div>
+      )}
+    </>
   );
 }
 
