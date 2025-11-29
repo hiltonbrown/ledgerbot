@@ -21,13 +21,25 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     notFound();
   }
 
-  const user = await getAuthUser();
+  let user;
+  try {
+    user = await getAuthUser();
+  } catch (error) {
+    console.error("[Chat Page] Error in getAuthUser:", error);
+    redirect("/login");
+  }
 
   if (!user) {
     redirect("/login");
   }
 
-  const userSettings = await getUserSettings();
+  let userSettings;
+  try {
+    userSettings = await getUserSettings();
+  } catch (error) {
+    console.error("[Chat Page] Error fetching user settings:", error);
+    redirect("/login");
+  }
   const defaultReasoning = userSettings.personalisation.defaultReasoning;
 
   if (chat.visibility === "private") {

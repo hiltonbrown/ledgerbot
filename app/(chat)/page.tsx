@@ -15,7 +15,13 @@ type PageProps = {
 };
 
 export default async function Page({ searchParams }: PageProps) {
-  const user = await getAuthUser();
+  let user;
+  try {
+    user = await getAuthUser();
+  } catch (error) {
+    console.error("[Page] Error in getAuthUser:", error);
+    redirect("/login");
+  }
 
   if (!user) {
     redirect("/login");
@@ -30,7 +36,15 @@ export default async function Page({ searchParams }: PageProps) {
   const autoSendMessage = params.autoSend as string | undefined;
 
   const id = existingChatId || generateUUID();
-  const userSettings = await getUserSettings();
+
+  let userSettings;
+  try {
+    userSettings = await getUserSettings();
+  } catch (error) {
+    console.error("[Page] Error fetching user settings:", error);
+    // If getUserSettings fails after auth check, redirect to login
+    redirect("/login");
+  }
   let suggestions = userSettings.suggestions;
   const defaultModel = userSettings.personalisation.defaultModel;
   const defaultReasoning = userSettings.personalisation.defaultReasoning;
