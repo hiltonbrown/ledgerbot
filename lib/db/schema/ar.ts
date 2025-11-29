@@ -291,3 +291,47 @@ export const arNote = pgTable(
 
 export type ArNote = InferSelectModel<typeof arNote>;
 export type ArNoteInsert = typeof arNote.$inferInsert;
+
+// Follow-up Context Types
+export type FollowUpTone = "polite" | "firm" | "final";
+
+export type FollowUpContextData = {
+  prompt: string;
+  metadata: {
+    customerId: string;
+    customerName: string;
+    totalOutstanding: number;
+    riskScore: number;
+    invoiceCount: number;
+    followUpType: FollowUpTone;
+  };
+};
+
+export const arFollowUpContext = pgTable(
+  "ArFollowUpContext",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.clerkId, { onDelete: "cascade" }),
+    contactId: uuid("contactId")
+      .notNull()
+      .references(() => arContact.id, { onDelete: "cascade" }),
+    contextData: jsonb("contextData").$type<FollowUpContextData>().notNull(),
+    expiresAt: timestamp("expiresAt").notNull(),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  },
+  (table) => ({
+    userContactIdx: index("ar_followup_context_user_contact_idx").on(
+      table.userId,
+      table.contactId
+    ),
+    expiresAtIdx: index("ar_followup_context_expires_at_idx").on(
+      table.expiresAt
+    ),
+  })
+);
+
+export type ArFollowUpContext = InferSelectModel<typeof arFollowUpContext>;
+export type ArFollowUpContextInsert = typeof arFollowUpContext.$inferInsert;

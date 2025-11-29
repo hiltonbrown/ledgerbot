@@ -253,6 +253,13 @@
       "when": 1764162779884,
       "tag": "0035_recreate_ar_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1764403316097,
+      "tag": "0036_add_ar_followup_context",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,8 @@
-export type FollowUpTone = "polite" | "firm" | "final";
+import type { FollowUpContextData, FollowUpTone } from "@/lib/db/schema/ar";
 
-interface InvoiceDetail {
+export type { FollowUpTone, FollowUpContextData };
+
+export type InvoiceDetail = {
   number: string;
   issueDate: string;
   dueDate: string;
@@ -8,28 +10,36 @@ interface InvoiceDetail {
   amountDue: string;
   daysOverdue: number;
   currency: string;
-}
+};
 
-interface ContactDetail {
+export type ContactDetail = {
+  id?: string;
   name: string;
   email: string | null;
   phone: string | null;
-}
+};
 
-interface SenderDetail {
+export type SenderDetail = {
   name: string;
   companyName?: string;
   email?: string;
   phone?: string;
-}
+};
 
-interface FollowUpParams {
+export type FollowUpParams = {
   customer: ContactDetail;
-  sender: SenderDetail;
+  sender?: SenderDetail;
   totalOutstanding: number;
   riskScore: number;
   invoices?: InvoiceDetail[];
-}
+  followUpType?: FollowUpTone;
+};
+
+export type SuggestedAction = {
+  type: "email" | "call" | "sms";
+  tone: FollowUpTone;
+  description: string;
+};
 
 export function generateFollowUpContext({
   customer,
@@ -37,10 +47,10 @@ export function generateFollowUpContext({
   totalOutstanding,
   riskScore,
   invoices,
-}: FollowUpParams): string {
-  let tone: FollowUpTone = "polite";
-  if (riskScore > 0.7) tone = "final";
-  else if (riskScore > 0.3) tone = "firm";
+  followUpType,
+}: FollowUpParams): FollowUpContextData {
+  const tone: FollowUpTone =
+    followUpType || determineToneFromRiskScore(riskScore);
 
   const amountStr = totalOutstanding.toLocaleString("en-AU", {
     style: "currency",
@@ -76,17 +86,19 @@ export function generateFollowUpContext({
     context += `\n- Phone: ${customer.phone}`;
   }
 
-  // Add sender details
-  context += "\n\n## Sender Details (Use in Signature):";
-  context += `\n- Name: ${sender.name}`;
-  if (sender.companyName) {
-    context += `\n- Company: ${sender.companyName}`;
-  }
-  if (sender.email) {
-    context += `\n- Email: ${sender.email}`;
-  }
-  if (sender.phone) {
-    context += `\n- Phone: ${sender.phone}`;
+  // Add sender details if provided
+  if (sender) {
+    context += "\n\n## Sender Details (Use in Signature):";
+    context += `\n- Name: ${sender.name}`;
+    if (sender.companyName) {
+      context += `\n- Company: ${sender.companyName}`;
+    }
+    if (sender.email) {
+      context += `\n- Email: ${sender.email}`;
+    }
+    if (sender.phone) {
+      context += `\n- Phone: ${sender.phone}`;
+    }
   }
 
   // Add invoice details if provided
@@ -114,7 +126,62 @@ export function generateFollowUpContext({
       "\n\n**Note**: Invoice details were not provided. You may need to use Xero tools to fetch invoice information if specific details are required.";
   }
 
-  return context;
+  return {
+    prompt: context,
+    metadata: {
+      customerId: customer.id || "",
+      customerName: customer.name,
+      totalOutstanding,
+      riskScore,
+      invoiceCount: invoices?.length || 0,
+      followUpType: tone,
+    },
+  };
+}
+
+function determineToneFromRiskScore(riskScore: number): FollowUpTone {
+  if (riskScore > 0.7) {
+    return "final";
+  }
+  if (riskScore > 0.3) {
+    return "firm";
+  }
+  return "polite";
+}
+
+export function generateSuggestedActions(
+  customer: ContactDetail,
+  riskScore: number
+): SuggestedAction[] {
+  const tone = determineToneFromRiskScore(riskScore);
+  const actions: SuggestedAction[] = [];
+
+  // Email actions
+  if (customer.email) {
+    actions.push({
+      type: "email",
+      tone,
+      description: `Send ${tone} follow-up email`,
+    });
+  }
+
+  // SMS actions
+  if (customer.phone) {
+    actions.push({
+      type: "sms",
+      tone,
+      description: `Send ${tone} SMS reminder`,
+    });
+  }
+
+  // Call actions (always available)
+  actions.push({
+    type: "call",
+    tone,
+    description: `Prepare ${tone} call script`,
+  });
+
+  return actions;
 }
 
 export function generateFollowUpRequest({

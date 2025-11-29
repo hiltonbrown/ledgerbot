@@ -1,6 +1,6 @@
 {
-  "id": "81348ecc-778b-4908-962e-64dd76056aa4",
-  "prevId": "86e198ba-d986-4b4c-a2b1-6b38f085d2dc",
+  "id": "6051dfb6-1e90-4470-ab11-a151b522f624",
+  "prevId": "81348ecc-778b-4908-962e-64dd76056aa4",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -3458,21 +3458,21 @@
         }
       },
       "foreignKeys": {
-        "ArCommsArtefact_invoiceId_ArInvoice_id_fk": {
-          "name": "ArCommsArtefact_invoiceId_ArInvoice_id_fk",
+        "ArCommsArtefact_userId_User_clerkId_fk": {
+          "name": "ArCommsArtefact_userId_User_clerkId_fk",
           "tableFrom": "ArCommsArtefact",
           "tableTo": "User",
           "columnsFrom": [
             "userId"
           ],
           "columnsTo": [
-            "id"
+            "clerkId"
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "ArCommsArtefact_userId_User_clerkId_fk": {
-          "name": "ArCommsArtefact_userId_User_clerkId_fk",
+        "ArCommsArtefact_invoiceId_ArInvoice_id_fk": {
+          "name": "ArCommsArtefact_invoiceId_ArInvoice_id_fk",
           "tableFrom": "ArCommsArtefact",
           "tableTo": "ArInvoice",
           "columnsFrom": [
@@ -3813,6 +3813,128 @@
           "tableTo": "ArContact",
           "columnsFrom": [
             "customerId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ArFollowUpContext": {
+      "name": "ArFollowUpContext",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "contactId": {
+          "name": "contactId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "contextData": {
+          "name": "contextData",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expiresAt": {
+          "name": "expiresAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "ar_followup_context_user_contact_idx": {
+          "name": "ar_followup_context_user_contact_idx",
+          "columns": [
+            {
+              "expression": "userId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "contactId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "ar_followup_context_expires_at_idx": {
+          "name": "ar_followup_context_expires_at_idx",
+          "columns": [
+            {
+              "expression": "expiresAt",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "ArFollowUpContext_userId_User_clerkId_fk": {
+          "name": "ArFollowUpContext_userId_User_clerkId_fk",
+          "tableFrom": "ArFollowUpContext",
+          "tableTo": "User",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "clerkId"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ArFollowUpContext_contactId_ArContact_id_fk": {
+          "name": "ArFollowUpContext_contactId_ArContact_id_fk",
+          "tableFrom": "ArFollowUpContext",
+          "tableTo": "ArContact",
+          "columnsFrom": [
+            "contactId"
           ],
           "columnsTo": [
             "id"
@@ -4309,21 +4431,21 @@
         }
       },
       "foreignKeys": {
-        "ArNote_invoiceId_ArInvoice_id_fk": {
-          "name": "ArNote_invoiceId_ArInvoice_id_fk",
+        "ArNote_userId_User_clerkId_fk": {
+          "name": "ArNote_userId_User_clerkId_fk",
           "tableFrom": "ArNote",
           "tableTo": "User",
           "columnsFrom": [
             "userId"
           ],
           "columnsTo": [
-            "id"
+            "clerkId"
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "ArNote_userId_User_clerkId_fk": {
-          "name": "ArNote_userId_User_clerkId_fk",
+        "ArNote_invoiceId_ArInvoice_id_fk": {
+          "name": "ArNote_invoiceId_ArInvoice_id_fk",
           "tableFrom": "ArNote",
           "tableTo": "ArInvoice",
           "columnsFrom": [

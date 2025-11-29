@@ -46,6 +46,11 @@ import {
   type XeroConnection,
   xeroConnection,
 } from "./schema";
+import {
+  type ArFollowUpContext,
+  type ArFollowUpContextInsert,
+  arFollowUpContext,
+} from "./schema/ar";
 
 // biome-ignore lint: Forbidden non-null assertion.
 const client = postgres(process.env.POSTGRES_URL!);
@@ -98,7 +103,14 @@ export async function saveChatIfNotExists({
   visibility: VisibilityType;
 }) {
   try {
-    return await db
+    console.log("[saveChatIfNotExists] Attempting to save chat:", {
+      id,
+      userId,
+      title,
+      visibility,
+    });
+
+    const result = await db
       .insert(chat)
       .values({
         id,
@@ -108,7 +120,16 @@ export async function saveChatIfNotExists({
         visibility,
       })
       .onConflictDoNothing();
+
+    console.log("[saveChatIfNotExists] Chat saved successfully");
+    return result;
   } catch (_error) {
+    console.error("[saveChatIfNotExists] Error saving chat:", _error);
+    console.error("[saveChatIfNotExists] Error details:", {
+      message: _error instanceof Error ? _error.message : String(_error),
+      code: (_error as any)?.code,
+      detail: (_error as any)?.detail,
+    });
     throw new ChatSDKError("bad_request:database", "Failed to save chat");
   }
 }
@@ -1948,6 +1969,92 @@ export async function getRecentAgentTraces(limit = 100): Promise<AgentTrace[]> {
     throw new ChatSDKError(
       "bad_request:database",
       "Failed to get recent agent traces"
+    );
+  }
+}
+
+// ============================================================================
+// AR Follow-up Context Queries
+// ============================================================================
+
+/**
+ * Saves AR follow-up context data for caching
+ * @param data - The context data to save
+ * @returns Promise resolving to the context ID
+ */
+export async function saveArFollowUpContext(
+  data: ArFollowUpContextInsert
+): Promise<string> {
+  try {
+    const [context] = await db
+      .insert(arFollowUpContext)
+      .values(data)
+      .returning();
+
+    if (!context) {
+      throw new Error("Failed to create AR follow-up context");
+    }
+
+    return context.id;
+  } catch (error) {
+    console.error("Failed to save AR follow-up context:", error);
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to save AR follow-up context"
+    );
+  }
+}
+
+/**
+ * Gets AR follow-up context by ID
+ * @param contextId - The context ID
+ * @param userId - The user ID for authorization
+ * @returns Promise resolving to ArFollowUpContext or null
+ */
+export async function getArFollowUpContext(
+  contextId: string,
+  userId: string
+): Promise<ArFollowUpContext | null> {
+  try {
+    const [context] = await db
+      .select()
+      .from(arFollowUpContext)
+      .where(
+        and(
+          eq(arFollowUpContext.id, contextId),
+          eq(arFollowUpContext.userId, userId),
+          gt(arFollowUpContext.expiresAt, new Date())
+        )
+      )
+      .limit(1);
+
+    return context ?? null;
+  } catch (error) {
+    console.error("Failed to get AR follow-up context:", error);
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get AR follow-up context"
+    );
+  }
+}
+
+/**
+ * Deletes expired AR follow-up contexts
+ * @returns Promise resolving to the number of deleted contexts
+ */
+export async function deleteExpiredArFollowUpContexts(): Promise<number> {
+  try {
+    const result = await db
+      .delete(arFollowUpContext)
+      .where(lt(arFollowUpContext.expiresAt, new Date()))
+      .returning();
+
+    return result.length;
+  } catch (error) {
+    console.error("Failed to delete expired AR follow-up contexts:", error);
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to delete expired AR follow-up contexts"
     );
   }
 }

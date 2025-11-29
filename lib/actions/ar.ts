@@ -81,31 +81,33 @@ export async function getAgeingReportData(): Promise<AgeingReportItem[]> {
     }
   }
 
-  return results.map(({ contact, history }) => {
-    const buckets = bucketMap.get(contact.id) || {
-      Current: 0,
-      "1-30": 0,
-      "31-60": 0,
-      "61-90": 0,
-      "90+": 0,
-    };
+  return results
+    .map(({ contact, history }) => {
+      const buckets = bucketMap.get(contact.id) || {
+        Current: 0,
+        "1-30": 0,
+        "31-60": 0,
+        "61-90": 0,
+        "90+": 0,
+      };
 
-    return {
-      contactId: contact.id,
-      customerName: contact.name,
-      email: contact.email,
-      totalOutstanding: Number(history.totalOutstanding),
-      ageingCurrent: buckets.Current,
-      ageing1_30: buckets["1-30"],
-      ageing31_60: buckets["31-60"],
-      ageing61_90: buckets["61-90"],
-      ageing90Plus: buckets["90+"],
-      riskScore: history.riskScore || 0,
-      lastPaymentDate: history.lastPaymentDate,
-      creditTermsDays: history.creditTermsDays || 0,
-      lastUpdated: history.computedAt,
-    };
-  });
+      return {
+        contactId: contact.id,
+        customerName: contact.name,
+        email: contact.email,
+        totalOutstanding: Number(history.totalOutstanding),
+        ageingCurrent: buckets.Current,
+        ageing1_30: buckets["1-30"],
+        ageing31_60: buckets["31-60"],
+        ageing61_90: buckets["61-90"],
+        ageing90Plus: buckets["90+"],
+        riskScore: history.riskScore || 0,
+        lastPaymentDate: history.lastPaymentDate,
+        creditTermsDays: history.creditTermsDays || 0,
+        lastUpdated: history.computedAt,
+      };
+    })
+    .filter((item) => item.totalOutstanding !== 0);
 }
 
 export async function getCustomerInvoiceDetails(contactId: string) {
@@ -125,7 +127,9 @@ export async function getCustomerInvoiceDetails(contactId: string) {
   const invoices = await db
     .select()
     .from(arInvoice)
-    .where(and(eq(arInvoice.contactId, contactId), eq(arInvoice.userId, userId)))
+    .where(
+      and(eq(arInvoice.contactId, contactId), eq(arInvoice.userId, userId))
+    )
     .orderBy(desc(arInvoice.dueDate));
 
   return invoices.map((inv) => ({
@@ -236,5 +240,81 @@ export async function getARKPIs(): Promise<ARKPIs> {
     overdueInvoices: overdueInvoices.length,
     overdueAmount,
     ageingSummary,
+  };
+}
+
+export type CustomerFollowUpData = {
+  contact: {
+    id: string;
+    name: string;
+    email: string | null;
+    phone: string | null;
+  };
+  totalOutstanding: number;
+  riskScore: number;
+  invoices: Array<{
+    number: string;
+    issueDate: string;
+    dueDate: string;
+    total: string;
+    amountDue: string;
+    daysOverdue: number;
+    currency: string;
+  }>;
+};
+
+export async function getCustomerFollowUpData(
+  contactId: string,
+  userId: string
+): Promise<CustomerFollowUpData> {
+  // Optimized query to get all AR data in one go
+  const [contact, invoices, history] = await Promise.all([
+    db.query.arContact.findFirst({
+      where: and(eq(arContact.id, contactId), eq(arContact.userId, userId)),
+    }),
+    db
+      .select()
+      .from(arInvoice)
+      .where(
+        and(eq(arInvoice.contactId, contactId), eq(arInvoice.userId, userId))
+      )
+      .orderBy(desc(arInvoice.dueDate)),
+    db.query.arCustomerHistory.findFirst({
+      where: and(
+        eq(arCustomerHistory.customerId, contactId),
+        eq(arCustomerHistory.userId, userId)
+      ),
+    }),
+  ]);
+
+  if (!contact) {
+    throw new Error("Contact not found");
+  }
+
+  const outstandingInvoices = invoices.filter(
+    (inv) => Number(inv.amountOutstanding) > 0
+  );
+
+  return {
+    contact: {
+      id: contact.id,
+      name: contact.name,
+      email: contact.email,
+      phone: contact.phone,
+    },
+    totalOutstanding: Number(history?.totalOutstanding || 0),
+    riskScore: history?.riskScore || 0,
+    invoices: outstandingInvoices.map((inv) => ({
+      number: inv.number,
+      issueDate: inv.issueDate.toISOString(),
+      dueDate: inv.dueDate.toISOString(),
+      total: inv.total,
+      amountDue: inv.amountOutstanding,
+      daysOverdue: Math.max(
+        0,
+        Math.floor((Date.now() - inv.dueDate.getTime()) / (1000 * 60 * 60 * 24))
+      ),
+      currency: inv.currency || "AUD",
+    })),
   };
 }
