@@ -21,8 +21,7 @@ export type AgeingReportItem = {
   ageing31_60: number;
   ageing61_90: number;
   ageing90Plus: number;
-  unallocatedCreditNotes: number;
-  netOutstanding: number;
+  unallocatedCreditNotes: number; // Informational only - not subtracted
   riskScore: number;
   lastPaymentDate: Date | null;
   creditTermsDays: number;
@@ -88,7 +87,10 @@ export async function getAgeingReportData(): Promise<AgeingReportItem[]> {
     }
   }
 
-  // Fetch unallocated credit notes
+  // Fetch unallocated credit notes (for informational display only)
+  // Note: These should NOT be subtracted from totalOutstanding because:
+  // 1. Allocated credits are already reflected in invoice amountDue from Xero
+  // 2. Unallocated credits are available but not yet applied
   const creditNotes = await db
     .select({
       contactId: arCreditNote.contactId,
@@ -124,21 +126,20 @@ export async function getAgeingReportData(): Promise<AgeingReportItem[]> {
         contactId: contact.id,
         customerName: contact.name,
         email: contact.email,
-        totalOutstanding,
+        totalOutstanding, // Already correct - includes allocated credits from Xero
         ageingCurrent: buckets.Current,
         ageing1_30: buckets["1-30"],
         ageing31_60: buckets["31-60"],
         ageing61_90: buckets["61-90"],
         ageing90Plus: buckets["90+"],
-        unallocatedCreditNotes: unallocatedCredit,
-        netOutstanding: totalOutstanding - unallocatedCredit,
+        unallocatedCreditNotes: unallocatedCredit, // Informational only
         riskScore: history.riskScore || 0,
         lastPaymentDate: history.lastPaymentDate,
         creditTermsDays: history.creditTermsDays || 0,
         lastUpdated: history.computedAt,
       };
     })
-    .filter((item) => item.netOutstanding !== 0);
+    .filter((item) => item.totalOutstanding !== 0);
 }
 
 export async function getCustomerInvoiceDetails(contactId: string) {
@@ -206,19 +207,9 @@ export async function getARKPIs(): Promise<ARKPIs> {
     0
   );
 
-  // Get unallocated credit notes
-  const creditNotes = await db
-    .select()
-    .from(arCreditNote)
-    .where(eq(arCreditNote.userId, userId));
-
-  const totalUnallocatedCredit = creditNotes.reduce(
-    (sum, cn) => sum + Number(cn.amountRemaining),
-    0
-  );
-
-  // Net outstanding = total outstanding - unallocated credit
-  const netOutstanding = totalOutstanding - totalUnallocatedCredit;
+  // Note: We do NOT subtract unallocated credit notes here because:
+  // - Invoice amountOutstanding already reflects allocated credits (from Xero's amountDue)
+  // - Unallocated credits are available but not yet applied to invoices
 
   // Count active debtors (contacts with outstanding invoices)
   const activeDebtorIds = new Set(
@@ -279,7 +270,7 @@ export async function getARKPIs(): Promise<ARKPIs> {
   }
 
   return {
-    totalOutstanding: netOutstanding, // Use net outstanding (after credits)
+    totalOutstanding, // Correct value - already accounts for allocated credits
     activeDebtors,
     daysReceivableOutstanding,
     overdueInvoices: overdueInvoices.length,
