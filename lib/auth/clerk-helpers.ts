@@ -12,27 +12,26 @@ import type { AuthUser } from "@/lib/types/auth";
  * @returns AuthUser if authenticated, null otherwise
  */
 export async function getAuthUser(): Promise<AuthUser | null> {
+  // Get Clerk session
+  const { userId: clerkUserId } = await auth();
+
+  if (!clerkUserId) {
+    return null;
+  }
+
   try {
-    // Get Clerk session
-    const { userId: clerkUserId } = await auth();
-
-    if (!clerkUserId) {
-      return null;
-    }
-
     // Get full Clerk user data
     const clerkUser = await currentUser();
 
     if (!clerkUser) {
-      return null;
+      throw new Error("Clerk user not found");
     }
 
     // Extract email (Clerk users must have email)
     const email = clerkUser.emailAddresses[0]?.emailAddress;
 
     if (!email) {
-      console.error("Clerk user missing email address");
-      return null;
+      throw new Error("Clerk user missing email address");
     }
 
     // Step 1: Try to find user by Clerk ID (already synced)
@@ -99,7 +98,7 @@ export async function getAuthUser(): Promise<AuthUser | null> {
     };
   } catch (error) {
     console.error("Error in getAuthUser:", error);
-    return null;
+    throw error; // Propagate error to trigger error boundary instead of redirect loop
   }
 }
 
