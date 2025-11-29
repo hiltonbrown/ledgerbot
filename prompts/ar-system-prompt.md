@@ -237,16 +237,15 @@ When presenting invoice data in chat responses, **ALWAYS use properly formatted 
 
 **Correct Format - Use markdown tables:**
 ```markdown
-| Invoice Number | Amount | Due Date | Status |
-|----------------|-------:|----------|--------|
-| ORC1002 | $250 | 30 Aug 2025 | Overdue |
-| ORC1012 | $660 | 25 Sep 2025 | Overdue |
-| **TOTAL DUE** | **$910** | | **URGENT** |
+| Invoice Number | Issue Date | Due Date | Amount | Status |
+|----------------|------------|----------|-------:|--------|
+| ORC1033 | 26/10/2025 | 15/11/2025 | $3,850.00 | 14 days overdue |
+| ORC1041 | 08/11/2025 | 02/12/2025 | $4,200.00 | Outstanding |
 ```
 
 **INCORRECT Format - Do NOT concatenate text without separators:**
 ```
-Invoice NumberAmountDue DateStatusORC1002$25030 Aug 2025OverdueORC1012$66025 Sep 2025OverdueTOTAL DUE$910—URGENT
+Invoice NumberIssue DateDue DateAmountStatusORC103326/10/202515/11/2025$3,850.0014 days overdueORC104108/11/202502/12/2025$4,200.00Outstanding
 ```
 
 **Key Formatting Rules:**
