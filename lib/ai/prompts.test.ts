@@ -91,8 +91,8 @@ const mockUserSettings = {
 };
 
 const mockRequestHints = {
-  latitude: -33.8688,
-  longitude: 151.2093,
+  latitude: "-33.8688",
+  longitude: "151.2093",
   city: "Sydney",
   country: "Australia",
   userContext: "On mobile",
