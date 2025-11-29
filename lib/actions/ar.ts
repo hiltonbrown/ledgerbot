@@ -81,31 +81,33 @@ export async function getAgeingReportData(): Promise<AgeingReportItem[]> {
     }
   }
 
-  return results.map(({ contact, history }) => {
-    const buckets = bucketMap.get(contact.id) || {
-      Current: 0,
-      "1-30": 0,
-      "31-60": 0,
-      "61-90": 0,
-      "90+": 0,
-    };
+  return results
+    .map(({ contact, history }) => {
+      const buckets = bucketMap.get(contact.id) || {
+        Current: 0,
+        "1-30": 0,
+        "31-60": 0,
+        "61-90": 0,
+        "90+": 0,
+      };
 
-    return {
-      contactId: contact.id,
-      customerName: contact.name,
-      email: contact.email,
-      totalOutstanding: Number(history.totalOutstanding),
-      ageingCurrent: buckets.Current,
-      ageing1_30: buckets["1-30"],
-      ageing31_60: buckets["31-60"],
-      ageing61_90: buckets["61-90"],
-      ageing90Plus: buckets["90+"],
-      riskScore: history.riskScore || 0,
-      lastPaymentDate: history.lastPaymentDate,
-      creditTermsDays: history.creditTermsDays || 0,
-      lastUpdated: history.computedAt,
-    };
-  });
+      return {
+        contactId: contact.id,
+        customerName: contact.name,
+        email: contact.email,
+        totalOutstanding: Number(history.totalOutstanding),
+        ageingCurrent: buckets.Current,
+        ageing1_30: buckets["1-30"],
+        ageing31_60: buckets["31-60"],
+        ageing61_90: buckets["61-90"],
+        ageing90Plus: buckets["90+"],
+        riskScore: history.riskScore || 0,
+        lastPaymentDate: history.lastPaymentDate,
+        creditTermsDays: history.creditTermsDays || 0,
+        lastUpdated: history.computedAt,
+      };
+    })
+    .filter((item) => item.totalOutstanding !== 0);
 }
 
 export async function getCustomerInvoiceDetails(contactId: string) {
