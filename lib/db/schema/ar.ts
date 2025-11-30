@@ -410,3 +410,105 @@ export const arFollowUpContext = pgTable(
 
 export type ArFollowUpContext = InferSelectModel<typeof arFollowUpContext>;
 export type ArFollowUpContextInsert = typeof arFollowUpContext.$inferInsert;
+
+export const arOverpayment = pgTable(
+  "ArOverpayment",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.clerkId, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    contactId: uuid("contactId")
+      .notNull()
+      .references(() => arContact.id, { onDelete: "cascade" }),
+    currency: varchar("currency", { length: 3 }).notNull().default("AUD"),
+    subtotal: numeric("subtotal", { precision: 10, scale: 2 }).notNull(),
+    tax: numeric("tax", { precision: 10, scale: 2 }).notNull().default("0"),
+    total: numeric("total", { precision: 10, scale: 2 }).notNull(),
+    amountAllocated: numeric("amountAllocated", {
+      precision: 10,
+      scale: 2,
+    })
+      .notNull()
+      .default("0"),
+    amountRemaining: numeric("amountRemaining", {
+      precision: 10,
+      scale: 2,
+    })
+      .notNull()
+      .default("0"),
+    date: timestamp("date").notNull(),
+    status: varchar("status", { length: 20 }).notNull().default("authorised"),
+    externalRef: varchar("externalRef", { length: 255 }).notNull(), // Xero OverpaymentID
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  },
+  (table) => ({
+    userIdIdx: index("ar_overpayment_user_id_idx").on(table.userId),
+    contactIdIdx: index("ar_overpayment_contact_id_idx").on(table.contactId),
+    externalRefIdx: index("ar_overpayment_external_ref_idx").on(
+      table.externalRef
+    ),
+    externalRefUserIdUnique: uniqueIndex(
+      "ar_overpayment_external_ref_user_id_unique"
+    ).on(table.externalRef, table.userId),
+  })
+);
+
+export type ArOverpayment = InferSelectModel<typeof arOverpayment>;
+export type ArOverpaymentInsert = typeof arOverpayment.$inferInsert;
+
+export const arPrepayment = pgTable(
+  "ArPrepayment",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.clerkId, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    contactId: uuid("contactId")
+      .notNull()
+      .references(() => arContact.id, { onDelete: "cascade" }),
+    currency: varchar("currency", { length: 3 }).notNull().default("AUD"),
+    subtotal: numeric("subtotal", { precision: 10, scale: 2 }).notNull(),
+    tax: numeric("tax", { precision: 10, scale: 2 }).notNull().default("0"),
+    total: numeric("total", { precision: 10, scale: 2 }).notNull(),
+    amountAllocated: numeric("amountAllocated", {
+      precision: 10,
+      scale: 2,
+    })
+      .notNull()
+      .default("0"),
+    amountRemaining: numeric("amountRemaining", {
+      precision: 10,
+      scale: 2,
+    })
+      .notNull()
+      .default("0"),
+    date: timestamp("date").notNull(),
+    status: varchar("status", { length: 20 }).notNull().default("authorised"),
+    externalRef: varchar("externalRef", { length: 255 }).notNull(), // Xero PrepaymentID
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  },
+  (table) => ({
+    userIdIdx: index("ar_prepayment_user_id_idx").on(table.userId),
+    contactIdIdx: index("ar_prepayment_contact_id_idx").on(table.contactId),
+    externalRefIdx: index("ar_prepayment_external_ref_idx").on(
+      table.externalRef
+    ),
+    externalRefUserIdUnique: uniqueIndex(
+      "ar_prepayment_external_ref_user_id_unique"
+    ).on(table.externalRef, table.userId),
+  })
+);
+
+export type ArPrepayment = InferSelectModel<typeof arPrepayment>;
+export type ArPrepaymentInsert = typeof arPrepayment.$inferInsert;

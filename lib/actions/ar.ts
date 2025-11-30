@@ -9,6 +9,8 @@ import {
   arCreditNote,
   arCustomerHistory,
   arInvoice,
+  arOverpayment,
+  arPrepayment,
 } from "@/lib/db/schema/ar";
 
 export type AgeingReportItem = {
@@ -110,6 +112,46 @@ export async function getAgeingReportData(): Promise<AgeingReportItem[]> {
     creditNoteMap.set(cn.contactId, current + Number(cn.amountRemaining));
   }
 
+  // Fetch unallocated Overpayments
+  const overpayments = await db
+    .select({
+      contactId: arOverpayment.contactId,
+      amountRemaining: arOverpayment.amountRemaining,
+    })
+    .from(arOverpayment)
+    .where(
+      and(
+        eq(arOverpayment.userId, userId),
+        sql`${arOverpayment.amountRemaining} > 0`
+      )
+    );
+
+  const overpaymentMap = new Map<string, number>();
+  for (const op of overpayments) {
+    const current = overpaymentMap.get(op.contactId) || 0;
+    overpaymentMap.set(op.contactId, current + Number(op.amountRemaining));
+  }
+
+  // Fetch unallocated Prepayments
+  const prepayments = await db
+    .select({
+      contactId: arPrepayment.contactId,
+      amountRemaining: arPrepayment.amountRemaining,
+    })
+    .from(arPrepayment)
+    .where(
+      and(
+        eq(arPrepayment.userId, userId),
+        sql`${arPrepayment.amountRemaining} > 0`
+      )
+    );
+
+  const prepaymentMap = new Map<string, number>();
+  for (const pp of prepayments) {
+    const current = prepaymentMap.get(pp.contactId) || 0;
+    prepaymentMap.set(pp.contactId, current + Number(pp.amountRemaining));
+  }
+
   return results
     .map(({ contact, history }) => {
       const buckets = bucketMap.get(contact.id) || {
@@ -120,19 +162,28 @@ export async function getAgeingReportData(): Promise<AgeingReportItem[]> {
         "90+": 0,
       };
       const unallocatedCredit = creditNoteMap.get(contact.id) || 0;
+      const unallocatedOverpayment = overpaymentMap.get(contact.id) || 0;
+      const unallocatedPrepayment = prepaymentMap.get(contact.id) || 0;
+
+      const totalUnallocated =
+        unallocatedCredit + unallocatedOverpayment + unallocatedPrepayment;
       const totalOutstanding = Number(history.totalOutstanding);
+
+      // Apply unallocated credits/payments to reduce the total and the Current bucket (standard accounting practice)
+      const netTotalOutstanding = totalOutstanding - totalUnallocated;
+      const netCurrent = buckets.Current - totalUnallocated;
 
       return {
         contactId: contact.id,
         customerName: contact.name,
         email: contact.email,
-        totalOutstanding, // Already correct - includes allocated credits from Xero
-        ageingCurrent: buckets.Current,
+        totalOutstanding: netTotalOutstanding,
+        ageingCurrent: netCurrent,
         ageing1_30: buckets["1-30"],
         ageing31_60: buckets["31-60"],
         ageing61_90: buckets["61-90"],
         ageing90Plus: buckets["90+"],
-        unallocatedCreditNotes: unallocatedCredit, // Informational only
+        unallocatedCreditNotes: unallocatedCredit,
         riskScore: history.riskScore || 0,
         lastPaymentDate: history.lastPaymentDate,
         creditTermsDays: history.creditTermsDays || 0,

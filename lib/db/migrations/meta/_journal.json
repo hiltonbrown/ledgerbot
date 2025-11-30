@@ -274,6 +274,13 @@
       "when": 1764455772113,
       "tag": "0038_short_killer_shrike",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1764476555087,
+      "tag": "0039_mature_rattler",
+      "breakpoints": true
     }
   ]
 }
