@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import type { Metadata } from "next";
+import { getUserSettings } from "@/app/(settings)/api/user/data";
 import { AgeingReportTable } from "@/components/ar/ageing-report-table";
 import { ARAgeingChart } from "@/components/ar/ar-ageing-chart";
 import { ARKPICards } from "@/components/ar/ar-kpi-cards";
@@ -16,6 +17,7 @@ export default async function AgeingReportPage() {
   await auth();
   const data = await getAgeingReportData();
   const kpis = await getARKPIs();
+  const userSettings = await getUserSettings();
   const lastUpdated = data.length > 0 ? data[0].lastUpdated : null;
 
   return (
@@ -31,7 +33,17 @@ export default async function AgeingReportPage() {
         </div>
         <div className="flex items-center gap-4">
           <div className="text-muted-foreground text-sm">
-            Last updated: {lastUpdated ? lastUpdated.toLocaleString() : "N/A"}
+            Last updated:{" "}
+            {lastUpdated
+              ? lastUpdated.toLocaleString("en-AU", {
+                  timeZone: userSettings.personalisation.timezone,
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "N/A"}
           </div>
           <SyncButton />
         </div>
