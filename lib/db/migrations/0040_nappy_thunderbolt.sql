@@ -1,0 +1,1 @@
+ALTER TABLE "ApPaymentSchedule" ADD COLUMN "items" jsonb;

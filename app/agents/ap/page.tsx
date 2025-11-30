@@ -16,7 +16,7 @@ import {
   type FilterType,
 } from "@/components/agents/ap/ap-filter-tabs";
 import { APKPICards, type APKPIs } from "@/components/agents/ap/ap-kpi-cards";
-import { APPaymentScheduleModal } from "@/components/agents/ap/ap-payment-schedule-modal";
+import { APPaymentScheduleSheet } from "@/components/agents/ap/ap-payment-schedule-sheet";
 import { toast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 
@@ -239,8 +239,8 @@ export default function AccountsPayableAgentPage() {
         onRowExpand={handleRowExpand}
       />
 
-      {/* Payment Schedule Modal */}
-      <APPaymentScheduleModal
+      {/* Payment Schedule Sheet */}
+      <APPaymentScheduleSheet
         onClose={() => setShowPaymentSchedule(false)}
         open={showPaymentSchedule}
       />

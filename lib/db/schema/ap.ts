@@ -330,6 +330,7 @@ export const apPaymentSchedule = pgTable(
     name: varchar("name", { length: 255 }).notNull(),
     scheduledDate: timestamp("scheduledDate").notNull(),
     billIds: jsonb("billIds").$type<string[]>().notNull(),
+    items: jsonb("items").$type<Array<{ billId: string; amount: number }>>(),
     totalAmount: numeric("totalAmount", { precision: 10, scale: 2 }).notNull(),
     billCount: numeric("billCount", { precision: 5, scale: 0 }).notNull(),
     status: varchar("status", { length: 20 }).notNull().default("draft"), // draft, ready, processing, completed, failed

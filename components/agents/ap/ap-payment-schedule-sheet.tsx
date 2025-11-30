@@ -9,22 +9,21 @@ import {
   DollarSign,
   FileText,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "@/components/toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { APCashFlowChart } from "./ap-cash-flow-chart";
 
@@ -35,8 +34,18 @@ type Bill = {
   contactId: string;
   dueDate: string;
   amount: number;
+  scheduledAmount: number;
   status: string;
   riskLevel: string;
+};
+
+type PaymentSchedule = {
+  id: string;
+  name: string;
+  scheduledDate: string;
+  totalAmount: number;
+  billCount: number;
+  status: string;
 };
 
 type ForecastData = {
@@ -46,31 +55,35 @@ type ForecastData = {
   cumulativeAmount: number;
 };
 
-type PaymentScheduleModalProps = {
+type PaymentScheduleSheetProps = {
   open: boolean;
   onClose: () => void;
   onPaymentRunCreated?: () => void;
 };
 
-export function APPaymentScheduleModal({
+export function APPaymentScheduleSheet({
   open,
   onClose,
   onPaymentRunCreated,
-}: PaymentScheduleModalProps) {
+}: PaymentScheduleSheetProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     new Date()
   );
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
   const [billsByDate, setBillsByDate] = useState<Record<string, Bill[]>>({});
   const [forecast, setForecast] = useState<ForecastData[]>([]);
+  const [schedules, setSchedules] = useState<PaymentSchedule[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedBills, setSelectedBills] = useState<Set<string>>(new Set());
+  const [paymentAmounts, setPaymentAmounts] = useState<Record<string, number>>(
+    {}
+  );
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [paymentRunName, setPaymentRunName] = useState("");
   const [paymentRunNotes, setPaymentRunNotes] = useState("");
   const [isCreating, setIsCreating] = useState(false);
 
-  const loadScheduleData = async () => {
+  const loadScheduleData = useCallback(async () => {
     try {
       setIsLoading(true);
 
@@ -88,6 +101,7 @@ export function APPaymentScheduleModal({
       if (result.success && result.data) {
         setBillsByDate(result.data.billsByDate);
         setForecast(result.data.forecast);
+        setSchedules(result.data.schedules || []);
       } else {
         console.error("Failed to load schedule:", result.error);
       }
@@ -96,9 +110,9 @@ export function APPaymentScheduleModal({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  // Load schedule data when modal opens
+  // Load schedule data when sheet opens
   useEffect(() => {
     if (open) {
       loadScheduleData();
@@ -109,8 +123,7 @@ export function APPaymentScheduleModal({
       setPaymentRunName("");
       setPaymentRunNotes("");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, loadScheduleData]);
 
   const selectedDateKey = selectedDate
     ? selectedDate.toISOString().split("T")[0]
@@ -139,10 +152,12 @@ export function APPaymentScheduleModal({
   const selectedBillsList = billsOnSelectedDate.filter((b) =>
     selectedBills.has(b.id)
   );
-  const totalSelectedAmount = selectedBillsList.reduce(
-    (sum, bill) => sum + bill.amount,
-    0
-  );
+
+  const totalSelectedAmount = selectedBillsList.reduce((sum, bill) => {
+    const remainingAmount = bill.amount - bill.scheduledAmount;
+    const amount = paymentAmounts[bill.id] ?? remainingAmount;
+    return sum + amount;
+  }, 0);
 
   const handleCreatePaymentRun = async () => {
     if (selectedBills.size === 0) {
@@ -164,6 +179,14 @@ export function APPaymentScheduleModal({
     try {
       setIsCreating(true);
 
+      const items = selectedBillsList.map((bill) => {
+        const remainingAmount = bill.amount - bill.scheduledAmount;
+        return {
+          billId: bill.id,
+          amount: paymentAmounts[bill.id] ?? remainingAmount,
+        };
+      });
+
       const response = await fetch("/api/agents/ap/schedule", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -171,6 +194,7 @@ export function APPaymentScheduleModal({
           name: paymentRunName,
           scheduledDate: selectedDate?.toISOString(),
           billIds: Array.from(selectedBills),
+          items,
           notes: paymentRunNotes,
         }),
       });
@@ -245,6 +269,10 @@ export function APPaymentScheduleModal({
       const isSelected = selectedDate?.toISOString().split("T")[0] === dateKey;
       const isToday = new Date().toDateString() === date.toDateString();
 
+      const hasSchedules = schedules.some(
+        (s) => s.scheduledDate.split("T")[0] === dateKey
+      );
+
       days.push(
         <div className="aspect-square p-1" key={day}>
           <button
@@ -253,9 +281,11 @@ export function APPaymentScheduleModal({
                 ? "bg-primary text-primary-foreground shadow-md ring-2 ring-primary ring-offset-2"
                 : hasBills
                   ? "border-2 border-primary bg-primary/10 font-semibold hover:bg-primary/20"
-                  : isToday
-                    ? "border-2 border-primary/40 bg-primary/5 hover:bg-primary/10"
-                    : "hover:bg-muted"
+                  : hasSchedules
+                    ? "border-2 border-orange-500/50 bg-orange-500/10 hover:bg-orange-500/20"
+                    : isToday
+                      ? "border-2 border-primary/40 bg-primary/5 hover:bg-primary/10"
+                      : "hover:bg-muted"
             }`}
             onClick={() => setSelectedDate(date)}
             type="button"
@@ -272,9 +302,18 @@ export function APPaymentScheduleModal({
                     className={`h-1.5 w-1.5 rounded-full ${
                       isSelected ? "bg-primary-foreground" : "bg-primary"
                     }`}
-                    key={`dot-${dateKey}-${i}`}
+                    key={`dot-${dateKey}-${i}-${billCount}`}
                   />
                 ))}
+              </div>
+            )}
+            {!hasBills && hasSchedules && (
+              <div className="absolute bottom-1 flex gap-0.5">
+                <div
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    isSelected ? "bg-primary-foreground" : "bg-orange-500"
+                  }`}
+                />
               </div>
             )}
           </button>
@@ -338,6 +377,10 @@ export function APPaymentScheduleModal({
             <span className="font-medium">Bills due</span>
           </div>
           <div className="flex items-center gap-1.5">
+            <div className="h-6 w-6 rounded-lg border-2 border-orange-500/50 bg-orange-500/10" />
+            <span className="font-medium">Scheduled</span>
+          </div>
+          <div className="flex items-center gap-1.5">
             <div className="h-6 w-6 rounded-lg border-2 border-primary/40 bg-primary/5" />
             <span>Today</span>
           </div>
@@ -351,23 +394,20 @@ export function APPaymentScheduleModal({
   };
 
   return (
-    <Dialog
-      onOpenChange={(isOpen: boolean) => !isOpen && onClose()}
-      open={open}
-    >
-      <DialogContent className="max-h-[90vh] max-w-7xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl">
+    <Sheet onOpenChange={(isOpen) => !isOpen && onClose()} open={open}>
+      <SheetContent className="w-[800px] overflow-y-auto sm:max-w-[800px]">
+        <SheetHeader>
+          <SheetTitle className="flex items-center gap-2 text-xl">
             <CalendarIcon className="h-6 w-6 text-primary" />
             Payment Schedule & Cash Flow Forecast
-          </DialogTitle>
-          <DialogDescription>
+          </SheetTitle>
+          <SheetDescription>
             View upcoming payments, create payment runs, and analyze cash flow
             impact over the next 30 days
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
 
-        <div className="space-y-6">
+        <div className="mt-6 space-y-6">
           {/* Cash Flow Forecast */}
           <div>
             <h3 className="mb-3 flex items-center gap-2 font-semibold text-base">
@@ -377,7 +417,7 @@ export function APPaymentScheduleModal({
             <APCashFlowChart data={forecast} isLoading={isLoading} />
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-6">
             {/* Calendar Section */}
             <div>
               <h3 className="mb-3 flex items-center gap-2 font-semibold text-base">
@@ -437,54 +477,122 @@ export function APPaymentScheduleModal({
                     </div>
                   </div>
                 ) : (
-                  billsOnSelectedDate.map((bill) => (
-                    <Card
-                      className={`cursor-pointer p-4 transition-all ${
-                        selectedBills.has(bill.id)
-                          ? "border-primary bg-primary/5 shadow-sm"
-                          : "hover:border-muted-foreground/30 hover:shadow-sm"
-                      }`}
-                      key={bill.id}
-                      onClick={() => toggleBillSelection(bill.id)}
-                    >
-                      <div className="flex items-start gap-3">
-                        <Checkbox
-                          checked={selectedBills.has(bill.id)}
-                          className="mt-0.5"
-                          onCheckedChange={() => toggleBillSelection(bill.id)}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                        <div className="flex-1">
-                          <div className="mb-1 flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold">
-                                {bill.contactName}
-                              </span>
-                              {(bill.riskLevel === "high" ||
-                                bill.riskLevel === "critical") && (
-                                <AlertTriangle className="h-4 w-4 text-orange-500" />
-                              )}
+                  billsOnSelectedDate.map((bill) => {
+                    const isSelected = selectedBills.has(bill.id);
+                    const remainingAmount = bill.amount - bill.scheduledAmount;
+                    const paymentAmount =
+                      paymentAmounts[bill.id] ?? remainingAmount;
+
+                    return (
+                      <Card
+                        className={`cursor-pointer p-4 transition-all ${
+                          isSelected
+                            ? "border-primary bg-primary/5 shadow-sm"
+                            : "hover:border-muted-foreground/30 hover:shadow-sm"
+                        }`}
+                        key={bill.id}
+                        onClick={() => toggleBillSelection(bill.id)}
+                      >
+                        <div className="flex items-start gap-3">
+                          <Checkbox
+                            checked={isSelected}
+                            className="mt-0.5"
+                            onCheckedChange={() => toggleBillSelection(bill.id)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <div className="flex-1">
+                            <div className="mb-1 flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold">
+                                  {bill.contactName}
+                                </span>
+                                {(bill.riskLevel === "high" ||
+                                  bill.riskLevel === "critical") && (
+                                  <AlertTriangle className="h-4 w-4 text-orange-500" />
+                                )}
+                              </div>
+                              <div className="text-right">
+                                <span className="font-bold text-lg">
+                                  $
+                                  {bill.amount.toLocaleString("en-AU", {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                  })}
+                                </span>
+                                {bill.scheduledAmount > 0 && (
+                                  <div className="text-muted-foreground text-xs">
+                                    Scheduled: $
+                                    {bill.scheduledAmount.toLocaleString(
+                                      "en-AU",
+                                      {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2,
+                                      }
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                            <span className="font-bold text-lg">
-                              $
-                              {bill.amount.toLocaleString("en-AU", {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-muted-foreground text-sm">
-                              Invoice #{bill.number}
-                            </span>
-                            <Badge className="text-xs" variant="outline">
-                              {bill.status}
-                            </Badge>
+                            <div className="flex items-center justify-between">
+                              <span className="text-muted-foreground text-sm">
+                                Invoice #{bill.number}
+                              </span>
+                              <Badge className="text-xs" variant="outline">
+                                {bill.status}
+                              </Badge>
+                            </div>
+
+                            {isSelected && (
+                              <div className="mt-3">
+                                <Label
+                                  className="text-xs"
+                                  htmlFor={`amount-${bill.id}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  Payment Amount
+                                </Label>
+                                <div className="relative mt-1">
+                                  <span className="absolute top-2.5 left-2 text-muted-foreground text-sm">
+                                    $
+                                  </span>
+                                  <Input
+                                    className="h-9 pl-6"
+                                    id={`amount-${bill.id}`}
+                                    max={remainingAmount}
+                                    min={0.01}
+                                    onChange={(e) => {
+                                      const val = Number.parseFloat(
+                                        e.target.value
+                                      );
+                                      if (!Number.isNaN(val)) {
+                                        setPaymentAmounts((prev) => ({
+                                          ...prev,
+                                          [bill.id]: val,
+                                        }));
+                                      }
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    step="0.01"
+                                    type="number"
+                                    value={paymentAmount}
+                                  />
+                                </div>
+                                <div className="mt-1 flex justify-between text-xs">
+                                  <span className="text-muted-foreground">
+                                    Remaining: $
+                                    {remainingAmount.toLocaleString("en-AU", {
+                                      minimumFractionDigits: 2,
+                                      maximumFractionDigits: 2,
+                                    })}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
-                      </div>
-                    </Card>
-                  ))
+                      </Card>
+                    );
+                  })
                 )}
               </div>
 
@@ -558,24 +666,24 @@ export function APPaymentScheduleModal({
               </div>
             </Card>
           )}
-        </div>
 
-        <DialogFooter className="gap-2">
-          <Button onClick={onClose} variant="outline">
-            Close
-          </Button>
-          {selectedBills.size > 0 && !showCreateForm && (
-            <Button onClick={() => setShowCreateForm(true)}>
-              Create Payment Run ({selectedBills.size})
+          <div className="flex justify-end gap-2 pb-6">
+            <Button onClick={onClose} variant="outline">
+              Close
             </Button>
-          )}
-          {showCreateForm && (
-            <Button disabled={isCreating} onClick={handleCreatePaymentRun}>
-              {isCreating ? "Creating..." : "Confirm Payment Run"}
-            </Button>
-          )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            {selectedBills.size > 0 && !showCreateForm && (
+              <Button onClick={() => setShowCreateForm(true)}>
+                Create Payment Run ({selectedBills.size})
+              </Button>
+            )}
+            {showCreateForm && (
+              <Button disabled={isCreating} onClick={handleCreatePaymentRun}>
+                {isCreating ? "Creating..." : "Confirm Payment Run"}
+              </Button>
+            )}
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

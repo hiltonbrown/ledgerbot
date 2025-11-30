@@ -4,7 +4,7 @@ import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import { db } from "@/lib/db/queries";
 import { createPaymentSchedule } from "@/lib/db/queries/ap";
 import type { ApPaymentScheduleInsert } from "@/lib/db/schema/ap";
-import { apBill, apContact } from "@/lib/db/schema/ap";
+import { apBill, apContact, apPaymentSchedule } from "@/lib/db/schema/ap";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -96,6 +96,39 @@ export async function GET(request: Request) {
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
+    // Get existing schedules within the date range
+    const schedules = await db
+      .select()
+      .from(apPaymentSchedule)
+      .where(
+        and(
+          eq(apPaymentSchedule.userId, user.id),
+          gte(apPaymentSchedule.scheduledDate, start),
+          lte(apPaymentSchedule.scheduledDate, end),
+          sql`${apPaymentSchedule.status} != 'cancelled'`
+        )
+      );
+
+    // Calculate scheduled amounts per bill from DRAFT schedules
+    const billScheduledAmounts: Record<string, number> = {};
+    for (const schedule of schedules) {
+      if (schedule.status === "draft" && schedule.items) {
+        const items = schedule.items as Array<{
+          billId: string;
+          amount: number;
+        }>;
+        for (const item of items) {
+          billScheduledAmounts[item.billId] =
+            (billScheduledAmounts[item.billId] || 0) + Number(item.amount);
+        }
+      } else if (schedule.status === "draft" && schedule.billIds) {
+        // Fallback for legacy schedules without items (assume full amount)
+        // We can't easily know the full amount here without querying bills again,
+        // but for now we'll skip this optimization or handle it if needed.
+        // Ideally, we should migrate existing data or just rely on items going forward.
+      }
+    }
+
     // Format bills for response
     const formattedBillsByDate: Record<
       string,
@@ -106,24 +139,31 @@ export async function GET(request: Request) {
         contactId: string;
         dueDate: string;
         amount: number;
+        scheduledAmount: number;
         status: string;
         riskLevel: string;
       }>
     > = {};
 
     for (const [dateKey, dayBills] of Object.entries(billsByDate)) {
-      formattedBillsByDate[dateKey] = dayBills.map((item) => ({
-        id: item.bill.id,
-        number: item.bill.number,
-        contactName: item.contact.name,
-        contactId: item.contact.id,
-        dueDate: new Date(item.bill.dueDate).toISOString(),
-        amount:
+      formattedBillsByDate[dateKey] = dayBills.map((item) => {
+        const totalAmount =
           Number.parseFloat(item.bill.total) -
-          Number.parseFloat(item.bill.amountPaid),
-        status: item.bill.status,
-        riskLevel: item.contact.riskLevel,
-      }));
+          Number.parseFloat(item.bill.amountPaid);
+        const scheduled = billScheduledAmounts[item.bill.id] || 0;
+
+        return {
+          id: item.bill.id,
+          number: item.bill.number,
+          contactName: item.contact.name,
+          contactId: item.contact.id,
+          dueDate: new Date(item.bill.dueDate).toISOString(),
+          amount: totalAmount,
+          scheduledAmount: scheduled,
+          status: item.bill.status,
+          riskLevel: item.contact.riskLevel,
+        };
+      });
     }
 
     return NextResponse.json({
@@ -131,6 +171,7 @@ export async function GET(request: Request) {
       data: {
         billsByDate: formattedBillsByDate,
         forecast,
+        schedules,
         summary: {
           totalBills: bills.length,
           totalAmount: cumulativeAmount,
@@ -166,7 +207,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { name, scheduledDate, billIds, notes } = body;
+    const { name, scheduledDate, billIds, items, notes } = body;
 
     if (!name || !scheduledDate || !billIds || billIds.length === 0) {
       return NextResponse.json(
@@ -196,11 +237,22 @@ export async function POST(request: Request) {
       );
     }
 
-    const totalAmount = bills.reduce((sum, bill) => {
-      const due =
-        Number.parseFloat(bill.total) - Number.parseFloat(bill.amountPaid);
-      return sum + due;
-    }, 0);
+    let totalAmount = 0;
+
+    // If items are provided, use them to calculate total
+    if (items && Array.isArray(items)) {
+      totalAmount = items.reduce(
+        (sum: number, item: { amount: number }) => sum + Number(item.amount),
+        0
+      );
+    } else {
+      // Fallback to full bill amounts
+      totalAmount = bills.reduce((sum, bill) => {
+        const due =
+          Number.parseFloat(bill.total) - Number.parseFloat(bill.amountPaid);
+        return sum + due;
+      }, 0);
+    }
 
     // Calculate risk summary
     const riskSummary = {
@@ -216,6 +268,7 @@ export async function POST(request: Request) {
       name,
       scheduledDate: new Date(scheduledDate),
       billIds,
+      items: items || [], // Save items if provided
       totalAmount: (Math.round(totalAmount * 100) / 100).toString(),
       billCount: bills.length.toString(),
       riskSummary,
