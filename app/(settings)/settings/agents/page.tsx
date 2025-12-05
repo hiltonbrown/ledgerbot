@@ -18,6 +18,7 @@ import {
   SettingRow,
 } from "@/components/settings/agent-config-card";
 import { SettingsSection } from "@/components/settings/settings-section";
+import { toast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,8 +33,6 @@ import { Switch } from "@/components/ui/switch";
 import { chatModels } from "@/lib/ai/models";
 
 export default function AgentSettingsPage() {
-  const [systemEnabled, setSystemEnabled] = useState(false);
-
   // Document-Processing Agent state
   const [docProcessingEnabled, setDocProcessingEnabled] = useState(true);
   const [ocrQuality, setOcrQuality] = useState("medium");
@@ -119,69 +118,78 @@ export default function AgentSettingsPage() {
   const [loggingLevel, setLoggingLevel] = useState("info");
   const [fallbackBehavior, setFallbackBehavior] = useState("retry");
 
-  // Load AP agent settings from localStorage on mount
+  // Load agent settings on mount
   useEffect(() => {
-    const savedApModel = localStorage.getItem("apAgentModel");
-    if (savedApModel) {
-      setApModel(savedApModel);
-    }
-
-    const savedDuplicateThreshold = localStorage.getItem(
-      "apDuplicateThreshold"
-    );
-    if (savedDuplicateThreshold) {
-      setDuplicateThreshold(savedDuplicateThreshold);
-    }
-
-    const savedBankChangeMonitoring = localStorage.getItem(
-      "apBankChangeMonitoring"
-    );
-    if (savedBankChangeMonitoring) {
-      setBankChangeMonitoring(savedBankChangeMonitoring === "true");
-    }
-
-    const savedAutoApproveThreshold = localStorage.getItem(
-      "apAutoApproveRiskThreshold"
-    );
-    if (savedAutoApproveThreshold) {
-      setAutoApproveRiskThreshold(savedAutoApproveThreshold);
-    }
-
-    const savedRiskWeights = localStorage.getItem("apRiskWeights");
-    if (savedRiskWeights) {
+    const loadSettings = async () => {
       try {
-        setRiskWeights(JSON.parse(savedRiskWeights));
+        const response = await fetch("/api/agents");
+        if (response.ok) {
+          const data = await response.json();
+          const settings = data.agentSettings;
+
+          // Load AP agent settings if they exist
+          if (settings?.ap) {
+            if (settings.ap.model) {
+              setApModel(settings.ap.model);
+            }
+            if (settings.ap.duplicateThreshold) {
+              setDuplicateThreshold(settings.ap.duplicateThreshold);
+            }
+            if (settings.ap.bankChangeMonitoring !== undefined) {
+              setBankChangeMonitoring(settings.ap.bankChangeMonitoring);
+            }
+            if (settings.ap.autoApproveRiskThreshold) {
+              setAutoApproveRiskThreshold(settings.ap.autoApproveRiskThreshold);
+            }
+            if (settings.ap.riskWeights) {
+              setRiskWeights(settings.ap.riskWeights);
+            }
+          }
+        }
       } catch (error) {
-        console.error("Failed to parse saved risk weights:", error);
+        console.error("Failed to load agent settings:", error);
       }
-    }
+    };
+
+    loadSettings();
   }, []);
 
-  const handleSaveChanges = () => {
-    // Save AP agent settings to localStorage
-    localStorage.setItem("apAgentModel", apModel);
-    localStorage.setItem("apDuplicateThreshold", duplicateThreshold);
-    localStorage.setItem(
-      "apBankChangeMonitoring",
-      String(bankChangeMonitoring)
-    );
-    localStorage.setItem(
-      "apAutoApproveRiskThreshold",
-      autoApproveRiskThreshold
-    );
-    localStorage.setItem("apRiskWeights", JSON.stringify(riskWeights));
+  const handleSaveChanges = async () => {
+    try {
+      // Prepare agent settings object
+      const agentSettings = {
+        ap: {
+          model: apModel,
+          duplicateThreshold,
+          bankChangeMonitoring,
+          autoApproveRiskThreshold,
+          riskWeights,
+        },
+        // Add other agent settings here as they're implemented
+      };
 
-    console.log("Saving agent configurations...");
-    console.log("AP Agent Settings:", {
-      model: apModel,
-      duplicateThreshold,
-      bankChangeMonitoring,
-      autoApproveRiskThreshold,
-      riskWeights,
-    });
+      // Save to database via API
+      const response = await fetch("/api/agents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agentSettings }),
+      });
 
-    // TODO: Save to database via API
-    alert("Agent settings saved successfully!");
+      if (!response.ok) {
+        throw new Error("Failed to save settings");
+      }
+
+      toast({
+        type: "success",
+        description: "Agent settings saved successfully!",
+      });
+    } catch (error) {
+      console.error("Failed to save agent settings:", error);
+      toast({
+        type: "error",
+        description: "Failed to save settings. Please try again.",
+      });
+    }
   };
 
   return (
@@ -221,28 +229,7 @@ export default function AgentSettingsPage() {
               <Button asChild size="sm" variant="secondary">
                 <Link href="/agents">Open agent workspaces</Link>
               </Button>
-              <Button asChild size="sm" variant="outline">
-                <Link href="/agents/docmanagement">View document intake</Link>
-              </Button>
             </div>
-          </div>
-          <div className="flex items-center justify-between rounded-lg border bg-muted/30 p-4">
-            <div className="space-y-0.5">
-              <Label
-                className="font-semibold text-base"
-                htmlFor="system-enabled"
-              >
-                Agent system
-              </Label>
-              <p className="text-muted-foreground text-sm">
-                Master control for all AI agents in the system
-              </p>
-            </div>
-            <Switch
-              checked={systemEnabled}
-              id="system-enabled"
-              onCheckedChange={setSystemEnabled}
-            />
           </div>
 
           {/* Document-Processing Agent */}

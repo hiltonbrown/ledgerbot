@@ -1,61 +1,40 @@
-"use client";
-
-import { GitBranch, Network, Play } from "lucide-react";
+import { Network } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default function WorkflowAgentPage() {
   return (
     <div className="container mx-auto space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="flex items-center gap-2 font-bold text-3xl">
-            <Network className="h-8 w-8 text-primary" />
-            Workflow Supervisor Agent
-          </h1>
-          <p className="text-muted-foreground">
-            Graph orchestrations across document, reconciliation, and compliance
-            agents with workflow traceability
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button className="gap-2" disabled variant="outline">
-            <GitBranch className="h-4 w-4" />
-            View Workflows
-          </Button>
-          <Button className="gap-2" disabled>
-            <Play className="h-4 w-4" />
-            Run Workflow
-          </Button>
-        </div>
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Card className="w-full max-w-2xl">
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center space-y-6 text-center">
+              <div className="rounded-full bg-primary/10 p-6">
+                <Network className="h-16 w-16 text-primary" />
+              </div>
+              <div className="space-y-2">
+                <h1 className="font-bold text-3xl">
+                  Workflow Supervisor Agent
+                </h1>
+                <p className="text-muted-foreground text-xl">Coming Soon...</p>
+              </div>
+              <p className="max-w-md text-muted-foreground">
+                Graph orchestrations across document, reconciliation and
+                compliance agents with traceability will be available soon.
+              </p>
+              <div className="flex gap-3 pt-4">
+                <Button asChild variant="default">
+                  <Link href="/agents">View other agents</Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <Link href="/">Back to home</Link>
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
-
-      {/* Coming Soon Card */}
-      <Card>
-        <CardContent className="p-12">
-          <div className="flex flex-col items-center justify-center text-center">
-            <Network className="mb-4 h-16 w-16 text-muted-foreground" />
-            <h2 className="mb-2 font-semibold text-xl">
-              Workflow Supervisor Coming Soon
-            </h2>
-            <p className="mb-6 max-w-md text-muted-foreground">
-              The Workflow Supervisor workspace is under development. This agent
-              will orchestrate multi-step processes across document management,
-              reconciliation, and compliance agents with full traceability.
-            </p>
-            <p className="text-muted-foreground text-sm">
-              Configure settings via{" "}
-              <a
-                className="font-medium text-primary hover:underline"
-                href="/settings/agents"
-              >
-                Settings → Agents
-              </a>
-            </p>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

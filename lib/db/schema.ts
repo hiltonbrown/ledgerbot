@@ -238,6 +238,7 @@ export const userSettings = pgTable("UserSettings", {
         order: number;
       }>
     >(),
+  agentSettings: jsonb("agentSettings").$type<Record<string, unknown>>(),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });

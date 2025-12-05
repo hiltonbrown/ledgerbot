@@ -1,6 +1,6 @@
 import {
-  Activity,
   BarChart3,
+  BookOpen,
   CreditCard,
   DollarSign,
   FileText,
@@ -16,7 +16,7 @@ const agentSnapshots = [
   {
     title: "Document Processing",
     description:
-      "AI-assisted intake for invoices, receipts and bank statements with automated OCR and validation queues.",
+      "AI-assisted intake for invoices, receipts and bank statements with automated OCR and validation queues. (Coming Soon)",
     href: "/agents/docmanagement",
     icon: <FileText className="h-5 w-5" />,
   },
@@ -30,7 +30,7 @@ const agentSnapshots = [
   {
     title: "Forecasting",
     description:
-      "Scenario modelling, runway projections and automated assumption tracking with AI workflows.",
+      "Scenario modelling, runway projections and automated assumption tracking with AI workflows. (Coming Soon)",
     href: "/agents/forecasting",
     icon: <Gauge className="h-5 w-5" />,
   },
@@ -51,14 +51,14 @@ const agentSnapshots = [
   {
     title: "Advisory Q&A",
     description:
-      "Conversational assistant for policies, ledger context and structured follow-up tasks.",
+      "Conversational assistant for policies, ledger context and structured follow-up tasks. (Coming Soon)",
     href: "/agents/qanda",
-    icon: <Activity className="h-5 w-5" />,
+    icon: <BookOpen className="h-5 w-5" />,
   },
   {
     title: "Workflow Supervisor",
     description:
-      "Graph orchestrations across document, reconciliation and compliance agents with traceability.",
+      "Graph orchestrations across document, reconciliation and compliance agents with traceability. (Coming Soon)",
     href: "/agents/workflow",
     icon: <Network className="h-5 w-5" />,
   },
