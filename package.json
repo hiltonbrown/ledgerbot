@@ -83,7 +83,7 @@
     "prosemirror-view": "^1.41.3",
     "radix-ui": "^1.4.3",
     "react": "19.2.0",
-    "react-data-grid": "7.0.0-beta.47",
+    "react-data-grid": "7.0.0-beta.59",
     "react-day-picker": "^9.11.1",
     "react-dom": "19.2.0",
     "react-resizable-panels": "^2.1.9",
