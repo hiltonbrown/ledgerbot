@@ -105,7 +105,7 @@ export function CustomerDetailsSheet({
 
     setIsPreparing(true);
     try {
-      const response = await fetch("/api/ar/followup/prepare", {
+      const response = await fetch("/api/agents/ar/followup/prepare", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ contactId, followUpType }),
@@ -168,7 +168,7 @@ export function CustomerDetailsSheet({
 
       console.log("[CustomerDetailsSheet] Creating chat with:", requestBody);
 
-      const response = await fetch("/api/ar/followup/create", {
+      const response = await fetch("/api/agents/ar/followup/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
