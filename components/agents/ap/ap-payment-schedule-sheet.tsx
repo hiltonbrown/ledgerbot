@@ -9,7 +9,7 @@ import {
   DollarSign,
   FileText,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { type ReactElement, useCallback, useEffect, useState } from "react";
 import { toast } from "@/components/toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -250,7 +250,7 @@ export function APPaymentScheduleSheet({
       setCurrentMonth(new Date(year, month + 1, 1));
     };
 
-    const days: JSX.Element[] = [];
+    const days: ReactElement[] = [];
     // Add empty cells for days before month starts
     for (let i = 0; i < startingDayOfWeek; i++) {
       days.push(

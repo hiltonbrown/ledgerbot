@@ -95,7 +95,7 @@ export function TokenUsageChart({
                 tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
                 tickLine={false}
               />
-              <ChartTooltip content={<ChartTooltipContent />} />
+              <ChartTooltip />
               <ChartLegend
                 align="right"
                 content={<ChartLegendContent />}

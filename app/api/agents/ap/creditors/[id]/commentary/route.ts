@@ -54,6 +54,20 @@ export async function GET(
       .orderBy(desc(apBill.dueDate))
       .limit(10);
 
+    // Get recently paid bills
+    const paidBills = await db
+      .select()
+      .from(apBill)
+      .where(
+        and(
+          eq(apBill.contactId, id),
+          eq(apBill.userId, user.id),
+          eq(apBill.status, "paid")
+        )
+      )
+      .orderBy(desc(apBill.updatedAt)) // or issueDate if preferred, but updatedAt likely reflects payment time roughly if sync updates it
+      .limit(5);
+
     // Get recent payments
     const recentPayments = await db
       .select({
@@ -119,7 +133,6 @@ Supplier: ${creditor.name}
 ABN: ${creditor.abn || "Not provided"}
 Status: ${creditor.status}
 Risk Level: ${creditor.riskLevel}
-Payment Terms: ${creditor.paymentTerms || "Not specified"}
 
 Outstanding Bills: ${bills.length}
 Total Outstanding: $${totalOutstanding.toFixed(2)}
@@ -133,37 +146,17 @@ ${recentPayments.map((p) => `- $${p.payment.amount} paid on ${new Date(p.payment
 Bank Account Changes: ${bankChanges.length}
 ${bankChanges.length > 0 ? `Most Recent Change: ${new Date(bankChanges[0].detectedAt).toLocaleDateString("en-AU")}` : "No changes detected"}
 ${bankChanges.length > 0 && !bankChanges[0].isVerified ? "⚠️ UNVERIFIED BANK CHANGE" : ""}
-
-Current Outstanding Bills:
-${bills
-  .slice(0, 5)
-  .map((b) => {
-    const amountDue = (
-      Number.parseFloat(b.total) - Number.parseFloat(b.amountPaid)
-    ).toFixed(2);
-    const daysOverdue = Math.floor(
-      (now.getTime() - new Date(b.dueDate).getTime()) / (1000 * 60 * 60 * 24)
-    );
-    return `- ${b.number}: $${amountDue} (${daysOverdue > 0 ? `${daysOverdue} days overdue` : `due ${new Date(b.dueDate).toLocaleDateString("en-AU")}`})`;
-  })
-  .join("\n")}
 `;
 
     // Generate AI commentary
     const prompt = `You are an AI assistant analyzing accounts payable data for an Australian business.
 
-Analyze the following supplier information and provide a concise, professional commentary covering:
-1. Payment behavior and patterns
-2. Risk factors and concerns
-3. Recent bank account changes (if any)
-4. Recommended actions
-
-Be specific, data-driven, and actionable. Use Australian terminology (e.g., "supplier" not "vendor", GST not VAT).
-Format your response in clear paragraphs with headings.
+Analyze the following supplier information and provide a very short summary (max 2-3 sentences).
+Focus on payment behavior, risk, and any critical warnings (like unverified bank changes or overdue bills).
 
 ${context}
 
-Provide your analysis:`;
+Provide your summary:`;
 
     const result = await generateText({
       model: myProvider.languageModel("anthropic-claude-sonnet-4-5"),
@@ -177,6 +170,7 @@ Provide your analysis:`;
       data: {
         creditor,
         bills: bills.slice(0, 5), // Return top 5 bills
+        paidBills: paidBills,
         recentPayments: recentPayments.map((p) => ({
           ...p.payment,
           billNumber: p.bill.number,

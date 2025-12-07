@@ -122,24 +122,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Save the initial user message
-    console.log("[AR Follow-up Create] Saving initial user message");
-    await saveMessages({
-      messages: [
-        {
-          chatId,
-          id: generateUUID(),
-          role: "user",
-          createdAt: new Date(),
-          parts: [{ type: "text", text: userMessage }],
-          attachments: [],
-          confidence: null,
-          citations: null,
-          needsReview: null,
-        },
-      ],
-    });
-    console.log("[AR Follow-up Create] Initial user message saved");
+    // Note: We do NOT save the initial user message here. 
+    // It is returned to the client to be sent via 'autoSend' param, 
+    // which triggers the AI generation flow in the chat UI.
 
     console.log(
       "[AR Follow-up Create] Returning response with chatId:",

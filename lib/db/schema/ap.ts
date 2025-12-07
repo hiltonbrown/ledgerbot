@@ -356,3 +356,44 @@ export const apPaymentSchedule = pgTable(
 
 export type ApPaymentSchedule = InferSelectModel<typeof apPaymentSchedule>;
 export type ApPaymentScheduleInsert = typeof apPaymentSchedule.$inferInsert;
+
+// Review Context Types
+export type ReviewContextData = {
+  prompt: string;
+  metadata: {
+    creditorId: string;
+    creditorName: string;
+    totalOutstanding: number;
+    riskLevel: string;
+    billCount: number;
+  };
+};
+
+export const apReviewContext = pgTable(
+  "ApReviewContext",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: uuid("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    contactId: uuid("contactId")
+      .notNull()
+      .references(() => apContact.id, { onDelete: "cascade" }),
+    contextData: jsonb("contextData").$type<ReviewContextData>().notNull(),
+    expiresAt: timestamp("expiresAt").notNull(),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  },
+  (table) => ({
+    userContactIdx: index("ap_review_context_user_contact_idx").on(
+      table.userId,
+      table.contactId
+    ),
+    expiresAtIdx: index("ap_review_context_expires_at_idx").on(
+      table.expiresAt
+    ),
+  })
+);
+
+export type ApReviewContext = InferSelectModel<typeof apReviewContext>;
+export type ApReviewContextInsert = typeof apReviewContext.$inferInsert;

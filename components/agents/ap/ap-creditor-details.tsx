@@ -15,6 +15,7 @@ import type { ApBankChange, ApBill, ApPayment } from "@/lib/db/schema/ap";
 
 export type CreditorDetailsData = {
   bills: ApBill[];
+  paidBills?: ApBill[]; // Added for recent paid invoices
   recentPayments: (ApPayment & { billNumber?: string })[];
   bankChanges: ApBankChange[];
   statistics: {

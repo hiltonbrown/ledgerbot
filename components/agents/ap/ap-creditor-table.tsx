@@ -4,11 +4,9 @@ import {
   AlertTriangle,
   ArrowUpDown,
   Banknote,
-  ChevronDown,
-  ChevronRight,
   Search,
 } from "lucide-react";
-import { Fragment, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,10 +19,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { ApContact } from "@/lib/db/schema/ap";
-import {
-  APCreditorDetails,
-  type CreditorDetailsData,
-} from "./ap-creditor-details";
 
 export type ContactWithStats = ApContact & {
   totalOutstanding: number;
@@ -37,9 +31,7 @@ export type ContactWithStats = ApContact & {
 type APCreditorTableProps = {
   creditors: ContactWithStats[];
   isLoading?: boolean;
-  onRowExpand?: (creditor: ContactWithStats) => void;
-  expandedData?: Record<string, CreditorDetailsData | null>;
-  loadingStates?: Record<string, boolean>;
+  onSelectCreditor: (creditor: ContactWithStats) => void;
 };
 
 type SortField = "name" | "outstanding" | "overdue" | "dpo";
@@ -48,12 +40,9 @@ type SortDirection = "asc" | "desc";
 export function APCreditorTable({
   creditors,
   isLoading,
-  onRowExpand,
-  expandedData = {},
-  loadingStates = {},
+  onSelectCreditor,
 }: APCreditorTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [sortField, setSortField] = useState<SortField>("outstanding");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
@@ -98,20 +87,6 @@ export function APCreditorTable({
       ? (aValue as number) - (bValue as number)
       : (bValue as number) - (aValue as number);
   });
-
-  const toggleRow = (creditorId: string, creditor: ContactWithStats) => {
-    const newExpanded = new Set(expandedRows);
-    if (newExpanded.has(creditorId)) {
-      newExpanded.delete(creditorId);
-    } else {
-      newExpanded.add(creditorId);
-      // Trigger data load callback
-      if (onRowExpand) {
-        onRowExpand(creditor);
-      }
-    }
-    setExpandedRows(newExpanded);
-  };
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -172,7 +147,6 @@ export function APCreditorTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-12" />
               <TableHead>
                 <Button
                   className="gap-1"
@@ -224,108 +198,83 @@ export function APCreditorTable({
           <TableBody>
             {sortedCreditors.length === 0 ? (
               <TableRow>
-                <TableCell className="h-24 text-center" colSpan={7}>
+                <TableCell className="h-24 text-center" colSpan={6}>
                   {searchTerm
                     ? "No creditors found matching your search."
                     : "No creditors found."}
                 </TableCell>
               </TableRow>
             ) : (
-              sortedCreditors.map((creditor) => {
-                const isExpanded = expandedRows.has(creditor.id);
-
-                return (
-                  <Fragment key={creditor.id}>
-                    <TableRow className="group">
-                      <TableCell>
-                        <Button
-                          className="h-6 w-6 p-0"
-                          onClick={() => toggleRow(creditor.id, creditor)}
-                          size="sm"
-                          variant="ghost"
-                        >
-                          {isExpanded ? (
-                            <ChevronDown className="h-4 w-4" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div>
-                            <div className="font-medium">{creditor.name}</div>
-                            <div className="text-muted-foreground text-sm">
-                              {creditor.billCount}{" "}
-                              {creditor.billCount === 1 ? "bill" : "bills"}
-                            </div>
-                          </div>
-                          {creditor.hasBankChange && (
-                            <span title="Bank details changed">
-                              <Banknote className="h-4 w-4 text-orange-500" />
-                            </span>
-                          )}
-                          {creditor.riskLevel === "high" ||
-                          creditor.riskLevel === "critical" ? (
-                            <span title="High risk">
-                              <AlertTriangle className="h-4 w-4 text-red-500" />
-                            </span>
-                          ) : null}
+              sortedCreditors.map((creditor) => (
+                <TableRow
+                  className="cursor-pointer hover:bg-muted/50"
+                  key={creditor.id}
+                  onClick={() => onSelectCreditor(creditor)}
+                >
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <div>
+                        <div className="font-medium">{creditor.name}</div>
+                        <div className="text-muted-foreground text-sm">
+                          {creditor.billCount}{" "}
+                          {creditor.billCount === 1 ? "bill" : "bills"}
                         </div>
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
+                      </div>
+                      {creditor.hasBankChange && (
+                        <span title="Bank details changed">
+                          <Banknote className="h-4 w-4 text-orange-500" />
+                        </span>
+                      )}
+                      {creditor.riskLevel === "high" ||
+                      creditor.riskLevel === "critical" ? (
+                        <span title="High risk">
+                          <AlertTriangle className="h-4 w-4 text-red-500" />
+                        </span>
+                      ) : null}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right font-medium">
+                    $
+                    {creditor.totalOutstanding.toLocaleString("en-AU", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {creditor.totalOverdue > 0 ? (
+                      <span className="font-medium text-red-600">
                         $
-                        {creditor.totalOutstanding.toLocaleString("en-AU", {
+                        {creditor.totalOverdue.toLocaleString("en-AU", {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
                         })}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {creditor.totalOverdue > 0 ? (
-                          <span className="font-medium text-red-600">
-                            $
-                            {creditor.totalOverdue.toLocaleString("en-AU", {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-center text-muted-foreground text-sm">
-                        {creditor.oldestInvoiceDays > 0
-                          ? `${creditor.oldestInvoiceDays} days`
-                          : "-"}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {getRiskBadge(creditor.riskLevel)}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Button
-                          onClick={() => toggleRow(creditor.id, creditor)}
-                          size="sm"
-                          variant="outline"
-                        >
-                          {isExpanded ? "Collapse" : "View Details"}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-
-                    {/* Expanded Details Row */}
-                    {isExpanded && (
-                      <TableRow>
-                        <TableCell className="p-0" colSpan={7}>
-                          <APCreditorDetails
-                            data={expandedData[creditor.id] || null}
-                            isLoading={loadingStates[creditor.id] || false}
-                          />
-                        </TableCell>
-                      </TableRow>
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
                     )}
-                  </Fragment>
-                );
-              })
+                  </TableCell>
+                  <TableCell className="text-center text-muted-foreground text-sm">
+                    {creditor.oldestInvoiceDays > 0
+                      ? `${creditor.oldestInvoiceDays} days`
+                      : "-"}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {getRiskBadge(creditor.riskLevel)}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectCreditor(creditor);
+                      }}
+                      size="sm"
+                      variant="outline"
+                    >
+                      View Details
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
             )}
           </TableBody>
         </Table>

@@ -1,4 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
+import { FileText, RefreshCw } from "lucide-react";
 import type { Metadata } from "next";
 import { getUserSettings } from "@/app/(settings)/api/user/data";
 import { AgeingReportTable } from "@/components/ar/ageing-report-table";
@@ -21,46 +22,45 @@ export default async function AgeingReportPage() {
   const lastUpdated = data.length > 0 ? data[0].lastUpdated : null;
 
   return (
-    <div className="container mx-auto py-10">
-      <div className="mb-8 flex items-center justify-between">
+    <div className="container mx-auto space-y-6 p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-bold text-3xl tracking-tight">
+          <h1 className="flex items-center gap-2 font-bold text-3xl">
+            <FileText className="h-8 w-8 text-primary" />
             Accounts Receivable
           </h1>
           <p className="text-muted-foreground">
-            Manage outstanding invoices and assess customer risk.
+            Manage outstanding invoices and assess customer risk
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="text-muted-foreground text-sm">
-            Last updated:{" "}
-            {lastUpdated
-              ? lastUpdated.toLocaleString("en-AU", {
-                  timeZone: userSettings.personalisation.timezone,
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
-              : "N/A"}
-          </div>
+        <div className="flex flex-col items-end gap-1">
           <SyncButton />
+          {lastUpdated && (
+            <p className="text-muted-foreground text-xs">
+              Last updated:{" "}
+              {lastUpdated.toLocaleString("en-AU", {
+                timeZone: userSettings.personalisation.timezone,
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </p>
+          )}
         </div>
       </div>
 
       <StaleDataBanner lastSyncDate={lastUpdated} />
 
       {/* KPI Cards */}
-      <div className="mb-6">
-        <ARKPICards kpis={kpis} />
-      </div>
+      <ARKPICards kpis={kpis} />
 
       {/* Ageing Summary Chart */}
-      <div className="mb-6">
-        <ARAgeingChart ageingSummary={kpis.ageingSummary} />
-      </div>
+      <ARAgeingChart ageingSummary={kpis.ageingSummary} />
 
+      {/* Main Table */}
       <AgeingReportTable initialData={data} />
     </div>
   );

@@ -51,6 +51,11 @@ import {
   type ArFollowUpContextInsert,
   arFollowUpContext,
 } from "./schema/ar";
+import {
+  type ApReviewContext,
+  type ApReviewContextInsert,
+  apReviewContext,
+} from "./schema/ap";
 
 // biome-ignore lint: Forbidden non-null assertion.
 const client = postgres(process.env.POSTGRES_URL!);
@@ -2006,10 +2011,10 @@ export async function saveArFollowUpContext(
 }
 
 /**
- * Gets AR follow-up context by ID
- * @param contextId - The context ID
+ * Gets cached AR follow-up context data
+ * @param contextId - The context ID to fetch
  * @param userId - The user ID for authorization
- * @returns Promise resolving to ArFollowUpContext or null
+ * @returns Promise resolving to the context data or null if not found/expired
  */
 export async function getArFollowUpContext(
   contextId: string,
@@ -2034,6 +2039,71 @@ export async function getArFollowUpContext(
     throw new ChatSDKError(
       "bad_request:database",
       "Failed to get AR follow-up context"
+    );
+  }
+}
+
+// ============================================================================
+// AP Review Context Queries
+// ============================================================================
+
+/**
+ * Saves AP review context data for caching
+ * @param data - The context data to save
+ * @returns Promise resolving to the context ID
+ */
+export async function saveApReviewContext(
+  data: ApReviewContextInsert
+): Promise<string> {
+  try {
+    const [context] = await db
+      .insert(apReviewContext)
+      .values(data)
+      .returning();
+
+    if (!context) {
+      throw new Error("Failed to create AP review context");
+    }
+
+    return context.id;
+  } catch (error) {
+    console.error("Failed to save AP review context:", error);
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to save AP review context"
+    );
+  }
+}
+
+/**
+ * Gets cached AP review context data
+ * @param contextId - The context ID to fetch
+ * @param userId - The user ID for authorization
+ * @returns Promise resolving to the context data or null if not found/expired
+ */
+export async function getApReviewContext(
+  contextId: string,
+  userId: string
+): Promise<ApReviewContext | null> {
+  try {
+    const [context] = await db
+      .select()
+      .from(apReviewContext)
+      .where(
+        and(
+          eq(apReviewContext.id, contextId),
+          eq(apReviewContext.userId, userId),
+          gt(apReviewContext.expiresAt, new Date())
+        )
+      )
+      .limit(1);
+
+    return context ?? null;
+  } catch (error) {
+    console.error("Failed to get AP review context:", error);
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get AP review context"
     );
   }
 }

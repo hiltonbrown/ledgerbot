@@ -12,9 +12,14 @@ import {
 } from "@/lib/db/queries";
 import { convertToUIMessages } from "@/lib/utils";
 
-export default async function Page(props: { params: Promise<{ id: string }> }) {
+export default async function Page(props: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const params = await props.params;
+  const searchParams = await props.searchParams;
   const { id } = params;
+  const autoSend = searchParams.autoSend as string | undefined;
   const chat = await getChatById({ id });
 
   if (!chat) {
@@ -78,6 +83,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
       <>
         <Chat
           autoResume={true}
+          autoSendInput={autoSend}
           firstName={userSettings.personalisation.firstName}
           id={chat.id}
           initialChatModel={DEFAULT_CHAT_MODEL}
@@ -98,6 +104,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     <>
       <Chat
         autoResume={true}
+        autoSendInput={autoSend}
         firstName={userSettings.personalisation.firstName}
         id={chat.id}
         initialChatModel={initialModelId}

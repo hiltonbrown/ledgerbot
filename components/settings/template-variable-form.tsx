@@ -253,7 +253,7 @@ export function TemplateVariableForm({
   const handleInsertVariable =
     (
       field: "industryContext" | "chartOfAccounts",
-      ref: React.RefObject<HTMLTextAreaElement>
+      ref: React.RefObject<HTMLTextAreaElement | null>
     ) =>
     (variableName: string) => {
       const textarea = ref.current;

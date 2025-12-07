@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import type { LegendProps, TooltipProps } from "recharts";
+import type { TooltipContentProps } from "recharts/types/component/Tooltip";
+import type { Props as LegendContentProps } from "recharts/types/component/DefaultLegendContent";
 import { Legend, Tooltip } from "recharts";
 
 type LegendPayload = {
@@ -77,7 +79,7 @@ export function ChartTooltipContent({
   active,
   payload,
   label,
-}: TooltipProps<number, string>) {
+}: TooltipContentProps<number, string>) {
   const config = useChartConfig();
 
   if (!active || !payload || payload.length === 0) {
@@ -133,7 +135,7 @@ export function ChartLegend({ content, ...props }: ChartLegendProps) {
   return <Legend {...props} content={content ?? defaultContent} />;
 }
 
-export function ChartLegendContent({ payload }: LegendProps) {
+export function ChartLegendContent({ payload }: LegendContentProps) {
   const config = useChartConfig();
 
   if (!payload || payload.length === 0) {

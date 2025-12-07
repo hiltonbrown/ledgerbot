@@ -92,7 +92,6 @@ export function ModelComparisonChart({
                 tickLine={false}
               />
               <ChartTooltip
-                content={<ChartTooltipContent />}
                 cursor={{ fill: "hsl(var(--muted) / 0.25)" }}
               />
               <ChartLegend

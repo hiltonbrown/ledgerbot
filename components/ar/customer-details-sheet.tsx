@@ -186,13 +186,12 @@ export function CustomerDetailsSheet({
       console.log("[CustomerDetailsSheet] Chat created:", chatId);
       console.log("[CustomerDetailsSheet] Initial message:", initialMessage);
 
-      // Navigate to the root chat page with the chat ID and initial message
-      // The root page supports autoSendInput which will send the message automatically
+      // Navigate to the chat page with the chat ID and initial message
+      // The chat page supports autoSendInput which will send the message automatically
       const params = new URLSearchParams({
-        chatId,
         autoSend: initialMessage,
       });
-      router.push(`/?${params.toString()}`);
+      router.push(`/chat/${chatId}?${params.toString()}`);
     } catch (error) {
       console.error(
         "[CustomerDetailsSheet] Failed to create follow-up chat:",

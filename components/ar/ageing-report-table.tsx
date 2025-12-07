@@ -1,16 +1,10 @@
 "use client";
 
-import { ArrowUpDown } from "lucide-react";
+import { AlertTriangle, ArrowUpDown, Clock, List, Search } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -32,16 +26,15 @@ type SortField =
   | "riskScore"
   | "ageing90Plus";
 type SortDirection = "asc" | "desc";
+type FilterTab = "all" | "high-risk" | "90-plus";
 
 export function AgeingReportTable({ initialData }: AgeingReportTableProps) {
   const [data] = useState(initialData);
   const [sortField, setSortField] = useState<SortField>("totalOutstanding");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
-  const [filterMinBalance, setFilterMinBalance] = useState("");
-  const [filterMinRisk, setFilterMinRisk] = useState("");
-  const [filterHas90Plus, setFilterHas90Plus] = useState("all");
-
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState<FilterTab>("all");
   const [selectedContactId, setSelectedContactId] = useState<string | null>(
     null
   );
@@ -51,20 +44,27 @@ export function AgeingReportTable({ initialData }: AgeingReportTableProps) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
       setSortField(field);
-      setSortDirection("desc"); // Default to desc for numbers usually
+      setSortDirection("desc");
     }
   };
 
   const filteredData = data.filter((item) => {
-    if (filterMinBalance && item.totalOutstanding < Number(filterMinBalance)) {
+    // Search filter
+    if (
+      searchTerm &&
+      !item.customerName.toLowerCase().includes(searchTerm.toLowerCase())
+    ) {
       return false;
     }
-    if (filterMinRisk && item.riskScore < Number(filterMinRisk)) {
+
+    // Tab filter
+    if (activeTab === "high-risk" && item.riskScore <= 0.7) {
       return false;
     }
-    if (filterHas90Plus === "yes" && item.ageing90Plus <= 0) {
+    if (activeTab === "90-plus" && item.ageing90Plus <= 0) {
       return false;
     }
+
     return true;
   });
 
@@ -83,42 +83,76 @@ export function AgeingReportTable({ initialData }: AgeingReportTableProps) {
 
   const selectedCustomer = data.find((c) => c.contactId === selectedContactId);
 
+  // Calculate counts for tabs
+  const counts = {
+    all: data.length,
+    highRisk: data.filter((item) => item.riskScore > 0.7).length,
+    ninetyPlus: data.filter((item) => item.ageing90Plus > 0).length,
+  };
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-end gap-4">
-        <div className="space-y-2">
-          <label className="font-medium text-sm">Min Outstanding</label>
-          <Input
-            className="w-[150px]"
-            onChange={(e) => setFilterMinBalance(e.target.value)}
-            placeholder="0.00"
-            type="number"
-            value={filterMinBalance}
-          />
+    <Card className="p-6">
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            className="gap-2"
+            onClick={() => setActiveTab("all")}
+            size="sm"
+            variant={activeTab === "all" ? "default" : "outline"}
+          >
+            <List className="h-4 w-4" />
+            All
+            <span
+              className={`ml-1 rounded-full px-2 py-0.5 font-semibold text-xs ${
+                activeTab === "all" ? "bg-white/20" : "bg-muted"
+              }`}
+            >
+              {counts.all}
+            </span>
+          </Button>
+          <Button
+            className="gap-2"
+            onClick={() => setActiveTab("high-risk")}
+            size="sm"
+            variant={activeTab === "high-risk" ? "default" : "outline"}
+          >
+            <AlertTriangle className="h-4 w-4" />
+            High Risk
+            <span
+              className={`ml-1 rounded-full px-2 py-0.5 font-semibold text-xs ${
+                activeTab === "high-risk" ? "bg-white/20" : "bg-muted"
+              }`}
+            >
+              {counts.highRisk}
+            </span>
+          </Button>
+          <Button
+            className="gap-2"
+            onClick={() => setActiveTab("90-plus")}
+            size="sm"
+            variant={activeTab === "90-plus" ? "default" : "outline"}
+          >
+            <Clock className="h-4 w-4" />
+            90+ Days
+            <span
+              className={`ml-1 rounded-full px-2 py-0.5 font-semibold text-xs ${
+                activeTab === "90-plus" ? "bg-white/20" : "bg-muted"
+              }`}
+            >
+              {counts.ninetyPlus}
+            </span>
+          </Button>
         </div>
-        <div className="space-y-2">
-          <label className="font-medium text-sm">Min Risk Score</label>
+
+        <div className="relative w-full md:w-64">
+          <Search className="-translate-y-1/2 absolute top-1/2 left-3 h-4 w-4 text-muted-foreground" />
           <Input
-            className="w-[150px]"
-            max="1.0"
-            onChange={(e) => setFilterMinRisk(e.target.value)}
-            placeholder="0.00"
-            step="0.1"
-            type="number"
-            value={filterMinRisk}
+            className="pl-9"
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search customers..."
+            type="text"
+            value={searchTerm}
           />
-        </div>
-        <div className="space-y-2">
-          <label className="font-medium text-sm">Has 90+ Overdue</label>
-          <Select onValueChange={setFilterHas90Plus} value={filterHas90Plus}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="All" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="yes">Yes</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
       </div>
 
@@ -165,7 +199,9 @@ export function AgeingReportTable({ initialData }: AgeingReportTableProps) {
             {sortedData.length === 0 ? (
               <TableRow>
                 <TableCell className="h-24 text-center" colSpan={8}>
-                  No customers found matching filters.
+                  {searchTerm
+                    ? "No customers found matching your search."
+                    : "No customers found."}
                 </TableCell>
               </TableRow>
             ) : (
@@ -179,22 +215,46 @@ export function AgeingReportTable({ initialData }: AgeingReportTableProps) {
                     {item.customerName}
                   </TableCell>
                   <TableCell className="text-right font-bold">
-                    ${item.totalOutstanding.toFixed(2)}
+                    $
+                    {item.totalOutstanding.toLocaleString("en-AU", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
                   </TableCell>
                   <TableCell className="text-right text-muted-foreground">
-                    ${item.ageingCurrent.toFixed(2)}
+                    $
+                    {item.ageingCurrent.toLocaleString("en-AU", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
                   </TableCell>
                   <TableCell className="text-right text-yellow-600">
-                    ${item.ageing1_30.toFixed(2)}
+                    $
+                    {item.ageing1_30.toLocaleString("en-AU", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
                   </TableCell>
                   <TableCell className="text-right text-orange-600">
-                    ${item.ageing31_60.toFixed(2)}
+                    $
+                    {item.ageing31_60.toLocaleString("en-AU", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
                   </TableCell>
                   <TableCell className="text-right text-red-600">
-                    ${item.ageing61_90.toFixed(2)}
+                    $
+                    {item.ageing61_90.toLocaleString("en-AU", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
                   </TableCell>
                   <TableCell className="text-right font-bold text-red-800">
-                    ${item.ageing90Plus.toFixed(2)}
+                    $
+                    {item.ageing90Plus.toLocaleString("en-AU", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
                   </TableCell>
                   <TableCell className="text-right">
                     <span
@@ -215,6 +275,9 @@ export function AgeingReportTable({ initialData }: AgeingReportTableProps) {
           </TableBody>
         </Table>
       </div>
+      <div className="mt-4 text-muted-foreground text-sm">
+        Showing {sortedData.length} of {data.length} customers
+      </div>
 
       <CustomerDetailsSheet
         contactId={selectedContactId}
@@ -223,6 +286,6 @@ export function AgeingReportTable({ initialData }: AgeingReportTableProps) {
         riskScore={selectedCustomer?.riskScore || 0}
         totalOutstanding={selectedCustomer?.totalOutstanding || 0}
       />
-    </div>
+    </Card>
   );
 }

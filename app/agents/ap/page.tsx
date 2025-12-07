@@ -6,11 +6,11 @@ import {
   type AgeingBucket,
   APAgeingChart,
 } from "@/components/agents/ap/ap-ageing-chart";
-import type { CreditorDetailsData } from "@/components/agents/ap/ap-creditor-details";
 import {
   APCreditorTable,
   type ContactWithStats,
 } from "@/components/agents/ap/ap-creditor-table";
+import { APCreditorDetailsSheet } from "@/components/agents/ap/ap-creditor-details-sheet";
 import {
   APFilterTabs,
   type FilterType,
@@ -29,14 +29,8 @@ export default function AccountsPayableAgentPage() {
   const [isLoadingCreditors, setIsLoadingCreditors] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [showPaymentSchedule, setShowPaymentSchedule] = useState(false);
-
-  // Expanded creditor data
-  const [expandedData, setExpandedData] = useState<
-    Record<string, CreditorDetailsData | null>
-  >({});
-  const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>(
-    {}
-  );
+  const [selectedCreditor, setSelectedCreditor] =
+    useState<ContactWithStats | null>(null);
 
   // Load KPIs
   const loadKPIs = useCallback(async () => {
@@ -123,47 +117,6 @@ export default function AccountsPayableAgentPage() {
     loadCreditors(filter);
   };
 
-  // Handle row expansion with AI commentary
-  const handleRowExpand = async (creditor: ContactWithStats) => {
-    // Check if we already have data for this creditor
-    if (expandedData[creditor.id]) {
-      return; // Already loaded
-    }
-
-    try {
-      // Set loading state
-      setLoadingStates((prev) => ({ ...prev, [creditor.id]: true }));
-
-      const response = await fetch(
-        `/api/agents/ap/creditors/${creditor.id}/commentary`
-      );
-      const result = await response.json();
-
-      if (result.success && result.data) {
-        setExpandedData((prev) => ({
-          ...prev,
-          [creditor.id]: result.data,
-        }));
-      } else {
-        console.error("Failed to load creditor commentary:", result.error);
-        toast({
-          type: "error",
-          description: result.error || "Could not load creditor details",
-        });
-        setExpandedData((prev) => ({ ...prev, [creditor.id]: null }));
-      }
-    } catch (error) {
-      console.error("Error loading creditor commentary:", error);
-      toast({
-        type: "error",
-        description: "An error occurred while loading creditor details",
-      });
-      setExpandedData((prev) => ({ ...prev, [creditor.id]: null }));
-    } finally {
-      setLoadingStates((prev) => ({ ...prev, [creditor.id]: false }));
-    }
-  };
-
   // Initial load
   useEffect(() => {
     loadKPIs();
@@ -233,16 +186,21 @@ export default function AccountsPayableAgentPage() {
       {/* Creditor Table */}
       <APCreditorTable
         creditors={creditors}
-        expandedData={expandedData}
         isLoading={isLoadingCreditors}
-        loadingStates={loadingStates}
-        onRowExpand={handleRowExpand}
+        onSelectCreditor={setSelectedCreditor}
       />
 
       {/* Payment Schedule Sheet */}
       <APPaymentScheduleSheet
         onClose={() => setShowPaymentSchedule(false)}
         open={showPaymentSchedule}
+      />
+
+      {/* Creditor Details Sheet */}
+      <APCreditorDetailsSheet
+        creditorId={selectedCreditor?.id || null}
+        creditorName={selectedCreditor?.name || ""}
+        onOpenChange={(open) => !open && setSelectedCreditor(null)}
       />
     </div>
   );
