@@ -1,10 +1,13 @@
 "use client";
 
 import * as React from "react";
-import type { LegendProps, TooltipProps } from "recharts";
-import type { TooltipContentProps } from "recharts/types/component/Tooltip";
-import type { Props as LegendContentProps } from "recharts/types/component/DefaultLegendContent";
-import { Legend, Tooltip } from "recharts";
+import {
+  Legend,
+  Tooltip,
+  type LegendProps,
+  type TooltipProps,
+  type DefaultLegendContentProps as LegendContentProps,
+} from "recharts";
 
 type LegendPayload = {
   dataKey?: string | number;
@@ -79,7 +82,7 @@ export function ChartTooltipContent({
   active,
   payload,
   label,
-}: TooltipContentProps<number, string>) {
+}: TooltipProps<number, string>) {
   const config = useChartConfig();
 
   if (!active || !payload || payload.length === 0) {
