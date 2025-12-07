@@ -21,8 +21,7 @@ export default function DocumentManagementAgentPage() {
               </div>
               <p className="max-w-md text-muted-foreground">
                 AI-assisted intake for invoices, receipts and bank statements
-                with automated OCR and validation queues will be available
-                soon.
+                with automated OCR and validation queues will be available soon.
               </p>
               <div className="flex gap-3 pt-4">
                 <Button asChild variant="default">

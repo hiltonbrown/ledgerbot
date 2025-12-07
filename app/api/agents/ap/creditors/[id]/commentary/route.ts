@@ -170,7 +170,7 @@ Provide your summary:`;
       data: {
         creditor,
         bills: bills.slice(0, 5), // Return top 5 bills
-        paidBills: paidBills,
+        paidBills,
         recentPayments: recentPayments.map((p) => ({
           ...p.payment,
           billNumber: p.bill.number,

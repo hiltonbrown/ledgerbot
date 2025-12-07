@@ -6,11 +6,11 @@ import {
   type AgeingBucket,
   APAgeingChart,
 } from "@/components/agents/ap/ap-ageing-chart";
+import { APCreditorDetailsSheet } from "@/components/agents/ap/ap-creditor-details-sheet";
 import {
   APCreditorTable,
   type ContactWithStats,
 } from "@/components/agents/ap/ap-creditor-table";
-import { APCreditorDetailsSheet } from "@/components/agents/ap/ap-creditor-details-sheet";
 import {
   APFilterTabs,
   type FilterType,

@@ -122,8 +122,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Note: We do NOT save the initial user message here. 
-    // It is returned to the client to be sent via 'autoSend' param, 
+    // Note: We do NOT save the initial user message here.
+    // It is returned to the client to be sent via 'autoSend' param,
     // which triggers the AI generation flow in the chat UI.
 
     console.log(

@@ -89,490 +89,281 @@ export function APCreditorDetailsSheet({
     }
   };
 
-    const {
+  const {
+    bills,
 
-      bills,
+    paidBills = [],
 
-      paidBills = [],
+    bankChanges,
 
-      bankChanges,
+    commentary,
+  } = data || {
+    bills: [],
 
-      commentary,
+    paidBills: [],
 
-    } = data || {
+    bankChanges: [],
 
-      bills: [],
+    statistics: {
+      totalOutstanding: 0,
 
-      paidBills: [],
+      totalOverdue: 0,
 
-      bankChanges: [],
+      overdueBills: 0,
 
-      statistics: {
+      avgDaysToPayment: 0,
+    },
 
-        totalOutstanding: 0,
+    commentary: "",
+  };
 
-        totalOverdue: 0,
+  return (
+    <Sheet onOpenChange={onOpenChange} open={!!creditorId}>
+      <SheetContent className="w-[800px] overflow-y-auto sm:max-w-[800px]">
+        <SheetHeader className="mb-6">
+          <SheetTitle>{creditorName}</SheetTitle>
 
-        overdueBills: 0,
+          <SheetDescription>
+            Review supplier details and invoices.
+          </SheetDescription>
+        </SheetHeader>
 
-        avgDaysToPayment: 0,
+        {isLoading ? (
+          <div className="space-y-4">
+            <Skeleton className="h-20 w-full" />
 
-      },
+            <Skeleton className="h-64 w-full" />
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* Action Section */}
 
-      commentary: "",
-
-    };
-
-  
-
-    return (
-
-      <Sheet onOpenChange={onOpenChange} open={!!creditorId}>
-
-        <SheetContent className="w-[800px] overflow-y-auto sm:max-w-[800px]">
-
-          <SheetHeader className="mb-6">
-
-            <SheetTitle>{creditorName}</SheetTitle>
-
-            <SheetDescription>
-
-              Review supplier details and invoices.
-
-            </SheetDescription>
-
-          </SheetHeader>
-
-  
-
-          {isLoading ? (
-
-            <div className="space-y-4">
-
-              <Skeleton className="h-20 w-full" />
-
-              <Skeleton className="h-64 w-full" />
-
-            </div>
-
-          ) : (
-
-            <div className="space-y-6">
-
-              {/* Action Section */}
-
-              <Card className="border-primary/20 bg-muted/30 p-4">
-
-                <div className="flex items-center justify-between">
-
-                  <div>
-
-                    <h4 className="font-semibold">Review with AI Agent</h4>
-
-                    <p className="text-muted-foreground text-sm">
-
-                      Discuss these bills, check for fraud, and plan payments.
-
-                    </p>
-
-                  </div>
-
-                  <Button disabled={isStartingReview} onClick={handleStartReview}>
-
-                    {isStartingReview ? (
-
-                      <>
-
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-
-                        Starting...
-
-                      </>
-
-                    ) : (
-
-                      <>
-
-                        <MessageCircle className="mr-2 h-4 w-4" />
-
-                        Start Review
-
-                      </>
-
-                    )}
-
-                  </Button>
-
-                </div>
-
-              </Card>
-
-  
-
-              {/* Summary */}
-
-              {commentary && (
-
+            <Card className="border-primary/20 bg-muted/30 p-4">
+              <div className="flex items-center justify-between">
                 <div>
+                  <h4 className="font-semibold">Review with AI Agent</h4>
 
-                  <h4 className="mb-3 flex items-center gap-2 font-semibold text-sm">
-
-                    <FileText className="h-4 w-4" />
-
-                    Summary
-
-                  </h4>
-
-                  <Card className="p-4">
-
-                    <p className="text-muted-foreground text-sm leading-relaxed">
-
-                      {commentary}
-
-                    </p>
-
-                  </Card>
-
+                  <p className="text-muted-foreground text-sm">
+                    Discuss these bills, check for fraud, and plan payments.
+                  </p>
                 </div>
 
-              )}
-
-  
-
-              {/* Unpaid Invoices */}
-
-              <div>
-
-                <h4 className="mb-3 flex items-center gap-2 font-semibold text-sm">
-
-                  <AlertTriangle className="h-4 w-4" />
-
-                  Unpaid Invoices ({bills.length})
-
-                </h4>
-
-                <Card className="p-4">
-
-                  {bills.length === 0 ? (
-
-                    <p className="text-center text-muted-foreground text-sm">
-
-                      No unpaid invoices
-
-                    </p>
-
+                <Button disabled={isStartingReview} onClick={handleStartReview}>
+                  {isStartingReview ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Starting...
+                    </>
                   ) : (
-
-                    <div className="space-y-3">
-
-                      {bills.map((bill) => {
-
-                        const amountDue = (
-
-                          Number.parseFloat(bill.total) -
-
-                          Number.parseFloat(bill.amountPaid)
-
-                        ).toFixed(2);
-
-                        const daysOverdue = Math.floor(
-
-                          (Date.now() - new Date(bill.dueDate).getTime()) /
-
-                            (1000 * 60 * 60 * 24)
-
-                        );
-
-  
-
-                        return (
-
-                          <div
-
-                            className="flex items-center justify-between border-b pb-2 last:border-0"
-
-                            key={bill.id}
-
-                          >
-
-                            <div>
-
-                              <p className="font-medium text-sm">{bill.number}</p>
-
-                              <p className="text-muted-foreground text-xs">
-
-                                Due{" "}
-
-                                {new Date(bill.dueDate).toLocaleDateString(
-
-                                  "en-AU"
-
-                                )}
-
-                                {daysOverdue > 0 && (
-
-                                  <span className="ml-1 text-red-600">
-
-                                    ({daysOverdue} days overdue)
-
-                                  </span>
-
-                                )}
-
-                              </p>
-
-                            </div>
-
-                            <div className="text-right">
-
-                              <p className="font-semibold text-sm">
-
-                                $
-
-                                {Number.parseFloat(amountDue).toLocaleString(
-
-                                  "en-AU"
-
-                                )}
-
-                              </p>
-
-                              <Badge
-
-                                className="text-xs"
-
-                                variant={
-
-                                  daysOverdue > 0 ? "destructive" : "outline"
-
-                                }
-
-                              >
-
-                                {bill.status}
-
-                              </Badge>
-
-                            </div>
-
-                          </div>
-
-                        );
-
-                      })}
-
-                    </div>
-
+                    <>
+                      <MessageCircle className="mr-2 h-4 w-4" />
+                      Start Review
+                    </>
                   )}
-
-                </Card>
-
+                </Button>
               </div>
+            </Card>
 
-  
+            {/* Summary */}
 
-              {/* Paid Invoices */}
-
+            {commentary && (
               <div>
-
                 <h4 className="mb-3 flex items-center gap-2 font-semibold text-sm">
-
-                  <CheckCircle className="h-4 w-4" />
-
-                  Paid Invoices ({paidBills.length})
-
+                  <FileText className="h-4 w-4" />
+                  Summary
                 </h4>
 
                 <Card className="p-4">
+                  <p className="text-muted-foreground text-sm leading-relaxed">
+                    {commentary}
+                  </p>
+                </Card>
+              </div>
+            )}
 
-                  {paidBills.length === 0 ? (
+            {/* Unpaid Invoices */}
 
-                    <p className="text-center text-muted-foreground text-sm">
+            <div>
+              <h4 className="mb-3 flex items-center gap-2 font-semibold text-sm">
+                <AlertTriangle className="h-4 w-4" />
+                Unpaid Invoices ({bills.length})
+              </h4>
 
-                      No recently paid invoices
+              <Card className="p-4">
+                {bills.length === 0 ? (
+                  <p className="text-center text-muted-foreground text-sm">
+                    No unpaid invoices
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {bills.map((bill) => {
+                      const amountDue = (
+                        Number.parseFloat(bill.total) -
+                        Number.parseFloat(bill.amountPaid)
+                      ).toFixed(2);
 
-                    </p>
+                      const daysOverdue = Math.floor(
+                        (Date.now() - new Date(bill.dueDate).getTime()) /
+                          (1000 * 60 * 60 * 24)
+                      );
 
-                  ) : (
-
-                    <div className="space-y-3">
-
-                      {paidBills.map((bill) => (
-
+                      return (
                         <div
-
                           className="flex items-center justify-between border-b pb-2 last:border-0"
-
                           key={bill.id}
-
                         >
-
                           <div>
-
                             <p className="font-medium text-sm">{bill.number}</p>
 
                             <p className="text-muted-foreground text-xs">
-
-                              Issued{" "}
-
-                              {new Date(bill.issueDate).toLocaleDateString(
-
+                              Due{" "}
+                              {new Date(bill.dueDate).toLocaleDateString(
                                 "en-AU"
-
                               )}
-
+                              {daysOverdue > 0 && (
+                                <span className="ml-1 text-red-600">
+                                  ({daysOverdue} days overdue)
+                                </span>
+                              )}
                             </p>
-
                           </div>
 
                           <div className="text-right">
-
-                            <p className="font-semibold text-green-600 text-sm">
-
+                            <p className="font-semibold text-sm">
                               $
-
-                              {Number.parseFloat(bill.total).toLocaleString(
-
+                              {Number.parseFloat(amountDue).toLocaleString(
                                 "en-AU"
-
                               )}
-
                             </p>
 
-                            <Badge className="text-xs" variant="outline">
-
-                              Paid
-
-                            </Badge>
-
-                          </div>
-
-                        </div>
-
-                      ))}
-
-                    </div>
-
-                  )}
-
-                </Card>
-
-              </div>
-
-  
-
-              {/* Bank Changes */}
-
-              {bankChanges.length > 0 && (
-
-                <div>
-
-                  <h4 className="mb-3 flex items-center gap-2 font-semibold text-sm">
-
-                    <Banknote className="h-4 w-4" />
-
-                    Bank Account Changes ({bankChanges.length})
-
-                  </h4>
-
-                  <Card className="border-orange-200 bg-orange-50 p-4 dark:border-orange-800 dark:bg-orange-950">
-
-                    <div className="space-y-3">
-
-                      {bankChanges.map((change) => (
-
-                        <div
-
-                          className="border-orange-200 border-b pb-3 last:border-0 dark:border-orange-800"
-
-                          key={change.id}
-
-                        >
-
-                          <div className="mb-2 flex items-center justify-between">
-
-                            <span className="font-medium text-sm">
-
-                              {new Date(change.detectedAt).toLocaleDateString(
-
-                                "en-AU"
-
-                              )}
-
-                            </span>
-
                             <Badge
-
                               className="text-xs"
-
                               variant={
-
-                                change.isVerified ? "default" : "destructive"
-
+                                daysOverdue > 0 ? "destructive" : "outline"
                               }
-
                             >
-
-                              {change.isVerified ? "Verified" : "Unverified"}
-
+                              {bill.status}
                             </Badge>
-
                           </div>
-
-                          <div className="grid grid-cols-2 gap-2 text-xs">
-
-                            <div>
-
-                              <p className="text-muted-foreground">Old Account</p>
-
-                              <p className="font-mono">
-
-                                {change.oldBsb || "N/A"}-
-
-                                {change.oldAccountNumber || "N/A"}
-
-                              </p>
-
-                            </div>
-
-                            <div>
-
-                              <p className="text-muted-foreground">New Account</p>
-
-                              <p className="font-mono">
-
-                                {change.newBsb || "N/A"}-
-
-                                {change.newAccountNumber || "N/A"}
-
-                              </p>
-
-                            </div>
-
-                          </div>
-
                         </div>
-
-                      ))}
-
-                    </div>
-
-                  </Card>
-
-                </div>
-
-              )}
-
+                      );
+                    })}
+                  </div>
+                )}
+              </Card>
             </div>
 
-          )}
+            {/* Paid Invoices */}
 
-        </SheetContent>
+            <div>
+              <h4 className="mb-3 flex items-center gap-2 font-semibold text-sm">
+                <CheckCircle className="h-4 w-4" />
+                Paid Invoices ({paidBills.length})
+              </h4>
 
-      </Sheet>
+              <Card className="p-4">
+                {paidBills.length === 0 ? (
+                  <p className="text-center text-muted-foreground text-sm">
+                    No recently paid invoices
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {paidBills.map((bill) => (
+                      <div
+                        className="flex items-center justify-between border-b pb-2 last:border-0"
+                        key={bill.id}
+                      >
+                        <div>
+                          <p className="font-medium text-sm">{bill.number}</p>
 
-    );
+                          <p className="text-muted-foreground text-xs">
+                            Issued{" "}
+                            {new Date(bill.issueDate).toLocaleDateString(
+                              "en-AU"
+                            )}
+                          </p>
+                        </div>
 
-  }
+                        <div className="text-right">
+                          <p className="font-semibold text-green-600 text-sm">
+                            $
+                            {Number.parseFloat(bill.total).toLocaleString(
+                              "en-AU"
+                            )}
+                          </p>
 
-  
+                          <Badge className="text-xs" variant="outline">
+                            Paid
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            </div>
+
+            {/* Bank Changes */}
+
+            {bankChanges.length > 0 && (
+              <div>
+                <h4 className="mb-3 flex items-center gap-2 font-semibold text-sm">
+                  <Banknote className="h-4 w-4" />
+                  Bank Account Changes ({bankChanges.length})
+                </h4>
+
+                <Card className="border-orange-200 bg-orange-50 p-4 dark:border-orange-800 dark:bg-orange-950">
+                  <div className="space-y-3">
+                    {bankChanges.map((change) => (
+                      <div
+                        className="border-orange-200 border-b pb-3 last:border-0 dark:border-orange-800"
+                        key={change.id}
+                      >
+                        <div className="mb-2 flex items-center justify-between">
+                          <span className="font-medium text-sm">
+                            {new Date(change.detectedAt).toLocaleDateString(
+                              "en-AU"
+                            )}
+                          </span>
+
+                          <Badge
+                            className="text-xs"
+                            variant={
+                              change.isVerified ? "default" : "destructive"
+                            }
+                          >
+                            {change.isVerified ? "Verified" : "Unverified"}
+                          </Badge>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <p className="text-muted-foreground">Old Account</p>
+
+                            <p className="font-mono">
+                              {change.oldBsb || "N/A"}-
+                              {change.oldAccountNumber || "N/A"}
+                            </p>
+                          </div>
+
+                          <div>
+                            <p className="text-muted-foreground">New Account</p>
+
+                            <p className="font-mono">
+                              {change.newBsb || "N/A"}-
+                              {change.newAccountNumber || "N/A"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              </div>
+            )}
+          </div>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+}

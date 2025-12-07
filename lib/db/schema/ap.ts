@@ -389,9 +389,7 @@ export const apReviewContext = pgTable(
       table.userId,
       table.contactId
     ),
-    expiresAtIdx: index("ap_review_context_expires_at_idx").on(
-      table.expiresAt
-    ),
+    expiresAtIdx: index("ap_review_context_expires_at_idx").on(table.expiresAt),
   })
 );
 

@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  Files,
-  LifeBuoy,
-  Lightbulb,
-  MessageSquare,
-  Send,
-} from "lucide-react";
+import { Files, LifeBuoy, Lightbulb, MessageSquare, Send } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";

@@ -47,15 +47,15 @@ import {
   xeroConnection,
 } from "./schema";
 import {
-  type ArFollowUpContext,
-  type ArFollowUpContextInsert,
-  arFollowUpContext,
-} from "./schema/ar";
-import {
   type ApReviewContext,
   type ApReviewContextInsert,
   apReviewContext,
 } from "./schema/ap";
+import {
+  type ArFollowUpContext,
+  type ArFollowUpContextInsert,
+  arFollowUpContext,
+} from "./schema/ar";
 
 // biome-ignore lint: Forbidden non-null assertion.
 const client = postgres(process.env.POSTGRES_URL!);
@@ -2056,10 +2056,7 @@ export async function saveApReviewContext(
   data: ApReviewContextInsert
 ): Promise<string> {
   try {
-    const [context] = await db
-      .insert(apReviewContext)
-      .values(data)
-      .returning();
+    const [context] = await db.insert(apReviewContext).values(data).returning();
 
     if (!context) {
       throw new Error("Failed to create AP review context");

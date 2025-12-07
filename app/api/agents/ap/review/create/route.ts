@@ -70,8 +70,8 @@ export async function POST(request: NextRequest) {
 
     const initialMessage = `I'd like to review the outstanding invoices for ${context.contextData.metadata.creditorName}.`;
 
-    // Note: We do NOT save the initial user message here. 
-    // It is returned to the client to be sent via 'autoSend' param, 
+    // Note: We do NOT save the initial user message here.
+    // It is returned to the client to be sent via 'autoSend' param,
     // which triggers the AI generation flow in the chat UI.
 
     return NextResponse.json({
