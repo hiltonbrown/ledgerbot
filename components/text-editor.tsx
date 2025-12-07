@@ -29,7 +29,10 @@ type EditorProps = {
   status: "streaming" | "idle";
   isCurrentVersion: boolean;
   currentVersionIndex: number;
-  suggestions: Suggestion[];
+  suggestions: (
+    | Suggestion
+    | Omit<Suggestion, "userId" | "createdAt" | "documentCreatedAt">
+  )[];
 };
 
 function PureEditor({

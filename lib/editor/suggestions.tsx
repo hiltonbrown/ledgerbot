@@ -10,11 +10,13 @@ import type { ArtifactKind } from "@/components/artifact";
 import { Suggestion as PreviewSuggestion } from "@/components/suggestion";
 import type { Suggestion } from "@/lib/db/schema";
 
-export interface UISuggestion extends Omit<Suggestion, "id"> {
-  id: string;
+export type UISuggestion = (
+  | Suggestion
+  | Omit<Suggestion, "userId" | "createdAt" | "documentCreatedAt">
+) & {
   selectionStart: number;
   selectionEnd: number;
-}
+};
 
 type Position = {
   start: number;
@@ -46,7 +48,10 @@ function findPositionsInDoc(doc: Node, searchText: string): Position | null {
 
 export function projectWithPositions(
   doc: Node,
-  suggestions: Suggestion[]
+  suggestions: (
+    | Suggestion
+    | Omit<Suggestion, "userId" | "createdAt" | "documentCreatedAt">
+  )[]
 ): UISuggestion[] {
   return suggestions.map((suggestion) => {
     const positions = findPositionsInDoc(doc, suggestion.originalText);

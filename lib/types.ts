@@ -36,7 +36,9 @@ export type CustomUIDataTypes = {
   imageDelta: string;
   sheetDelta: string;
   codeDelta: string;
-  suggestion: Suggestion;
+  suggestion:
+    | Suggestion
+    | Omit<Suggestion, "userId" | "createdAt" | "documentCreatedAt">;
   appendMessage: string;
   id: string;
   title: string;

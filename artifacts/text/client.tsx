@@ -15,7 +15,10 @@ import type { Suggestion } from "@/lib/db/schema";
 import { getSuggestions } from "../actions";
 
 type TextArtifactMetadata = {
-  suggestions: Suggestion[];
+  suggestions: (
+    | Suggestion
+    | Omit<Suggestion, "userId" | "createdAt" | "documentCreatedAt">
+  )[];
 };
 
 export const textArtifact = new Artifact<"text", TextArtifactMetadata>({

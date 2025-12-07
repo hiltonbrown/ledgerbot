@@ -53,7 +53,10 @@ export const requestSuggestions = ({
       });
 
       for await (const element of elementStream) {
-        const suggestion: Suggestion = {
+        const suggestion: Omit<
+          Suggestion,
+          "userId" | "createdAt" | "documentCreatedAt"
+        > = {
           originalText: element.originalSentence,
           suggestedText: element.suggestedSentence,
           description: element.description,

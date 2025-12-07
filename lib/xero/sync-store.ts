@@ -85,8 +85,8 @@ export async function upsertInvoices(
     tenantId,
     xeroId: invoice.invoiceID!,
     invoiceNumber: invoice.invoiceNumber,
-    type: invoice.type,
-    status: invoice.status,
+    type: invoice.type ? String(invoice.type) : undefined,
+    status: invoice.status ? String(invoice.status) : undefined,
     contactId: invoice.contact?.contactID,
     contactName: invoice.contact?.name,
     date: invoice.date ? new Date(invoice.date) : null,
@@ -94,7 +94,9 @@ export async function upsertInvoices(
     amountDue: invoice.amountDue,
     amountPaid: invoice.amountPaid,
     total: invoice.total,
-    currencyCode: invoice.currencyCode,
+    currencyCode: invoice.currencyCode
+      ? String(invoice.currencyCode)
+      : undefined,
     data: invoice,
     xeroUpdatedDateUtc: invoice.updatedDateUTC
       ? new Date(invoice.updatedDateUTC)
@@ -185,8 +187,8 @@ export async function upsertPayments(
     date: payment.date ? new Date(payment.date) : null,
     amount: payment.amount,
     reference: payment.reference,
-    paymentType: payment.paymentType,
-    status: payment.status,
+    paymentType: payment.paymentType ? String(payment.paymentType) : undefined,
+    status: payment.status ? String(payment.status) : undefined,
     data: payment,
     xeroUpdatedDateUtc: payment.updatedDateUTC
       ? new Date(payment.updatedDateUTC)
@@ -225,13 +227,13 @@ export async function upsertCreditNotes(
     tenantId,
     xeroId: cn.creditNoteID!,
     creditNoteNumber: cn.creditNoteNumber,
-    type: cn.type,
-    status: cn.status,
+    type: cn.type ? String(cn.type) : undefined,
+    status: cn.status ? String(cn.status) : undefined,
     contactId: cn.contact?.contactID,
     date: cn.date ? new Date(cn.date) : null,
     total: cn.total,
     remainingCredit: cn.remainingCredit,
-    currencyCode: cn.currencyCode,
+    currencyCode: cn.currencyCode ? String(cn.currencyCode) : undefined,
     data: cn,
     xeroUpdatedDateUtc: cn.updatedDateUTC
       ? new Date(cn.updatedDateUTC)
