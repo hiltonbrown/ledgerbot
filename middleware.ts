@@ -1,4 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { type NextRequest, NextResponse } from "next/server";
 
 const isPublicRoute = createRouteMatcher([
   "/login(.*)",
@@ -6,13 +7,26 @@ const isPublicRoute = createRouteMatcher([
   "/privacy",
   "/terms",
   "/api/xero/callback",
+  "/api/webhooks(.*)",
   "/api/cron(.*)",
+  "/settings/user(.*)",
+  "/account(.*)",
+  "/ping",
 ]);
 
-export default clerkMiddleware(async (auth, req) => {
+export default clerkMiddleware(async (auth, req: NextRequest) => {
+  const { pathname } = req.nextUrl;
+
+  // Playwright health check - must return 200
+  if (pathname === "/ping") {
+    return new Response("pong", { status: 200 });
+  }
+
   if (!isPublicRoute(req)) {
     await auth.protect();
   }
+
+  return NextResponse.next();
 });
 
 export const config = {
