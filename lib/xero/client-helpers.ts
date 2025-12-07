@@ -92,11 +92,15 @@ export async function checkRateLimits(
  * Get an authenticated Xero client for a user with rate limit checking
  */
 export async function getRobustXeroClient(
-  userId: string
+  userId: string,
+  tenantId?: string
 ): Promise<{ client: XeroClient; connection: DecryptedXeroConnection }> {
-  const connection = await getDecryptedConnection(userId);
+  const connection = await getDecryptedConnection(userId, tenantId);
 
   if (!connection) {
+    if (tenantId) {
+      throw new Error(`Xero connection for tenant ${tenantId} not found.`);
+    }
     throw new Error(
       "No active Xero connection found. Please connect to Xero first."
     );

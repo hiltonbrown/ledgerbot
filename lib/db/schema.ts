@@ -11,6 +11,7 @@ import {
   real,
   text,
   timestamp,
+  unique,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
@@ -245,50 +246,65 @@ export const userSettings = pgTable("UserSettings", {
 
 export type UserSettings = InferSelectModel<typeof userSettings>;
 
-export const xeroConnection = pgTable("XeroConnection", {
-  id: uuid("id").primaryKey().notNull().defaultRandom(),
-  userId: uuid("userId")
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
-  xeroConnectionId: varchar("xeroConnectionId", { length: 255 }), // Xero's connection ID from /connections endpoint
-  tenantId: varchar("tenantId", { length: 255 }).notNull(),
-  tenantName: varchar("tenantName", { length: 255 }),
-  tenantType: varchar("tenantType", { length: 50 }), // ORGANISATION, PRACTICEMANAGER, PRACTICE
-  // Organisation metadata from GET /organisation endpoint (Xero best practice)
-  organisationId: varchar("organisationId", { length: 255 }), // Xero's organisation UUID
-  shortCode: varchar("shortCode", { length: 10 }), // For deep linking (e.g., !TJ7Tb)
-  baseCurrency: varchar("baseCurrency", { length: 3 }), // ISO 4217 currency code (e.g., GBP, AUD, NZD)
-  organisationType: varchar("organisationType", { length: 50 }), // COMPANY, ACCOUNTING_PRACTICE
-  isDemoCompany: boolean("isDemoCompany").default(false), // True if demo organisation (data resets regularly)
-  accessToken: text("accessToken").notNull(), // Encrypted
-  refreshToken: text("refreshToken").notNull(), // Encrypted
-  refreshTokenIssuedAt: timestamp("refreshTokenIssuedAt").notNull(), // When refresh token was first issued (for 60-day expiry tracking)
-  expiresAt: timestamp("expiresAt").notNull(),
-  scopes: jsonb("scopes").$type<string[]>().notNull(),
-  authenticationEventId: varchar("authenticationEventId", { length: 255 }), // Xero auth event ID for connection tracking
-  xeroCreatedDateUtc: timestamp("xeroCreatedDateUtc"), // When connection was first created in Xero
-  xeroUpdatedDateUtc: timestamp("xeroUpdatedDateUtc"), // Last time user re-authorized in Xero
-  isActive: boolean("isActive").notNull().default(true),
-  connectionStatus: varchar("connectionStatus", { length: 50 }).default(
-    "connected"
-  ), // connected, disconnected, error
-  lastError: text("lastError"), // User-friendly error message for display
-  lastErrorDetails: text("lastErrorDetails"), // Technical error details for debugging (JSON string)
-  lastErrorType: varchar("lastErrorType", { length: 50 }), // validation, authorization, token, rate_limit, server, network
-  lastCorrelationId: varchar("lastCorrelationId", { length: 255 }), // X-Correlation-Id from Xero for support tickets
-  lastApiCallAt: timestamp("lastApiCallAt"), // Track last successful API call for cleanup
-  rateLimitMinuteRemaining: integer("rateLimitMinuteRemaining"), // X-MinLimit-Remaining header value
-  rateLimitDayRemaining: integer("rateLimitDayRemaining"), // X-DayLimit-Remaining header value
-  rateLimitResetAt: timestamp("rateLimitResetAt"), // When rate limit will reset (from Retry-After)
-  rateLimitProblem: varchar("rateLimitProblem", { length: 50 }), // X-Rate-Limit-Problem header (minute or day)
-  // Chart of Accounts
-  chartOfAccounts: jsonb("chartOfAccounts").$type<XeroAccount[]>(), // Structured chart of accounts data from Xero API
-  chartOfAccountsSyncedAt: timestamp("chartOfAccountsSyncedAt"), // Last time chart was synced from Xero
-  chartOfAccountsVersion: varchar("chartOfAccountsVersion", { length: 50 }), // Xero API version used for sync
-  chartOfAccountsHash: varchar("chartOfAccountsHash", { length: 64 }), // SHA-256 hash for change detection
-  createdAt: timestamp("createdAt").notNull().defaultNow(),
-  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
-});
+export const xeroConnection = pgTable(
+  "XeroConnection",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: uuid("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    xeroConnectionId: varchar("xeroConnectionId", { length: 255 }), // Xero's connection ID from /connections endpoint
+    tenantId: varchar("tenantId", { length: 255 }).notNull(),
+    tenantName: varchar("tenantName", { length: 255 }),
+    tenantType: varchar("tenantType", { length: 50 }), // ORGANISATION, PRACTICEMANAGER, PRACTICE
+    // Organisation metadata from GET /organisation endpoint (Xero best practice)
+    organisationId: varchar("organisationId", { length: 255 }), // Xero's organisation UUID
+    shortCode: varchar("shortCode", { length: 10 }), // For deep linking (e.g., !TJ7Tb)
+    baseCurrency: varchar("baseCurrency", { length: 3 }), // ISO 4217 currency code (e.g., GBP, AUD, NZD)
+    organisationType: varchar("organisationType", { length: 50 }), // COMPANY, ACCOUNTING_PRACTICE
+    isDemoCompany: boolean("isDemoCompany").default(false), // True if demo organisation (data resets regularly)
+    accessToken: text("accessToken").notNull(), // Encrypted
+    refreshToken: text("refreshToken").notNull(), // Encrypted
+    refreshTokenIssuedAt: timestamp("refreshTokenIssuedAt").notNull(), // When refresh token was first issued (for 60-day expiry tracking)
+    expiresAt: timestamp("expiresAt").notNull(),
+    scopes: jsonb("scopes").$type<string[]>().notNull(),
+    authenticationEventId: varchar("authenticationEventId", { length: 255 }), // Xero auth event ID for connection tracking
+    xeroCreatedDateUtc: timestamp("xeroCreatedDateUtc"), // When connection was first created in Xero
+    xeroUpdatedDateUtc: timestamp("xeroUpdatedDateUtc"), // Last time user re-authorized in Xero
+    isActive: boolean("isActive").notNull().default(true),
+    connectionStatus: varchar("connectionStatus", { length: 50 }).default(
+      "connected"
+    ), // connected, disconnected, error
+    lastError: text("lastError"), // User-friendly error message for display
+    lastErrorDetails: text("lastErrorDetails"), // Technical error details for debugging (JSON string)
+    lastErrorType: varchar("lastErrorType", { length: 50 }), // validation, authorization, token, rate_limit, server, network
+    lastCorrelationId: varchar("lastCorrelationId", { length: 255 }), // X-Correlation-Id from Xero for support tickets
+    lastApiCallAt: timestamp("lastApiCallAt"), // Track last successful API call for cleanup
+    rateLimitMinuteRemaining: integer("rateLimitMinuteRemaining"), // X-MinLimit-Remaining header value
+    rateLimitDayRemaining: integer("rateLimitDayRemaining"), // X-DayLimit-Remaining header value
+    rateLimitResetAt: timestamp("rateLimitResetAt"), // When rate limit will reset (from Retry-After)
+    rateLimitProblem: varchar("rateLimitProblem", { length: 50 }), // X-Rate-Limit-Problem header (minute or day)
+    // Chart of Accounts
+    chartOfAccounts: jsonb("chartOfAccounts").$type<XeroAccount[]>(), // Structured chart of accounts data from Xero API
+    chartOfAccountsSyncedAt: timestamp("chartOfAccountsSyncedAt"), // Last time chart was synced from Xero
+    chartOfAccountsVersion: varchar("chartOfAccountsVersion", { length: 50 }), // Xero API version used for sync
+    chartOfAccountsHash: varchar("chartOfAccountsHash", { length: 64 }), // SHA-256 hash for change detection
+    // Sync Metadata
+    invoicesSyncedAt: timestamp("invoicesSyncedAt"),
+    contactsSyncedAt: timestamp("contactsSyncedAt"),
+    paymentsSyncedAt: timestamp("paymentsSyncedAt"),
+    creditNotesSyncedAt: timestamp("creditNotesSyncedAt"),
+    itemsSyncedAt: timestamp("itemsSyncedAt"),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  },
+  (table) => ({
+    unq: unique("xero_connection_user_tenant_unique").on(
+      table.userId,
+      table.tenantId
+    ),
+  })
+);
 
 export type XeroConnection = InferSelectModel<typeof xeroConnection>;
 
@@ -432,6 +448,129 @@ export const agentTrace = pgTable(
 
 export type AgentTrace = InferSelectModel<typeof agentTrace>;
 export type AgentTraceInsert = typeof agentTrace.$inferInsert;
+
+// Xero Entity Cache Tables
+export const xeroInvoice = pgTable(
+  "XeroInvoice",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    tenantId: varchar("tenantId", { length: 255 }).notNull(),
+    xeroId: varchar("xeroId", { length: 255 }).notNull(), // Xero's InvoiceID
+    invoiceNumber: varchar("invoiceNumber", { length: 255 }),
+    type: varchar("type", { length: 50 }), // ACCREC, ACCPAY
+    status: varchar("status", { length: 50 }),
+    contactId: varchar("contactId", { length: 255 }), // Xero ContactID
+    contactName: varchar("contactName", { length: 255 }),
+    date: timestamp("date"),
+    dueDate: timestamp("dueDate"),
+    amountDue: real("amountDue"),
+    amountPaid: real("amountPaid"),
+    total: real("total"),
+    currencyCode: varchar("currencyCode", { length: 3 }),
+    data: jsonb("data").notNull(), // Full JSON payload from Xero
+    xeroUpdatedDateUtc: timestamp("xeroUpdatedDateUtc"),
+    searchVector: text("search_vector"), // For full-text search
+    updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  },
+  (table) => ({
+    tenantIdx: index("xero_invoice_tenant_idx").on(table.tenantId),
+    xeroIdUnq: unique("xero_invoice_tenant_xero_id_unique").on(
+      table.tenantId,
+      table.xeroId
+    ),
+    contactIdx: index("xero_invoice_contact_idx").on(table.contactId),
+    dateIdx: index("xero_invoice_date_idx").on(table.date),
+  })
+);
+
+export type XeroInvoice = InferSelectModel<typeof xeroInvoice>;
+
+export const xeroContact = pgTable(
+  "XeroContact",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    tenantId: varchar("tenantId", { length: 255 }).notNull(),
+    xeroId: varchar("xeroId", { length: 255 }).notNull(), // Xero's ContactID
+    name: varchar("name", { length: 255 }),
+    email: varchar("email", { length: 255 }),
+    isCustomer: boolean("isCustomer").default(false),
+    isSupplier: boolean("isSupplier").default(false),
+    data: jsonb("data").notNull(), // Full JSON payload
+    xeroUpdatedDateUtc: timestamp("xeroUpdatedDateUtc"),
+    searchVector: text("search_vector"),
+    updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  },
+  (table) => ({
+    tenantIdx: index("xero_contact_tenant_idx").on(table.tenantId),
+    xeroIdUnq: unique("xero_contact_tenant_xero_id_unique").on(
+      table.tenantId,
+      table.xeroId
+    ),
+    nameIdx: index("xero_contact_name_idx").on(table.name),
+  })
+);
+
+export type XeroContact = InferSelectModel<typeof xeroContact>;
+
+export const xeroPayment = pgTable(
+  "XeroPayment",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    tenantId: varchar("tenantId", { length: 255 }).notNull(),
+    xeroId: varchar("xeroId", { length: 255 }).notNull(), // Xero's PaymentID
+    invoiceId: varchar("invoiceId", { length: 255 }),
+    date: timestamp("date"),
+    amount: real("amount"),
+    reference: varchar("reference", { length: 255 }),
+    paymentType: varchar("paymentType", { length: 50 }),
+    status: varchar("status", { length: 50 }),
+    data: jsonb("data").notNull(),
+    xeroUpdatedDateUtc: timestamp("xeroUpdatedDateUtc"),
+    updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  },
+  (table) => ({
+    tenantIdx: index("xero_payment_tenant_idx").on(table.tenantId),
+    xeroIdUnq: unique("xero_payment_tenant_xero_id_unique").on(
+      table.tenantId,
+      table.xeroId
+    ),
+    invoiceIdx: index("xero_payment_invoice_idx").on(table.invoiceId),
+    dateIdx: index("xero_payment_date_idx").on(table.date),
+  })
+);
+
+export type XeroPayment = InferSelectModel<typeof xeroPayment>;
+
+export const xeroCreditNote = pgTable(
+  "XeroCreditNote",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    tenantId: varchar("tenantId", { length: 255 }).notNull(),
+    xeroId: varchar("xeroId", { length: 255 }).notNull(), // Xero's CreditNoteID
+    creditNoteNumber: varchar("creditNoteNumber", { length: 255 }),
+    type: varchar("type", { length: 50 }),
+    status: varchar("status", { length: 50 }),
+    contactId: varchar("contactId", { length: 255 }),
+    date: timestamp("date"),
+    total: real("total"),
+    remainingCredit: real("remainingCredit"),
+    currencyCode: varchar("currencyCode", { length: 3 }),
+    data: jsonb("data").notNull(),
+    xeroUpdatedDateUtc: timestamp("xeroUpdatedDateUtc"),
+    updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  },
+  (table) => ({
+    tenantIdx: index("xero_credit_note_tenant_idx").on(table.tenantId),
+    xeroIdUnq: unique("xero_credit_note_tenant_xero_id_unique").on(
+      table.tenantId,
+      table.xeroId
+    ),
+    contactIdx: index("xero_credit_note_contact_idx").on(table.contactId),
+    dateIdx: index("xero_credit_note_date_idx").on(table.date),
+  })
+);
+
+export type XeroCreditNote = InferSelectModel<typeof xeroCreditNote>;
 
 export * from "./schema/ap";
 export * from "./schema/ar";

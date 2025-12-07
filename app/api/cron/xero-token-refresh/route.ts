@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAllActiveXeroConnections } from "@/lib/db/queries";
+import { getAllXeroConnections } from "@/lib/db/queries";
 import { refreshXeroToken } from "@/lib/xero/connection-manager";
 
 // Configure route for Vercel cron jobs
@@ -39,8 +39,8 @@ export async function GET(request: Request) {
     const now = new Date();
     const twentyMinutesFromNow = new Date(now.getTime() + 20 * 60 * 1000);
 
-    // Get all active connections
-    const connections = await getAllActiveXeroConnections();
+    // Get all valid connections (active AND inactive, excluding disconnected)
+    const connections = await getAllXeroConnections();
 
     // Filter to connections with tokens expiring in < 20 minutes
     const connectionsToRefresh = connections.filter((conn) => {
@@ -49,7 +49,7 @@ export async function GET(request: Request) {
     });
 
     console.log(
-      `Found ${connectionsToRefresh.length} connections with tokens expiring in < 20 minutes (out of ${connections.length} total active connections)`
+      `Found ${connectionsToRefresh.length} connections with tokens expiring in < 20 minutes (out of ${connections.length} total connections)`
     );
 
     if (connectionsToRefresh.length === 0) {

@@ -10,7 +10,8 @@ import type { ArtifactKind } from "@/components/artifact";
 import { Suggestion as PreviewSuggestion } from "@/components/suggestion";
 import type { Suggestion } from "@/lib/db/schema";
 
-export interface UISuggestion extends Suggestion {
+export interface UISuggestion extends Omit<Suggestion, "id"> {
+  id: string;
   selectionStart: number;
   selectionEnd: number;
 }

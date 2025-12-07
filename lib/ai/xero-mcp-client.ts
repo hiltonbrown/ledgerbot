@@ -8,6 +8,7 @@ import {
   type XeroClient,
 } from "xero-node";
 import {
+  getAllXeroConnectionsForUser,
   updateConnectionError,
   updateLastApiCall,
   updateRateLimitInfo,
@@ -36,6 +37,11 @@ import {
   type RateLimitInfo,
   shouldWaitForRateLimit,
 } from "@/lib/xero/rate-limit-handler";
+import {
+  upsertContacts,
+  upsertInvoices,
+  upsertPayments,
+} from "@/lib/xero/sync-store";
 import type { DecryptedXeroConnection } from "@/lib/xero/types";
 
 /**
@@ -109,12 +115,26 @@ export type XeroMCPToolResult = {
  */
 export const xeroMCPTools: XeroMCPTool[] = [
   {
+    name: "xero_list_connections",
+    description:
+      "List all connected Xero organisations (tenants) for the user. Use this to find the 'tenantName' or 'tenantId' for multi-tenant queries.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+    },
+  },
+  {
     name: "xero_list_invoices",
     description:
       "Get a list of invoices from Xero. Can retrieve SALES INVOICES (sent TO customers, Type=ACCREC) or BILLS (received FROM suppliers, Type=ACCPAY). IMPORTANT NOTES: (1) Filters by INVOICE DATE (the date the invoice was created), NOT payment date. (2) When filtering by month/year, you MUST provide BOTH dateFrom and dateTo to define the complete date range. For example, for 'October 2025' use dateFrom='2025-10-01' and dateTo='2025-10-31'. (3) Use invoiceType parameter to specify which type: 'ACCREC' for sales invoices (default), 'ACCPAY' for bills/supplier invoices. (4) Uses pagination for efficient data retrieval. (5) This returns only invoice records - P&L reports may include additional transactions like bank transactions, journal entries, and credit notes that won't appear in this list. (6) Use ifModifiedSince to retrieve only invoices modified since a specific date (recommended for large datasets).",
     inputSchema: {
       type: "object",
       properties: {
+        tenantName: {
+          type: "string",
+          description:
+            "Name of the Xero organisation to query. If omitted, uses the currently active connection.",
+        },
         invoiceType: {
           type: "string",
           description:
@@ -183,6 +203,11 @@ export const xeroMCPTools: XeroMCPTool[] = [
     inputSchema: {
       type: "object",
       properties: {
+        tenantName: {
+          type: "string",
+          description:
+            "Name of the Xero organisation to query. If omitted, uses the currently active connection.",
+        },
         searchTerm: {
           type: "string",
           description: "Search contacts by name or email",
@@ -1047,6 +1072,41 @@ export const xeroMCPTools: XeroMCPTool[] = [
 ];
 
 /**
+ * Resolves the Xero client and connection based on optional tenantName
+ */
+async function resolveXeroClient(
+  userId: string,
+  tenantName?: string
+): Promise<{ client: XeroClient; connection: DecryptedXeroConnection }> {
+  let tenantId: string | undefined;
+
+  if (tenantName) {
+    const connections = await getAllXeroConnectionsForUser(userId);
+    // Find connection with matching tenantName (case-insensitive)
+    const match = connections.find(
+      (c) => c.tenantName?.toLowerCase() === tenantName.toLowerCase()
+    );
+
+    if (match) {
+      tenantId = match.tenantId;
+    } else {
+      // Try finding by precise tenantId if name check fails
+      const idMatch = connections.find((c) => c.tenantId === tenantName);
+      if (idMatch) {
+        tenantId = idMatch.tenantId;
+      } else {
+        // If no match, we throw an error because the user explicitly requested a tenant
+        throw new Error(
+          `Xero organisation '${tenantName}' not found. Please check the name or connect the organisation first.`
+        );
+      }
+    }
+  }
+
+  return await getRobustXeroClient(userId, tenantId);
+}
+
+/**
  * Execute a Xero MCP tool with rate limiting, concurrent slot management, and retry logic
  */
 export async function executeXeroMCPTool(
@@ -1058,7 +1118,8 @@ export async function executeXeroMCPTool(
   const MAX_RETRIES = 3; // Maximum retry attempts for 429 errors
 
   try {
-    const { client, connection } = await getRobustXeroClient(userId);
+    const tenantName = args.tenantName as string | undefined;
+    const { client, connection } = await resolveXeroClient(userId, tenantName);
 
     // Acquire concurrent request slot (implements 5 concurrent call limit)
     const releaseSlot = await acquireConcurrentSlot(connection.id);
@@ -1225,6 +1286,24 @@ async function executeXeroToolOperation(
 ): Promise<XeroMCPToolResult> {
   try {
     switch (toolName) {
+      case "xero_list_connections": {
+        const connections = await getAllXeroConnectionsForUser(
+          connection.userId
+        );
+        const simplified = connections.map((c) => ({
+          tenantId: c.tenantId,
+          tenantName: c.tenantName,
+          tenantType: c.tenantType,
+          isConnected: c.connectionStatus === "connected",
+          lastSynced: c.updatedAt,
+        }));
+        return {
+          content: [
+            { type: "text", text: JSON.stringify(simplified, null, 2) },
+          ],
+        };
+      }
+
       case "xero_list_invoices": {
         const {
           invoiceType,
@@ -1305,11 +1384,22 @@ async function executeXeroToolOperation(
           await updateRateLimitInfo(connection.id, rateLimitInfo);
           logRateLimitStatus(connection.id, toolName, rateLimitInfo);
 
+          const invoices = response.body.invoices || [];
+
+          // Cache data asynchronously (fire and forget to not block UI)
+          upsertInvoices(connection.tenantId, invoices as Invoice[]).catch(
+            (err) =>
+              console.error(
+                `Failed to cache invoices for ${connection.tenantId}:`,
+                err
+              )
+          );
+
           return {
             content: [
               {
                 type: "text",
-                text: JSON.stringify(response.body.invoices || [], null, 2),
+                text: JSON.stringify(invoices, null, 2),
               },
             ],
           };
@@ -1334,14 +1424,30 @@ async function executeXeroToolOperation(
               undefined, // summaryOnly
               currentPageSize // pageSize
             );
+            // Track rate limits
+            const rateLimitInfo = extractRateLimitInfo(
+              response.response.headers
+            );
+            await updateRateLimitInfo(connection.id, rateLimitInfo);
+            logRateLimitStatus(connection.id, toolName, rateLimitInfo);
+
             return {
               results: response.body.invoices || [],
-              headers: response.response.headers,
+              headers: response.response.headers, // headers might be under response.headers depending on sdk version wrapper
             };
           },
           limit as number | undefined,
-          (pageSize as number | undefined) || 100,
+          100, // pageSize
           connection.id
+        );
+
+        // Cache all fetched invoices
+        upsertInvoices(connection.tenantId, allInvoices as Invoice[]).catch(
+          (err) =>
+            console.error(
+              `Failed to cache invoices for ${connection.tenantId}:`,
+              err
+            )
         );
 
         // Validate results before returning
@@ -1431,11 +1537,20 @@ async function executeXeroToolOperation(
           await updateRateLimitInfo(connection.id, rateLimitInfo);
           logRateLimitStatus(connection.id, toolName, rateLimitInfo);
 
+          const contacts = response.body.contacts || [];
+
+          upsertContacts(connection.tenantId, contacts as any[]).catch((err) =>
+            console.error(
+              `Failed to cache contacts for ${connection.tenantId}:`,
+              err
+            )
+          );
+
           return {
             content: [
               {
                 type: "text",
-                text: JSON.stringify(response.body.contacts || [], null, 2),
+                text: JSON.stringify(contacts, null, 2),
               },
             ],
           };

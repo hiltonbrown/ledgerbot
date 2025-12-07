@@ -1682,6 +1682,21 @@ export async function getAllActiveXeroConnections(): Promise<XeroConnection[]> {
   }
 }
 
+export async function getAllXeroConnections(): Promise<XeroConnection[]> {
+  try {
+    return await db
+      .select()
+      .from(xeroConnection)
+      .where(ne(xeroConnection.connectionStatus, "disconnected"))
+      .orderBy(desc(xeroConnection.updatedAt));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get all Xero connections"
+    );
+  }
+}
+
 export async function getAllXeroConnectionsForUser(
   userId: string
 ): Promise<XeroConnection[]> {
@@ -1695,6 +1710,31 @@ export async function getAllXeroConnectionsForUser(
     throw new ChatSDKError(
       "bad_request:database",
       "Failed to get Xero connections for user"
+    );
+  }
+}
+
+export async function getXeroConnectionByTenantId(
+  userId: string,
+  tenantId: string
+): Promise<XeroConnection | undefined> {
+  try {
+    const [connection] = await db
+      .select()
+      .from(xeroConnection)
+      .where(
+        and(
+          eq(xeroConnection.userId, userId),
+          eq(xeroConnection.tenantId, tenantId)
+        )
+      )
+      .limit(1);
+
+    return connection;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get Xero connection by tenant ID"
     );
   }
 }

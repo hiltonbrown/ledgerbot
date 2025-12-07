@@ -1,0 +1,1 @@
+ALTER TABLE "XeroConnection" ADD CONSTRAINT "xero_connection_user_tenant_unique" UNIQUE("userId","tenantId");

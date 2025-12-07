@@ -1,13 +1,16 @@
 import "server-only";
 
 import { XeroClient } from "xero-node";
+
 import {
   deactivateXeroConnection,
   getActiveXeroConnection,
   getXeroConnectionById,
+  getXeroConnectionByTenantId,
   removeDuplicateXeroConnectionsForUser,
   updateXeroTokens,
 } from "@/lib/db/queries";
+
 import { decryptToken, encryptToken } from "./encryption";
 import type {
   DecryptedXeroConnection,
@@ -63,7 +66,8 @@ export function createXeroClient(state?: string): XeroClient {
 }
 
 export async function getDecryptedConnection(
-  userId: string
+  userId: string,
+  tenantId?: string
 ): Promise<DecryptedXeroConnection | null> {
   try {
     await removeDuplicateXeroConnectionsForUser(userId);
@@ -71,7 +75,9 @@ export async function getDecryptedConnection(
     console.error("Failed to prune duplicate Xero connections:", error);
   }
 
-  const connection = await getActiveXeroConnection(userId);
+  const connection = tenantId
+    ? await getXeroConnectionByTenantId(userId, tenantId)
+    : await getActiveXeroConnection(userId);
 
   if (!connection) {
     return null;

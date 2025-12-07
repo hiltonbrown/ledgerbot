@@ -302,6 +302,20 @@
       "when": 1765067413426,
       "tag": "0042_fresh_martin_li",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1765078444949,
+      "tag": "0043_slim_exodus",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1765080469455,
+      "tag": "0044_sudden_champions",
+      "breakpoints": true
     }
   ]
 }
