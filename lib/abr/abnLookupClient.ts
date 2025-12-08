@@ -17,14 +17,12 @@ function stripJsonp(payload: string): string {
 }
 
 export class AbnLookupClient {
-  private guid?: string;
-  private baseUrl: string;
-  private enabled: boolean;
+  private guidOverride?: string;
+  private baseUrlOverride?: string;
 
   constructor(guid?: string, baseUrl?: string) {
-    this.guid = guid ?? abnLookupConfig.guid;
-    this.baseUrl = (baseUrl ?? abnLookupConfig.baseUrl).replace(/\/$/, "");
-    this.enabled = abnLookupConfig.enabled;
+    this.guidOverride = guid;
+    this.baseUrlOverride = baseUrl;
   }
 
   async getByAbn(abn: string) {
@@ -61,16 +59,21 @@ export class AbnLookupClient {
     path: string,
     params: Record<string, string>
   ): Promise<unknown> {
-    if (!this.enabled) {
+    if (!abnLookupConfig.enabled) {
       throw new Error("ABN lookup is disabled in configuration");
     }
 
-    if (!this.guid) {
+    const guid = this.guidOverride ?? abnLookupConfig.guid;
+    if (!guid) {
       throw new Error("ABN lookup GUID is not configured");
     }
 
-    const search = new URLSearchParams({ ...params, guid: this.guid });
-    const url = `${this.baseUrl}/${path}?${search.toString()}`;
+    const baseUrl = (this.baseUrlOverride ?? abnLookupConfig.baseUrl).replace(
+      /\/$/,
+      ""
+    );
+    const search = new URLSearchParams({ ...params, guid });
+    const url = `${baseUrl}/${path}?${search.toString()}`;
     const response = await fetch(url);
 
     if (!response.ok) {
