@@ -39,7 +39,7 @@ describe("AbnLookupClient", () => {
 
     const client = new AbnLookupClient();
     await expect(client.getByAbn("51824753556")).rejects.toThrow(
-      "status 500"
+      expect.stringContaining("status 500")
     );
   });
 
