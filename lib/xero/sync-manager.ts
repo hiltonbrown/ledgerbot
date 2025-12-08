@@ -27,15 +27,6 @@ export type SyncResult = {
 };
 
 /**
- * Sync logic for a specific entity type
- */
-type EntitySyncFn = (
-  client: XeroClient,
-  tenantId: string,
-  ifModifiedSince?: Date
-) => Promise<number>;
-
-/**
  * Main entry point to sync a tenant
  */
 export async function syncTenant(
@@ -205,7 +196,7 @@ async function syncInvoices(
 /**
  * Sync Contacts
  */
-async function syncContacts(
+export async function syncContacts(
   client: XeroClient,
   tenantId: string
 ): Promise<number> {

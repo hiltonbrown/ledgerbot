@@ -1,12 +1,8 @@
-import { Search } from "lucide-react";
 import { Suspense } from "react";
-import { ContactComparisonTable } from "@/components/agents/datavalidation/contact-comparison-table";
-import { ContactDetailPanel } from "@/components/agents/datavalidation/contact-detail-panel";
+import { SyncControls } from "@/components/agents/datavalidation/sync-controls";
 import { VerificationSummaryCards } from "@/components/agents/datavalidation/verification-summary-cards";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { getDashboardData, verifyContactAction } from "./actions";
-import { ClientPage } from "./client-page"; // We'll move interactive parts to a client component
+import { getDashboardData } from "./actions";
+import { ClientPage } from "./client-page";
 
 export const metadata = {
   title: "Data Validation Agent | LedgerBot",
@@ -29,9 +25,7 @@ export default async function DataValidationPage() {
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          {/* Sync button placeholder */}
-          <Button variant="outline">Sync Contacts</Button>
-          <Button>Run Bulk Verification</Button>
+          <SyncControls />
         </div>
       </div>
 

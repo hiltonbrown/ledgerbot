@@ -41,6 +41,7 @@ function PureChatHeader({
     { title: "Forecasting", url: "/agents/forecasting" },
     { title: "Accounts Payable", url: "/agents/ap" },
     { title: "Accounts Receivable", url: "/agents/ar" },
+    { title: "Data Validation", url: "/agents/datavalidation" },
     { title: "Q&A", url: "/agents/qanda" },
     { title: "Workflow", url: "/agents/workflow" },
   ];

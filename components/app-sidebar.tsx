@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  Files,
-  LifeBuoy,
-  Lightbulb,
-  MessageSquare,
-  Send,
-  SquareTerminal,
-} from "lucide-react";
+import { Files, LifeBuoy, Lightbulb, MessageSquare, Send } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -111,11 +104,6 @@ export function AppSidebar({
       title: "Chat",
       url: "/",
       icon: MessageSquare,
-    },
-    {
-      title: "Agents",
-      url: "/agents",
-      icon: SquareTerminal,
     },
     {
       title: "Files",
