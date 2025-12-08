@@ -2,67 +2,9 @@ import { tool } from "ai";
 import { z } from "zod";
 import type { Invoice } from "xero-node";
 import { AbnLookupClient } from "@/lib/abr/abnLookupClient";
-import { abnLookupConfig } from "@/lib/abr/config";
+import { ensureAbnLookupEnabled, isActiveStatus, mapAbrEntity, parseAbrDate } from "@/lib/abr/helpers";
 import { isValidAbn, normaliseIdentifier } from "@/lib/abr/validate";
 import { getRobustXeroClient } from "@/lib/xero/client-helpers";
-
-function ensureAbnLookupEnabled() {
-  if (!abnLookupConfig.enabled) {
-    throw new Error("ABN lookup is disabled. Enable ABN_LOOKUP_ENABLED to use this tool.");
-  }
-}
-
-function parseAbrDate(value?: string): Date | undefined {
-  if (!value) return;
-  const numeric = String(value).match(/\d+/);
-  if (numeric?.[0]) {
-    const timestamp = Number(numeric[0]);
-    if (!Number.isNaN(timestamp)) {
-      return new Date(timestamp);
-    }
-  }
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
-}
-
-function mapAbrEntity(raw: any) {
-  const abn = normaliseIdentifier(raw?.Abn || raw?.ABN || raw?.AbnNumber || "").digits || undefined;
-  const acnCandidate = normaliseIdentifier(
-    raw?.Acn || raw?.ACN || raw?.AsicNumber || raw?.ASICNumber || ""
-  ).digits;
-  const acn = acnCandidate.length === 9 ? acnCandidate : undefined;
-
-  const gst = raw?.GoodsAndServicesTax || raw?.GST || raw?.goodsAndServicesTax;
-  const gstStatus = gst?.Status || gst?.status;
-  const gstStatusFrom =
-    gst?.EffectiveFrom || gst?.effectiveFrom || gst?.StartDate || gst?.startDate || undefined;
-
-  const abnStatus = raw?.AbnStatus || raw?.ABNStatus || raw?.abnStatus;
-  const abnStatusFrom =
-    raw?.AbnStatusEffectiveFrom || raw?.abnStatusFrom || raw?.abnStatusEffectiveFrom;
-
-  const entityName =
-    raw?.EntityName ||
-    raw?.entityName ||
-    raw?.MainName?.OrganisationName ||
-    raw?.MainTradingName?.OrganisationName ||
-    raw?.OrganisationName ||
-    undefined;
-
-  const mainBusinessLocation =
-    raw?.MainBusinessPhysicalAddress || raw?.mainBusinessLocation || raw?.MainBusinessLocation;
-
-  return {
-    abn,
-    acn,
-    abnStatus,
-    abnStatusFrom,
-    gstStatus,
-    gstStatusFrom,
-    entityName,
-    mainBusinessLocation,
-  };
-}
 
 function extractIdentifierFromInvoice(invoice: Invoice):
   | { kind: "ABN" | "ACN"; digits: string }
@@ -94,13 +36,6 @@ async function fetchXeroInvoice(userId: string, invoiceId: string): Promise<Invo
   const { client, connection } = await getRobustXeroClient(userId);
   const response = await client.accountingApi.getInvoice(connection.tenantId, invoiceId);
   return response.body.invoices?.[0] ?? null;
-}
-
-function isActiveStatus(status?: string): boolean {
-  if (!status) return false;
-  const normalized = status.trim().toLowerCase();
-  if (!normalized) return false;
-  return normalized === "active";
 }
 
 function isEntityNameCloseMatch(nameA?: string | null, nameB?: string | null): boolean {

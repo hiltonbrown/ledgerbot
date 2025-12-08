@@ -1,14 +1,8 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { AbnLookupClient } from "@/lib/abr/abnLookupClient";
-import { abnLookupConfig } from "@/lib/abr/config";
+import { ensureAbnLookupEnabled } from "@/lib/abr/helpers";
 import { normaliseIdentifier } from "@/lib/abr/validate";
-
-function ensureAbnLookupEnabled() {
-  if (!abnLookupConfig.enabled) {
-    throw new Error("ABN lookup is disabled. Enable ABN_LOOKUP_ENABLED to use this tool.");
-  }
-}
 
 function extractEntityName(entry: any): string | undefined {
   return (

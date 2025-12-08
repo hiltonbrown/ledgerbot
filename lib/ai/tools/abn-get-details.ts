@@ -1,52 +1,8 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { AbnLookupClient } from "@/lib/abr/abnLookupClient";
-import { abnLookupConfig } from "@/lib/abr/config";
+import { ensureAbnLookupEnabled, mapAbrEntity } from "@/lib/abr/helpers";
 import { isValidAbn, normaliseIdentifier } from "@/lib/abr/validate";
-
-function ensureAbnLookupEnabled() {
-  if (!abnLookupConfig.enabled) {
-    throw new Error("ABN lookup is disabled. Enable ABN_LOOKUP_ENABLED to use this tool.");
-  }
-}
-
-function extractAbrEntity(raw: any) {
-  const entityName =
-    raw?.EntityName ||
-    raw?.entityName ||
-    raw?.MainName?.OrganisationName ||
-    raw?.MainTradingName?.OrganisationName ||
-    raw?.OrganisationName ||
-    undefined;
-
-  const abn = normaliseIdentifier(raw?.Abn || raw?.ABN || raw?.AbnNumber || "").digits || undefined;
-  const acnCandidate = normaliseIdentifier(
-    raw?.Acn || raw?.ACN || raw?.AsicNumber || raw?.ASICNumber || ""
-  ).digits;
-  const acn = acnCandidate.length === 9 ? acnCandidate : undefined;
-
-  const gst = raw?.GoodsAndServicesTax || raw?.GST || raw?.goodsAndServicesTax;
-  const gstStatus = gst?.Status || gst?.status;
-  const gstStatusFrom =
-    gst?.EffectiveFrom || gst?.effectiveFrom || gst?.StartDate || gst?.startDate || undefined;
-
-  const mainBusinessLocation = raw?.MainBusinessPhysicalAddress || raw?.mainBusinessLocation;
-  const abnStatus = raw?.AbnStatus || raw?.ABNStatus || raw?.abnStatus;
-  const abnStatusFrom =
-    raw?.AbnStatusEffectiveFrom || raw?.abnStatusFrom || raw?.abnStatusEffectiveFrom;
-
-  return {
-    abn,
-    acn,
-    entityName,
-    entityType: raw?.EntityType || raw?.entityType,
-    abnStatus,
-    abnStatusFrom,
-    gstStatus,
-    gstStatusFrom,
-    mainBusinessLocation,
-  };
-}
 
 export const abn_get_details = tool({
   description: "Get entity details from ABR by ABN or ACN.",
@@ -90,7 +46,7 @@ export const abn_get_details = tool({
         };
       }
 
-      const entity = extractAbrEntity(await client.getByAbn(digits));
+      const entity = mapAbrEntity(await client.getByAbn(digits));
       return { entity };
     }
 
@@ -103,7 +59,7 @@ export const abn_get_details = tool({
       };
     }
 
-    const entity = extractAbrEntity(await client.getByAcn(digits));
+    const entity = mapAbrEntity(await client.getByAcn(digits));
     return { entity };
   },
 });
