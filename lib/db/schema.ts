@@ -574,3 +574,4 @@ export type XeroCreditNote = InferSelectModel<typeof xeroCreditNote>;
 
 export * from "./schema/ap";
 export * from "./schema/ar";
+export * from "./schema/datavalidation";

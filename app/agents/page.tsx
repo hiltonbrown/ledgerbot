@@ -62,6 +62,13 @@ const agentSnapshots = [
     href: "/agents/workflow",
     icon: <Network className="h-5 w-5" />,
   },
+  {
+    title: "Data Validation",
+    description:
+      "Validate customer and supplier data against Australian business registries (ABR & ASIC).",
+    href: "/agents/datavalidation",
+    icon: <FileText className="h-5 w-5" />,
+  },
 ];
 
 export default function AgentsOverviewPage() {

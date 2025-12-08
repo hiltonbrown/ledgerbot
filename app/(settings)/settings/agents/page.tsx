@@ -118,6 +118,13 @@ export default function AgentSettingsPage() {
   const [loggingLevel, setLoggingLevel] = useState("info");
   const [fallbackBehavior, setFallbackBehavior] = useState("retry");
 
+  // Data Validation Agent state
+  const [dvEnabled, setDvEnabled] = useState(true);
+  const [validateABN, setValidateABN] = useState(true);
+  const [validateACN, setValidateACN] = useState(true);
+  const [checkGSTStatus, setCheckGSTStatus] = useState(true);
+  const [fuzzyMatchThreshold, setFuzzyMatchThreshold] = useState("85");
+
   // Load agent settings on mount
   useEffect(() => {
     const loadSettings = async () => {
@@ -145,6 +152,27 @@ export default function AgentSettingsPage() {
               setRiskWeights(settings.ap.riskWeights);
             }
           }
+
+          // Load Data Validation agent settings
+          if (settings?.datavalidation) {
+            if (settings.datavalidation.enabled !== undefined) {
+              setDvEnabled(settings.datavalidation.enabled);
+            }
+            if (settings.datavalidation.validateABN !== undefined) {
+              setValidateABN(settings.datavalidation.validateABN);
+            }
+            if (settings.datavalidation.validateACN !== undefined) {
+              setValidateACN(settings.datavalidation.validateACN);
+            }
+            if (settings.datavalidation.checkGSTStatus !== undefined) {
+              setCheckGSTStatus(settings.datavalidation.checkGSTStatus);
+            }
+            if (settings.datavalidation.fuzzyMatchThreshold) {
+              setFuzzyMatchThreshold(
+                settings.datavalidation.fuzzyMatchThreshold
+              );
+            }
+          }
         }
       } catch (error) {
         console.error("Failed to load agent settings:", error);
@@ -164,6 +192,13 @@ export default function AgentSettingsPage() {
           bankChangeMonitoring,
           autoApproveRiskThreshold,
           riskWeights,
+        },
+        datavalidation: {
+          enabled: dvEnabled,
+          validateABN,
+          validateACN,
+          checkGSTStatus,
+          fuzzyMatchThreshold,
         },
         // Add other agent settings here as they're implemented
       };
@@ -1186,6 +1221,73 @@ export default function AgentSettingsPage() {
                   <SelectItem value="fail">Fail immediately</SelectItem>
                 </SelectContent>
               </Select>
+            </SettingRow>
+          </AgentConfigCard>
+
+          {/* Data Validation Agent */}
+          <AgentConfigCard
+            agent={{
+              id: "data-validation",
+              name: "Data Validation Agent",
+              description:
+                "Validates customer and supplier data against Australian business registries (ABR & ASIC).",
+              enabled: dvEnabled,
+              icon: <FileText className="h-5 w-5" />,
+            }}
+            onEnabledChange={setDvEnabled}
+            onReset={() => {
+              setValidateABN(true);
+              setValidateACN(true);
+              setCheckGSTStatus(true);
+              setFuzzyMatchThreshold("85");
+            }}
+          >
+            <SettingRow
+              description="Minimum similarity score for name matching (0-100%)"
+              label="Fuzzy match threshold"
+            >
+              <Input
+                max="100"
+                min="0"
+                onChange={(e) => setFuzzyMatchThreshold(e.target.value)}
+                type="number"
+                value={fuzzyMatchThreshold}
+              />
+            </SettingRow>
+
+            <SettingRow label="Validation checks">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="font-normal text-sm" htmlFor="val-abn">
+                    Validate ABN format
+                  </Label>
+                  <Switch
+                    checked={validateABN}
+                    id="val-abn"
+                    onCheckedChange={setValidateABN}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label className="font-normal text-sm" htmlFor="val-acn">
+                    Validate ACN format
+                  </Label>
+                  <Switch
+                    checked={validateACN}
+                    id="val-acn"
+                    onCheckedChange={setValidateACN}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label className="font-normal text-sm" htmlFor="val-gst">
+                    Check GST registration status
+                  </Label>
+                  <Switch
+                    checked={checkGSTStatus}
+                    id="val-gst"
+                    onCheckedChange={setCheckGSTStatus}
+                  />
+                </div>
+              </div>
             </SettingRow>
           </AgentConfigCard>
         </div>

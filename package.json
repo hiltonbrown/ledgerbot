@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbo",
-    "build": "tsx lib/db/migrate && next build",
-    "start": "next start",
+    "dev": "NODE_OPTIONS='--no-deprecation' next dev --turbo",
+    "build": "tsx lib/db/migrate && NODE_OPTIONS='--no-deprecation' next build",
+    "start": "NODE_OPTIONS='--no-deprecation' next start",
     "lint": "npx ultracite@latest check",
     "format": "npx ultracite@latest fix",
     "db:generate": "drizzle-kit generate",
@@ -15,7 +15,8 @@
     "db:pull": "drizzle-kit pull",
     "db:check": "drizzle-kit check",
     "db:up": "drizzle-kit up",
-    "test": "export PLAYWRIGHT=True && pnpm exec playwright test"
+    "test": "export PLAYWRIGHT=True && pnpm exec playwright test",
+    "test:unit": "vitest run"
   },
   "dependencies": {
     "@ai-sdk/gateway": "^1.0.41",
@@ -123,7 +124,8 @@
     "tailwindcss": "^4.1.16",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
-    "ultracite": "5.3.9"
+    "ultracite": "5.3.9",
+    "vitest": "^3.2.4"
   },
   "packageManager": "pnpm@9.12.3",
   "pnpm": {
