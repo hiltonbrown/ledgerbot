@@ -1,85 +1,20 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { AbnLookupClient } from "@/lib/abr/abnLookupClient";
-import { ensureAbnLookupEnabled } from "@/lib/abr/helpers";
+import { ensureAbnLookupEnabled, mapAbrEntity } from "@/lib/abr/helpers";
 import { normaliseIdentifier } from "@/lib/abr/validate";
 
-function extractEntityName(entry: any): string | undefined {
-  return (
-    entry?.EntityName ||
-    entry?.Name ||
-    entry?.entityName ||
-    entry?.MainName?.OrganisationName ||
-    entry?.MainTradingName?.OrganisationName ||
-    entry?.organisationName ||
-    undefined
-  );
-}
-
-function extractAbn(entry: any): string | undefined {
-  const value = entry?.Abn || entry?.ABN || entry?.AbnNumber || entry?.identifierValue;
-  if (typeof value === "string") {
-    return normaliseIdentifier(value).digits || undefined;
-  }
-  return undefined;
-}
-
-function extractAcn(entry: any): string | undefined {
-  const value = entry?.Acn || entry?.ACN || entry?.AsicNumber || entry?.ASICNumber;
-  if (typeof value === "string") {
-    const digits = normaliseIdentifier(value).digits;
-    return digits.length === 9 ? digits : undefined;
-  }
-  return undefined;
-}
-
-function extractAbnStatus(entry: any): string | undefined {
-  return entry?.AbnStatus || entry?.ABNStatus || entry?.status || undefined;
-}
-
-function extractGstStatus(entry: any): {
-  status?: string;
-  from?: string;
-} {
-  const gst = entry?.GoodsAndServicesTax || entry?.GST || entry?.goodsAndServicesTax;
-  const status = typeof gst?.status === "string" ? gst.status : gst?.Status;
-  const from =
-    gst?.EffectiveFrom ||
-    gst?.FromDate ||
-    gst?.effectiveFrom ||
-    gst?.StartDate ||
-    gst?.startDate;
-
-  return { status, from };
-}
-
-function extractMainLocation(entry: any): string | undefined {
-  const location =
-    entry?.MainBusinessPhysicalAddress || entry?.MainBusinessLocation || entry?.mainBusinessLocation;
-  if (!location || typeof location !== "object") {
-    return undefined;
-  }
-  const parts = [
-    location.City || location.city,
-    location.State || location.state,
-    location.Postcode || location.postcode,
-    location.CountryCode || location.countryCode,
-  ].filter(Boolean);
-  if (parts.length === 0) {
-    return undefined;
-  }
-  return parts.join(", ");
-}
+// Extraction functions removed; use mapAbrEntity from lib/abr/helpers.ts instead.
 
 function normaliseResults(raw: unknown): any[] {
   if (Array.isArray(raw)) {
-    return raw;
+    return raw.map(mapAbrEntity);
   }
   if (raw && typeof raw === "object") {
     const container = raw as Record<string, any>;
-    if (Array.isArray(container.Names)) return container.Names;
-    if (Array.isArray(container.results)) return container.results;
-    if (Array.isArray(container.Results)) return container.Results;
+    if (Array.isArray(container.Names)) return container.Names.map(mapAbrEntity);
+    if (Array.isArray(container.results)) return container.results.map(mapAbrEntity);
+    if (Array.isArray(container.Results)) return container.Results.map(mapAbrEntity);
   }
   return [];
 }
