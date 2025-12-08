@@ -21,6 +21,10 @@ import type { ArtifactKind } from "@/components/artifact";
 import type { VisibilityType } from "@/lib/chat/visibility";
 import { ChatSDKError } from "../errors";
 import type { AppUsage } from "../usage";
+
+// Export Data Validation queries
+export * from "./queries/datavalidation";
+
 import * as schema from "./schema";
 import {
   type AgentTrace,
