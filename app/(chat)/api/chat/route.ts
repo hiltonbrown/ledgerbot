@@ -33,6 +33,10 @@ import {
 } from "@/lib/ai/prompts";
 import { myProvider } from "@/lib/ai/providers";
 import { defaultSelectedTools, type ToolId } from "@/lib/ai/tools";
+import { abn_get_details } from "@/lib/ai/tools/abn-get-details";
+import { abn_search_entity } from "@/lib/ai/tools/abn-search-entity";
+import { abn_validate_xero_contact } from "@/lib/ai/tools/abn-validate-xero-contact";
+import { abn_verify_xero_invoice } from "@/lib/ai/tools/abn-verify-xero-invoice";
 import { createDocument } from "@/lib/ai/tools/create-document";
 import { getWeather } from "@/lib/ai/tools/get-weather";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
@@ -498,6 +502,14 @@ export async function POST(request: Request) {
               user,
               dataStream,
               modelId: selectedChatModel,
+            }),
+            abn_search_entity,
+            abn_get_details,
+            abn_validate_xero_contact: abn_validate_xero_contact({
+              userId: user.id,
+            }),
+            abn_verify_xero_invoice: abn_verify_xero_invoice({
+              userId: user.id,
             }),
             ...xeroTools,
           },

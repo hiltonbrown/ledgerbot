@@ -3,7 +3,11 @@ export type ToolId =
   | "getWeather"
   | "createDocument"
   | "updateDocument"
-  | "requestSuggestions";
+  | "requestSuggestions"
+  | "abn_search_entity"
+  | "abn_get_details"
+  | "abn_validate_xero_contact"
+  | "abn_verify_xero_invoice";
 
 // All tools are always enabled
 export const defaultSelectedTools: ToolId[] = [
@@ -11,4 +15,8 @@ export const defaultSelectedTools: ToolId[] = [
   "createDocument",
   "updateDocument",
   "requestSuggestions",
+  "abn_search_entity",
+  "abn_get_details",
+  "abn_validate_xero_contact",
+  "abn_verify_xero_invoice",
 ];
