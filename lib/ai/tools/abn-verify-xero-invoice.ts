@@ -98,7 +98,9 @@ async function fetchXeroInvoice(userId: string, invoiceId: string): Promise<Invo
 
 function isActiveStatus(status?: string): boolean {
   if (!status) return false;
-  return !/cancel/i.test(status);
+  const normalized = status.trim().toLowerCase();
+  if (!normalized) return false;
+  return normalized === "active";
 }
 
 function isEntityNameCloseMatch(nameA?: string | null, nameB?: string | null): boolean {
