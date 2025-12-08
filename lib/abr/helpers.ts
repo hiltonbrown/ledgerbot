@@ -9,15 +9,19 @@ export function ensureAbnLookupEnabled() {
 
 export function parseAbrDate(value?: string): Date | undefined {
   if (!value) return;
-  const numeric = String(value).match(/\d+/);
-  if (numeric?.[0]) {
-    const timestamp = Number(numeric[0]);
+  // First, try to parse as a standard date string (e.g., ISO 8601)
+  const parsed = new Date(value);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed;
+  }
+  // If parsing failed, check if the entire value is numeric (Unix timestamp)
+  if (/^\d+$/.test(value)) {
+    const timestamp = Number(value);
     if (!Number.isNaN(timestamp)) {
       return new Date(timestamp);
     }
   }
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+  return undefined;
 }
 
 export function mapAbrEntity(raw: any) {
