@@ -2,36 +2,29 @@ import { tool } from "ai";
 import { z } from "zod";
 import type { Invoice } from "xero-node";
 import { AbnLookupClient } from "@/lib/abr/abnLookupClient";
-import { ensureAbnLookupEnabled, isActiveStatus, mapAbrEntity, parseAbrDate } from "@/lib/abr/helpers";
-import { isValidAbn, normaliseIdentifier } from "@/lib/abr/validate";
+import {
+  ensureAbnLookupEnabled,
+  extractIdentifierFromCandidates,
+  isActiveStatus,
+  mapAbrEntity,
+  parseAbrDate,
+} from "@/lib/abr/helpers";
+import { isValidAbn } from "@/lib/abr/validate";
 import { getRobustXeroClient } from "@/lib/xero/client-helpers";
 
-function extractIdentifierFromInvoice(invoice: Invoice):
-  | { kind: "ABN" | "ACN"; digits: string }
-  | undefined {
-  const candidates: string[] = [];
-  if (invoice.taxNumber) candidates.push(invoice.taxNumber);
-  if (invoice.reference) candidates.push(invoice.reference);
-  if (invoice.invoiceNumber) candidates.push(invoice.invoiceNumber);
-  if (invoice.contact?.taxNumber) candidates.push(invoice.contact.taxNumber);
-  if (invoice.contact?.companyNumber) candidates.push(invoice.contact.companyNumber);
-  if (invoice.contact?.accountNumber) candidates.push(invoice.contact.accountNumber);
+function extractIdentifierFromInvoice(invoice: Invoice) {
+  const preferredCandidates = [
+    invoice.taxNumber,
+    invoice.reference,
+    invoice.invoiceNumber,
+    invoice.contact?.taxNumber,
+    invoice.contact?.companyNumber,
+    invoice.contact?.accountNumber,
+  ];
 
-  // Contact name is prone to false positives; consider it only after structured fields.
-  if (invoice.contact?.name) candidates.push(invoice.contact.name);
+  const fallbackCandidates = [invoice.contact?.name];
 
-  const matches = candidates
-    .flatMap((value) => (typeof value === "string" ? value.match(/\d{9,11}/g) ?? [] : []))
-    .filter(Boolean);
-
-  for (const match of matches) {
-    const result = normaliseIdentifier(match);
-    if (result.kind === "ABN" || result.kind === "ACN") {
-      return result;
-    }
-  }
-
-  return undefined;
+  return extractIdentifierFromCandidates(preferredCandidates, fallbackCandidates);
 }
 
 async function fetchXeroInvoice(userId: string, invoiceId: string): Promise<Invoice | null> {

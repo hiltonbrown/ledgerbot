@@ -61,6 +61,32 @@ export function mapAbrEntity(raw: any) {
   };
 }
 
+export function extractIdentifierFromCandidates(
+  preferred: Array<string | null | undefined>,
+  fallback: Array<string | null | undefined> = []
+): { kind: "ABN" | "ACN"; digits: string } | undefined {
+  for (const value of preferred) {
+    if (!value || typeof value !== "string") continue;
+    const result = normaliseIdentifier(value);
+    if (result.kind === "ABN" || result.kind === "ACN") {
+      return result;
+    }
+  }
+
+  const matches = fallback
+    .flatMap((value) => (typeof value === "string" ? value.match(/\d{9,11}/g) ?? [] : []))
+    .filter(Boolean);
+
+  for (const match of matches) {
+    const result = normaliseIdentifier(match);
+    if (result.kind === "ABN" || result.kind === "ACN") {
+      return result;
+    }
+  }
+
+  return undefined;
+}
+
 export function isActiveStatus(status?: string): boolean {
   if (!status) return false;
   const normalized = status.trim().toLowerCase();

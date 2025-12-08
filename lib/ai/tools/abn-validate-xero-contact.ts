@@ -2,13 +2,17 @@ import { tool } from "ai";
 import { z } from "zod";
 import type { Contact } from "xero-node";
 import { AbnLookupClient } from "@/lib/abr/abnLookupClient";
-import { ensureAbnLookupEnabled, isActiveStatus, mapAbrEntity, parseAbrDate } from "@/lib/abr/helpers";
-import { isValidAbn, normaliseIdentifier } from "@/lib/abr/validate";
+import {
+  ensureAbnLookupEnabled,
+  extractIdentifierFromCandidates,
+  isActiveStatus,
+  mapAbrEntity,
+  parseAbrDate,
+} from "@/lib/abr/helpers";
+import { isValidAbn } from "@/lib/abr/validate";
 import { getRobustXeroClient } from "@/lib/xero/client-helpers";
 
-function extractIdentifierFromContact(contact: Contact):
-  | { kind: "ABN" | "ACN"; digits: string }
-  | undefined {
+function extractIdentifierFromContact(contact: Contact) {
   const preferredFields = [
     contact.taxNumber,
     contact.companyNumber,
@@ -16,26 +20,9 @@ function extractIdentifierFromContact(contact: Contact):
     contact.accountNumber,
   ];
 
-  for (const field of preferredFields) {
-    if (!field || typeof field !== "string") continue;
-    const candidate = normaliseIdentifier(field);
-    if (candidate.kind === "ABN" || candidate.kind === "ACN") {
-      return candidate;
-    }
-  }
-
   const fallbackFields = [contact.name];
-  const matches = fallbackFields
-    .flatMap((value) => (typeof value === "string" ? value.match(/\d{9,11}/g) ?? [] : []))
-    .filter(Boolean);
 
-  for (const match of matches) {
-    const result = normaliseIdentifier(match);
-    if (result.kind === "ABN" || result.kind === "ACN") {
-      return result;
-    }
-  }
-  return undefined;
+  return extractIdentifierFromCandidates(preferredFields, fallbackFields);
 }
 
 async function fetchXeroContact(userId: string, contactId: string): Promise<Contact | null> {
