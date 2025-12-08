@@ -8,7 +8,6 @@ import {
   getVerificationSummary,
   listContacts,
   saveVerificationResult,
-  upsertContact,
 } from "@/lib/db/queries/datavalidation";
 import { dvContacts } from "@/lib/db/schema/datavalidation";
 import { verificationService } from "@/lib/services/verification-service";
@@ -16,7 +15,13 @@ import { verificationService } from "@/lib/services/verification-service";
 // import { auth } from "@clerk/nextjs"; // Or internal auth helper
 
 // Mock user ID getter for now, replace with actual auth
-const getUserId = async () => "user_123";
+import { requireAuth } from "@/lib/auth/clerk-helpers";
+
+// Get authenticated user ID
+const getUserId = async () => {
+  const user = await requireAuth();
+  return user.id;
+};
 
 export async function verifyContactAction(contactId: string) {
   try {
