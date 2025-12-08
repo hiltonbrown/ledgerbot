@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbo",
-    "build": "tsx lib/db/migrate && next build",
-    "start": "next start",
+    "dev": "NODE_OPTIONS='--no-deprecation' next dev --turbo",
+    "build": "tsx lib/db/migrate && NODE_OPTIONS='--no-deprecation' next build",
+    "start": "NODE_OPTIONS='--no-deprecation' next start",
     "lint": "npx ultracite@latest check",
     "format": "npx ultracite@latest fix",
     "db:generate": "drizzle-kit generate",

@@ -1,7 +1,7 @@
 /// <reference types="vitest" />
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AbnLookupClient } from "@/lib/abr/abnLookupClient";
+import { AbnLookupClient } from "../../lib/abr/abnLookupClient";
 
 declare const global: typeof globalThis & { fetch: typeof fetch };
 
@@ -38,9 +38,7 @@ describe("AbnLookupClient", () => {
     });
 
     const client = new AbnLookupClient();
-    await expect(client.getByAbn("51824753556")).rejects.toThrow(
-      expect.stringContaining("status 500")
-    );
+    await expect(client.getByAbn("51824753556")).rejects.toThrow("status 500");
   });
 
   it("formats URLs with normalized identifiers", async () => {

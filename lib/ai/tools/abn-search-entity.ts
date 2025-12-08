@@ -2,7 +2,8 @@ import { tool } from "ai";
 import { z } from "zod";
 import { AbnLookupClient } from "@/lib/abr/abnLookupClient";
 import { ensureAbnLookupEnabled, mapAbrEntity } from "@/lib/abr/helpers";
-import { normaliseIdentifier } from "@/lib/abr/validate";
+
+// normaliseIdentifier removed as it was unused import
 
 // Extraction functions removed; use mapAbrEntity from lib/abr/helpers.ts instead.
 
@@ -12,9 +13,12 @@ function normaliseResults(raw: unknown): any[] {
   }
   if (raw && typeof raw === "object") {
     const container = raw as Record<string, any>;
-    if (Array.isArray(container.Names)) return container.Names.map(mapAbrEntity);
-    if (Array.isArray(container.results)) return container.results.map(mapAbrEntity);
-    if (Array.isArray(container.Results)) return container.Results.map(mapAbrEntity);
+    if (Array.isArray(container.Names))
+      return container.Names.map(mapAbrEntity);
+    if (Array.isArray(container.results))
+      return container.results.map(mapAbrEntity);
+    if (Array.isArray(container.Results))
+      return container.Results.map(mapAbrEntity);
   }
   return [];
 }
@@ -38,15 +42,19 @@ export const abn_search_entity = tool({
     const entries = normaliseResults(response);
 
     const results = entries.map((entry) => {
-      const gst = extractGstStatus(entry);
+      // mapAbrEntity already returns a normalized structure, so we can just return it directly
+      // or map it to the tool's expected output format if needed.
+      // Looking at the original code, it seems to want specific fields.
+      // Let's use the normalized entity from mapAbrEntity.
+
       return {
-        entityName: extractEntityName(entry),
-        abn: extractAbn(entry),
-        acn: extractAcn(entry),
-        abnStatus: extractAbnStatus(entry),
-        gstStatus: gst.status,
-        gstStatusFrom: gst.from,
-        mainLocation: extractMainLocation(entry),
+        entityName: entry.entityName,
+        abn: entry.abn,
+        acn: entry.acn,
+        abnStatus: entry.abnStatus,
+        gstStatus: entry.gstStatus,
+        gstStatusFrom: entry.gstStatusFrom,
+        mainLocation: entry.mainBusinessLocation,
       };
     });
 
