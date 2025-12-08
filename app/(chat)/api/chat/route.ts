@@ -347,7 +347,7 @@ export async function POST(request: Request) {
 
     // Respect the user's reasoning preference
     const preferenceForDisplay =
-      requestedShowReasoning ?? streamReasoning ?? defaultReasoning;
+      requestedShowReasoning ?? streamReasoning;
     const sendReasoning = streamReasoning;
 
     const _respondWithManualStream = async (
