@@ -67,21 +67,23 @@ function mapAbrEntity(raw: any) {
 function extractIdentifierFromContact(contact: Contact):
   | { kind: "ABN" | "ACN"; digits: string }
   | undefined {
-  const candidates: string[] = [];
-  if (contact.taxNumber) candidates.push(contact.taxNumber);
-  if (contact.accountNumber) candidates.push(contact.accountNumber);
-  if (contact.companyNumber) candidates.push(contact.companyNumber);
-  if (contact.contactNumber) candidates.push(contact.contactNumber);
-  if (contact.name) candidates.push(contact.name);
+  const preferredFields = [
+    contact.taxNumber,
+    contact.companyNumber,
+    contact.contactNumber,
+    contact.accountNumber,
+  ];
 
-  for (const address of contact.addresses || []) {
-    if (address.addressLine1) candidates.push(address.addressLine1);
-    if (address.addressLine2) candidates.push(address.addressLine2);
-    if (address.city) candidates.push(address.city);
-    if (address.postalCode) candidates.push(address.postalCode);
+  for (const field of preferredFields) {
+    if (!field || typeof field !== "string") continue;
+    const candidate = normaliseIdentifier(field);
+    if (candidate.kind === "ABN" || candidate.kind === "ACN") {
+      return candidate;
+    }
   }
 
-  const matches = candidates
+  const fallbackFields = [contact.name];
+  const matches = fallbackFields
     .flatMap((value) => (typeof value === "string" ? value.match(/\d{9,11}/g) ?? [] : []))
     .filter(Boolean);
 
