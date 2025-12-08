@@ -34,7 +34,7 @@ export const abn_search_entity = tool({
   execute: async ({ query, maxResults }) => {
     ensureAbnLookupEnabled();
     const client = new AbnLookupClient();
-    const response = await client.searchByName(query, maxResults ?? 5);
+    const response = await client.searchByName(query, maxResults);
     const entries = normaliseResults(response);
 
     const results = entries.map((entry) => {
