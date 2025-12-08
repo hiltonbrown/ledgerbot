@@ -111,8 +111,8 @@ export const abn_verify_xero_invoice = ({ userId }: { userId: string }) =>
       } catch (error) {
         return buildErrorResult({
           xeroInvoiceId,
-          supplierName: invoice?.contact?.name,
-          invoiceDate: invoice?.date ? new Date(invoice.date) : undefined,
+          supplierName: undefined,
+          invoiceDate: undefined,
           message: error instanceof Error ? error.message : "Failed to fetch invoice from Xero",
           status: "invalid",
         });
