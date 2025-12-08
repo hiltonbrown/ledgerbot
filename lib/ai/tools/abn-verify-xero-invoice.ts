@@ -16,6 +16,8 @@ function extractIdentifierFromInvoice(invoice: Invoice):
   if (invoice.contact?.taxNumber) candidates.push(invoice.contact.taxNumber);
   if (invoice.contact?.companyNumber) candidates.push(invoice.contact.companyNumber);
   if (invoice.contact?.accountNumber) candidates.push(invoice.contact.accountNumber);
+
+  // Contact name is prone to false positives; consider it only after structured fields.
   if (invoice.contact?.name) candidates.push(invoice.contact.name);
 
   const matches = candidates
