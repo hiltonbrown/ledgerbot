@@ -27,12 +27,30 @@ function extractIdentifierFromInvoice(invoice: Invoice) {
   return extractIdentifierFromCandidates(preferredCandidates, fallbackCandidates);
 }
 
-async function fetchXeroInvoice(userId: string, invoiceId: string): Promise<Invoice | null> {
+// Generic Xero entity fetcher
+async function fetchXeroEntity<T>(
+  userId: string,
+  entityType: "Invoice" | "Contact",
+  entityId: string
+): Promise<T | null> {
   const { client, connection } = await getRobustXeroClient(userId);
-  const response = await client.accountingApi.getInvoice(connection.tenantId, invoiceId);
-  return response.body.invoices?.[0] ?? null;
+  switch (entityType) {
+    case "Invoice": {
+      const response = await client.accountingApi.getInvoice(connection.tenantId, entityId);
+      return (response.body.invoices?.[0] as T) ?? null;
+    }
+    case "Contact": {
+      const response = await client.accountingApi.getContact(connection.tenantId, entityId);
+      return (response.body.contacts?.[0] as T) ?? null;
+    }
+    default:
+      throw new Error(`Unsupported entity type: ${entityType}`);
+  }
 }
 
+async function fetchXeroInvoice(userId: string, invoiceId: string): Promise<Invoice | null> {
+  return await fetchXeroEntity<Invoice>(userId, "Invoice", invoiceId);
+}
 function isEntityNameCloseMatch(nameA?: string | null, nameB?: string | null): boolean {
   if (!nameA || !nameB) return false;
   const a = nameA.trim().toLowerCase();
