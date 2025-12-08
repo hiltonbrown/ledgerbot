@@ -6,6 +6,12 @@
 
 The application uses specialized AI agents for different domains (Accounts Payable, Accounts Receivable, Analytics, etc.) and allows users to interact via a chat interface that supports text, code, and spreadsheet artifacts.
 
+**Key Features:**
+-   **Multi-Tenancy:** Supports managing multiple Xero organizations (tenants) from a single account.
+-   **Agentic AI:** Specialized agents for AP, AR, Data Validation, Forecasting, and more.
+-   **Real-time Sync:** Efficient bi-directional synchronization with Xero using Drizzle ORM and Postgres.
+-   **ABN/GST Lookup:** Integrated tools for verifying Australian Business Numbers and GST status.
+
 ## Technology Stack
 
 -   **Framework:** Next.js 16 (App Router, Server Actions, PPR)
@@ -13,7 +19,7 @@ The application uses specialized AI agents for different domains (Accounts Payab
 -   **AI SDK:** Vercel AI SDK (with AI Gateway for Multi-LLM support: Claude, OpenAI, Gemini)
 -   **Database:** PostgreSQL with **Drizzle ORM**
 -   **Authentication:** Clerk
--   **Integration:** Xero OAuth2
+-   **Integration:** Xero OAuth2 (Multi-tenant support)
 -   **Styling:** Tailwind CSS (v4), Radix UI, Lucide Icons
 -   **Testing:** Playwright (E2E), Vitest (Unit)
 -   **Linting/Formatting:** Ultracite (Biome wrapper)
@@ -31,7 +37,11 @@ The application uses specialized AI agents for different domains (Accounts Payab
 │   │   ├── ap/           # Accounts Payable Agent
 │   │   ├── ar/           # Accounts Receivable Agent
 │   │   ├── analytics/    # Analytics Agent
-│   │   └── ...
+│   │   ├── datavalidation/ # Data Integrity & Validation Agent
+│   │   ├── docmanagement/  # Document Management Agent
+│   │   ├── forecasting/    # Cash Flow Forecasting Agent
+│   │   ├── qanda/          # Q&A / Regulatory Agent
+│   │   └── workflow/       # Workflow Automation Agent
 │   └── api/              # API Routes (Xero, Webhooks, etc.)
 ├── components/           # React Components
 │   ├── ui/               # Reusable UI elements (Radix)
@@ -39,9 +49,10 @@ The application uses specialized AI agents for different domains (Accounts Payab
 │   └── ...
 ├── lib/                  # Shared Utilities & Business Logic
 │   ├── ai/               # AI Providers, Tools, Prompts
+│   │   ├── tools/        # MCP & Standard Tools (ABN, Xero, etc.)
 │   ├── db/               # Drizzle Schema & Migrations
 │   ├── agents/           # Agent Logic (Backend)
-│   └── xero/             # Xero Integration Logic
+│   └── xero/             # Xero Integration Logic (Sync, Rate Limits, Tenants)
 ├── prompts/              # System Prompts (Markdown)
 │   ├── ledgerbot-system-prompt.md # Core persona
 │   ├── ap-system-prompt.md        # AP Agent persona
@@ -68,25 +79,37 @@ The application uses specialized AI agents for different domains (Accounts Payab
 The database is managed via Drizzle ORM. Key tables include:
 
 -   **User:** User identity (synced with Clerk).
--   **Chat / Message:** Chat history and message content.
+-   **Chat / Message:** Chat history and message content (supports v2 multi-part messages).
+-   **AgentTrace:** Logs of agent tool usage and performance.
 -   **Document:** AI-generated artifacts (Text, Code, Sheets).
 -   **ContextFile:** User-uploaded files for RAG.
--   **XeroConnection:** OAuth tokens and metadata for Xero integration.
--   **Xero* Tables:** Cached Xero data (`XeroInvoice`, `XeroContact`, etc.) for search and performance.
--   **UserSettings:** User preferences, including custom prompts.
+-   **RegulatoryDocument:** Scraped regulatory content for QA agent.
+-   **QaReviewRequest:** Tracking for human review of low-confidence answers.
+-   **XeroConnection:** OAuth tokens, tenant IDs, and sync metadata.
+-   **Xero* Tables:** Cached Xero data for performance and search:
+    -   `XeroInvoice`, `XeroContact`, `XeroPayment`, `XeroCreditNote`.
+    -   All synced by `tenantId`.
+-   **UserSettings:** User preferences, including custom prompts and agent settings.
 
 ## AI & Agents
 
--   **Agents:** defined in `app/agents/` (frontend) and `lib/agents/` (backend logic).
+-   **Agents:** Defined in `app/agents/` (frontend) and `lib/agents/` (backend logic).
+    -   **AP:** Accounts Payable (Bill processing, payment scheduling).
+    -   **AR:** Accounts Receivable (Invoicing, follow-ups).
+    -   **Analytics:** Financial reporting and insights.
+    -   **Data Validation:** Anomaly detection and integrity checks.
+    -   **Forecasting:** Cash flow prediction.
+    -   **Q&A:** Regulatory compliance and general accounting questions.
 -   **Prompts:** Stored as Markdown files in `prompts/`.
-    -   `ledgerbot-system-prompt.md`: The main instructional prompt for the general chat.
-    -   `default-code-prompt.md` / `default-spreadsheet-prompt.md`: Instructions for generating artifacts.
--   **Tools:** AI tools are defined in `lib/ai/tools/` and used by the chat API to perform actions (e.g., querying Xero, creating documents).
+-   **Tools:** Located in `lib/ai/tools/`.
+    -   **Xero Tools:** `xero-tools.ts` (CRUD operations).
+    -   **ABN Tools:** `abn-*.ts` (Lookup, Tax status verification).
+    -   **Regulatory Tools:** `regulatory-tools.ts` (Search regulatory knowledge base).
 
 ## Conventions
 
--   **Linting:** Strict adherence to Biome rules. Always run `pnpm format` or check for lint errors before finishing a task.
--   **Database:** Always use Drizzle ORM for DB interactions. Do not write raw SQL unless absolutely necessary.
--   **Styling:** Use Tailwind CSS utility classes.
+-   **Linting:** Strict adherence to Biome rules. Always run `pnpm format`.
+-   **Database:** Always use Drizzle ORM. No raw SQL.
+-   **Styling:** Tailwind CSS v4.
 -   **Async/Await:** Heavy use of async/await for database and API calls.
--   **Server Actions:** Used for mutations and form handling in the App Router.
+-   **Server Actions:** Used for mutations and form handling.
