@@ -202,12 +202,14 @@ export async function POST(request: Request) {
       selectedChatModel: requestedChatModel,
       selectedVisibilityType,
       streamReasoning: requestedStreamReasoning,
+      showReasoningPreference: requestedShowReasoning,
     }: {
       id: string;
       message: ChatMessage;
       selectedChatModel?: ChatModel["id"];
       selectedVisibilityType: VisibilityType;
       streamReasoning?: boolean;
+      showReasoningPreference?: boolean;
     } = requestBody;
 
     const sanitizedVisibility = sanitizeVisibility(selectedVisibilityType);
@@ -343,12 +345,10 @@ export async function POST(request: Request) {
 
     let finalMergedUsage: AppUsage | undefined;
 
-    // Always send reasoning parts to the client for all models
-    // Reasoning models (Claude with <think> tags) will have reasoning extracted by middleware
-    // Non-reasoning models won't have reasoning parts, but sendReasoning should still be true
-    const sendReasoning = true;
-    // Always show reasoning steps when available
-    const preferenceForDisplay = true;
+    // Respect the user's reasoning preference
+    const preferenceForDisplay =
+      requestedShowReasoning ?? streamReasoning;
+    const sendReasoning = streamReasoning;
 
     const _respondWithManualStream = async (
       build: (

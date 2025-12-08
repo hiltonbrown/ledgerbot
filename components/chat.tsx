@@ -118,7 +118,10 @@ export function Chat({
   }, [currentModelId, reasoningPreferences, initialDefaultReasoning]);
 
   const getReasoningPreferenceForModel = (modelId: string) => {
-    // Always show reasoning for all models
+    if (!isReasoningModelId(modelId)) {
+      return false;
+    }
+
     const storedPreference = reasoningPreferencesRef.current[modelId];
 
     return storedPreference ?? initialDefaultReasoning ?? true;
@@ -179,7 +182,9 @@ export function Chat({
             message: request.messages.at(-1),
             selectedChatModel: currentModelIdRef.current,
             selectedVisibilityType: visibilityType,
-            streamReasoning: true, // Always stream reasoning for all models
+            streamReasoning: getReasoningPreferenceForModel(
+              currentModelIdRef.current
+            ),
             showReasoningPreference: getReasoningPreferenceForModel(
               currentModelIdRef.current
             ),
