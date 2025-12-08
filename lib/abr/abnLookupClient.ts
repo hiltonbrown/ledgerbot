@@ -51,7 +51,7 @@ export class AbnLookupClient {
 
     return this.fetchJsonp("MatchingNames.aspx", {
       name: trimmed,
-      maxResults: String(maxResults ?? 5),
+      maxResults: String(maxResults),
     });
   }
 
