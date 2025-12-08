@@ -45,7 +45,7 @@ export class AbnLookupClient {
     return this.fetchJsonp("SearchByASIC.aspx", { asic: normalised });
   }
 
-  async searchByName(name: string, maxResults = 10) {
+  async searchByName(name: string, maxResults = 5) {
     const trimmed = name.trim();
     if (!trimmed) {
       throw new Error("Name is required for search");
@@ -53,7 +53,7 @@ export class AbnLookupClient {
 
     return this.fetchJsonp("MatchingNames.aspx", {
       name: trimmed,
-      maxResults: String(maxResults ?? 10),
+      maxResults: String(maxResults ?? 5),
     });
   }
 
