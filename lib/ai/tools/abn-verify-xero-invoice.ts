@@ -1,6 +1,6 @@
 import { tool } from "ai";
-import { z } from "zod";
 import type { Invoice } from "xero-node";
+import { z } from "zod";
 import { AbnLookupClient } from "@/lib/abr/abnLookupClient";
 import {
   ensureAbnLookupEnabled,
@@ -14,7 +14,6 @@ import { getRobustXeroClient } from "@/lib/xero/client-helpers";
 
 function extractIdentifierFromInvoice(invoice: Invoice) {
   const preferredCandidates = [
-    invoice.taxNumber,
     invoice.reference,
     invoice.invoiceNumber,
     invoice.contact?.taxNumber,
@@ -24,7 +23,10 @@ function extractIdentifierFromInvoice(invoice: Invoice) {
 
   const fallbackCandidates = [invoice.contact?.name];
 
-  return extractIdentifierFromCandidates(preferredCandidates, fallbackCandidates);
+  return extractIdentifierFromCandidates(
+    preferredCandidates,
+    fallbackCandidates
+  );
 }
 
 // Generic Xero entity fetcher
@@ -36,11 +38,17 @@ async function fetchXeroEntity<T>(
   const { client, connection } = await getRobustXeroClient(userId);
   switch (entityType) {
     case "Invoice": {
-      const response = await client.accountingApi.getInvoice(connection.tenantId, entityId);
+      const response = await client.accountingApi.getInvoice(
+        connection.tenantId,
+        entityId
+      );
       return (response.body.invoices?.[0] as T) ?? null;
     }
     case "Contact": {
-      const response = await client.accountingApi.getContact(connection.tenantId, entityId);
+      const response = await client.accountingApi.getContact(
+        connection.tenantId,
+        entityId
+      );
       return (response.body.contacts?.[0] as T) ?? null;
     }
     default:
@@ -48,10 +56,16 @@ async function fetchXeroEntity<T>(
   }
 }
 
-async function fetchXeroInvoice(userId: string, invoiceId: string): Promise<Invoice | null> {
+async function fetchXeroInvoice(
+  userId: string,
+  invoiceId: string
+): Promise<Invoice | null> {
   return await fetchXeroEntity<Invoice>(userId, "Invoice", invoiceId);
 }
-function isEntityNameCloseMatch(nameA?: string | null, nameB?: string | null): boolean {
+function isEntityNameCloseMatch(
+  nameA?: string | null,
+  nameB?: string | null
+): boolean {
   if (!nameA || !nameB) return false;
   const a = nameA.trim().toLowerCase();
   const b = nameB.trim().toLowerCase();
@@ -111,7 +125,8 @@ function buildErrorResult({
 
 export const abn_verify_xero_invoice = ({ userId }: { userId: string }) =>
   tool({
-    description: "Verify supplier ABN/ACN on a Xero invoice against ABR records.",
+    description:
+      "Verify supplier ABN/ACN on a Xero invoice against ABR records.",
     inputSchema: z.object({
       xeroInvoiceId: z.string().min(1, "Xero invoice ID is required"),
       strict: z.boolean().optional().default(false),
@@ -126,7 +141,10 @@ export const abn_verify_xero_invoice = ({ userId }: { userId: string }) =>
           xeroInvoiceId,
           supplierName: undefined,
           invoiceDate: undefined,
-          message: error instanceof Error ? error.message : "Failed to fetch invoice from Xero",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to fetch invoice from Xero",
           status: "invalid",
         });
       }
@@ -197,13 +215,19 @@ export const abn_verify_xero_invoice = ({ userId }: { userId: string }) =>
       const abnEffectiveDate = parseAbrDate(abr.abnStatusFrom);
       const abnActiveOnInvoiceDate =
         identifier.kind === "ABN" && isActiveStatus(abr.abnStatus)
-          ? !abnEffectiveDate || (invoiceDate ? abnEffectiveDate <= invoiceDate : abnEffectiveDate <= new Date())
+          ? !abnEffectiveDate ||
+            (invoiceDate
+              ? abnEffectiveDate <= invoiceDate
+              : abnEffectiveDate <= new Date())
           : false;
 
       const gstEffectiveDate = parseAbrDate(abr.gstStatusFrom);
       const gstRegisteredOnInvoiceDate =
         abr.gstStatus && !/not registered/i.test(abr.gstStatus)
-          ? !gstEffectiveDate || (invoiceDate ? gstEffectiveDate <= invoiceDate : gstEffectiveDate <= new Date())
+          ? !gstEffectiveDate ||
+            (invoiceDate
+              ? gstEffectiveDate <= invoiceDate
+              : gstEffectiveDate <= new Date())
           : false;
 
       const riskRating = buildRiskRating({
@@ -216,10 +240,14 @@ export const abn_verify_xero_invoice = ({ userId }: { userId: string }) =>
       });
 
       const notes: string[] = [];
-      if (!numbersMatch) notes.push("Invoice identifier does not match ABR record");
-      if (!entityNameCloseMatch) notes.push("Supplier name does not closely match ABR entity name");
-      if (!abnActiveOnInvoiceDate) notes.push("ABN appears inactive or cancelled for the invoice date");
-      if (!gstRegisteredOnInvoiceDate) notes.push("GST registration inactive for invoice date");
+      if (!numbersMatch)
+        notes.push("Invoice identifier does not match ABR record");
+      if (!entityNameCloseMatch)
+        notes.push("Supplier name does not closely match ABR entity name");
+      if (!abnActiveOnInvoiceDate)
+        notes.push("ABN appears inactive or cancelled for the invoice date");
+      if (!gstRegisteredOnInvoiceDate)
+        notes.push("GST registration inactive for invoice date");
 
       return {
         invoiceId: xeroInvoiceId,

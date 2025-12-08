@@ -17,15 +17,7 @@ export const abn_get_details = tool({
 
     const targetKind = kind && kind !== "AUTO" ? kind : resolvedKind;
     const lookupKind: "ABN" | "ACN" | null =
-      targetKind === "AUTO"
-        ? digits.length === 11
-          ? "ABN"
-          : digits.length === 9
-            ? "ACN"
-            : null
-        : targetKind === "UNKNOWN"
-          ? null
-          : targetKind;
+      targetKind === "UNKNOWN" ? null : targetKind;
 
     if (!lookupKind) {
       return {

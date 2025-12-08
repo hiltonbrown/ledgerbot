@@ -3,7 +3,9 @@ import { normaliseIdentifier } from "./validate";
 
 export function ensureAbnLookupEnabled() {
   if (!abnLookupConfig.enabled) {
-    throw new Error("ABN lookup is disabled. Enable ABN_LOOKUP_ENABLED to use this tool.");
+    throw new Error(
+      "ABN lookup is disabled. Enable ABN_LOOKUP_ENABLED to use this tool."
+    );
   }
 }
 
@@ -21,11 +23,13 @@ export function parseAbrDate(value?: string): Date | undefined {
       return new Date(timestamp);
     }
   }
-  return undefined;
+  return;
 }
 
 export function mapAbrEntity(raw: any) {
-  const abn = normaliseIdentifier(raw?.Abn || raw?.ABN || raw?.AbnNumber || "").digits || undefined;
+  const abn =
+    normaliseIdentifier(raw?.Abn || raw?.ABN || raw?.AbnNumber || "").digits ||
+    undefined;
   const acnCandidate = normaliseIdentifier(
     raw?.Acn || raw?.ACN || raw?.AsicNumber || raw?.ASICNumber || ""
   ).digits;
@@ -34,10 +38,17 @@ export function mapAbrEntity(raw: any) {
   const gst = raw?.GoodsAndServicesTax || raw?.GST || raw?.goodsAndServicesTax;
   const gstStatus = gst?.Status || gst?.status;
   const gstStatusFrom =
-    gst?.EffectiveFrom || gst?.effectiveFrom || gst?.StartDate || gst?.startDate || undefined;
+    gst?.EffectiveFrom ||
+    gst?.effectiveFrom ||
+    gst?.StartDate ||
+    gst?.startDate ||
+    undefined;
 
   const abnStatus = raw?.AbnStatus || raw?.ABNStatus || raw?.abnStatus;
-  const abnStatusFrom = raw?.AbnStatusEffectiveFrom || raw?.abnStatusFrom || raw?.abnStatusEffectiveFrom;
+  const abnStatusFrom =
+    raw?.AbnStatusEffectiveFrom ||
+    raw?.abnStatusFrom ||
+    raw?.abnStatusEffectiveFrom;
 
   const entityName =
     raw?.EntityName ||
@@ -48,7 +59,9 @@ export function mapAbrEntity(raw: any) {
     undefined;
 
   const mainBusinessLocation =
-    raw?.MainBusinessPhysicalAddress || raw?.mainBusinessLocation || raw?.MainBusinessLocation;
+    raw?.MainBusinessPhysicalAddress ||
+    raw?.mainBusinessLocation ||
+    raw?.MainBusinessLocation;
 
   const entityType = raw?.EntityType || raw?.entityType;
 
@@ -73,22 +86,24 @@ export function extractIdentifierFromCandidates(
     if (!value || typeof value !== "string") continue;
     const result = normaliseIdentifier(value);
     if (result.kind === "ABN" || result.kind === "ACN") {
-      return result;
+      return result as { kind: "ABN" | "ACN"; digits: string };
     }
   }
 
   const matches = fallback
-    .flatMap((value) => (typeof value === "string" ? value.match(/\d{9,11}/g) ?? [] : []))
+    .flatMap((value) =>
+      typeof value === "string" ? (value.match(/\d{9,11}/g) ?? []) : []
+    )
     .filter(Boolean);
 
   for (const match of matches) {
     const result = normaliseIdentifier(match);
     if (result.kind === "ABN" || result.kind === "ACN") {
-      return result;
+      return result as { kind: "ABN" | "ACN"; digits: string };
     }
   }
 
-  return undefined;
+  return;
 }
 
 export function isActiveStatus(status?: string): boolean {
