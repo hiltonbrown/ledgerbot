@@ -2199,7 +2199,15 @@ export async function getCustomInstructionsForArtifacts(userId: string): Promise
       .where(eq(userSettings.userId, userId))
       .limit(1);
 
-    return settings ?? null;
+    if (!settings) return null;
+
+    // Map null values to undefined to match return type expectations
+    return {
+      customSystemInstructions: settings.customSystemInstructions ?? undefined,
+      customCodeInstructions: settings.customCodeInstructions ?? undefined,
+      customSheetInstructions: settings.customSheetInstructions ?? undefined,
+      industryContext: settings.industryContext ?? undefined,
+    };
   } catch (error) {
     console.error("Failed to fetch custom instructions for artifacts:", error);
     // Return null instead of throwing - artifact generation should continue with defaults
