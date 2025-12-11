@@ -43,6 +43,15 @@ export const myProvider = isTestEnvironment
                 middleware: [
                   {
                     transformParams: ({ params }) => {
+                      // Check if the user enabled reasoning (from API)
+                      // We default to false to save tokens if not explicitly requested
+                      const isStreamReasoningEnabled = !!(params as any)
+                        .providerMetadata?.ledgerbot?.reasoning;
+
+                      if (!isStreamReasoningEnabled) {
+                        return Promise.resolve(params);
+                      }
+
                       const newPrompt = [
                         {
                           role: "system" as const,
