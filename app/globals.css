@@ -331,3 +331,126 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Spreadsheet artifact theming */
+.rdg-light,
+.rdg-dark {
+  --rdg-font-size: 13px;
+  --rdg-border-width: 1px;
+  --rdg-selection-width: 2px;
+  --rdg-border-color: var(--border);
+  --rdg-summary-border-color: color-mix(in oklab, var(--border) 70%, transparent);
+  --rdg-cell-frozen-box-shadow: 2px 0 6px -2px
+    color-mix(in oklab, var(--foreground) 10%, transparent);
+  --rdg-selection-color: var(--ring);
+  --rdg-checkbox-focus-color: var(--ring);
+  --rdg-color: var(--foreground);
+}
+
+.rdg-light {
+  --rdg-background-color: var(--card);
+  --rdg-header-background-color: var(--muted);
+  --rdg-header-draggable-background-color: color-mix(
+    in oklab,
+    var(--muted) 80%,
+    var(--card) 20%
+  );
+  --rdg-row-hover-background-color: color-mix(
+    in oklab,
+    var(--card) 85%,
+    var(--foreground) 7%
+  );
+  --rdg-row-selected-background-color: color-mix(
+    in oklab,
+    var(--primary) 18%,
+    var(--card) 82%
+  );
+  --rdg-row-selected-hover-background-color: color-mix(
+    in oklab,
+    var(--primary) 24%,
+    var(--card) 76%
+  );
+}
+
+.rdg-dark {
+  --rdg-background-color: var(--background);
+  --rdg-header-background-color: color-mix(
+    in oklab,
+    var(--muted) 90%,
+    var(--background) 10%
+  );
+  --rdg-header-draggable-background-color: color-mix(
+    in oklab,
+    var(--muted) 75%,
+    var(--background) 25%
+  );
+  --rdg-row-hover-background-color: color-mix(
+    in oklab,
+    var(--background) 80%,
+    var(--foreground) 10%
+  );
+  --rdg-row-selected-background-color: color-mix(
+    in oklab,
+    var(--primary) 22%,
+    var(--background) 78%
+  );
+  --rdg-row-selected-hover-background-color: color-mix(
+    in oklab,
+    var(--primary) 30%,
+    var(--background) 70%
+  );
+  --rdg-border-color: color-mix(in oklab, var(--border) 85%, var(--background) 15%);
+}
+
+.rdg-surface {
+  border: 1px solid var(--rdg-border-color);
+  border-radius: 16px;
+  background-color: var(--rdg-background-color);
+  box-shadow: 0 22px 48px -22px
+    color-mix(in oklab, var(--foreground) 14%, transparent);
+  overflow: hidden;
+}
+
+.rdg-surface .rdg-header-row .rdg-cell {
+  background-color: var(--rdg-header-background-color);
+  color: var(--muted-foreground);
+  font-weight: 600;
+  border-inline-end: 1px solid var(--rdg-border-color);
+}
+
+.rdg-surface .rdg-cell {
+  border-inline-end: 1px solid var(--rdg-border-color);
+  background-color: var(--rdg-background-color);
+}
+
+.rdg-surface .rdg-row,
+.rdg-surface .rdg-header-row {
+  border-block-end: 1px solid
+    color-mix(in oklab, var(--rdg-border-color) 82%, transparent);
+}
+
+.rdg-surface .rdg-row .rdg-cell-frozen,
+.rdg-surface .rdg-header-row .rdg-cell-frozen {
+  background-color: color-mix(
+    in oklab,
+    var(--rdg-header-background-color) 75%,
+    var(--rdg-background-color) 25%
+  );
+  box-shadow: var(--rdg-cell-frozen-box-shadow);
+}
+
+.rdg-surface .rdg-row:hover .rdg-cell {
+  background-color: var(--rdg-row-hover-background-color);
+}
+
+.rdg-surface .rdg-row-selected .rdg-cell {
+  background-color: var(--rdg-row-selected-background-color);
+}
+
+.rdg-surface .rdg-row-selected:hover .rdg-cell {
+  background-color: var(--rdg-row-selected-hover-background-color);
+}
+
+.rdg-surface .rdg-cell[aria-selected="true"] {
+  box-shadow: inset 0 0 0 var(--rdg-selection-width) var(--rdg-selection-color);
+}

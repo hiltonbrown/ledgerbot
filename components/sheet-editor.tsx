@@ -237,8 +237,10 @@ const PureSpreadsheetEditor = ({ content, saveContent }: SheetEditorProps) => {
       frozen: true,
       width: 50,
       renderCell: ({ rowIdx }: { rowIdx: number }) => rowIdx + 1,
-      cellClass: "border-t border-r dark:bg-zinc-950 dark:text-zinc-50",
-      headerCellClass: "border-t border-r dark:bg-zinc-900 dark:text-zinc-50",
+      cellClass:
+        "border-t border-r border-border bg-muted/60 text-foreground dark:bg-muted/30",
+      headerCellClass:
+        "border-t border-r border-border bg-muted text-foreground dark:bg-muted",
     };
 
     const dataColumns = Array.from({ length: MIN_COLS }, (_, i) => ({
@@ -246,10 +248,10 @@ const PureSpreadsheetEditor = ({ content, saveContent }: SheetEditorProps) => {
       name: String.fromCharCode(65 + i),
       renderEditCell: renderTextEditor,
       width: 120,
-      cellClass: cn("border-t dark:bg-zinc-950 dark:text-zinc-50", {
+      cellClass: cn("border-t border-border bg-card text-foreground", {
         "border-l": i !== 0,
       }),
-      headerCellClass: cn("border-t dark:bg-zinc-900 dark:text-zinc-50", {
+      headerCellClass: cn("border-t border-border bg-muted text-foreground", {
         "border-l": i !== 0,
       }),
     }));
@@ -294,23 +296,30 @@ const PureSpreadsheetEditor = ({ content, saveContent }: SheetEditorProps) => {
   };
 
   return (
-    <DataGrid
-      className={resolvedTheme === "dark" ? "rdg-dark" : "rdg-light"}
-      columns={columns}
-      defaultColumnOptions={{
-        resizable: true,
-        sortable: true,
-      }}
-      enableVirtualization
-      onCellClick={(args) => {
-        if (args.column.key !== "rowNumber") {
-          args.selectCell(true);
-        }
-      }}
-      onRowsChange={handleRowsChange}
-      rows={localRows}
-      style={{ height: "100%" }}
-    />
+    <div className="px-4 py-8 md:p-20">
+      <div className="h-[70vh] min-h-[480px] w-full">
+        <DataGrid
+          className={cn(
+            "rdg-surface",
+            resolvedTheme === "dark" ? "rdg-dark" : "rdg-light"
+          )}
+          columns={columns}
+          defaultColumnOptions={{
+            resizable: true,
+            sortable: true,
+          }}
+          enableVirtualization
+          onCellClick={(args) => {
+            if (args.column.key !== "rowNumber") {
+              args.selectCell(true);
+            }
+          }}
+          onRowsChange={handleRowsChange}
+          rows={localRows}
+          style={{ blockSize: "100%", inlineSize: "100%" }}
+        />
+      </div>
+    </div>
   );
 };
 
