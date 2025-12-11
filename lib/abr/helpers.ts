@@ -11,11 +11,22 @@ export function ensureAbnLookupEnabled() {
 }
 
 const NUMERIC_REGEX = /^\d+$/;
+const MS_DATE_REGEX = /^\/Date\((-?\d+)([+-]\d{4})?\)\/$/;
 
 export function parseAbrDate(value?: string): Date | undefined {
   if (!value) {
     return;
   }
+
+  // Handle Microsoft JSON Date format: /Date(123456789000)/
+  const msMatch = value.match(MS_DATE_REGEX);
+  if (msMatch) {
+    const timestamp = Number.parseInt(msMatch[1], 10);
+    if (!Number.isNaN(timestamp)) {
+      return new Date(timestamp);
+    }
+  }
+
   // First, try to parse as a standard date string (e.g., ISO 8601)
   const parsed = new Date(value);
   if (!Number.isNaN(parsed.getTime())) {
