@@ -123,6 +123,31 @@ export function mapAbrEntity(raw: any) {
   const addressDateRaw = raw?.AddressDate || raw?.addressDate;
   const addressDate = formatDate(addressDateRaw);
 
+  // Extract DGR (Deductible Gift Recipient)
+  const dgr =
+    raw?.DeductibleGiftRecipient || raw?.DGR || raw?.deductibleGiftRecipient;
+  const dgrStatus = dgr?.Status || dgr?.status;
+  const dgrDateRaw =
+    dgr?.EffectiveFrom ||
+    dgr?.effectiveFrom ||
+    dgr?.StartDate ||
+    dgr?.startDate;
+  const dgrStatusFrom = formatDate(dgrDateRaw);
+
+  // Extract Charity (ACNC Registration)
+  const charity =
+    raw?.Charity ||
+    raw?.ACNCRegistration ||
+    raw?.charity ||
+    raw?.acncRegistration;
+  const charityStatus = charity?.Status || charity?.status;
+  const charityDateRaw =
+    charity?.EffectiveFrom ||
+    charity?.effectiveFrom ||
+    charity?.StartDate ||
+    charity?.startDate;
+  const charityStatusFrom = formatDate(charityDateRaw);
+
   return {
     abn,
     acn,
@@ -130,6 +155,10 @@ export function mapAbrEntity(raw: any) {
     abnStatusFrom,
     gstStatus,
     gstStatusFrom,
+    dgrStatus,
+    dgrStatusFrom,
+    charityStatus,
+    charityStatusFrom,
     entityName,
     entityType,
     address,

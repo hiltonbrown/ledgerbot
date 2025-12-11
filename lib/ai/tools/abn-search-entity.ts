@@ -56,6 +56,10 @@ export const abn_search_entity = tool({
         // New fields
         address: entry.address,
         addressDate: entry.addressDate,
+        dgrStatus: entry.dgrStatus,
+        dgrStatusFrom: entry.dgrStatusFrom,
+        charityStatus: entry.charityStatus,
+        charityStatusFrom: entry.charityStatusFrom,
         entityType: entry.entityType,
         firstBusinessName: entry.firstBusinessName,
         businessNames: entry.businessNames,
