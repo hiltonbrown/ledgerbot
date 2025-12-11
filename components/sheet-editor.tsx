@@ -14,6 +14,7 @@ type SheetEditorProps = {
   currentVersionIndex: number;
   isCurrentVersion: boolean;
   status: string;
+  withPadding?: boolean;
 };
 
 const MIN_ROWS = 50;
@@ -202,7 +203,11 @@ const sanitizeCsvContent = (rawContent: string) => {
   return normalizedLines.join("\n");
 };
 
-const PureSpreadsheetEditor = ({ content, saveContent }: SheetEditorProps) => {
+const PureSpreadsheetEditor = ({
+  content,
+  saveContent,
+  withPadding = true,
+}: SheetEditorProps) => {
   const { resolvedTheme } = useTheme();
 
   const parseData = useMemo(() => {
@@ -296,7 +301,7 @@ const PureSpreadsheetEditor = ({ content, saveContent }: SheetEditorProps) => {
   };
 
   return (
-    <div className="px-4 py-8 md:p-20">
+    <div className={cn(withPadding && "px-4 py-8 md:p-20")}>
       <div className="h-[70vh] min-h-[480px] w-full">
         <DataGrid
           className={cn(
@@ -329,7 +334,8 @@ function areEqual(prevProps: SheetEditorProps, nextProps: SheetEditorProps) {
     prevProps.isCurrentVersion === nextProps.isCurrentVersion &&
     !(prevProps.status === "streaming" && nextProps.status === "streaming") &&
     prevProps.content === nextProps.content &&
-    prevProps.saveContent === nextProps.saveContent
+    prevProps.saveContent === nextProps.saveContent &&
+    prevProps.withPadding === nextProps.withPadding
   );
 }
 

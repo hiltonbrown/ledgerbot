@@ -284,7 +284,7 @@ const DocumentContent = ({ document }: { document: Document }) => {
       ) : document.kind === "sheet" ? (
         <div className="relative flex size-full flex-1 p-4">
           <div className="absolute inset-0">
-            <SpreadsheetEditor {...commonProps} />
+            <SpreadsheetEditor {...commonProps} withPadding={false} />
           </div>
         </div>
       ) : document.kind === "image" ? (
