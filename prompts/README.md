@@ -90,86 +90,94 @@ To update the system prompt template:
 If the file cannot be read for any reason, a simple fallback prompt is used:
 > "Error: System prompt template could not be loaded."
 
-### default-spreadsheet-prompt.md
+---
 
-The default spreadsheet creation prompt for LedgerBot's Excel/spreadsheet artifact generation.
+## Artifact Prompts
+
+The following prompts are used for AI-generated artifacts (text, code, spreadsheets). Each prompt is loaded from a file and supports variable substitution for user customization.
+
+### default-text-prompt.md
+
+The default prompt for text document artifact generation.
 
 **Purpose:**
-- Defines comprehensive standards for creating Excel spreadsheets for Australian businesses
-- Establishes mandatory requirements: zero formula errors, use formulas not hardcoded values
-- Provides Australian accounting report formats (P&L, Balance Sheet, Trial Balance, BAS, etc.)
-- Sets professional formatting standards with colour coding conventions
-- Defines GST calculation formulas and BAS label references
-- Includes formula construction best practices and error prevention
-- Specifies Australian financial year and terminology standards
+- Defines standards for creating professional business documents for Australian businesses
+- Covers various document types: reports, correspondence, summaries, documentation
+- Establishes Australian business writing conventions and formatting requirements
+- Provides markdown formatting guidelines and examples
+- Emphasizes data accuracy when specific data is provided in prompts
 
-**Key Requirements:**
-- **Zero Formula Errors**: Every spreadsheet must have zero #REF!, #DIV/0!, #VALUE!, #N/A, #NAME? errors
-- **Formula-Based**: Always use Excel formulas instead of hardcoded calculations
-- **Australian Standards**: DD/MM/YYYY dates, AUD currency, GST compliance, Australian terminology
-- **Professional Formatting**: Industry-standard colour coding (blue inputs, black calculations, green cross-refs)
-- **Validation**: Must run recalc.py script and fix any errors before delivery
+**Template Variables:**
+- `{{CUSTOM_TEXT_INSTRUCTIONS}}` - User-defined custom text generation instructions
 
 **Usage:**
-This file is automatically loaded by `/app/(settings)/api/user/data.ts` and used as the default spreadsheet prompt for artifact generation.
+Automatically loaded by `buildTextPrompt()` in `lib/ai/prompts.ts` when creating text artifacts.
 
-**Customization:**
-Users can override this default prompt in their personalisation settings at `/settings/personalisation`.
-
-**Maintenance:**
-To update the default spreadsheet prompt:
-1. Edit `default-spreadsheet-prompt.md` in this directory
-2. No code changes required - the file is read at runtime
-3. Changes take effect immediately for users without custom prompts
-4. Test by creating a spreadsheet artifact
-
-**Fallback:**
-If the file cannot be read for any reason, a simple fallback prompt is used:
-> "You are a spreadsheet creation assistant. Create a spreadsheet in csv format based on the given prompt. The spreadsheet should contain meaningful column headers and data."
+**Key Requirements:**
+- Use Australian English spelling and terminology
+- Apply proper markdown formatting (headings, lists, tables)
+- Preserve exact data when provided in prompts
+- Maintain professional business tone
+- Use DD/MM/YYYY date format
 
 ### default-code-prompt.md
 
-The default code generation prompt for LedgerBot's code artifact creation.
+The default prompt for code artifact generation.
 
 **Purpose:**
 - Defines comprehensive standards for generating production-ready code for Australian businesses
-- Establishes code quality principles: clarity, robustness, security, data integrity, maintainability, performance
+- Establishes code quality principles: clarity, robustness, security, data integrity, maintainability
 - Provides Australian compliance patterns for financial data handling
 - Includes security best practices and error handling standards
-- Defines common code patterns for business applications
 
-**Key Requirements:**
-- **Code Quality**: Self-documenting code with clear naming, type hints, comprehensive docstrings
-- **Financial Accuracy**: Use Decimal for currency (never float), Australian date format (DD/MM/YYYY)
-- **Security**: No hardcoded credentials, input sanitisation, parameterised queries, environment variables
-- **Error Handling**: Comprehensive validation, meaningful errors, custom exception classes
-- **Australian Compliance**: GST calculations (10%), ABN validation, financial year handling (July-June)
-- **Testing**: Unit tests, integration tests, data validation functions
-
-**Code Patterns Included:**
-- Data import and validation (CSV/Excel with Australian formats)
-- Financial report generation (P&L, Balance Sheet)
-- API integration (Xero/MYOB examples)
-- Data export and formatting
-- Automated BAS preparation
-- Performance optimisation (chunking, caching, bulk operations)
+**Template Variables:**
+- `{{CUSTOM_CODE_INSTRUCTIONS}}` - User-defined custom code generation instructions
+- `{{INDUSTRY_CONTEXT}}` - Industry-specific requirements and terminology
 
 **Usage:**
-This file is automatically loaded by `/app/(settings)/api/user/data.ts` and used as the default code generation prompt for artifact creation.
+Automatically loaded by `buildCodePrompt()` in `lib/ai/prompts.ts` when creating code artifacts.
 
-**Customization:**
-Users can override this default prompt in their personalisation settings at `/settings/personalisation`.
+**Key Requirements:**
+- Write self-documenting code with clear naming
+- Use Decimal for currency (never float)
+- Handle errors gracefully with specific exceptions
+- Implement proper input validation and sanitization
+- Follow Australian date format (DD/MM/YYYY) and currency standards
+- Include type hints and comprehensive docstrings
+
+### default-spreadsheet-prompt.md
+
+The default prompt for spreadsheet/CSV artifact generation.
+
+**Purpose:**
+- Defines comprehensive standards for creating CSV files for Australian businesses
+- Establishes mandatory CSV formatting requirements (newline separation between rows)
+- Provides Australian accounting report formats and standards
+- Ensures data accuracy and proper calculations
+- Specifies GST calculations and Australian financial year handling
+
+**Template Variables:**
+- `{{CUSTOM_SHEET_INSTRUCTIONS}}` - User-defined custom spreadsheet generation instructions
+
+**Usage:**
+Automatically loaded by `buildSheetPrompt()` in `lib/ai/prompts.ts` when creating sheet artifacts.
+
+**Key Requirements:**
+- **Newline Separation**: Every row must be separated by `\n` character
+- **CSV Format**: Proper comma separation, quote escaping for values with commas
+- **Data Accuracy**: All calculations must be pre-computed and accurate
+- **Australian Standards**: DD/MM/YYYY dates, AUD currency, GST compliance
+- **No Formulas**: CSV files contain values only (formulas are for Excel artifacts)
 
 **Maintenance:**
-To update the default code prompt:
-1. Edit `default-code-prompt.md` in this directory
-2. No code changes required - the file is read at runtime
-3. Changes take effect immediately for users without custom prompts
-4. Test by creating a code artifact
+To update artifact prompts:
+1. Edit the corresponding `default-*-prompt.md` file in this directory
+2. No code changes required - files are loaded at runtime
+3. Changes take effect immediately on next artifact creation
+4. Test by creating an artifact of that type
 
 **Fallback:**
-If the file cannot be read for any reason, a simple fallback prompt is used:
-> "You are a Python code generator that creates self-contained, executable code snippets..."
+If a prompt file cannot be read, a minimal fallback prompt is used to ensure the system continues functioning.
 
 ### ap-system-prompt.md
 

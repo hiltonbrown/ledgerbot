@@ -242,51 +242,140 @@ export const systemPrompt = ({
   return promptSections.join("\n\n");
 };
 
-export const codePrompt = `
-You are a Python code generator that creates self-contained, executable code snippets. When writing code:
+// ==================================================================================
+// ARTIFACT PROMPT TEMPLATES
+// ==================================================================================
+//
+// Text, Code, and Spreadsheet artifacts use template-based prompts loaded from files.
+// Similar to the main system prompt, these support variable substitution for
+// user-specific customization.
+//
+// Template Files:
+// - prompts/default-text-prompt.md
+// - prompts/default-code-prompt.md
+// - prompts/default-spreadsheet-prompt.md
+//
+// Each template can include:
+// - {{CUSTOM_TEXT_INSTRUCTIONS}} / {{CUSTOM_CODE_INSTRUCTIONS}} / {{CUSTOM_SHEET_INSTRUCTIONS}}
+// - {{INDUSTRY_CONTEXT}} - Industry-specific requirements
+//
+// ==================================================================================
 
-1. Each snippet should be complete and runnable on its own
-2. Prefer using print() statements to display outputs
-3. Include helpful comments explaining the code
-4. Keep snippets concise (generally under 15 lines)
-5. Avoid external dependencies - use Python standard library
-6. Handle potential errors gracefully
-7. Return meaningful output that demonstrates the code's functionality
-8. Don't use input() or other interactive functions
-9. Don't access files or network resources
-10. Don't use infinite loops
-11. **CRITICAL**: If the prompt includes specific data (arrays, numbers, JSON, etc.), use that EXACT data in your code. Do not make up example data if real data is provided.
+/**
+ * Default text document prompt template.
+ * Loaded once at module initialization from prompts/default-text-prompt.md
+ */
+export const TEXT_PROMPT_TEMPLATE = (() => {
+  try {
+    const promptPath = join(
+      process.cwd(),
+      "prompts",
+      "default-text-prompt.md"
+    );
+    return readFileSync(promptPath, "utf-8");
+  } catch (error) {
+    console.error("Failed to load text prompt template:", error);
+    return "Write about the given topic. Markdown is supported. Use headings wherever appropriate.";
+  }
+})();
 
-Examples of good snippets:
+/**
+ * Default code generation prompt template.
+ * Loaded once at module initialization from prompts/default-code-prompt.md
+ */
+export const CODE_PROMPT_TEMPLATE = (() => {
+  try {
+    const promptPath = join(
+      process.cwd(),
+      "prompts",
+      "default-code-prompt.md"
+    );
+    return readFileSync(promptPath, "utf-8");
+  } catch (error) {
+    console.error("Failed to load code prompt template:", error);
+    return "You are a Python code generator that creates self-contained, executable code snippets.";
+  }
+})();
 
-# Calculate factorial iteratively
-def factorial(n):
-    result = 1
-    for i in range(1, n + 1):
-        result *= i
-    return result
+/**
+ * Default spreadsheet creation prompt template.
+ * Loaded once at module initialization from prompts/default-spreadsheet-prompt.md
+ */
+export const SHEET_PROMPT_TEMPLATE = (() => {
+  try {
+    const promptPath = join(
+      process.cwd(),
+      "prompts",
+      "default-spreadsheet-prompt.md"
+    );
+    return readFileSync(promptPath, "utf-8");
+  } catch (error) {
+    console.error("Failed to load spreadsheet prompt template:", error);
+    return "You are a spreadsheet creation assistant. Create CSV data with proper formatting.";
+  }
+})();
 
-print(f"Factorial of 5 is: {factorial(5)}")
-`;
+/**
+ * Renders the text document prompt with user customization.
+ *
+ * @param customInstructions - Optional user-defined custom text instructions
+ * @returns Rendered text prompt
+ */
+export function buildTextPrompt(customInstructions?: string): string {
+  return renderTemplate(TEXT_PROMPT_TEMPLATE, {
+    CUSTOM_TEXT_INSTRUCTIONS: sanitisePromptFragment(
+      customInstructions,
+      1000
+    ),
+  });
+}
 
-export const sheetPrompt = `
-You are a spreadsheet creation assistant. You MUST return data in the exact JSON schema format requested.
+/**
+ * Renders the code generation prompt with user customization.
+ *
+ * @param customInstructions - Optional user-defined custom code instructions
+ * @param industryContext - Optional industry-specific requirements
+ * @returns Rendered code prompt
+ */
+export function buildCodePrompt(
+  customInstructions?: string,
+  industryContext?: string
+): string {
+  return renderTemplate(CODE_PROMPT_TEMPLATE, {
+    CUSTOM_CODE_INSTRUCTIONS: sanitisePromptFragment(
+      customInstructions,
+      1000
+    ),
+    INDUSTRY_CONTEXT: sanitisePromptFragment(industryContext, 2000),
+  });
+}
 
-**CRITICAL INSTRUCTIONS**:
-1. If the prompt includes actual data (such as JSON arrays, specific values, or structured data), you MUST use that exact data. Do not create example or placeholder data if real data is provided in the prompt.
-2. Return ONLY valid CSV data in the 'csv' field - NO markdown code blocks, NO explanations, NO additional formatting.
-3. The CSV must start with column headers in the first row, followed by data rows.
-4. Do NOT wrap the CSV in backticks, quotes, or any other delimiters.
-5. Do NOT include any text before or after the CSV data.
-6. The CSV should be properly formatted with commas as separators and proper escaping for values containing commas or quotes.
+/**
+ * Renders the spreadsheet creation prompt with user customization.
+ *
+ * @param customInstructions - Optional user-defined custom spreadsheet instructions
+ * @returns Rendered spreadsheet prompt
+ */
+export function buildSheetPrompt(customInstructions?: string): string {
+  return renderTemplate(SHEET_PROMPT_TEMPLATE, {
+    CUSTOM_SHEET_INSTRUCTIONS: sanitisePromptFragment(
+      customInstructions,
+      1000
+    ),
+  });
+}
 
-Example of correct output in the csv field:
-Name,Age,City
-John Doe,30,New York
-Jane Smith,25,Los Angeles
+/**
+ * @deprecated Legacy hardcoded code prompt. Use buildCodePrompt() instead.
+ * Kept for backward compatibility during migration.
+ */
+export const codePrompt = buildCodePrompt();
 
-NOT like this: \`\`\`csv\\nName,Age,City\\n...\`\`\`
-`;
+/**
+ * @deprecated Legacy hardcoded sheet prompt. Use buildSheetPrompt() instead.
+ * Kept for backward compatibility during migration.
+ */
+export const sheetPrompt = buildSheetPrompt();
 
 export const updateDocumentPrompt = (
   currentContent: string | null,
