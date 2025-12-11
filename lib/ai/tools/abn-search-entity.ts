@@ -13,12 +13,15 @@ function normaliseResults(raw: unknown): any[] {
   }
   if (raw && typeof raw === "object") {
     const container = raw as Record<string, any>;
-    if (Array.isArray(container.Names))
+    if (Array.isArray(container.Names)) {
       return container.Names.map(mapAbrEntity);
-    if (Array.isArray(container.results))
+    }
+    if (Array.isArray(container.results)) {
       return container.results.map(mapAbrEntity);
-    if (Array.isArray(container.Results))
+    }
+    if (Array.isArray(container.Results)) {
       return container.Results.map(mapAbrEntity);
+    }
   }
   return [];
 }
@@ -42,11 +45,6 @@ export const abn_search_entity = tool({
     const entries = normaliseResults(response);
 
     const results = entries.map((entry) => {
-      // mapAbrEntity already returns a normalized structure, so we can just return it directly
-      // or map it to the tool's expected output format if needed.
-      // Looking at the original code, it seems to want specific fields.
-      // Let's use the normalized entity from mapAbrEntity.
-
       return {
         entityName: entry.entityName,
         abn: entry.abn,
@@ -55,6 +53,12 @@ export const abn_search_entity = tool({
         gstStatus: entry.gstStatus,
         gstStatusFrom: entry.gstStatusFrom,
         mainLocation: entry.mainBusinessLocation,
+        // New fields
+        address: entry.address,
+        addressDate: entry.addressDate,
+        entityType: entry.entityType,
+        firstBusinessName: entry.firstBusinessName,
+        businessNames: entry.businessNames,
       };
     });
 

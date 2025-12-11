@@ -1,3 +1,4 @@
+import { format } from "date-fns";
 import { abnLookupConfig } from "./config";
 import { normaliseIdentifier } from "./validate";
 
@@ -9,21 +10,31 @@ export function ensureAbnLookupEnabled() {
   }
 }
 
+const NUMERIC_REGEX = /^\d+$/;
+
 export function parseAbrDate(value?: string): Date | undefined {
-  if (!value) return;
+  if (!value) {
+    return;
+  }
   // First, try to parse as a standard date string (e.g., ISO 8601)
   const parsed = new Date(value);
   if (!Number.isNaN(parsed.getTime())) {
     return parsed;
   }
   // If parsing failed, check if the entire value is numeric (Unix timestamp)
-  if (/^\d+$/.test(value)) {
+  if (NUMERIC_REGEX.test(value)) {
     const timestamp = Number(value);
     if (!Number.isNaN(timestamp)) {
       return new Date(timestamp);
     }
   }
   return;
+}
+
+function formatDate(value?: string): string | undefined {
+  const date = parseAbrDate(value);
+  if (!date) return;
+  return format(date, "dd MMM yyyy");
 }
 
 export function mapAbrEntity(raw: any) {
@@ -37,18 +48,21 @@ export function mapAbrEntity(raw: any) {
 
   const gst = raw?.GoodsAndServicesTax || raw?.GST || raw?.goodsAndServicesTax;
   const gstStatus = gst?.Status || gst?.status;
-  const gstStatusFrom =
+
+  const gstDateRaw =
     gst?.EffectiveFrom ||
     gst?.effectiveFrom ||
     gst?.StartDate ||
     gst?.startDate ||
     undefined;
+  const gstStatusFrom = formatDate(gstDateRaw);
 
   const abnStatus = raw?.AbnStatus || raw?.ABNStatus || raw?.abnStatus;
-  const abnStatusFrom =
+  const abnDateRaw =
     raw?.AbnStatusEffectiveFrom ||
     raw?.abnStatusFrom ||
     raw?.abnStatusEffectiveFrom;
+  const abnStatusFrom = formatDate(abnDateRaw);
 
   const entityName =
     raw?.EntityName ||
@@ -63,7 +77,40 @@ export function mapAbrEntity(raw: any) {
     raw?.mainBusinessLocation ||
     raw?.MainBusinessLocation;
 
-  const entityType = raw?.EntityType || raw?.entityType;
+  const entityType =
+    raw?.EntityTypeText ||
+    raw?.entityTypeText ||
+    raw?.EntityType ||
+    raw?.entityType;
+
+  // Extract Business Names
+  const businessNames: string[] = [];
+  const rawBusinessNames = raw?.BusinessName || raw?.businessName || [];
+  if (Array.isArray(rawBusinessNames)) {
+    businessNames.push(
+      ...rawBusinessNames.filter((n: any) => typeof n === "string")
+    );
+  } else if (typeof rawBusinessNames === "string") {
+    businessNames.push(rawBusinessNames);
+  }
+
+  const firstBusinessName =
+    businessNames.length > 0 ? businessNames[0] : undefined;
+
+  // Format Address
+  let address: string | undefined;
+  if (mainBusinessLocation) {
+    const parts = [
+      mainBusinessLocation.State,
+      mainBusinessLocation.Postcode,
+    ].filter(Boolean);
+    if (parts.length > 0) {
+      address = parts.join(" ");
+    }
+  }
+
+  const addressDateRaw = raw?.AddressDate || raw?.addressDate;
+  const addressDate = formatDate(addressDateRaw);
 
   return {
     abn,
@@ -73,8 +120,12 @@ export function mapAbrEntity(raw: any) {
     gstStatus,
     gstStatusFrom,
     entityName,
-    mainBusinessLocation,
     entityType,
+    address,
+    addressDate,
+    firstBusinessName,
+    businessNames,
+    mainBusinessLocation,
   };
 }
 
@@ -107,8 +158,12 @@ export function extractIdentifierFromCandidates(
 }
 
 export function isActiveStatus(status?: string): boolean {
-  if (!status) return false;
+  if (!status) {
+    return false;
+  }
   const normalized = status.trim().toLowerCase();
-  if (!normalized) return false;
+  if (!normalized) {
+    return false;
+  }
   return normalized === "active";
 }

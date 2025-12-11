@@ -12,7 +12,7 @@ import type {
   CellIssue,
   CellType,
   SpreadsheetCell,
-} from "@/lib/artifacts/spreadsheet/types";
+} from "@/artifacts/sheet/types";
 import type { CsvFieldDefinition, CsvFieldType } from "./schema";
 
 /**

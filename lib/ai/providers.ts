@@ -40,7 +40,35 @@ export const myProvider = isTestEnvironment
               id,
               wrapLanguageModel({
                 model,
-                middleware: extractReasoningMiddleware({ tagName: "think" }),
+                middleware: [
+                  {
+                    transformParams: ({ params }) => {
+                      // Check if the user enabled reasoning (from API)
+                      // We default to false to save tokens if not explicitly requested
+                      const isStreamReasoningEnabled = !!(params as any)
+                        .providerMetadata?.ledgerbot?.reasoning;
+
+                      if (!isStreamReasoningEnabled) {
+                        return Promise.resolve(params);
+                      }
+
+                      const newPrompt = [
+                        {
+                          role: "system" as const,
+                          content:
+                            "You are in separate reasoning mode. You MUST wrap your detailed thinking process in <think>...</think> tags before providing your final answer. This is required for the user interface to display your reasoning. Ensure the reasoning is comprehensive and covers all aspects of the user request.",
+                        },
+                        ...params.prompt,
+                      ];
+
+                      return Promise.resolve({
+                        ...params,
+                        prompt: newPrompt,
+                      });
+                    },
+                  },
+                  extractReasoningMiddleware({ tagName: "think" }),
+                ],
               }),
             ];
           })

@@ -350,8 +350,7 @@ export async function POST(request: Request) {
     let finalMergedUsage: AppUsage | undefined;
 
     // Respect the user's reasoning preference
-    const preferenceForDisplay =
-      requestedShowReasoning ?? streamReasoning;
+    const preferenceForDisplay = requestedShowReasoning ?? streamReasoning;
     const sendReasoning = streamReasoning;
 
     const _respondWithManualStream = async (
@@ -513,6 +512,11 @@ export async function POST(request: Request) {
             }),
             ...xeroTools,
           },
+          providerOptions: {
+            ledgerbot: {
+              reasoning: streamReasoning,
+            },
+          },
           experimental_telemetry: {
             isEnabled: isProductionEnvironment,
             functionId: "stream-text",
@@ -553,7 +557,7 @@ export async function POST(request: Request) {
 
         dataStream.merge(
           result.toUIMessageStream({
-            sendReasoning,
+            sendReasoning: true, // Always send reasoning if generated
             messageMetadata: () => ({
               createdAt: new Date().toISOString(),
               showReasoningPreference: preferenceForDisplay,

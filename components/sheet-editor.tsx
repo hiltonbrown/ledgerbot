@@ -237,8 +237,10 @@ const PureSpreadsheetEditor = ({ content, saveContent }: SheetEditorProps) => {
       frozen: true,
       width: 50,
       renderCell: ({ rowIdx }: { rowIdx: number }) => rowIdx + 1,
-      cellClass: "border-t border-r dark:bg-zinc-950 dark:text-zinc-50",
-      headerCellClass: "border-t border-r dark:bg-zinc-900 dark:text-zinc-50",
+      cellClass:
+        "border-t border-r border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 dark:text-zinc-50",
+      headerCellClass:
+        "border-t border-r border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-50",
     };
 
     const dataColumns = Array.from({ length: MIN_COLS }, (_, i) => ({
@@ -246,12 +248,18 @@ const PureSpreadsheetEditor = ({ content, saveContent }: SheetEditorProps) => {
       name: String.fromCharCode(65 + i),
       renderEditCell: renderTextEditor,
       width: 120,
-      cellClass: cn("border-t dark:bg-zinc-950 dark:text-zinc-50", {
-        "border-l": i !== 0,
-      }),
-      headerCellClass: cn("border-t dark:bg-zinc-900 dark:text-zinc-50", {
-        "border-l": i !== 0,
-      }),
+      cellClass: cn(
+        "border-zinc-300 border-t bg-white dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50",
+        {
+          "border-l": i !== 0,
+        }
+      ),
+      headerCellClass: cn(
+        "border-zinc-300 border-t bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50",
+        {
+          "border-l": i !== 0,
+        }
+      ),
     }));
 
     return [rowNumberColumn, ...dataColumns];

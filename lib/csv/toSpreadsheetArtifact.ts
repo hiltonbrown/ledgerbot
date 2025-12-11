@@ -13,7 +13,7 @@ import type {
   SpreadsheetArtifact,
   SpreadsheetCell,
   SpreadsheetRow,
-} from "@/lib/artifacts/spreadsheet/types";
+} from "@/artifacts/sheet/types";
 import { parseCsv } from "./parser";
 import { type CsvSchema, getGenericSchema, getSchemaById } from "./schema";
 import { validateCell } from "./validation";

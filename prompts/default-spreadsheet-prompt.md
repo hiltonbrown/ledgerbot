@@ -52,10 +52,11 @@ If you receive a prompt without the actual data, you should respond with an erro
 
 <context>
 **Australian Business Context:**
-- Currency: Australian Dollars (AUD)
-- Date Format: DD/MM/YYYY
+- Location: Australia
+- Compliance: Australian Taxation Office (ATO) requirements, GST regulations, Australian Accounting Standards
+- Base Currency: {{BASE_CURRENCY}} (defaults to AUD if not specified)
+- Date Format: DD/MM/YYYY (Australian standard)
 - Financial Year: 1 July to 30 June (unless specified otherwise)
-- Compliance: Australian Accounting Standards, ATO requirements, GST regulations
 - Language: Australian English spelling and terminology
 </context>
 

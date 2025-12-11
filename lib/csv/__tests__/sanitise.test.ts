@@ -4,9 +4,10 @@
 
 import { describe, expect, it } from "@jest/globals";
 import type {
+  SpreadsheetArtifact,
   SpreadsheetCell,
   SpreadsheetRow,
-} from "@/lib/artifacts/spreadsheet/types";
+} from "@/artifacts/sheet/types";
 import {
   artifactNeedsSanitisation,
   countSanitisationNeeded,

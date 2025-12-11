@@ -3,10 +3,10 @@ import { codeDocumentHandler } from "@/artifacts/code/server";
 import { sheetDocumentHandler } from "@/artifacts/sheet/server";
 import { textDocumentHandler } from "@/artifacts/text/server";
 import type { ArtifactKind } from "@/components/artifact";
+import { saveDocument } from "@/lib/db/queries";
+import type { Document } from "@/lib/db/schema";
+import type { ChatMessage } from "@/lib/types";
 import type { AuthUser } from "@/lib/types/auth";
-import { saveDocument } from "../db/queries";
-import type { Document } from "../db/schema";
-import type { ChatMessage } from "../types";
 
 export type SaveDocumentProps = {
   id: string;

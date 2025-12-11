@@ -1,17 +1,19 @@
 import { streamObject } from "ai";
 import { z } from "zod";
-import { codePrompt, updateDocumentPrompt } from "@/lib/ai/prompts";
+import { createDocumentHandler } from "@/artifacts/server";
+import { buildCodeSystemPrompt, updateDocumentPrompt } from "@/lib/ai/prompts";
 import { myProvider } from "@/lib/ai/providers";
-import { createDocumentHandler } from "@/lib/artifacts/server";
 
 export const codeDocumentHandler = createDocumentHandler<"code">({
   kind: "code",
   onCreateDocument: async ({ prompt, dataStream, modelId }) => {
     let draftContent = "";
 
+    const systemPrompt = await buildCodeSystemPrompt();
+
     const { fullStream } = streamObject({
       model: myProvider.languageModel(modelId),
-      system: codePrompt,
+      system: systemPrompt,
       prompt,
       schema: z.object({
         code: z.string(),

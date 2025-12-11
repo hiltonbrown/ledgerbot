@@ -6,6 +6,7 @@ import { CustomInstructionsForm } from "@/components/settings/custom-instruction
 import { LockSettingsBanner } from "@/components/settings/lock-settings-banner";
 import { ProfileInfoCard } from "@/components/settings/profile-info-card";
 import { TemplateVariableForm } from "@/components/settings/template-variable-form";
+import { LEDGERBOT_SYSTEM_TEMPLATE } from "@/lib/ai/prompts";
 import { requireAuth } from "@/lib/auth/clerk-helpers";
 import { db } from "@/lib/db/queries";
 import { xeroConnection } from "@/lib/db/schema";
@@ -63,7 +64,11 @@ export default async function PersonalisationSettingsPage() {
       <ProfileInfoCard data={data} />
 
       {/* Business Information (includes Template Variables, Country, State, Chart of Accounts) */}
-      <TemplateVariableForm data={data} xeroConnection={activeConnection} />
+      <TemplateVariableForm
+        data={data}
+        systemPromptTemplate={LEDGERBOT_SYSTEM_TEMPLATE}
+        xeroConnection={activeConnection}
+      />
 
       {/* AI Preferences */}
       <AIPreferencesForm data={data} />
