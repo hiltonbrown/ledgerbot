@@ -512,11 +512,11 @@ export async function POST(request: Request) {
             }),
             ...xeroTools,
           },
-          experimental_providerMetadata: {
+          providerOptions: {
             ledgerbot: {
               reasoning: streamReasoning,
             },
-          } as any, // Type assertion might be needed if custom metadata isn't strictly typed in the project's AI SDK version
+          },
           experimental_telemetry: {
             isEnabled: isProductionEnvironment,
             functionId: "stream-text",
