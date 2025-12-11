@@ -1,12 +1,27 @@
+/**
+ * Artifact Registry
+ *
+ * Central registry for all document/artifact handlers in LedgerBot.
+ *
+ * Architecture:
+ * - /artifacts/ - Artifact implementations (text, code, sheet, image)
+ *   - Each subdirectory contains server.ts (generation) and client.tsx (UI)
+ *   - This registry.ts orchestrates all handlers
+ * - /lib/artifacts/spreadsheet/ - Shared spreadsheet types for CSV processing
+ *
+ * This file was moved from /lib/artifacts/server.ts to consolidate all artifact
+ * logic in the /artifacts/ folder and eliminate circular dependencies.
+ */
+
 import type { UIMessageStreamWriter } from "ai";
-import { codeDocumentHandler } from "@/artifacts/code/server";
-import { sheetDocumentHandler } from "@/artifacts/sheet/server";
-import { textDocumentHandler } from "@/artifacts/text/server";
+import { codeDocumentHandler } from "./code/server";
+import { sheetDocumentHandler } from "./sheet/server";
+import { textDocumentHandler } from "./text/server";
 import type { ArtifactKind } from "@/components/artifact";
 import type { AuthUser } from "@/lib/types/auth";
-import { saveDocument } from "../db/queries";
-import type { Document } from "../db/schema";
-import type { ChatMessage } from "../types";
+import { saveDocument } from "@/lib/db/queries";
+import type { Document } from "@/lib/db/schema";
+import type { ChatMessage } from "@/lib/types";
 
 export type SaveDocumentProps = {
   id: string;

@@ -3,7 +3,7 @@ import { z } from "zod";
 import {
   artifactKinds,
   documentHandlersByArtifactKind,
-} from "@/lib/artifacts/server";
+} from "@/artifacts/registry";
 import { getDocumentById } from "@/lib/db/queries";
 import type { ChatMessage } from "@/lib/types";
 import type { AuthUser } from "@/lib/types/auth";
