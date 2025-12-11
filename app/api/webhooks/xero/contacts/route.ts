@@ -77,8 +77,7 @@ export async function POST(req: NextRequest) {
         );
       } catch (err) {
         console.error(
-          "Failed to process webhook event for contact %s",
-          event.resourceId,
+          `Failed to process webhook event for contact ${event.resourceId}`,
           err
         );
       }
