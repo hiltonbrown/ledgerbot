@@ -1,17 +1,21 @@
 import { streamObject } from "ai";
 import { z } from "zod";
-import { sheetPrompt, updateDocumentPrompt } from "@/lib/ai/prompts";
+import { buildSheetPrompt, updateDocumentPrompt } from "@/lib/ai/prompts";
 import { myProvider } from "@/lib/ai/providers";
+import { getCustomInstructionsForArtifacts } from "@/lib/db/queries";
 import { createDocumentHandler } from "../registry";
 
 export const sheetDocumentHandler = createDocumentHandler<"sheet">({
   kind: "sheet",
-  onCreateDocument: async ({ prompt, dataStream, modelId }) => {
+  onCreateDocument: async ({ prompt, dataStream, modelId, user }) => {
     let draftContent = "";
+
+    // Fetch user's custom instructions for sheet artifacts
+    const customInstructions = await getCustomInstructionsForArtifacts(user.id);
 
     const { fullStream } = streamObject({
       model: myProvider.languageModel(modelId),
-      system: sheetPrompt,
+      system: buildSheetPrompt(customInstructions?.customSheetInstructions),
       prompt,
       schema: z.object({
         csv: z
@@ -50,7 +54,7 @@ export const sheetDocumentHandler = createDocumentHandler<"sheet">({
     // Use the title provided by the AI tool call - no need to generate another one
     return draftContent;
   },
-  onUpdateDocument: async ({ document, description, dataStream, modelId }) => {
+  onUpdateDocument: async ({ document, description, dataStream, modelId, user }) => {
     let draftContent = "";
 
     const { fullStream } = streamObject({

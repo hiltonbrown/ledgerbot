@@ -46,6 +46,7 @@ import {
   suggestion,
   type User,
   user,
+  userSettings,
   vote,
   type XeroConnection,
   xeroConnection,
@@ -2167,5 +2168,41 @@ export async function deleteExpiredArFollowUpContexts(): Promise<number> {
       "bad_request:database",
       "Failed to delete expired AR follow-up contexts"
     );
+  }
+}
+
+/**
+ * Fetches custom instructions for artifact generation from user settings.
+ * This is a lightweight query used by artifact handlers to personalize generation.
+ *
+ * Note: Text artifacts use customSystemInstructions since there's no dedicated
+ * text instructions field in the schema.
+ *
+ * @param userId - The user's ID
+ * @returns Object containing custom instructions or undefined if not set
+ */
+export async function getCustomInstructionsForArtifacts(userId: string): Promise<{
+  customSystemInstructions?: string;
+  customCodeInstructions?: string;
+  customSheetInstructions?: string;
+  industryContext?: string;
+} | null> {
+  try {
+    const [settings] = await db
+      .select({
+        customSystemInstructions: userSettings.customSystemInstructions,
+        customCodeInstructions: userSettings.customCodeInstructions,
+        customSheetInstructions: userSettings.customSheetInstructions,
+        industryContext: userSettings.industryContext,
+      })
+      .from(userSettings)
+      .where(eq(userSettings.userId, userId))
+      .limit(1);
+
+    return settings ?? null;
+  } catch (error) {
+    console.error("Failed to fetch custom instructions for artifacts:", error);
+    // Return null instead of throwing - artifact generation should continue with defaults
+    return null;
   }
 }
