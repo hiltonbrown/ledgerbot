@@ -5,10 +5,11 @@
 The Ledgerbot system prompt is currently constructed in a fragmented manner:
 
 *   **Main Chat (`app/(chat)/api/chat/route.ts`):**
-    *   Uses a rich, personalized prompt derived from `prompts/default-system-prompt.md`.
-    *   **Construction:** `app/(settings)/api/user/data.ts` loads the markdown file and performs string substitution (replacing `{{FIRST_NAME}}`, `{{COMPANY_NAME}}`, etc.) using data from the database and Xero.
-    *   **Injection:** The fully substituted string is passed to `lib/ai/prompts.ts`, which appends additional context (location, artifacts, active documents) but is unaware of the template structure.
+    *   Uses a rich, personalized prompt derived from `prompts/ledgerbot-system-prompt.md`.
+    *   **Construction:** `lib/ai/prompts.ts` now contains `buildLedgerbotSystemPrompt()` which loads the markdown template and performs string substitution (replacing `{{FIRST_NAME}}`, `{{COMPANY_NAME}}`, etc.) using data from user settings and Xero connection.
+    *   **Rendering Pipeline:** Template → Variable Substitution → Sanitization → Artifacts Appending → Final Prompt
     *   **Personalization:** Heavily personalized with user details, company info, and Xero chart of accounts.
+    *   **✅ REFACTORED:** This part of the system now uses the template-based architecture described in section 3.
 
 *   **Agents & Deep Research:**
     *   **Deep Research (`lib/deep-research.ts`):** Uses hardcoded constant strings (`PLAN_SYSTEM_PROMPT`, etc.) defined within the file. It does **not** share the main system prompt or its personalization variables.

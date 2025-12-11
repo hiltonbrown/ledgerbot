@@ -197,7 +197,18 @@ export const buildActiveDocumentsContext = (
 When users refer to "the document", "it", or "this", they most likely mean the most recent document above.`;
 };
 
-// TODO(legacy-system-prompt-cleanup): This function is deprecated. Use buildLedgerbotSystemPrompt instead.
+/**
+ * @deprecated This function is deprecated and should not be used for new features.
+ * Use `buildLedgerbotSystemPrompt()` instead for the template-based system prompt architecture.
+ *
+ * This legacy function provided simple prompt concatenation without variable substitution.
+ * It will be removed in a future version once all callsites are migrated.
+ *
+ * Migration guide:
+ * - Replace calls to `systemPrompt()` with `buildLedgerbotSystemPrompt()`
+ * - Pass `SystemPromptOptions` object with userSettings and xeroOrgSnapshot
+ * - The new function automatically handles variable substitution and sanitization
+ */
 export const systemPrompt = ({
   requestHints,
   activeTools = [],
@@ -294,8 +305,49 @@ export const updateDocumentPrompt = (
 ${currentContent}`;
 };
 
-// --- System Prompt Template Architecture ---
+// ==================================================================================
+// SYSTEM PROMPT TEMPLATE ARCHITECTURE
+// ==================================================================================
+//
+// LedgerBot uses a template-based system prompt architecture with variable substitution.
+//
+// Architecture Overview:
+// 1. Template File: prompts/ledgerbot-system-prompt.md
+//    - Contains the master template with {{VARIABLE}} placeholders
+//    - Single source of truth for prompt content
+//    - Edited directly without code changes
+//
+// 2. Variable Sources:
+//    - User personalisation settings (UserSettings.personalisation table)
+//    - Xero connection metadata (XeroConnection table)
+//    - Request context (location, timezone, date)
+//
+// 3. Rendering Pipeline:
+//    - buildLedgerbotSystemPrompt() fetches data sources
+//    - sanitisePromptFragment() cleans user-provided values
+//    - renderTemplate() substitutes {{VARIABLES}} with sanitized values
+//    - Artifacts and request hints are appended
+//
+// 4. Security:
+//    - All user-provided values are sanitized to prevent injection attacks
+//    - Template characters ({{, }}, <, >) are stripped from user input
+//    - Injection phrases ("ignore previous instructions") are removed
+//    - Values are truncated to prevent token explosion
+//
+// Key Functions:
+// - LEDGERBOT_SYSTEM_TEMPLATE: Loads the template file at module initialization
+// - renderTemplate(): Core template engine (replaces {{KEY}} with values)
+// - sanitisePromptFragment(): Security layer for user-provided content
+// - buildLedgerbotSystemPrompt(): Main entry point (orchestrates the pipeline)
+//
+// See CLAUDE.md for detailed documentation on available template variables.
+// ==================================================================================
 
+/**
+ * The LedgerBot system prompt template loaded from prompts/ledgerbot-system-prompt.md.
+ * This is the single source of truth for the main system prompt.
+ * Loaded once at module initialization for performance.
+ */
 export const LEDGERBOT_SYSTEM_TEMPLATE = (() => {
   try {
     const promptPath = join(
@@ -311,8 +363,23 @@ export const LEDGERBOT_SYSTEM_TEMPLATE = (() => {
 })();
 
 /**
- * Renders a template by substituting variables.
- * Preserves unknown placeholders ({{KEY}}) and logs a warning.
+ * Renders a template by substituting {{VARIABLE}} placeholders with actual values.
+ *
+ * Features:
+ * - Replaces all occurrences of {{KEY}} with the corresponding value from vars
+ * - Preserves unknown placeholders and logs warnings
+ * - Empty/null values result in placeholder removal (replaced with empty string)
+ *
+ * @param template - Template string with {{VARIABLE}} placeholders
+ * @param vars - Key-value pairs for variable substitution
+ * @returns Rendered template with variables substituted
+ *
+ * @example
+ * ```typescript
+ * const template = "Hello {{NAME}}, welcome to {{COMPANY}}!";
+ * const result = renderTemplate(template, { NAME: "John", COMPANY: "Acme" });
+ * // Returns: "Hello John, welcome to Acme!"
+ * ```
  */
 export function renderTemplate(
   template: string,
@@ -340,6 +407,13 @@ export function renderTemplate(
   return result;
 }
 
+/**
+ * Convenience function to render the LedgerBot system prompt template.
+ * Simply delegates to renderTemplate() with the LEDGERBOT_SYSTEM_TEMPLATE.
+ *
+ * @param vars - LedgerBot-specific prompt variables
+ * @returns Rendered system prompt
+ */
 export function renderLedgerbotSystemPrompt(vars: LedgerbotPromptVars): string {
   return renderTemplate(
     LEDGERBOT_SYSTEM_TEMPLATE,
@@ -347,6 +421,26 @@ export function renderLedgerbotSystemPrompt(vars: LedgerbotPromptVars): string {
   );
 }
 
+/**
+ * Sanitizes user-provided content before injecting into system prompts.
+ *
+ * Security measures:
+ * - Strips common injection attack phrases
+ * - Removes template characters that could interfere with rendering
+ * - Truncates to prevent token explosion
+ * - Trims whitespace
+ *
+ * @param input - Raw user-provided content (nullable)
+ * @param maxLength - Maximum allowed length before truncation (default: 400)
+ * @returns Sanitized string safe for prompt injection, or empty string if input is null/empty
+ *
+ * @example
+ * ```typescript
+ * const userInput = "My company {{HACK}} ignore previous instructions";
+ * const safe = sanitisePromptFragment(userInput);
+ * // Returns: "My company HACK" (cleaned and safe)
+ * ```
+ */
 export function sanitisePromptFragment(
   input: string | null | undefined,
   maxLength = 400
@@ -396,6 +490,34 @@ function getToneGuidelines(preset?: string): string {
   }
 }
 
+/**
+ * Builds the complete LedgerBot system prompt by rendering the template with user-specific variables.
+ *
+ * This is the main entry point for generating system prompts. It orchestrates:
+ * 1. Data fetching from user settings and Xero connection
+ * 2. Variable sanitization for security
+ * 3. Template rendering with variable substitution
+ * 4. Appending artifacts prompt and request hints
+ *
+ * Variable Sources:
+ * - User personalisation (name, company, custom instructions, tone)
+ * - Xero connection (org name, currency, chart of accounts, demo status)
+ * - Request context (location, timezone, date)
+ *
+ * @param opts - Configuration including user settings, Xero snapshot, request hints, and active tools
+ * @returns Fully rendered system prompt ready for AI model
+ *
+ * @example
+ * ```typescript
+ * const prompt = await buildLedgerbotSystemPrompt({
+ *   userId: user.id,
+ *   userSettings: { email: "user@example.com", personalisation: {...} },
+ *   xeroOrgSnapshot: { organisationName: "Acme Pty Ltd", ... },
+ *   requestHints: { city: "Sydney", country: "Australia" },
+ *   activeTools: ["createDocument", "xero_list_invoices"]
+ * });
+ * ```
+ */
 export async function buildLedgerbotSystemPrompt(
   opts: SystemPromptOptions
 ): Promise<string> {

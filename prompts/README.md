@@ -4,9 +4,9 @@ This directory contains system prompt templates used by LedgerBot.
 
 ## Files
 
-### default-system-prompt.md
+### ledgerbot-system-prompt.md
 
-The default system prompt for LedgerBot when users haven't customized their own prompt.
+The main system prompt template for LedgerBot with variable substitution support.
 
 **Purpose:**
 - Defines LedgerBot's role as an expert accounting assistant for Australian businesses
@@ -14,32 +14,39 @@ The default system prompt for LedgerBot when users haven't customized their own 
 - Provides comprehensive accounting capabilities and guidelines
 - Sets Australian English spelling and terminology standards
 - Defines transaction recording, reporting, and compliance requirements
+- Includes email correspondence guidelines to avoid AI-sounding language
 
 **Usage:**
-This file is automatically loaded by `/app/(settings)/api/user/data.ts` and used as the default system prompt for new users or users who haven't set a custom prompt.
+This file is automatically loaded by `lib/ai/prompts.ts` (via `LEDGERBOT_SYSTEM_TEMPLATE`) and rendered with user-specific variables by the `buildLedgerbotSystemPrompt()` function.
 
-**Customization:**
-Users can override this default prompt in their personalisation settings at `/settings/personalisation`.
+**Architecture:**
+This is a template-based system that renders variables at request time rather than relying on user customization. See `lib/ai/prompts.ts` for the builder function.
 
 **Template Variables:**
-The prompt includes template placeholders that are automatically substituted with user-specific information:
+The prompt includes template placeholders that are automatically substituted with user-specific information at request time:
 
-**Standard Variables** (automatically populated):
-- `{{FIRST_NAME}}` - User's first name from Clerk authentication
-- `{{LAST_NAME}}` - User's last name from Clerk authentication
-- `{{COMPANY_NAME}}` - Company name from user settings
+**Standard Variables** (populated from user settings and Xero connection):
+- `{{FIRST_NAME}}`, `{{LAST_NAME}}` - User identity from personalisation settings
+- `{{COMPANY_NAME}}` - Organization name from Xero or user settings
+- `{{USER_EMAIL}}` - User email address
+- `{{TODAY_DATE}}` - Current date in Australian format
+- `{{TIMEZONE}}` - User timezone or location
+- `{{BASE_CURRENCY}}` - Organization base currency (default: AUD)
+- `{{ORGANISATION_TYPE}}` - Type of business organization
+- `{{IS_DEMO_COMPANY}}` - Whether this is a Xero demo company
+- `{{XERO_SHORT_CODE}}` - Xero organization short code for deep linking
 - `{{INDUSTRY_CONTEXT}}` - Industry-specific requirements and terminology
-- `{{CHART_OF_ACCOUNTS}}` - Business-specific chart of accounts
-
-**Custom Variables:**
-Users can define their own custom template variables in `/settings/personalisation`. Custom variable names must be uppercase (e.g., `{{MY_VARIABLE}}`).
+- `{{CHART_OF_ACCOUNTS}}` - Business-specific chart of accounts structure
+- `{{CUSTOM_SYSTEM_INSTRUCTIONS}}` - User-defined custom instructions
+- `{{TONE_AND_GRAMMAR}}` - Communication style preset or guidelines
 
 **How Template Substitution Works:**
-1. Users define template variables in the personalisation settings
-2. When a user starts a chat, `getUserSettings()` fetches their settings
-3. The template engine (`lib/ai/template-engine.ts`) replaces all `{{VARIABLE}}` placeholders with actual values
-4. The substituted prompt is passed to the AI model
-5. If a variable has no value, the placeholder is removed (replaced with empty string)
+1. Each chat request triggers `buildLedgerbotSystemPrompt()` in `lib/ai/prompts.ts`
+2. Function fetches user settings and Xero connection metadata
+3. Template renderer (`renderTemplate()`) replaces all `{{VARIABLE}}` placeholders with actual values
+4. Unknown placeholders are preserved and logged as warnings
+5. Values are sanitized using `sanitisePromptFragment()` to prevent injection attacks
+6. The rendered prompt is passed to the AI model
 
 **Example Usage:**
 ```markdown
@@ -66,15 +73,22 @@ Chart of Accounts:
 ```
 
 **Maintenance:**
-To update the default system prompt:
-1. Edit `default-system-prompt.md` in this directory
+To update the system prompt template:
+1. Edit `ledgerbot-system-prompt.md` in this directory
 2. No code changes required - the file is read at runtime
-3. Changes take effect immediately for users without custom prompts
-4. Test by viewing `/settings/personalisation` page (should show new default for new users)
+3. Changes take effect immediately on next request
+4. Test by starting a new chat and verifying the AI behavior
+5. Use CLAUDE.md variables documentation as reference
+
+**Important Security Notes:**
+- All user-provided values are sanitized via `sanitisePromptFragment()` before injection
+- Template injection patterns are stripped (e.g., "ignore previous instructions")
+- Values are truncated to prevent token explosion
+- Unknown placeholders generate warnings but don't break the prompt
 
 **Fallback:**
 If the file cannot be read for any reason, a simple fallback prompt is used:
-> "You are Ledgerbot, an expert accounting assistant for Australian businesses. Keep your responses concise and helpful."
+> "Error: System prompt template could not be loaded."
 
 ### default-spreadsheet-prompt.md
 
@@ -208,7 +222,8 @@ This file is automatically loaded by `lib/agents/ar/agent.ts` at runtime.
 ## Prompt File Naming Convention
 
 All system prompts follow a consistent naming convention:
-- **Default prompts**: `default-{purpose}-prompt.md` (e.g., `default-system-prompt.md`, `default-code-prompt.md`)
+- **Main system prompt**: `ledgerbot-system-prompt.md` (template-based with variable substitution)
+- **Artifact prompts**: `default-{purpose}-prompt.md` (e.g., `default-code-prompt.md`, `default-spreadsheet-prompt.md`)
 - **Agent prompts**: `{agent-code}-system-prompt.md` (e.g., `ap-system-prompt.md`, `ar-system-prompt.md`)
 
 This ensures:

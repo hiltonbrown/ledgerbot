@@ -359,8 +359,8 @@ ledgerbot/
 │   ├── files/               # File processing
 │   └── xero/                # Xero OAuth & encryption
 ├── prompts/
-│   ├── default-system-prompt.md  # Main AI personality
-│   └── README.md                 # Prompt maintenance guide
+│   ├── ledgerbot-system-prompt.md  # Main AI system prompt template
+│   └── README.md                   # Prompt maintenance guide
 ├── tests/                   # Playwright E2E tests
 ├── public/                  # Static assets
 ├── .env.example             # Environment template
