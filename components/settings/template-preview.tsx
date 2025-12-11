@@ -14,22 +14,6 @@ type TemplatePreviewProps = {
   lastName?: string;
 };
 
-const DEFAULT_SYSTEM_PROMPT_PREVIEW = `# Ledgerbot System Prompt - {{COMPANY_NAME}}
-
-## Role and Purpose
-
-You are Ledgerbot, an expert accounting assistant designed to help {{FIRST_NAME}} {{LAST_NAME}} with {{COMPANY_NAME}} manage financial transactions, accounting entries, and bookkeeping tasks for Australian businesses...
-
-<industry_specific_context>
-{{INDUSTRY_CONTEXT}}
-</industry_specific_context>
-
-<chart_of_accounts>
-{{CHART_OF_ACCOUNTS}}
-</chart_of_accounts>
-
-...and more system instructions...`;
-
 /**
  * Substitute template variables in text
  */
@@ -70,7 +54,8 @@ export function TemplatePreview({
   customVariables,
   firstName = "",
   lastName = "",
-}: TemplatePreviewProps) {
+  systemPromptTemplate,
+}: TemplatePreviewProps & { systemPromptTemplate: string }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Build substitution values
@@ -87,11 +72,11 @@ export function TemplatePreview({
   };
 
   // Extract which variables are actually used in the prompt
-  const usedVariables = extractUsedVariables(DEFAULT_SYSTEM_PROMPT_PREVIEW);
+  const usedVariables = extractUsedVariables(systemPromptTemplate);
 
   // Substitute variables in preview text
   const previewText = substituteVariables(
-    DEFAULT_SYSTEM_PROMPT_PREVIEW,
+    systemPromptTemplate,
     substitutionValues
   );
 

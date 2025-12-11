@@ -22,7 +22,7 @@ import type {
   SpreadsheetArtifact,
   SpreadsheetCell,
   SpreadsheetRow,
-} from "@/lib/artifacts/spreadsheet/types";
+} from "@/artifacts/sheet/types";
 
 /**
  * Characters that trigger formula execution in spreadsheet applications.

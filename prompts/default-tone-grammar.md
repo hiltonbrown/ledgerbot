@@ -253,6 +253,8 @@ Apply these tone preferences for typical situations:
 - **Technical documentation:** Technical + Authoritative
 - **Performance feedback:** Assertive + Sympathetic
 - **Strategic planning:** Consultative + Motivational
+- **Accounts Receivable (Collections):** Professional -> Assertive -> Firm (based on overdue status)
+- **Accounts Payable (Supplier Relations):** Professional + Courteous
 
 ### Escalation Protocols
 

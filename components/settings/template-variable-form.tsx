@@ -188,9 +188,11 @@ const STATE_PROVINCE_OPTIONS: Record<
 export function TemplateVariableForm({
   data,
   xeroConnection,
+  systemPromptTemplate,
 }: {
   data: UserSettings;
   xeroConnection?: XeroConnection;
+  systemPromptTemplate: string;
 }) {
   const [formState, setFormState] = useState({
     country: data.personalisation.country,
@@ -691,6 +693,7 @@ export function TemplateVariableForm({
               firstName={data.personalisation.firstName}
               industryContext={formState.industryContext}
               lastName={data.personalisation.lastName}
+              systemPromptTemplate={systemPromptTemplate}
             />
 
             <div className="flex items-center justify-end gap-3">

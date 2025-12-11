@@ -1,17 +1,19 @@
 import { streamObject } from "ai";
 import { z } from "zod";
-import { sheetPrompt, updateDocumentPrompt } from "@/lib/ai/prompts";
+import { createDocumentHandler } from "@/artifacts/server";
+import { buildSheetSystemPrompt, updateDocumentPrompt } from "@/lib/ai/prompts";
 import { myProvider } from "@/lib/ai/providers";
-import { createDocumentHandler } from "@/lib/artifacts/server";
 
 export const sheetDocumentHandler = createDocumentHandler<"sheet">({
   kind: "sheet",
   onCreateDocument: async ({ prompt, dataStream, modelId }) => {
     let draftContent = "";
 
+    const systemPrompt = await buildSheetSystemPrompt();
+
     const { fullStream } = streamObject({
       model: myProvider.languageModel(modelId),
-      system: sheetPrompt,
+      system: systemPrompt,
       prompt,
       schema: z.object({
         csv: z
