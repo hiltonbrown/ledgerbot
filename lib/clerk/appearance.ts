@@ -21,6 +21,7 @@ export const clerkAppearance = {
     colorNeutral: clerkColor("--clerk-muted"),
     colorTextOnPrimaryBackground: clerkColor("--primary-foreground"),
     colorAlphaShade: clerkColor("--clerk-muted"),
+    fontFamily: "var(--font-geist, Inter, system-ui, sans-serif)",
     fontSize: "1rem",
     borderRadius: "var(--radius)",
   },
