@@ -45,6 +45,13 @@ export const chatModels: ChatModel[] = [
     vercelId: "google/gemini-2.5-flash",
     isReasoning: true,
   },
+  {
+    id: "google-gemini-2-5-pro",
+    name: "Google Gemini 2.5 Pro",
+    description: "Advanced Gemini model with superior reasoning capabilities",
+    vercelId: "google/gemini-2.5-pro",
+    isReasoning: true,
+  },
 ];
 
 export const chatModelIds = chatModels.map((model) => model.id);
