@@ -82,7 +82,17 @@ export function ChartTooltipContent({
   active,
   payload,
   label,
-}: TooltipProps<number, string>) {
+}: {
+  active?: boolean;
+  payload?: ReadonlyArray<{
+    value: number;
+    dataKey?: string | number;
+    name?: string;
+    color?: string;
+    payload?: any;
+  }>;
+  label?: string | number;
+}) {
   const config = useChartConfig();
 
   if (!active || !payload || payload.length === 0) {

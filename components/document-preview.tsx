@@ -151,7 +151,7 @@ const PureHitboxLayer = ({
   result,
   setArtifact,
 }: {
-  hitboxRef: React.RefObject<HTMLDivElement>;
+  hitboxRef: React.Ref<HTMLDivElement>;
   result: any;
   setArtifact: (
     updaterFn: UIArtifact | ((currentArtifact: UIArtifact) => UIArtifact)
