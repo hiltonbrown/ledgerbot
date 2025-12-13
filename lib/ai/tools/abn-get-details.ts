@@ -1,8 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { AbnLookupClient } from "@/lib/abr/abnLookupClient";
-import { ensureAbnLookupEnabled, mapAbrEntity } from "@/lib/abr/helpers";
-import { isValidAbn, normaliseIdentifier } from "@/lib/abr/validate";
+import { abrService } from "@/lib/abr/service";
+import { classifyAbrQuery, normaliseAbn } from "@/lib/abr/utils";
 
 export const abn_get_details = tool({
   description: "Get entity details from ABR by ABN or ACN.",
@@ -11,47 +10,39 @@ export const abn_get_details = tool({
     kind: z.enum(["ABN", "ACN", "AUTO"]).optional().default("AUTO"),
   }),
   execute: async ({ identifier, kind }) => {
-    ensureAbnLookupEnabled();
-    const client = new AbnLookupClient();
-    const { digits, kind: resolvedKind } = normaliseIdentifier(identifier);
+    // We treat "AUTO" as just "let classify figure it out"
+    const query = normaliseAbn(identifier);
+    const classification = classifyAbrQuery(query);
+    
+    // Override classification if kind is forced (though classification is usually reliable for digits)
+    const effectiveKind = (kind === "AUTO" || kind === classification.kind) ? classification.kind : kind;
 
-    const targetKind = kind && kind !== "AUTO" ? kind : resolvedKind;
-    const lookupKind: "ABN" | "ACN" | null =
-      targetKind === "UNKNOWN" ? null : targetKind;
-
-    if (!lookupKind) {
-      return {
-        error: {
-          code: "INVALID_IDENTIFIER",
-          message: "Identifier must be a 9-digit ACN or 11-digit ABN.",
-        },
-      };
+    if (effectiveKind === "ACN") {
+         return {
+            error: {
+                code: "ACN_NOT_SUPPORTED",
+                message: "Direct ACN lookup via ABR not fully supported. Please search by name or ABN."
+            }
+         };
     }
 
-    if (lookupKind === "ABN") {
-      if (!isValidAbn(digits)) {
+    if (effectiveKind !== "ABN") {
         return {
-          error: {
-            code: "INVALID_ABN",
-            message: "Invalid ABN format or checksum.",
-          },
+            error: {
+                code: "INVALID_IDENTIFIER",
+                message: "Identifier must be a valid 11-digit ABN."
+            }
         };
-      }
-
-      const entity = mapAbrEntity(await client.getByAbn(digits));
-      return { entity };
     }
 
-    if (digits.length !== 9) {
-      return {
-        error: {
-          code: "INVALID_ACN",
-          message: "ACN must contain exactly 9 digits.",
-        },
-      };
+    try {
+        const result = await abrService.lookup(query);
+        if (result.results.length === 0) {
+             return { error: { code: "NOT_FOUND", message: "No entity found for this ABN" } };
+        }
+        return { entity: result.results[0] };
+    } catch (e) {
+        return { error: { code: "LOOKUP_FAILED", message: String(e) } };
     }
-
-    const entity = mapAbrEntity(await client.getByAcn(digits));
-    return { entity };
   },
 });

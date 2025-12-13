@@ -1,28 +1,31 @@
 import { tool } from "ai";
 import { z } from "zod";
 import type { Contact } from "xero-node";
-import { AbnLookupClient } from "@/lib/abr/abnLookupClient";
-import {
-  ensureAbnLookupEnabled,
-  extractIdentifierFromCandidates,
-  isActiveStatus,
-  mapAbrEntity,
-  parseAbrDate,
-} from "@/lib/abr/helpers";
-import { isValidAbn } from "@/lib/abr/validate";
+import { abrService } from "@/lib/abr/service";
+import { normaliseAbn, validateAbnChecksum, validateAcnChecksum } from "@/lib/abr/utils";
 import { getRobustXeroClient } from "@/lib/xero/client-helpers";
 
+// Helper extracted from previous implementation (simplified)
 function extractIdentifierFromContact(contact: Contact) {
-  const preferredFields = [
+  const candidates = [
     contact.taxNumber,
     contact.companyNumber,
     contact.contactNumber,
     contact.accountNumber,
+    contact.name // sometimes people put ABN in name
   ];
 
-  const fallbackFields = [contact.name];
-
-  return extractIdentifierFromCandidates(preferredFields, fallbackFields);
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const clean = normaliseAbn(candidate);
+    if (clean.length === 11 && validateAbnChecksum(clean)) {
+        return { kind: "ABN", digits: clean };
+    }
+    if (clean.length === 9 && validateAcnChecksum(clean)) {
+        return { kind: "ACN", digits: clean };
+    }
+  }
+  return null;
 }
 
 async function fetchXeroContact(userId: string, contactId: string): Promise<Contact | null> {
@@ -49,7 +52,7 @@ export const abn_validate_xero_contact = ({ userId }: { userId: string }) =>
         .describe("Optional date (YYYY-MM-DD) to check ABN/GST status against"),
     }),
     execute: async ({ xeroContactId, asOfDate }) => {
-      ensureAbnLookupEnabled();
+      // ensureAbnLookupEnabled(); // Service handles this or config check
       let contact: Contact | null = null;
       try {
         contact = await fetchXeroContact(userId, xeroContactId);
@@ -82,46 +85,49 @@ export const abn_validate_xero_contact = ({ userId }: { userId: string }) =>
         };
       }
 
-      if (identifier.kind === "ABN" && !isValidAbn(identifier.digits)) {
+      // Check format (already done by extraction mostly, but safety check)
+      if (identifier.kind === "ABN" && !validateAbnChecksum(identifier.digits)) {
         return { status: "invalid" as const, message: "Invalid ABN format" };
       }
 
-      if (identifier.kind === "ACN" && identifier.digits.length !== 9) {
+      if (identifier.kind === "ACN" && !validateAcnChecksum(identifier.digits)) {
         return { status: "invalid" as const, message: "Invalid ACN format" };
       }
 
-      const client = new AbnLookupClient();
-      const abrRaw =
-        identifier.kind === "ABN"
-          ? await client.getByAbn(identifier.digits)
-          : await client.getByAcn(identifier.digits);
+      // Perform Lookup
+      let abrRecord = null;
+      if (identifier.kind === "ABN") {
+          const result = await abrService.lookup(identifier.digits, true); // Include history for date checks
+          if (result.results.length > 0) {
+              abrRecord = result.results[0];
+          }
+      } else {
+          // ACN lookup not fully supported via ABR service directly in this iteration
+          return { status: "invalid" as const, message: "ACN lookup not supported yet" };
+      }
 
-      const abr = mapAbrEntity(abrRaw);
-      const numbersMatch =
-        identifier.kind === "ABN" && abr.abn
-          ? abr.abn === identifier.digits
-          : identifier.kind === "ACN" && abr.acn
-            ? abr.acn === identifier.digits
-            : false;
+      if (!abrRecord) {
+          return { status: "not_found" as const, message: "ABN not found in ABR" };
+      }
 
-      const abnEffectiveDate = parseAbrDate(abr.abnStatusFrom);
-      const abnActiveOnDate =
-        identifier.kind === "ABN" && isActiveStatus(abr.abnStatus)
+      const numbersMatch = abrRecord.abn === identifier.digits;
+
+      const abnEffectiveDate = abrRecord.abnStatusEffectiveFrom ? new Date(abrRecord.abnStatusEffectiveFrom) : null;
+      const abnActiveOnDate = abrRecord.abnStatus === "Active"
           ? !abnEffectiveDate || abnEffectiveDate <= asOf
           : false;
 
-      const gstEffectiveDate = parseAbrDate(abr.gstStatusFrom);
-      const gstRegisteredOnDate =
-        abr.gstStatus && !/not registered/i.test(abr.gstStatus)
+      const gstEffectiveDate = abrRecord.gst.effectiveFrom ? new Date(abrRecord.gst.effectiveFrom) : null;
+      const gstRegisteredOnDate = abrRecord.gst.status === "Registered"
           ? !gstEffectiveDate || gstEffectiveDate <= asOf
           : false;
 
-      const entityNameMatch = isEntityNameMatch(contact.name, abr.entityName);
+      const entityNameMatch = isEntityNameMatch(contact.name, abrRecord.entityName);
 
       return {
         status: "ok" as const,
         storedAbn: identifier.digits,
-        abr,
+        abr: abrRecord,
         checks: {
           numbersMatch,
           abnActiveOnDate,

@@ -1,32 +1,32 @@
 import { tool } from "ai";
 import type { Invoice } from "xero-node";
 import { z } from "zod";
-import { AbnLookupClient } from "@/lib/abr/abnLookupClient";
-import {
-  ensureAbnLookupEnabled,
-  extractIdentifierFromCandidates,
-  isActiveStatus,
-  mapAbrEntity,
-  parseAbrDate,
-} from "@/lib/abr/helpers";
-import { isValidAbn } from "@/lib/abr/validate";
+import { abrService } from "@/lib/abr/service";
+import { normaliseAbn, validateAbnChecksum, validateAcnChecksum } from "@/lib/abr/utils";
 import { getRobustXeroClient } from "@/lib/xero/client-helpers";
 
+// Simplified extraction
 function extractIdentifierFromInvoice(invoice: Invoice) {
-  const preferredCandidates = [
+  const candidates = [
     invoice.reference,
     invoice.invoiceNumber,
     invoice.contact?.taxNumber,
     invoice.contact?.companyNumber,
     invoice.contact?.accountNumber,
+    invoice.contact?.name 
   ];
 
-  const fallbackCandidates = [invoice.contact?.name];
-
-  return extractIdentifierFromCandidates(
-    preferredCandidates,
-    fallbackCandidates
-  );
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const clean = normaliseAbn(candidate);
+    if (clean.length === 11 && validateAbnChecksum(clean)) {
+        return { kind: "ABN", digits: clean };
+    }
+    if (clean.length === 9 && validateAcnChecksum(clean)) {
+        return { kind: "ACN", digits: clean };
+    }
+  }
+  return null;
 }
 
 // Generic Xero entity fetcher
@@ -62,6 +62,7 @@ async function fetchXeroInvoice(
 ): Promise<Invoice | null> {
   return await fetchXeroEntity<Invoice>(userId, "Invoice", invoiceId);
 }
+
 function isEntityNameCloseMatch(
   nameA?: string | null,
   nameB?: string | null
@@ -132,7 +133,7 @@ export const abn_verify_xero_invoice = ({ userId }: { userId: string }) =>
       strict: z.boolean().optional().default(false),
     }),
     execute: async ({ xeroInvoiceId, strict }) => {
-      ensureAbnLookupEnabled();
+      // ensureAbnLookupEnabled();
       let invoice: Invoice | null = null;
       try {
         invoice = await fetchXeroInvoice(userId, xeroInvoiceId);
@@ -171,7 +172,7 @@ export const abn_verify_xero_invoice = ({ userId }: { userId: string }) =>
         });
       }
 
-      if (identifier.kind === "ABN" && !isValidAbn(identifier.digits)) {
+      if (identifier.kind === "ABN" && !validateAbnChecksum(identifier.digits)) {
         return buildErrorResult({
           xeroInvoiceId,
           supplierName: invoice.contact?.name,
@@ -182,7 +183,7 @@ export const abn_verify_xero_invoice = ({ userId }: { userId: string }) =>
         });
       }
 
-      if (identifier.kind === "ACN" && identifier.digits.length !== 9) {
+      if (identifier.kind === "ACN" && !validateAcnChecksum(identifier.digits)) {
         return buildErrorResult({
           xeroInvoiceId,
           supplierName: invoice.contact?.name,
@@ -193,37 +194,53 @@ export const abn_verify_xero_invoice = ({ userId }: { userId: string }) =>
         });
       }
 
-      const client = new AbnLookupClient();
-      const abrRaw =
-        identifier.kind === "ABN"
-          ? await client.getByAbn(identifier.digits)
-          : await client.getByAcn(identifier.digits);
+      // Lookup
+      let abrRecord = null;
+      if (identifier.kind === "ABN") {
+          const result = await abrService.lookup(identifier.digits, true);
+          if (result.results.length > 0) {
+              abrRecord = result.results[0];
+          }
+      } else {
+          return buildErrorResult({
+              xeroInvoiceId,
+              supplierName: invoice.contact?.name,
+              invoiceDate,
+              identifier: identifier.digits,
+              message: "ACN lookup not supported yet",
+              status: "invalid",
+          });
+      }
 
-      const abr = mapAbrEntity(abrRaw);
-      const numbersMatch =
-        identifier.kind === "ABN" && abr.abn
-          ? abr.abn === identifier.digits
-          : identifier.kind === "ACN" && abr.acn
-            ? abr.acn === identifier.digits
-            : false;
+      if (!abrRecord) {
+          return buildErrorResult({
+              xeroInvoiceId,
+              supplierName: invoice.contact?.name,
+              invoiceDate,
+              identifier: identifier.digits,
+              message: "ABN not found in ABR",
+              status: "not_found",
+          });
+      }
+
+      const numbersMatch = abrRecord.abn === identifier.digits;
 
       const entityNameCloseMatch = isEntityNameCloseMatch(
         invoice.contact?.name,
-        abr.entityName
+        abrRecord.entityName
       );
 
-      const abnEffectiveDate = parseAbrDate(abr.abnStatusFrom);
-      const abnActiveOnInvoiceDate =
-        identifier.kind === "ABN" && isActiveStatus(abr.abnStatus)
+      const abnEffectiveDate = abrRecord.abnStatusEffectiveFrom ? new Date(abrRecord.abnStatusEffectiveFrom) : null;
+      const abnActiveOnInvoiceDate = abrRecord.abnStatus === "Active"
           ? !abnEffectiveDate ||
             (invoiceDate
               ? abnEffectiveDate <= invoiceDate
               : abnEffectiveDate <= new Date())
           : false;
 
-      const gstEffectiveDate = parseAbrDate(abr.gstStatusFrom);
+      const gstEffectiveDate = abrRecord.gst.effectiveFrom ? new Date(abrRecord.gst.effectiveFrom) : null;
       const gstRegisteredOnInvoiceDate =
-        abr.gstStatus && !/not registered/i.test(abr.gstStatus)
+        abrRecord.gst.status === "Registered"
           ? !gstEffectiveDate ||
             (invoiceDate
               ? gstEffectiveDate <= invoiceDate
@@ -254,7 +271,7 @@ export const abn_verify_xero_invoice = ({ userId }: { userId: string }) =>
         invoiceDate: invoiceDate?.toISOString(),
         supplierName: invoice.contact?.name,
         abnOnInvoice: identifier.digits,
-        abr,
+        abr: abrRecord,
         checks: {
           numbersMatch,
           entityNameCloseMatch,

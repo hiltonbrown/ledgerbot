@@ -141,7 +141,9 @@ export function ContactComparisonTable({
                         </Badge>
                         <GSTStatusBadge
                           className="h-4 px-1"
-                          registered={verification.abrRecord.gstRegistered}
+                          registered={
+                            verification.abrRecord.gst.status === "Registered"
+                          }
                         />
                       </div>
                     </div>

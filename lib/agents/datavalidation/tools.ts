@@ -5,7 +5,8 @@ import {
   getVerificationSummary, // Need to implement this query
   listContacts,
 } from "@/lib/db/queries/datavalidation";
-import { abrClient } from "@/lib/services/abr-client";
+import { abrService } from "@/lib/abr/service";
+import { validateAbnChecksum, validateAcnChecksum, normaliseAbn } from "@/lib/abr/utils";
 import { asicDatasetService } from "@/lib/services/asic-dataset-service";
 import { verificationService } from "@/lib/services/verification-service";
 
@@ -16,18 +17,32 @@ export const dataValidationTools = {
       abn: z.string().describe("The Australian Business Number to validate"),
     }),
     execute: async ({ abn }) => {
-      const validation = abrClient.validateABNFormat(abn);
-      if (!validation.valid) {
+      const cleanAbn = normaliseAbn(abn);
+      const validFormat = validateAbnChecksum(cleanAbn);
+      
+      if (!validFormat) {
         return {
           valid: false,
-          error: validation.error,
+          error: "Invalid ABN checksum or format",
         };
       }
-      const record = await abrClient.lookupByABN(abn);
+      
+      const searchResult = await abrService.lookup(cleanAbn);
+      
+      if (searchResult.results.length === 0) {
+          return {
+              valid: true, // Format is valid
+              formatted: cleanAbn,
+              found: false,
+              message: "ABN format is valid but not found in ABR"
+          }
+      }
+
       return {
         valid: true,
-        formatted: validation.formatted,
-        record,
+        formatted: cleanAbn,
+        found: true,
+        record: searchResult.results[0],
       };
     },
   }),
@@ -39,17 +54,19 @@ export const dataValidationTools = {
       acn: z.string().describe("The Australian Company Number to validate"),
     }),
     execute: async ({ acn }) => {
-      const validation = abrClient.validateACNFormat(acn);
-      if (!validation.valid) {
+      const cleanAcn = normaliseAbn(acn);
+      const validFormat = validateAcnChecksum(cleanAcn);
+      
+      if (!validFormat) {
         return {
           valid: false,
-          error: validation.error,
+          error: "Invalid ACN checksum or format",
         };
       }
-      const record = await asicDatasetService.findCompanyByACN(acn);
+      const record = await asicDatasetService.findCompanyByACN(cleanAcn);
       return {
         valid: true,
-        formatted: validation.formatted,
+        formatted: cleanAcn,
         record,
       };
     },
@@ -66,13 +83,13 @@ export const dataValidationTools = {
   }),
 
   searchBusinessByName: tool({
-    description: "Search for a business name in the ASIC registry",
+    description: "Search for a business name in the ABR/ASIC registry",
     inputSchema: z.object({
       name: z.string().describe("The business name to search for"),
     }),
     execute: async ({ name }) => {
-      const abrResults = await abrClient.searchByName(name);
-      return { results: abrResults };
+      const searchResult = await abrService.lookup(name);
+      return { results: searchResult.results };
     },
   }),
 
@@ -82,12 +99,16 @@ export const dataValidationTools = {
       abn: z.string().describe("The ABN to check"),
     }),
     execute: async ({ abn }) => {
-      const record = await abrClient.lookupByABN(abn);
-      if (!record) return { found: false };
+      const cleanAbn = normaliseAbn(abn);
+      const searchResult = await abrService.lookup(cleanAbn);
+      
+      if (searchResult.results.length === 0) return { found: false };
+      
+      const record = searchResult.results[0];
       return {
         found: true,
-        gstRegistered: record.gstRegistered,
-        gstRegistrationDate: record.gstRegistrationDate,
+        gstRegistered: record.gst.status === "Registered",
+        gstRegistrationDate: record.gst.effectiveFrom,
       };
     },
   }),

@@ -281,6 +281,8 @@ If any field is not clearly visible or not present on the invoice, leave it as u
   }
 }
 
+import { abrService } from "@/lib/abr/service";
+
 /**
  * Validate Australian Business Number (ABN)
  * In production, this would call the ABR (Australian Business Register) API
@@ -297,35 +299,32 @@ export const validateABNTool = tool({
   }),
   execute: async ({ abn }: { abn: string }) => {
     try {
-      // Remove spaces and hyphens
-      const cleanABN = abn.replace(/[\s-]/g, "");
+      // Use the centralized ABR service for lookup
+      const result = await abrService.lookup(abn);
 
-      // Basic validation: 11 digits
-      if (!/^\d{11}$/.test(cleanABN)) {
+      if (result.results.length === 0) {
         return {
           success: false,
           validation: {
-            abn: cleanABN,
+            abn,
             isValid: false,
-            message: "ABN must be 11 digits",
+            message: result.error || "Invalid ABN or not found",
           },
         };
       }
 
-      // TODO: In production, integrate with ABR SOAP API or third-party service
-      // For now, return a mock validation result
-      console.log("[AP Agent] ABN validation (stub):", cleanABN);
+      const details = result.results[0];
 
       return {
         success: true,
         validation: {
-          abn: cleanABN,
+          abn: details.abn,
           isValid: true,
-          entityName: "Example Business Pty Ltd",
-          entityType: "Australian Private Company",
-          gstRegistered: true,
-          message:
-            "ABN validation stub - integrate with ABR API for production",
+          entityName: details.entityName,
+          entityType: details.entityType || "Unknown",
+          gstRegistered: !!(details.gst.status === "Registered"),
+          details: details,
+          message: "ABN validated successfully via ABR",
         },
       };
     } catch (error) {

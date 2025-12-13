@@ -1,3 +1,5 @@
+import type { AbrLookupResult } from "@/types/abr";
+
 export type XeroContactRecord = {
   contactId: string;
   name: string;
@@ -37,15 +39,8 @@ export type ASICBusinessNameRecord = {
   cancellationDate?: Date;
 };
 
-export type ABRRecord = {
-  abn: string;
-  abnStatus: "Active" | "Cancelled";
-  entityName: string;
-  entityType: string;
-  gstRegistered: boolean;
-  gstRegistrationDate?: Date;
-  businessNames: string[];
-};
+// Use the new strict ABR type
+export type ABRRecord = AbrLookupResult;
 
 export type VerificationResult = {
   xeroContact: XeroContactRecord;

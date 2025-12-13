@@ -36,7 +36,7 @@ pnpm test:unit              # Run Vitest unit tests
 
 ```bash
 # Run specific Playwright test file
-pnpm exec playwright test tests/abr/abnLookupClient.test.ts
+pnpm exec playwright test tests/example.spec.ts
 
 # Run specific test by name
 pnpm exec playwright test -g "should validate ABN"
@@ -45,7 +45,7 @@ pnpm exec playwright test -g "should validate ABN"
 pnpm exec playwright test --headed
 
 # Run specific Vitest test
-pnpm test:unit lib/abr/validate.test.ts
+pnpm test:unit lib/utils.test.ts
 ```
 
 ## High-Level Architecture
@@ -105,13 +105,14 @@ Tools are defined in `lib/ai/tools/` and registered in the chat API route. The t
 
 ### ABN Lookup Subsystem (NEW)
 
-The Australian Business Register (ABR) integration provides ABN/ACN validation and entity lookups:
+The Australian Business Register (ABR) integration provides ABN/ACN validation and entity lookups via a robust `AbrService`.
 
 **Core Components:**
-- `lib/abr/abnLookupClient.ts` - HTTP client for ABR JSONP API
+- `lib/abr/service.ts` - High-level business logic and caching
+- `lib/abr/client.ts` - Low-level HTTP client for ABR JSONP API
+- `lib/abr/utils.ts` - Validation and normalization utilities
 - `lib/abr/config.ts` - Environment-based configuration
-- `lib/abr/validate.ts` - ABN/ACN validation algorithms
-- `lib/abr/helpers.ts` - Response parsing and transformation
+- `types/abr.ts` - Domain types
 
 **AI Tools (always enabled):**
 - `abn_search_entity` - Search by business name
@@ -121,15 +122,13 @@ The Australian Business Register (ABR) integration provides ABN/ACN validation a
 
 **Environment Variables Required:**
 ```bash
-ABN_LOOKUP_ENABLED=true
-ABN_LOOKUP_GUID=your_guid_from_abr_website
-ABN_LOOKUP_BASE_URL=https://abr.business.gov.au/json  # Optional, this is default
+ABR_ENABLED=true
+ABR_GUID=your_guid_from_abr_website
+# ABN_LOOKUP_BASE_URL=https://abr.business.gov.au/json  # Optional override
 ```
 
 **JSONP Response Handling:**
-The ABR API returns JSONP (not pure JSON). The client strips the callback wrapper before parsing. Handle both formats:
-- `callback({...})` - Standard JSONP
-- `({...})` - Wrapped in parentheses
+The ABR API returns JSONP (not pure JSON). The `AbrClient` handles unwrapping automatically.
 
 ### Xero Integration
 
@@ -484,20 +483,19 @@ The `XeroClient` automatically handles:
 
 ### Australian Business Validation
 
-Use the ABR helpers for ABN/ACN validation:
+Use the ABR utils for ABN/ACN validation:
 
 ```typescript
-import { isValidAbn, isValidAcn, normaliseIdentifier } from '@/lib/abr/validate';
+import { validateAbnChecksum, normaliseAbn } from '@/lib/abr/utils';
 
 // Validate ABN
-if (!isValidAbn('53 004 085 616')) {
+if (!validateAbnChecksum('53 004 085 616')) {
   throw new Error('Invalid ABN');
 }
 
 // Normalise to digits only
-const { digits, formatted } = normaliseIdentifier('53 004 085 616');
+const digits = normaliseAbn('53 004 085 616');
 // digits: '53004085616'
-// formatted: '53 004 085 616'
 ```
 
 ABN validation uses the modulus 89 algorithm (official ATO method).

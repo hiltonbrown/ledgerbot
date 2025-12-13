@@ -1,4 +1,5 @@
-import { abrClient } from "@/lib/services/abr-client";
+import { abrService } from "@/lib/abr/service";
+import { classifyAbrQuery, normaliseAbn, validateAbnChecksum, validateAcnChecksum } from "@/lib/abr/utils";
 import { asicDatasetService } from "@/lib/services/asic-dataset-service";
 import type {
   ABRRecord,
@@ -8,7 +9,6 @@ import type {
   VerificationResult,
   XeroContactRecord,
 } from "@/types/datavalidation";
-// import leven from "leven"; // We'll implement a simple Levenshtein distance or use a library if available
 
 /**
  * Service for verifying Xero contacts against Australian business registries
@@ -16,7 +16,7 @@ import type {
 export class VerificationService {
   /**
    * Calculate similarity between two strings (0-1)
-   * Uses Levenshtein distance
+   * Uses Levenshtein distance (simple implementation)
    */
   calculateNameSimilarity(name1: string, name2: string): number {
     if (!name1 || !name2) return 0;
@@ -63,60 +63,78 @@ export class VerificationService {
 
     // 1. Validate ABN
     if (contact.taxNumber) {
-      const abnValidation = abrClient.validateABNFormat(contact.taxNumber);
-      if (abnValidation.valid) {
+      const cleanAbn = normaliseAbn(contact.taxNumber);
+      if (validateAbnChecksum(cleanAbn)) {
         // ABN Lookup
-        const abrResult = await abrClient.lookupByABN(contact.taxNumber);
-        if (abrResult) {
-          abrRecord = abrResult;
+        try {
+          const searchResult = await abrService.lookup(cleanAbn);
+          if (searchResult.kind === "ABN" && searchResult.results.length > 0) {
+            abrRecord = searchResult.results[0];
 
-          if (abrResult.abnStatus !== "Active") {
-            issues.push({
-              type: "error",
-              code: "ABN_CANCELLED",
-              message: `ABN is ${abrResult.abnStatus}`,
-              field: "taxNumber",
-            });
-          }
+            if (abrRecord.abnStatus !== "Active") {
+              issues.push({
+                type: "error",
+                code: "ABN_CANCELLED",
+                message: `ABN is ${abrRecord.abnStatus}`,
+                field: "taxNumber",
+              });
+            }
 
-          if (!abrResult.gstRegistered) {
-            issues.push({
-              type: "warning",
-              code: "NOT_GST_REGISTERED",
-              message: "Entity is not registered for GST",
-              field: "gstRegistered",
-            });
-          }
-
-          // Name Matching with ABR Entity Name
-          const similarity = this.calculateNameSimilarity(
-            contact.name,
-            abrResult.entityName
-          );
-          if (similarity < 0.8) {
-            // Check business names
-            const bestBnMatch = abrResult.businessNames.reduce(
-              (max, bn) =>
-                Math.max(max, this.calculateNameSimilarity(contact.name, bn)),
-              0
-            );
-
-            if (bestBnMatch < 0.8) {
+            if (abrRecord.gst.status !== "Registered") {
               issues.push({
                 type: "warning",
+                code: "NOT_GST_REGISTERED",
+                message: "Entity is not registered for GST",
+                field: "gstRegistered",
+              });
+            }
+
+            // Name Matching with ABR Entity Name
+            const similarity = this.calculateNameSimilarity(
+              contact.name,
+              abrRecord.entityName
+            );
+            
+            let nameMatchFound = similarity >= 0.8;
+
+            if (!nameMatchFound) {
+              // Check business names
+              const bestBnMatch = abrRecord.businessNames.reduce(
+                (max, bn) =>
+                  Math.max(max, this.calculateNameSimilarity(contact.name, bn.name)),
+                0
+              );
+              
+              if (bestBnMatch >= 0.8) {
+                nameMatchFound = true;
+              }
+            }
+
+            if (!nameMatchFound) {
+               issues.push({
+                type: "warning",
                 code: "NAME_MISMATCH",
-                message: `Contact name '${contact.name}' does not match ABR Entity Name '${abrResult.entityName}' (Similarity: ${Math.round(similarity * 100)}%)`,
+                message: `Contact name '${contact.name}' does not match ABR Entity Name '${abrRecord.entityName}' (Similarity: ${Math.round(similarity * 100)}%)`,
                 field: "name",
               });
             }
+
+          } else {
+            issues.push({
+              type: "warning",
+              code: "ABN_NOT_FOUND",
+              message: "ABN not found in ABR",
+              field: "taxNumber",
+            });
           }
-        } else {
-          issues.push({
-            type: "warning",
-            code: "ABN_NOT_FOUND",
-            message: "ABN not found in ABR",
-            field: "taxNumber",
-          });
+        } catch (err) {
+           console.error("ABR Verification Error", err);
+           issues.push({
+             type: "warning",
+             code: "ABR_ERROR",
+             message: "Failed to verify ABN with ABR",
+             field: "taxNumber"
+           });
         }
 
         // ASIC Business Name Lookup via ABN
@@ -145,7 +163,7 @@ export class VerificationService {
         issues.push({
           type: "error",
           code: "INVALID_ABN_FORMAT",
-          message: `Invalid ABN format: ${abnValidation.error}`,
+          message: `Invalid ABN format/checksum`,
           field: "taxNumber",
         });
       }
@@ -160,8 +178,8 @@ export class VerificationService {
 
     // 2. Validate ACN
     if (contact.companyNumber) {
-      const acnValidation = abrClient.validateACNFormat(contact.companyNumber);
-      if (acnValidation.valid) {
+      const cleanAcn = normaliseAbn(contact.companyNumber); // ACNs are digits too
+      if (validateAcnChecksum(cleanAcn)) {
         // ASIC Company Lookup
         const company = await asicDatasetService.findCompanyByACN(
           contact.companyNumber
@@ -201,7 +219,7 @@ export class VerificationService {
         issues.push({
           type: "error",
           code: "INVALID_ACN_FORMAT",
-          message: `Invalid ACN format: ${acnValidation.error}`,
+          message: `Invalid ACN format`,
           field: "companyNumber",
         });
       }

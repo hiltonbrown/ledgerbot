@@ -233,7 +233,8 @@ export function ContactDetailPanel({
                           {verificationResult?.abrRecord ? (
                             <GSTStatusBadge
                               registered={
-                                verificationResult.abrRecord.gstRegistered
+                                verificationResult.abrRecord.gst.status ===
+                                "Registered"
                               }
                             />
                           ) : (
@@ -285,8 +286,9 @@ export function ContactDetailPanel({
                               GST Registered
                             </div>
                             <div className="col-span-2">
-                              {verificationResult.abrRecord.gstRegistered
-                                ? `Yes (since ${verificationResult.abrRecord.gstRegistrationDate?.toLocaleDateString()})`
+                              {verificationResult.abrRecord.gst.status ===
+                              "Registered"
+                                ? `Yes (since ${verificationResult.abrRecord.gst.effectiveFrom})`
                                 : "No"}
                             </div>
                           </div>
@@ -300,7 +302,7 @@ export function ContactDetailPanel({
                                 <ul className="list-inside list-disc">
                                   {verificationResult.abrRecord.businessNames.map(
                                     (bn) => (
-                                      <li key={bn}>{bn}</li>
+                                      <li key={bn.name}>{bn.name}</li>
                                     )
                                   )}
                                 </ul>
