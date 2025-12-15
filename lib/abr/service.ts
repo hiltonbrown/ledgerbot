@@ -1,15 +1,15 @@
-import { abrClient } from "./client";
+import { getAbrClient } from "./client";
 import { classifyAbrQuery } from "./utils";
 import type { AbrSearchResult, AbrLookupResult } from "@/types/abr";
 
 export class AbrService {
   async lookup(query: string, includeHistorical = false): Promise<AbrSearchResult> {
     const classification = classifyAbrQuery(query);
-    
+
     // 1. Handle ABN/ACN
     if (classification.kind === "ABN") {
       try {
-        const result = await abrClient.searchByAbn(classification.value, includeHistorical);
+        const result = await getAbrClient().searchByAbn(classification.value, includeHistorical);
         return {
           query,
           kind: "ABN",
@@ -45,7 +45,7 @@ export class AbrService {
     // 2. Handle Business Name (or Unknown fallback)
     if (classification.kind === "BusinessName" || classification.kind === "Unknown") {
       try {
-        const results = await abrClient.searchByName(query);
+        const results = await getAbrClient().searchByName(query);
         return {
           query,
           kind: "BusinessName",

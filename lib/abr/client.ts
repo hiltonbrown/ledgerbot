@@ -62,7 +62,7 @@ export class AbrClient {
     }
     const guid = abnLookupConfig.guid;
     if (!guid) {
-      throw new Error("ABN_LOOKUP_GUID is missing in environment variables.");
+      throw new Error("ABR_GUID is missing in environment variables.");
     }
     this.guid = guid;
     this.baseUrl = abnLookupConfig.baseUrl.replace(/\/$/, "");
@@ -184,4 +184,12 @@ export class AbrClient {
   }
 }
 
-export const abrClient = new AbrClient();
+// Lazy instantiation to avoid errors during build time when ABR_GUID is missing
+let _abrClient: AbrClient | null = null;
+
+export const getAbrClient = (): AbrClient => {
+  if (!_abrClient) {
+    _abrClient = new AbrClient();
+  }
+  return _abrClient;
+};
