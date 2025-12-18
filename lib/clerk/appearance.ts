@@ -5,25 +5,27 @@
  * Uses dedicated Clerk CSS variables that adapt with light/dark themes
  * so the components stay aligned with the app design tokens.
  */
-const clerkColor = (token: string) => `hsl(var(${token}))`;
+const clerkColor = (token: string) => `var(${token})`;
 
 export const clerkAppearance = {
   variables: {
-    colorPrimary: clerkColor("--clerk-primary"),
-    colorBackground: clerkColor("--clerk-background"),
-    colorInputBackground: clerkColor("--clerk-input"),
-    colorInputText: clerkColor("--clerk-foreground"),
-    colorText: clerkColor("--clerk-foreground"),
-    colorTextSecondary: clerkColor("--clerk-muted-foreground"),
-    colorDanger: clerkColor("--destructive"),
-    colorSuccess: "hsl(142 76% 36%)",
-    colorWarning: "hsl(38 92% 50%)",
-    colorNeutral: clerkColor("--clerk-muted"),
-    colorTextOnPrimaryBackground: clerkColor("--primary-foreground"),
-    colorAlphaShade: clerkColor("--clerk-muted"),
+    colorPrimary: clerkColor("--clerk-color-primary"),
+    colorBackground: clerkColor("--clerk-color-background"),
+    colorInputBackground: clerkColor("--clerk-color-input"),
+    colorInputText: clerkColor("--clerk-color-input-foreground"),
+    colorText: clerkColor("--clerk-color-foreground"),
+    colorTextSecondary: clerkColor("--clerk-color-muted-foreground"),
+    colorDanger: clerkColor("--clerk-color-danger"),
+    colorSuccess: clerkColor("--clerk-color-success"),
+    colorWarning: clerkColor("--clerk-color-warning"),
+    colorNeutral: clerkColor("--clerk-color-neutral"),
+    colorTextOnPrimaryBackground: clerkColor("--clerk-color-primary-foreground"),
+    colorAlphaShade: clerkColor("--clerk-color-muted"),
     fontFamily: "var(--font-geist, Inter, system-ui, sans-serif)",
-    fontSize: "1rem",
-    borderRadius: "var(--radius)",
+    fontSize: "0.875rem",
+    fontWeight: { normal: 400, medium: 500, bold: 600 },
+    borderRadius: clerkColor("--clerk-border-radius"),
+    spacingUnit: clerkColor("--clerk-spacing"),
   },
   elements: {
     // Card styling
