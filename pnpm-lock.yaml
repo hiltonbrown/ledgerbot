@@ -7,6 +7,7 @@ settings:
 overrides:
   prismjs: '>=1.30.0'
   esbuild@<0.25.0: '>=0.25.0'
+  '@trpc/server': '>=11.8.0'
 
 importers:
 
@@ -323,8 +324,8 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
       ultracite:
-        specifier: 6.4.0
-        version: 6.4.0(typescript@5.9.3)
+        specifier: 6.4.2
+        version: 6.4.2(typescript@5.9.3)
       vitest:
         specifier: ^4.0.15
         version: 4.0.15(@opentelemetry/api@1.9.0)(@types/node@25.0.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.1)
@@ -3623,7 +3624,6 @@ packages:
 
   libsql@0.5.22:
     resolution: {integrity: sha512-NscWthMQt7fpU8lqd7LXMvT9pi+KhhmTHAJWUB/Lj6MWa0MKFv0F2V4C6WKKpjCVZl0VwcDz4nOI3CyaT1DDiA==}
-    cpu: [x64, arm64, wasm32, arm]
     os: [darwin, linux, win32]
 
   lightningcss-android-arm64@1.30.2:
@@ -4706,7 +4706,7 @@ packages:
     hasBin: true
     peerDependencies:
       '@orpc/server': ^1.0.0
-      '@trpc/server': ^10.45.2 || ^11.0.1
+      '@trpc/server': '>=11.8.0'
       '@valibot/to-json-schema': ^1.1.0
       effect: ^3.14.2 || ^4.0.0
       valibot: ^1.1.0
@@ -4752,8 +4752,8 @@ packages:
   ufo@1.6.1:
     resolution: {integrity: sha512-9a4/uxlTWJ4+a5i0ooc1rU7C7YOw3wT+UGqdeNNHWnOF9qcMBgLRS+4IYUqbczewFx4mLEig6gawh7X6mFlEkA==}
 
-  ultracite@6.4.0:
-    resolution: {integrity: sha512-N7D427ofOfZLuMAK8JMosTzb1ww+y/UGA8fqaBItRpCQLTsf/V/HDjmNVrzeS+8I7gBW7Ng3vp29+2RtW2gANA==}
+  ultracite@6.4.2:
+    resolution: {integrity: sha512-Xa6DoPQ9ay7j1H9lNH0SAeiJAgMSEv8zQPlEO+lK8xerQLtVhkTJj6rPkdnVuGSZff7FuPmdyoP8wr2cUfQW9A==}
     hasBin: true
 
   undici-types@7.16.0:
@@ -9744,7 +9744,7 @@ snapshots:
 
   ufo@1.6.1: {}
 
-  ultracite@6.4.0(typescript@5.9.3):
+  ultracite@6.4.2(typescript@5.9.3):
     dependencies:
       '@clack/prompts': 0.11.0
       '@trpc/server': 11.8.0(typescript@5.9.3)
