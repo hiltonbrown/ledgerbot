@@ -22,8 +22,10 @@ export const clerkAppearance = {
     colorTextOnPrimaryBackground: clerkColor("--clerk-primary-foreground"),
     colorAlphaShade: clerkColor("--clerk-muted"),
     fontFamily: "var(--font-geist, Inter, system-ui, sans-serif)",
-    fontSize: "1rem",
+    fontSize: "0.875rem",
+    fontWeight: { normal: 400, medium: 500, bold: 600 },
     borderRadius: "0.5rem",
+    spacingUnit: "1rem",
   },
   elements: {
     // Card styling
