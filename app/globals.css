@@ -48,14 +48,23 @@
   --radius: 0.5rem;
   --sidebar: hsl(220 20% 98%);
   /* clerk component theming - shadcn style */
-  --clerk-primary: hsl(0 0% 9%);
-  --clerk-primary-foreground: hsl(0 0% 98%);
-  --clerk-background: hsl(0 0% 100%);
-  --clerk-foreground: hsl(0 0% 4%);
-  --clerk-input: hsl(0 0% 90%);
-  --clerk-border: hsl(0 0% 90%);
-  --clerk-muted: hsl(0 0% 96%);
-  --clerk-muted-foreground: hsl(0 0% 45%);
+  --clerk-color-primary: #171717;
+  --clerk-color-primary-foreground: #FAFAFA;
+  --clerk-color-danger: #E7000B;
+  --clerk-color-success: #22C543;
+  --clerk-color-warning: #F36B16;
+  --clerk-color-neutral: #0A0A0A;
+  --clerk-color-foreground: #0A0A0A;
+  --clerk-color-muted-foreground: #737373;
+  --clerk-color-background: #FFFFFF;
+  --clerk-color-input: #E5E5E5;
+  --clerk-color-input-foreground: #0A0A0A;
+  --clerk-color-ring: #A1A1A1;
+  --clerk-color-shimmer: #FFFFFF;
+  --clerk-color-modal-backdrop: #000000;
+  --clerk-border-radius: 0.375rem;
+  --clerk-spacing: 1rem;
+  --clerk-color-muted: #F5F5F5;
 }
 
 /* define design tokens (dark mode) */
@@ -94,14 +103,23 @@
   --sidebar-ring: hsl(217 91% 60%);
   --sidebar: hsl(0 0% 9%);
   /* clerk component theming - dark mode - shadcn style */
-  --clerk-primary: hsl(0 0% 90%);
-  --clerk-primary-foreground: hsl(0 0% 9%);
-  --clerk-background: hsl(0 0% 9%);
-  --clerk-foreground: hsl(0 0% 98%);
-  --clerk-input: hsl(0 0% 100%);
-  --clerk-border: hsl(0 0% 63%);
-  --clerk-muted: hsl(0 0% 15%);
-  --clerk-muted-foreground: hsl(0 0% 63%);
+  --clerk-color-primary: #E5E5E5;
+  --clerk-color-primary-foreground: #171717;
+  --clerk-color-danger: #FF6467;
+  --clerk-color-success: #22C543;
+  --clerk-color-warning: #F36B16;
+  --clerk-color-neutral: #FAFAFA;
+  --clerk-color-foreground: #FAFAFA;
+  --clerk-color-muted-foreground: #A1A1A1;
+  --clerk-color-background: #171717;
+  --clerk-color-input: #FFFFFF;
+  --clerk-color-input-foreground: #FAFAFA;
+  --clerk-color-ring: #737373;
+  --clerk-color-shimmer: #FFFFFF;
+  --clerk-color-modal-backdrop: #000000;
+  --clerk-border-radius: 0.375rem;
+  --clerk-spacing: 1rem;
+  --clerk-color-muted: #262626;
 }
 
 /* define theme */
