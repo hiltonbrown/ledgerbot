@@ -19,7 +19,7 @@ export const clerkAppearance = {
     colorSuccess: "hsl(134 71% 45%)",
     colorWarning: "hsl(22 90% 52%)",
     colorNeutral: clerkColor("--clerk-foreground"),
-    colorTextOnPrimaryBackground: "hsl(0 0% 98%)",
+    colorTextOnPrimaryBackground: clerkColor("--clerk-primary-foreground"),
     colorAlphaShade: clerkColor("--clerk-muted"),
     fontFamily: "var(--font-geist, Inter, system-ui, sans-serif)",
     fontSize: "1rem",

@@ -49,6 +49,7 @@
   --sidebar: hsl(220 20% 98%);
   /* clerk component theming - shadcn style */
   --clerk-primary: hsl(0 0% 9%);
+  --clerk-primary-foreground: hsl(0 0% 98%);
   --clerk-background: hsl(0 0% 100%);
   --clerk-foreground: hsl(0 0% 4%);
   --clerk-input: hsl(0 0% 90%);
@@ -94,6 +95,7 @@
   --sidebar: hsl(0 0% 9%);
   /* clerk component theming - dark mode - shadcn style */
   --clerk-primary: hsl(0 0% 90%);
+  --clerk-primary-foreground: hsl(0 0% 9%);
   --clerk-background: hsl(0 0% 9%);
   --clerk-foreground: hsl(0 0% 98%);
   --clerk-input: hsl(0 0% 100%);
