@@ -47,14 +47,14 @@
   /* border radius unit */
   --radius: 0.5rem;
   --sidebar: hsl(220 20% 98%);
-  /* clerk component theming */
-  --clerk-primary: hsl(217 91% 60%);
+  /* clerk component theming - shadcn style */
+  --clerk-primary: hsl(0 0% 9%);
   --clerk-background: hsl(0 0% 100%);
-  --clerk-foreground: hsl(0 0% 20%);
-  --clerk-input: hsl(220 13% 91%);
-  --clerk-border: hsl(220 13% 91%);
-  --clerk-muted: hsl(220 20% 98%);
-  --clerk-muted-foreground: hsl(220 9% 46%);
+  --clerk-foreground: hsl(0 0% 4%);
+  --clerk-input: hsl(0 0% 90%);
+  --clerk-border: hsl(0 0% 90%);
+  --clerk-muted: hsl(0 0% 96%);
+  --clerk-muted-foreground: hsl(0 0% 45%);
 }
 
 /* define design tokens (dark mode) */
@@ -92,14 +92,14 @@
   --sidebar-border: hsl(0 0% 25%);
   --sidebar-ring: hsl(217 91% 60%);
   --sidebar: hsl(0 0% 9%);
-  /* clerk component theming - dark mode */
-  --clerk-primary: hsl(217 91% 60%);
+  /* clerk component theming - dark mode - shadcn style */
+  --clerk-primary: hsl(0 0% 90%);
   --clerk-background: hsl(0 0% 9%);
-  --clerk-foreground: hsl(0 0% 90%);
-  --clerk-input: hsl(0 0% 25%);
-  --clerk-border: hsl(0 0% 25%);
+  --clerk-foreground: hsl(0 0% 98%);
+  --clerk-input: hsl(0 0% 100%);
+  --clerk-border: hsl(0 0% 63%);
   --clerk-muted: hsl(0 0% 15%);
-  --clerk-muted-foreground: hsl(0 0% 64%);
+  --clerk-muted-foreground: hsl(0 0% 63%);
 }
 
 /* define theme */
