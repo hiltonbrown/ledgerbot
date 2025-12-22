@@ -1,9 +1,9 @@
-DROP INDEX "ap_bill_external_ref_user_id_unique";--> statement-breakpoint
-DROP INDEX "ar_credit_note_external_ref_user_id_unique";--> statement-breakpoint
-DROP INDEX "ar_customer_history_user_id_customer_id_unique";--> statement-breakpoint
-DROP INDEX "ar_invoice_external_ref_user_id_unique";--> statement-breakpoint
-DROP INDEX "ar_overpayment_external_ref_user_id_unique";--> statement-breakpoint
-DROP INDEX "ar_prepayment_external_ref_user_id_unique";--> statement-breakpoint
+DROP INDEX IF EXISTS "ap_bill_external_ref_user_id_unique";--> statement-breakpoint
+DROP INDEX IF EXISTS "ar_credit_note_external_ref_user_id_unique";--> statement-breakpoint
+DROP INDEX IF EXISTS "ar_customer_history_user_id_customer_id_unique";--> statement-breakpoint
+DROP INDEX IF EXISTS "ar_invoice_external_ref_user_id_unique";--> statement-breakpoint
+DROP INDEX IF EXISTS "ar_overpayment_external_ref_user_id_unique";--> statement-breakpoint
+DROP INDEX IF EXISTS "ar_prepayment_external_ref_user_id_unique";--> statement-breakpoint
 ALTER TABLE "XeroConnection" ADD COLUMN "lastSyncedAt" timestamp;--> statement-breakpoint
 ALTER TABLE "XeroConnection" ADD COLUMN "lastSyncAt" timestamp;--> statement-breakpoint
 ALTER TABLE "ApBill" ADD COLUMN "tenantId" varchar(255) DEFAULT 'legacy' NOT NULL;--> statement-breakpoint
