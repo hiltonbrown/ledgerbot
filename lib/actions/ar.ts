@@ -30,7 +30,9 @@ export type AgeingReportItem = {
   lastUpdated: Date;
 };
 
-export async function getAgeingReportData(): Promise<AgeingReportItem[]> {
+export async function getAgeingReportData(
+  tenantId: string
+): Promise<AgeingReportItem[]> {
   const { userId } = await auth();
   if (!userId) {
     throw new Error("Unauthorized");
@@ -47,15 +49,9 @@ export async function getAgeingReportData(): Promise<AgeingReportItem[]> {
       arCustomerHistory,
       eq(arContact.id, arCustomerHistory.customerId)
     )
-    .where(eq(arContact.userId, userId));
+    .where(and(eq(arContact.userId, userId), eq(arContact.tenantId, tenantId)));
 
-  // We need to calculate the breakdown of outstanding amount by bucket.
-  // The history table has aggregated stats but not the breakdown by bucket amount (only % 90+).
-  // To get exact amounts per bucket, we should query invoices or pre-calculate this in history.
-  // For now, let's query invoices for each contact or do a join.
-  // A join with aggregation would be better for performance.
-
-  // Let's do a separate query to get aggregated invoice amounts by bucket for all contacts of this user.
+  // Let's do a separate query to get aggregated invoice amounts by bucket for all contacts of this user and tenant.
   const invoices = await db
     .select({
       contactId: arInvoice.contactId,
@@ -63,7 +59,7 @@ export async function getAgeingReportData(): Promise<AgeingReportItem[]> {
       ageingBucket: arInvoice.ageingBucket,
     })
     .from(arInvoice)
-    .where(eq(arInvoice.userId, userId));
+    .where(and(eq(arInvoice.userId, userId), eq(arInvoice.tenantId, tenantId)));
 
   const bucketMap = new Map<string, Record<string, number>>();
 
@@ -89,10 +85,7 @@ export async function getAgeingReportData(): Promise<AgeingReportItem[]> {
     }
   }
 
-  // Fetch unallocated credit notes (for informational display only)
-  // Note: These should NOT be subtracted from totalOutstanding because:
-  // 1. Allocated credits are already reflected in invoice amountDue from Xero
-  // 2. Unallocated credits are available but not yet applied
+  // Fetch unallocated credit notes
   const creditNotes = await db
     .select({
       contactId: arCreditNote.contactId,
@@ -102,6 +95,7 @@ export async function getAgeingReportData(): Promise<AgeingReportItem[]> {
     .where(
       and(
         eq(arCreditNote.userId, userId),
+        eq(arCreditNote.tenantId, tenantId),
         sql`${arCreditNote.amountRemaining} > 0`
       )
     );
@@ -122,6 +116,7 @@ export async function getAgeingReportData(): Promise<AgeingReportItem[]> {
     .where(
       and(
         eq(arOverpayment.userId, userId),
+        eq(arOverpayment.tenantId, tenantId),
         sql`${arOverpayment.amountRemaining} > 0`
       )
     );
@@ -142,6 +137,7 @@ export async function getAgeingReportData(): Promise<AgeingReportItem[]> {
     .where(
       and(
         eq(arPrepayment.userId, userId),
+        eq(arPrepayment.tenantId, tenantId),
         sql`${arPrepayment.amountRemaining} > 0`
       )
     );
@@ -169,7 +165,7 @@ export async function getAgeingReportData(): Promise<AgeingReportItem[]> {
         unallocatedCredit + unallocatedOverpayment + unallocatedPrepayment;
       const totalOutstanding = Number(history.totalOutstanding);
 
-      // Apply unallocated credits/payments to reduce the total and the Current bucket (standard accounting practice)
+      // Apply unallocated credits/payments to reduce the total and the Current bucket
       const netTotalOutstanding = totalOutstanding - totalUnallocated;
       const netCurrent = buckets.Current - totalUnallocated;
 
@@ -193,15 +189,23 @@ export async function getAgeingReportData(): Promise<AgeingReportItem[]> {
     .filter((item) => item.totalOutstanding !== 0);
 }
 
-export async function getCustomerInvoiceDetails(contactId: string) {
+export async function getCustomerInvoiceDetails(
+  contactId: string,
+  tenantId: string
+) {
   const { userId } = await auth();
   if (!userId) {
     throw new Error("Unauthorized");
   }
 
-  // Verify the contact belongs to the authenticated user
+  // Verify the contact belongs to the authenticated user and tenant
   const contact = await db.query.arContact.findFirst({
-    where: (table) => and(eq(table.id, contactId), eq(table.userId, userId)),
+    where: (table) =>
+      and(
+        eq(table.id, contactId),
+        eq(table.userId, userId),
+        eq(table.tenantId, tenantId)
+      ),
   });
   if (!contact) {
     throw new Error("Contact not found or unauthorized");
@@ -211,7 +215,11 @@ export async function getCustomerInvoiceDetails(contactId: string) {
     .select()
     .from(arInvoice)
     .where(
-      and(eq(arInvoice.contactId, contactId), eq(arInvoice.userId, userId))
+      and(
+        eq(arInvoice.contactId, contactId),
+        eq(arInvoice.userId, userId),
+        eq(arInvoice.tenantId, tenantId)
+      )
     )
     .orderBy(desc(arInvoice.dueDate));
 
@@ -240,27 +248,23 @@ export type ARKPIs = {
   }>;
 };
 
-export async function getARKPIs(): Promise<ARKPIs> {
+export async function getARKPIs(tenantId: string): Promise<ARKPIs> {
   const { userId } = await auth();
   if (!userId) {
     throw new Error("Unauthorized");
   }
 
-  // Get all invoices with outstanding amounts
+  // Get all invoices with outstanding amounts for user and tenant
   const invoices = await db
     .select()
     .from(arInvoice)
-    .where(eq(arInvoice.userId, userId));
+    .where(and(eq(arInvoice.userId, userId), eq(arInvoice.tenantId, tenantId)));
 
   // Calculate total outstanding
   const totalOutstanding = invoices.reduce(
     (sum, inv) => sum + Number(inv.amountOutstanding),
     0
   );
-
-  // Note: We do NOT subtract unallocated credit notes here because:
-  // - Invoice amountOutstanding already reflects allocated credits (from Xero's amountDue)
-  // - Unallocated credits are available but not yet applied to invoices
 
   // Count active debtors (contacts with outstanding invoices)
   const activeDebtorIds = new Set(
@@ -281,8 +285,6 @@ export async function getARKPIs(): Promise<ARKPIs> {
   );
 
   // Calculate Days Receivable Outstanding (DRO)
-  // DRO = (Accounts Receivable / Total Credit Sales) * Number of Days
-  // Simplified: Average days between invoice date and today for outstanding invoices
   let daysReceivableOutstanding = 0;
   const outstandingInvoices = invoices.filter(
     (inv) => Number(inv.amountOutstanding) > 0
@@ -321,7 +323,7 @@ export async function getARKPIs(): Promise<ARKPIs> {
   }
 
   return {
-    totalOutstanding, // Correct value - already accounts for allocated credits
+    totalOutstanding,
     activeDebtors,
     daysReceivableOutstanding,
     overdueInvoices: overdueInvoices.length,
@@ -352,24 +354,34 @@ export type CustomerFollowUpData = {
 
 export async function getCustomerFollowUpData(
   contactId: string,
-  userId: string
+  userId: string,
+  tenantId: string
 ): Promise<CustomerFollowUpData> {
   // Optimized query to get all AR data in one go
   const [contact, invoices, history] = await Promise.all([
     db.query.arContact.findFirst({
-      where: and(eq(arContact.id, contactId), eq(arContact.userId, userId)),
+      where: and(
+        eq(arContact.id, contactId),
+        eq(arContact.userId, userId),
+        eq(arContact.tenantId, tenantId)
+      ),
     }),
     db
       .select()
       .from(arInvoice)
       .where(
-        and(eq(arInvoice.contactId, contactId), eq(arInvoice.userId, userId))
+        and(
+          eq(arInvoice.contactId, contactId),
+          eq(arInvoice.userId, userId),
+          eq(arInvoice.tenantId, tenantId)
+        )
       )
       .orderBy(desc(arInvoice.dueDate)),
     db.query.arCustomerHistory.findFirst({
       where: and(
         eq(arCustomerHistory.customerId, contactId),
-        eq(arCustomerHistory.userId, userId)
+        eq(arCustomerHistory.userId, userId),
+        eq(arCustomerHistory.tenantId, tenantId)
       ),
     }),
   ]);

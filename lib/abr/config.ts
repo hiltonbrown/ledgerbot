@@ -4,6 +4,8 @@ export const abnLookupConfig = {
   },
   guid: process.env.ABR_GUID || "",
   get baseUrl() {
-    return process.env.ABN_LOOKUP_BASE_URL ?? "https://abr.business.gov.au/json";
+    return (
+      process.env.ABN_LOOKUP_BASE_URL ?? "https://abr.business.gov.au/json"
+    );
   },
 };

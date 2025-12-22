@@ -26,12 +26,11 @@ export function ArContextBanner({
   summary,
   onClose,
 }: ArContextBannerProps) {
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-AU", {
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat("en-AU", {
       style: "currency",
       currency: "AUD",
     }).format(amount);
-  };
 
   // Canonical risk calculation function
   const getRiskLevel = (

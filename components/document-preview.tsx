@@ -214,29 +214,25 @@ const PureDocumentHeader = ({
   title: string;
   kind: ArtifactKind;
   isStreaming: boolean;
-}) => {
-  return (
-    <div className="flex flex-row items-start justify-between gap-2 rounded-t-2xl border border-b-0 p-4 sm:items-center dark:border-zinc-700 dark:bg-muted">
-      <div className="flex flex-row items-start gap-3 sm:items-center">
-        <div className="text-muted-foreground">
-          {isStreaming ? (
-            <div className="animate-spin">
-              <LoaderIcon />
-            </div>
-          ) : kind === "image" ? (
-            <ImageIcon />
-          ) : (
-            <FileIcon />
-          )}
-        </div>
-        <div className="-translate-y-1 font-medium sm:translate-y-0">
-          {title}
-        </div>
+}) => (
+  <div className="flex flex-row items-start justify-between gap-2 rounded-t-2xl border border-b-0 p-4 sm:items-center dark:border-zinc-700 dark:bg-muted">
+    <div className="flex flex-row items-start gap-3 sm:items-center">
+      <div className="text-muted-foreground">
+        {isStreaming ? (
+          <div className="animate-spin">
+            <LoaderIcon />
+          </div>
+        ) : kind === "image" ? (
+          <ImageIcon />
+        ) : (
+          <FileIcon />
+        )}
       </div>
-      <div className="w-8" />
+      <div className="-translate-y-1 font-medium sm:translate-y-0">{title}</div>
     </div>
-  );
-};
+    <div className="w-8" />
+  </div>
+);
 
 const DocumentHeader = memo(PureDocumentHeader, (prevProps, nextProps) => {
   if (prevProps.title !== nextProps.title) {

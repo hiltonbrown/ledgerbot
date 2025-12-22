@@ -132,13 +132,12 @@ export default function CustomerDetailPage() {
     }).format(value);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-AU", {
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString("en-AU", {
       day: "2-digit",
       month: "short",
       year: "numeric",
     });
-  };
 
   const getRiskColor = (daysOverdue: number) => {
     if (daysOverdue <= 0) {

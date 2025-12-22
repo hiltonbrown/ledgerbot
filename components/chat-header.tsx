@@ -94,9 +94,9 @@ function PureChatHeader({
   );
 }
 
-export const ChatHeader = memo(PureChatHeader, (prevProps, nextProps) => {
-  return (
+export const ChatHeader = memo(
+  PureChatHeader,
+  (prevProps, nextProps) =>
     prevProps.chatId === nextProps.chatId &&
     prevProps.isReadonly === nextProps.isReadonly
-  );
-});
+);

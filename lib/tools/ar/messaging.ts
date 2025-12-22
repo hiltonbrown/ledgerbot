@@ -48,6 +48,7 @@ export const getInvoicesDueTool = tool({
     "Get all invoices that are due or overdue, optionally filtered by minimum days overdue and customer ID",
   inputSchema: z.object({
     userId: z.string().describe("User ID"),
+    tenantId: z.string().describe("Xero Tenant ID"),
     asOf: z.string().datetime().optional().describe("As-of date (ISO format)"),
     minDaysOverdue: z
       .number()
@@ -60,11 +61,13 @@ export const getInvoicesDueTool = tool({
   }),
   execute: async ({
     userId,
+    tenantId,
     asOf,
     minDaysOverdue,
     customerId,
   }: {
     userId: string;
+    tenantId: string;
     asOf?: string;
     minDaysOverdue?: number;
     customerId?: string;
@@ -72,6 +75,7 @@ export const getInvoicesDueTool = tool({
     const asOfDate = asOfOrToday(asOf);
     const result = await listInvoicesDue({
       userId,
+      tenantId,
       asOf: asOfDate,
       minDaysOverdue,
       customerId,
@@ -110,9 +114,10 @@ export const predictLateRiskTool = tool({
     "Predict the probability of late payment for an invoice based on days overdue and history",
   inputSchema: z.object({
     invoiceId: z.string().describe("Invoice ID"),
+    tenantId: z.string().describe("Xero Tenant ID"),
   }),
-  execute: async ({ invoiceId }) => {
-    const invoice = await getInvoiceWithContact(invoiceId);
+  execute: async ({ invoiceId, tenantId }) => {
+    const invoice = await getInvoiceWithContact(invoiceId, tenantId);
 
     if (!invoice) {
       throw new Error("Invoice not found");
@@ -167,12 +172,13 @@ export const buildEmailReminderTool = tool({
     "Generate a copy-ready email reminder for an overdue invoice. Does NOT send the email - only creates an artefact for user to copy-paste.",
   inputSchema: z.object({
     userId: z.string().describe("User ID"),
+    tenantId: z.string().describe("Xero Tenant ID"),
     invoiceId: z.string().describe("Invoice ID"),
     templateId: z.string().describe("Template ID"),
     tone: z.enum(["polite", "firm", "final"]).describe("Tone of the reminder"),
   }),
-  execute: async ({ userId, invoiceId, templateId, tone }) => {
-    const invoice = await getInvoiceWithContact(invoiceId);
+  execute: async ({ userId, tenantId, invoiceId, templateId, tone }) => {
+    const invoice = await getInvoiceWithContact(invoiceId, tenantId);
 
     if (!invoice) {
       throw new Error("Invoice not found");
@@ -185,6 +191,7 @@ export const buildEmailReminderTool = tool({
 
     const artefact: ArCommsArtefactInsert = {
       userId,
+      tenantId,
       invoiceId,
       channel: "email",
       subject,
@@ -217,12 +224,13 @@ export const buildSmsReminderTool = tool({
     "Generate a copy-ready SMS reminder for an overdue invoice. Does NOT send the SMS - only creates an artefact for user to copy-paste.",
   inputSchema: z.object({
     userId: z.string().describe("User ID"),
+    tenantId: z.string().describe("Xero Tenant ID"),
     invoiceId: z.string().describe("Invoice ID"),
     templateId: z.string().describe("Template ID"),
     tone: z.enum(["polite", "firm", "final"]).describe("Tone of the reminder"),
   }),
-  execute: async ({ userId, invoiceId, templateId, tone }) => {
-    const invoice = await getInvoiceWithContact(invoiceId);
+  execute: async ({ userId, tenantId, invoiceId, templateId, tone }) => {
+    const invoice = await getInvoiceWithContact(invoiceId, tenantId);
 
     if (!invoice) {
       throw new Error("Invoice not found");
@@ -235,6 +243,7 @@ export const buildSmsReminderTool = tool({
 
     const artefact: ArCommsArtefactInsert = {
       userId,
+      tenantId,
       invoiceId,
       channel: "sms",
       subject: null,
@@ -266,12 +275,14 @@ export const reconcilePaymentTool = tool({
     "Record a payment against an invoice and update its status automatically",
   inputSchema: z.object({
     invoiceId: z.string().describe("Invoice ID"),
+    tenantId: z.string().describe("Xero Tenant ID"),
     amount: z.number().positive().describe("Payment amount"),
     paidAt: z.string().datetime().describe("Payment date (ISO format)"),
     reference: z.string().optional().describe("Payment reference/note"),
   }),
-  execute: async ({ invoiceId, amount, paidAt, reference }) => {
+  execute: async ({ invoiceId, tenantId, amount, paidAt, reference }) => {
     const payment: ArPaymentInsert = {
+      tenantId,
       invoiceId,
       amount: amount.toFixed(2),
       paidAt: new Date(paidAt),
@@ -302,6 +313,7 @@ export const postNoteTool = tool({
   description: "Add an internal note to an invoice for team visibility",
   inputSchema: z.object({
     userId: z.string().describe("User ID"),
+    tenantId: z.string().describe("Xero Tenant ID"),
     invoiceId: z.string().describe("Invoice ID"),
     body: z.string().describe("Note content"),
     visibility: z
@@ -310,9 +322,10 @@ export const postNoteTool = tool({
       .default("private")
       .describe("Note visibility"),
   }),
-  execute: async ({ userId, invoiceId, body, visibility }) => {
+  execute: async ({ userId, tenantId, invoiceId, body, visibility }) => {
     const note: ArNoteInsert = {
       userId,
+      tenantId,
       invoiceId,
       body,
       visibility: visibility || "private",
@@ -338,19 +351,21 @@ export const syncXeroTool = tool({
     "Synchronise invoices and contacts from Xero (or mock data if not configured)",
   inputSchema: z.object({
     userId: z.string().describe("User ID"),
+    tenantId: z.string().describe("Xero Tenant ID"),
     since: z
       .string()
       .datetime()
       .optional()
       .describe("Sync data modified since this date"),
   }),
-  execute: async ({ userId, since }) => {
+  execute: async ({ userId, tenantId, since }) => {
     const xero = await getXeroProvider(userId);
 
     // Sync contacts first
     const xeroContacts = await xero.listContacts({ isCustomer: true });
     const contacts = await upsertContacts(
       userId,
+      tenantId,
       xeroContacts.map((c) => ({
         name: c.name,
         email: c.emailAddress,
@@ -370,6 +385,7 @@ export const syncXeroTool = tool({
 
     const invoices = await upsertInvoices(
       userId,
+      tenantId,
       xeroInvoices.map((inv) => {
         const contactId = contactMap.get(inv.contact.contactID);
         if (!contactId) {
@@ -393,7 +409,7 @@ export const syncXeroTool = tool({
     );
 
     return {
-      contactsSync: contacts.length,
+      contactsSynced: contacts.length,
       invoicesSynced: invoices.length,
       isUsingMock: xero.isUsingMock,
     };
@@ -503,6 +519,7 @@ export const buildCallScriptTool = tool({
     "Generate a call script for a phone conversation about overdue invoices. Includes talking points, responses to common objections, and payment options.",
   inputSchema: z.object({
     userId: z.string().describe("User ID"),
+    tenantId: z.string().describe("Xero Tenant ID"),
     contactId: z.string().describe("Customer/Contact ID"),
     tone: z
       .enum(["polite", "firm", "final"])
@@ -513,10 +530,11 @@ export const buildCallScriptTool = tool({
       .default(false)
       .describe("Include payment plan options in script"),
   }),
-  execute: async ({ userId, contactId, tone, includePaymentPlan }) => {
+  execute: async ({ userId, tenantId, contactId, tone, includePaymentPlan }) => {
     // Get all invoices for this contact
     const invoices = await listInvoicesDue({
       userId,
+      tenantId,
       asOf: new Date(),
       minDaysOverdue: 0,
       customerId: contactId,
@@ -559,18 +577,15 @@ export const saveNoteToXeroTool = tool({
     "Save a note to a Xero Contact. If Xero is connected, saves to both Xero and local DB. Otherwise saves to local DB only.",
   inputSchema: z.object({
     userId: z.string().describe("User ID"),
+    tenantId: z.string().describe("Xero Tenant ID"),
     contactId: z.string().describe("Contact ID (local database ID)"),
     note: z.string().describe("Note content"),
   }),
-  execute: async ({ userId, contactId, note: noteContent }) => {
-    // For now, we'll save to local DB only
-    // Future enhancement: integrate with Xero API to save notes
-    // Xero doesn't have a native "notes" API, but we can use Contact.Notes field
-    // or create a custom tracking category
-
+  execute: async ({ userId, tenantId, contactId, note: noteContent }) => {
     // Get contact to find associated invoices
     const invoices = await listInvoicesDue({
       userId,
+      tenantId,
       asOf: new Date(),
       minDaysOverdue: 0,
       customerId: contactId,
@@ -580,9 +595,10 @@ export const saveNoteToXeroTool = tool({
       throw new Error("No invoices found for this contact");
     }
 
-    // Save note to first invoice (as contact-level notes need invoice association)
+    // Save note to first invoice
     const note: ArNoteInsert = {
       userId,
+      tenantId,
       invoiceId: invoices.invoices[0].id,
       body: noteContent,
       visibility: "shared",
@@ -594,10 +610,6 @@ export const saveNoteToXeroTool = tool({
     };
 
     const created = await createNote(note);
-
-    // TODO: Future enhancement - save to Xero via API
-    // This would require the Xero API to support contact notes
-    // For now, we just save locally
 
     return {
       success: true,

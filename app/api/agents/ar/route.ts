@@ -47,6 +47,13 @@ export async function POST(req: Request) {
       settings?: ArSettings;
     };
 
+    const activeConnection = await getActiveXeroConnection(user.id);
+    if (!activeConnection) {
+      return NextResponse.json({ error: "No active Xero connection" }, { status: 400 });
+    }
+
+    const tenantId = activeConnection.tenantId;
+
     // Get or create chat for AR agent
     const chatId = "ar-agent";
     const chat = await getChatById({ id: chatId });
@@ -61,18 +68,23 @@ export async function POST(req: Request) {
 
     console.log("[AR Agent] Processing chat request", {
       userId: user.id,
+      tenantId,
       messageCount: messages.length,
       settings,
     });
 
-    // Inject user ID into system context for tools
+    // Inject context into system context for tools
     const systemMessage: CoreMessage = {
       role: "system",
       content: `${SYSTEM_INSTRUCTIONS}
 
-User ID: ${user.id}
+CONTEXT:
+- User ID: ${user.id}
+- Xero Tenant ID (Organisation): ${tenantId}
+- Organisation Name: ${activeConnection.tenantName}
 
 CRITICAL REMINDER:
+- Always pass tenantId: "${tenantId}" and userId: "${user.id}" to all tool calls.
 - commsEnabled: false
 - NEVER send emails or SMS
 - ONLY generate copy-ready artefacts

@@ -1867,6 +1867,23 @@ export async function updateRateLimitInfo(
   }
 }
 
+export async function updateConnectionLastSyncedAt(
+  connectionId: string,
+  syncedAt: Date
+): Promise<void> {
+  try {
+    await db
+      .update(xeroConnection)
+      .set({
+        lastSyncedAt: syncedAt,
+        updatedAt: new Date(),
+      })
+      .where(eq(xeroConnection.id, connectionId));
+  } catch (_error) {
+    console.error("Failed to update last synced at timestamp:", _error);
+  }
+}
+
 // ============================================================================
 // Agent Trace Queries
 // ============================================================================

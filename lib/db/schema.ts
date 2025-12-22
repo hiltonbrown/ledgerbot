@@ -85,11 +85,9 @@ export const voteDeprecated = pgTable(
       .references(() => messageDeprecated.id),
     isUpvoted: boolean("isUpvoted").notNull(),
   },
-  (table) => {
-    return {
-      pk: primaryKey({ columns: [table.chatId, table.messageId] }),
-    };
-  }
+  (table) => ({
+    pk: primaryKey({ columns: [table.chatId, table.messageId] }),
+  })
 );
 
 export type VoteDeprecated = InferSelectModel<typeof voteDeprecated>;
@@ -105,11 +103,9 @@ export const vote = pgTable(
       .references(() => message.id),
     isUpvoted: boolean("isUpvoted").notNull(),
   },
-  (table) => {
-    return {
-      pk: primaryKey({ columns: [table.chatId, table.messageId] }),
-    };
-  }
+  (table) => ({
+    pk: primaryKey({ columns: [table.chatId, table.messageId] }),
+  })
 );
 
 export type Vote = InferSelectModel<typeof vote>;
@@ -129,11 +125,9 @@ export const document = pgTable(
       .references(() => user.id),
     chatId: uuid("chatId").references(() => chat.id),
   },
-  (table) => {
-    return {
-      pk: primaryKey({ columns: [table.id, table.createdAt] }),
-    };
-  }
+  (table) => ({
+    pk: primaryKey({ columns: [table.id, table.createdAt] }),
+  })
 );
 
 export type Document = InferSelectModel<typeof document>;
@@ -295,6 +289,8 @@ export const xeroConnection = pgTable(
     paymentsSyncedAt: timestamp("paymentsSyncedAt"),
     creditNotesSyncedAt: timestamp("creditNotesSyncedAt"),
     itemsSyncedAt: timestamp("itemsSyncedAt"),
+    lastSyncedAt: timestamp("lastSyncedAt"), // Last full sync (any entity)
+    lastSyncAt: timestamp("lastSyncAt"), // Specifically for incremental sync tracking
     createdAt: timestamp("createdAt").notNull().defaultNow(),
     updatedAt: timestamp("updatedAt").notNull().defaultNow(),
   },

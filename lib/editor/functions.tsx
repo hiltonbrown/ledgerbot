@@ -28,9 +28,8 @@ export const buildDocumentFromContent = (content: string) => {
   }
 };
 
-export const buildContentFromDocument = (document: Node) => {
-  return defaultMarkdownSerializer.serialize(document);
-};
+export const buildContentFromDocument = (document: Node) =>
+  defaultMarkdownSerializer.serialize(document);
 
 export const createDecorations = (
   suggestions: UISuggestion[],

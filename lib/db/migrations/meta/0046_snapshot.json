@@ -1,6 +1,6 @@
 {
-  "id": "ed572e93-4171-4483-9dfb-fbae98c01e99",
-  "prevId": "556c7370-cf17-441f-b173-613b34f84c05",
+  "id": "e1df4211-c629-4eb3-ac15-25ba363dc603",
+  "prevId": "ed572e93-4171-4483-9dfb-fbae98c01e99",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1750,6 +1750,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "lastSyncedAt": {
+          "name": "lastSyncedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
         "createdAt": {
           "name": "createdAt",
           "type": "timestamp",
@@ -2590,6 +2596,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "tenantId": {
+          "name": "tenantId",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
         "contactId": {
           "name": "contactId",
           "type": "uuid",
@@ -2698,6 +2710,18 @@
           "primaryKey": false,
           "notNull": false
         },
+        "xeroUpdatedDateUtc": {
+          "name": "xeroUpdatedDateUtc",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "xeroModifiedDateUtc": {
+          "name": "xeroModifiedDateUtc",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
         "lineItems": {
           "name": "lineItems",
           "type": "jsonb",
@@ -2731,6 +2755,21 @@
           "columns": [
             {
               "expression": "userId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "ap_bill_tenant_id_idx": {
+          "name": "ap_bill_tenant_id_idx",
+          "columns": [
+            {
+              "expression": "tenantId",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -2801,17 +2840,17 @@
           "method": "btree",
           "with": {}
         },
-        "ap_bill_external_ref_user_id_unique": {
-          "name": "ap_bill_external_ref_user_id_unique",
+        "ap_bill_tenant_external_ref_unique": {
+          "name": "ap_bill_tenant_external_ref_unique",
           "columns": [
             {
-              "expression": "externalRef",
+              "expression": "tenantId",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             },
             {
-              "expression": "userId",
+              "expression": "externalRef",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -3045,6 +3084,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "tenantId": {
+          "name": "tenantId",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
         "name": {
           "name": "name",
           "type": "varchar(255)",
@@ -3101,6 +3146,18 @@
           "primaryKey": false,
           "notNull": false
         },
+        "xeroUpdatedDateUtc": {
+          "name": "xeroUpdatedDateUtc",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "xeroModifiedDateUtc": {
+          "name": "xeroModifiedDateUtc",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
         "metadata": {
           "name": "metadata",
           "type": "jsonb",
@@ -3128,6 +3185,21 @@
           "columns": [
             {
               "expression": "userId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "ap_contact_tenant_id_idx": {
+          "name": "ap_contact_tenant_id_idx",
+          "columns": [
+            {
+              "expression": "tenantId",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -3179,6 +3251,27 @@
             }
           ],
           "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "ap_contact_tenant_external_ref_unique": {
+          "name": "ap_contact_tenant_external_ref_unique",
+          "columns": [
+            {
+              "expression": "tenantId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "externalRef",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -3350,6 +3443,12 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
+        "tenantId": {
+          "name": "tenantId",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
         "billId": {
           "name": "billId",
           "type": "uuid",
@@ -3392,6 +3491,18 @@
           "primaryKey": false,
           "notNull": false
         },
+        "xeroUpdatedDateUtc": {
+          "name": "xeroUpdatedDateUtc",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "xeroModifiedDateUtc": {
+          "name": "xeroModifiedDateUtc",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
         "metadata": {
           "name": "metadata",
           "type": "jsonb",
@@ -3407,6 +3518,21 @@
         }
       },
       "indexes": {
+        "ap_payment_tenant_id_idx": {
+          "name": "ap_payment_tenant_id_idx",
+          "columns": [
+            {
+              "expression": "tenantId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "ap_payment_bill_id_idx": {
           "name": "ap_payment_bill_id_idx",
           "columns": [

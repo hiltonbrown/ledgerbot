@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { initialArtifactData, useArtifact } from "@/hooks/use-artifact";
 import { artifactDefinitions } from "./artifact";
 import { useDataStream } from "./data-stream-provider";

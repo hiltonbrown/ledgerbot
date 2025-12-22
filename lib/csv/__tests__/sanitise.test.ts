@@ -3,11 +3,7 @@
  */
 
 import { describe, expect, it } from "@jest/globals";
-import type {
-  SpreadsheetArtifact,
-  SpreadsheetCell,
-  SpreadsheetRow,
-} from "@/artifacts/sheet/types";
+import type { SpreadsheetCell, SpreadsheetRow } from "@/artifacts/sheet/types";
 import {
   artifactNeedsSanitisation,
   countSanitisationNeeded,

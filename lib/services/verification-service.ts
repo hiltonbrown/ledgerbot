@@ -1,5 +1,9 @@
 import { abrService } from "@/lib/abr/service";
-import { classifyAbrQuery, normaliseAbn, validateAbnChecksum, validateAcnChecksum } from "@/lib/abr/utils";
+import {
+  normaliseAbn,
+  validateAbnChecksum,
+  validateAcnChecksum,
+} from "@/lib/abr/utils";
 import { asicDatasetService } from "@/lib/services/asic-dataset-service";
 import type {
   ABRRecord,
@@ -94,31 +98,33 @@ export class VerificationService {
               contact.name,
               abrRecord.entityName
             );
-            
+
             let nameMatchFound = similarity >= 0.8;
 
             if (!nameMatchFound) {
               // Check business names
               const bestBnMatch = abrRecord.businessNames.reduce(
                 (max, bn) =>
-                  Math.max(max, this.calculateNameSimilarity(contact.name, bn.name)),
+                  Math.max(
+                    max,
+                    this.calculateNameSimilarity(contact.name, bn.name)
+                  ),
                 0
               );
-              
+
               if (bestBnMatch >= 0.8) {
                 nameMatchFound = true;
               }
             }
 
             if (!nameMatchFound) {
-               issues.push({
+              issues.push({
                 type: "warning",
                 code: "NAME_MISMATCH",
                 message: `Contact name '${contact.name}' does not match ABR Entity Name '${abrRecord.entityName}' (Similarity: ${Math.round(similarity * 100)}%)`,
                 field: "name",
               });
             }
-
           } else {
             issues.push({
               type: "warning",
@@ -128,13 +134,13 @@ export class VerificationService {
             });
           }
         } catch (err) {
-           console.error("ABR Verification Error", err);
-           issues.push({
-             type: "warning",
-             code: "ABR_ERROR",
-             message: "Failed to verify ABN with ABR",
-             field: "taxNumber"
-           });
+          console.error("ABR Verification Error", err);
+          issues.push({
+            type: "warning",
+            code: "ABR_ERROR",
+            message: "Failed to verify ABN with ABR",
+            field: "taxNumber",
+          });
         }
 
         // ASIC Business Name Lookup via ABN
@@ -163,7 +169,7 @@ export class VerificationService {
         issues.push({
           type: "error",
           code: "INVALID_ABN_FORMAT",
-          message: `Invalid ABN format/checksum`,
+          message: "Invalid ABN format/checksum",
           field: "taxNumber",
         });
       }
@@ -219,7 +225,7 @@ export class VerificationService {
         issues.push({
           type: "error",
           code: "INVALID_ACN_FORMAT",
-          message: `Invalid ACN format`,
+          message: "Invalid ACN format",
           field: "companyNumber",
         });
       }

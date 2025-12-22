@@ -33,6 +33,7 @@ export type InvoiceWithContact = ArInvoice & {
 
 export type ListInvoicesDueParams = {
   userId: string;
+  tenantId: string;
   asOf: Date;
   minDaysOverdue?: number;
   customerId?: string;
@@ -48,6 +49,7 @@ export type ListInvoicesDueResult = {
  */
 export async function listInvoicesDue({
   userId,
+  tenantId,
   asOf,
   minDaysOverdue = 0,
   customerId,
@@ -55,6 +57,7 @@ export async function listInvoicesDue({
   try {
     const conditions = [
       eq(arInvoice.userId, userId),
+      eq(arInvoice.tenantId, tenantId),
       lte(arInvoice.dueDate, asOf),
       sql`${arInvoice.status} IN ('awaiting_payment', 'partially_paid', 'overdue')`,
     ];
@@ -106,9 +109,15 @@ export async function listInvoicesDue({
  * Get a single invoice with contact details
  */
 export async function getInvoiceWithContact(
-  invoiceId: string
+  invoiceId: string,
+  tenantId?: string
 ): Promise<InvoiceWithContact | null> {
   try {
+    const conditions = [eq(arInvoice.id, invoiceId)];
+    if (tenantId) {
+      conditions.push(eq(arInvoice.tenantId, tenantId));
+    }
+
     const results = await db
       .select({
         invoice: arInvoice,
@@ -116,7 +125,7 @@ export async function getInvoiceWithContact(
       })
       .from(arInvoice)
       .innerJoin(arContact, eq(arInvoice.contactId, arContact.id))
-      .where(eq(arInvoice.id, invoiceId))
+      .where(and(...conditions))
       .limit(1);
 
     if (results.length === 0) {
@@ -146,11 +155,12 @@ export async function getInvoiceWithContact(
 }
 
 /**
- * Upsert contacts (insert or update by externalRef)
+ * Upsert contacts (insert or update by externalRef and tenantId)
  */
 export async function upsertContacts(
   userId: string,
-  contacts: Omit<ArContactInsert, "userId">[]
+  tenantId: string,
+  contacts: Omit<ArContactInsert, "userId" | "tenantId">[]
 ): Promise<ArContact[]> {
   try {
     const results: ArContact[] = [];
@@ -163,6 +173,7 @@ export async function upsertContacts(
             .where(
               and(
                 eq(arContact.userId, userId),
+                eq(arContact.tenantId, tenantId),
                 eq(arContact.externalRef, contact.externalRef)
               )
             )
@@ -185,6 +196,7 @@ export async function upsertContacts(
           .values({
             ...contact,
             userId,
+            tenantId,
             createdAt: new Date(),
             updatedAt: new Date(),
           })
@@ -201,11 +213,12 @@ export async function upsertContacts(
 }
 
 /**
- * Upsert invoices (insert or update by externalRef)
+ * Upsert invoices (insert or update by externalRef and tenantId)
  */
 export async function upsertInvoices(
   userId: string,
-  invoices: Omit<ArInvoiceInsert, "userId">[]
+  tenantId: string,
+  invoices: Omit<ArInvoiceInsert, "userId" | "tenantId">[]
 ): Promise<ArInvoice[]> {
   try {
     if (invoices.length === 0) {
@@ -215,6 +228,7 @@ export async function upsertInvoices(
     const invoiceValues = invoices.map((invoice) => ({
       ...invoice,
       userId,
+      tenantId,
       updatedAt: new Date(),
     }));
 
@@ -222,7 +236,7 @@ export async function upsertInvoices(
       .insert(arInvoice)
       .values(invoiceValues)
       .onConflictDoUpdate({
-        target: [arInvoice.externalRef, arInvoice.userId],
+        target: [arInvoice.externalRef, arInvoice.tenantId],
         set: {
           contactId: sql`excluded."contactId"`,
           number: sql`excluded."number"`,
@@ -238,6 +252,7 @@ export async function upsertInvoices(
           status: sql`excluded."status"`,
           ageingBucket: sql`excluded."ageingBucket"`,
           metadata: sql`excluded."metadata"`,
+          xeroUpdatedDateUtc: sql`excluded."xeroUpdatedDateUtc"`,
           updatedAt: sql`excluded."updatedAt"`,
         },
       })
@@ -358,13 +373,18 @@ export async function createCommsArtefact(
  * Get artefacts for an invoice
  */
 export async function getInvoiceArtefacts(
-  invoiceId: string
+  invoiceId: string,
+  tenantId?: string
 ): Promise<ArCommsArtefact[]> {
   try {
+    const conditions = [eq(arCommsArtefact.invoiceId, invoiceId)];
+    if (tenantId) {
+      conditions.push(eq(arCommsArtefact.tenantId, tenantId));
+    }
     return await db
       .select()
       .from(arCommsArtefact)
-      .where(eq(arCommsArtefact.invoiceId, invoiceId))
+      .where(and(...conditions))
       .orderBy(desc(arCommsArtefact.createdAt));
   } catch (_error) {
     throw new ChatSDKError(
@@ -389,12 +409,19 @@ export async function createNote(note: ArNoteInsert): Promise<ArNote> {
 /**
  * Get notes for an invoice
  */
-export async function getInvoiceNotes(invoiceId: string): Promise<ArNote[]> {
+export async function getInvoiceNotes(
+  invoiceId: string,
+  tenantId?: string
+): Promise<ArNote[]> {
   try {
+    const conditions = [eq(arNote.invoiceId, invoiceId)];
+    if (tenantId) {
+      conditions.push(eq(arNote.tenantId, tenantId));
+    }
     return await db
       .select()
       .from(arNote)
-      .where(eq(arNote.invoiceId, invoiceId))
+      .where(and(...conditions))
       .orderBy(desc(arNote.createdAt));
   } catch (_error) {
     throw new ChatSDKError(
@@ -422,13 +449,18 @@ export async function createReminder(
  * Get reminders for an invoice
  */
 export async function getInvoiceReminders(
-  invoiceId: string
+  invoiceId: string,
+  tenantId?: string
 ): Promise<ArReminder[]> {
   try {
+    const conditions = [eq(arReminder.invoiceId, invoiceId)];
+    if (tenantId) {
+      conditions.push(eq(arReminder.tenantId, tenantId));
+    }
     return await db
       .select()
       .from(arReminder)
-      .where(eq(arReminder.invoiceId, invoiceId))
+      .where(and(...conditions))
       .orderBy(desc(arReminder.plannedAt));
   } catch (_error) {
     throw new ChatSDKError(
@@ -439,14 +471,19 @@ export async function getInvoiceReminders(
 }
 
 /**
- * Get all contacts for a user
+ * Get all contacts for a user and tenant
  */
-export async function getUserContacts(userId: string): Promise<ArContact[]> {
+export async function getUserContacts(
+  userId: string,
+  tenantId: string
+): Promise<ArContact[]> {
   try {
     return await db
       .select()
       .from(arContact)
-      .where(eq(arContact.userId, userId))
+      .where(
+        and(eq(arContact.userId, userId), eq(arContact.tenantId, tenantId))
+      )
       .orderBy(arContact.name);
   } catch (_error) {
     throw new ChatSDKError(
@@ -457,17 +494,23 @@ export async function getUserContacts(userId: string): Promise<ArContact[]> {
 }
 
 /**
- * Get recent artefacts for a user
+ * Get recent artefacts for a user and tenant
  */
 export async function getUserRecentArtefacts(
   userId: string,
+  tenantId: string,
   limit = 50
 ): Promise<ArCommsArtefact[]> {
   try {
     return await db
       .select()
       .from(arCommsArtefact)
-      .where(eq(arCommsArtefact.userId, userId))
+      .where(
+        and(
+          eq(arCommsArtefact.userId, userId),
+          eq(arCommsArtefact.tenantId, tenantId)
+        )
+      )
       .orderBy(desc(arCommsArtefact.createdAt))
       .limit(limit);
   } catch (_error) {

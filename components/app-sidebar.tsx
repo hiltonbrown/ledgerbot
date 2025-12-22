@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDistanceToNow } from "date-fns";
 import { Files, LifeBuoy, Lightbulb, MessageSquare, Send } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -33,6 +34,7 @@ type SidebarXeroConnection = {
   tenantId: string;
   tenantName: string | null;
   isActive: boolean;
+  lastSyncedAt?: string | null;
 };
 
 export function AppSidebar({
@@ -165,8 +167,21 @@ export function AppSidebar({
                 <SelectContent>
                   {xeroConnections?.map((connection) => (
                     <SelectItem key={connection.id} value={connection.id}>
-                      {connection.tenantName || "Unnamed organisation"}
-                      {connection.isActive && " (Active)"}
+                      <div className="flex flex-col">
+                        <span>
+                          {connection.tenantName || "Unnamed organisation"}
+                          {connection.isActive && " (Active)"}
+                        </span>
+                        {connection.lastSyncedAt && (
+                          <span className="text-[10px] text-muted-foreground opacity-70">
+                            Synced{" "}
+                            {formatDistanceToNow(
+                              new Date(connection.lastSyncedAt),
+                              { addSuffix: true }
+                            )}
+                          </span>
+                        )}
+                      </div>
                     </SelectItem>
                   ))}
                   <SelectSeparator />

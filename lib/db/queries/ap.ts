@@ -2,7 +2,7 @@ import "server-only";
 
 import { and, desc, eq, lte, or, sql } from "drizzle-orm";
 import { ChatSDKError } from "@/lib/errors";
-import { db } from "../queries";
+import { db, getActiveXeroConnection } from "../queries";
 import type {
   ApBankChange,
   ApBankChangeInsert,
@@ -78,6 +78,7 @@ export type APKPIs = {
   overdueBills: number;
   overdueAmount: number;
   ageingSummary: AgeingBucket[];
+  lastSyncedAt?: string;
 };
 
 /**
@@ -222,11 +223,12 @@ export async function getBillWithDetails(
 }
 
 /**
- * Upsert contacts (insert or update by externalRef)
+ * Upsert contacts (insert or update by externalRef and tenantId)
  */
 export async function upsertContacts(
   userId: string,
-  contacts: Omit<ApContactInsert, "userId">[]
+  tenantId: string,
+  contacts: Omit<ApContactInsert, "userId" | "tenantId">[]
 ): Promise<ApContact[]> {
   try {
     const results: ApContact[] = [];
@@ -239,6 +241,7 @@ export async function upsertContacts(
             .where(
               and(
                 eq(apContact.userId, userId),
+                eq(apContact.tenantId, tenantId),
                 eq(apContact.externalRef, contact.externalRef)
               )
             )
@@ -261,6 +264,7 @@ export async function upsertContacts(
           .values({
             ...contact,
             userId,
+            tenantId,
           })
           .returning();
         results.push(inserted);
@@ -275,11 +279,12 @@ export async function upsertContacts(
 }
 
 /**
- * Upsert bills (insert or update by externalRef)
+ * Upsert bills (insert or update by externalRef and tenantId)
  */
 export async function upsertBills(
   userId: string,
-  bills: Omit<ApBillInsert, "userId">[]
+  tenantId: string,
+  bills: Omit<ApBillInsert, "userId" | "tenantId">[]
 ): Promise<ApBill[]> {
   try {
     if (bills.length === 0) {
@@ -289,6 +294,7 @@ export async function upsertBills(
     const billValues = bills.map((bill) => ({
       ...bill,
       userId,
+      tenantId,
       updatedAt: new Date(),
     }));
 
@@ -296,7 +302,9 @@ export async function upsertBills(
       .insert(apBill)
       .values(billValues)
       .onConflictDoUpdate({
-        target: [apBill.externalRef, apBill.userId],
+        // target needs to match a unique constraint or index.
+        // We use the new unique index on (tenantId, externalRef).
+        target: [apBill.tenantId, apBill.externalRef],
         set: {
           contactId: sql`excluded."contactId"`,
           number: sql`excluded."number"`,
@@ -314,6 +322,8 @@ export async function upsertBills(
           attachmentUrl: sql`excluded."attachmentUrl"`,
           lineItems: sql`excluded."lineItems"`,
           metadata: sql`excluded."metadata"`,
+          xeroUpdatedDateUtc: sql`excluded."xeroUpdatedDateUtc"`,
+          xeroModifiedDateUtc: sql`excluded."xeroModifiedDateUtc"`,
           updatedAt: sql`excluded."updatedAt"`,
         },
       })
@@ -770,6 +780,9 @@ export async function getAPKPIs(userId: string): Promise<APKPIs> {
       })
     );
 
+    // Fetch active connection for sync status
+    const connection = await getActiveXeroConnection(userId);
+
     return {
       totalOutstanding: Math.round(totalOutstanding * 100) / 100,
       activeCreditors: creditorSet.size,
@@ -777,6 +790,7 @@ export async function getAPKPIs(userId: string): Promise<APKPIs> {
       overdueBills,
       overdueAmount: Math.round(overdueAmount * 100) / 100,
       ageingSummary,
+      lastSyncedAt: connection?.lastSyncedAt?.toISOString(),
     };
   } catch (error) {
     console.error("[AP] Get AP KPIs error:", error);

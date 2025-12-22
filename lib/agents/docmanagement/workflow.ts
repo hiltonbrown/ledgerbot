@@ -500,9 +500,10 @@ function selectRelevantSections(
       .join(" \n ")
       .toLowerCase();
 
-    const score = keywords.reduce((acc, keyword) => {
-      return acc + (haystack.includes(keyword) ? 1 : 0);
-    }, 0);
+    const score = keywords.reduce(
+      (acc, keyword) => acc + (haystack.includes(keyword) ? 1 : 0),
+      0
+    );
 
     return { section, score };
   });
@@ -524,9 +525,10 @@ function extractRelevantExcerpts(text: string, question: string): string[] {
 
   const scored = paragraphs.map((paragraph) => {
     const haystack = paragraph.toLowerCase();
-    const score = keywords.reduce((acc, keyword) => {
-      return acc + haystack.split(keyword).length - 1;
-    }, 0);
+    const score = keywords.reduce(
+      (acc, keyword) => acc + haystack.split(keyword).length - 1,
+      0
+    );
 
     return { paragraph: paragraph.trim(), score };
   });

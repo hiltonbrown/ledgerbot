@@ -1,6 +1,6 @@
+import type { AbnStatus, AbrLookupResult } from "@/types/abr";
 import { abnLookupConfig } from "./config";
-import { normaliseAbn, validateAbnChecksum, validateAcnChecksum } from "./utils";
-import type { AbrLookupResult, AbrQueryKind, AbnStatus, GstRegistration, DgrStatus, BusinessLocation, BusinessNameRecord } from "@/types/abr";
+import { normaliseAbn, validateAbnChecksum } from "./utils";
 
 // Internal types for raw ABR JSON responses
 interface AbrJsonAbnDetails {
@@ -36,7 +36,7 @@ interface AbrJsonNameSearchResponse {
 }
 
 function stripJsonp(payload: string): string {
-  let trimmed = payload.trim();
+  const trimmed = payload.trim();
   // Remove callback wrapper: callback({...}) -> {...}
   const match = trimmed.match(/^[^(]*\((.*)\)\s*;?$/s);
   if (match?.[1]) {
@@ -49,7 +49,7 @@ function parseAbrDate(dateStr: string | null): string | null {
   if (!dateStr) return null;
   // ABR often returns dates like "2023-01-01" or empty string
   if (dateStr.trim() === "") return null;
-  return dateStr; 
+  return dateStr;
 }
 
 export class AbrClient {
@@ -68,7 +68,10 @@ export class AbrClient {
     this.baseUrl = abnLookupConfig.baseUrl.replace(/\/$/, "");
   }
 
-  private async fetchJson(endpoint: string, params: Record<string, string>): Promise<any> {
+  private async fetchJson(
+    endpoint: string,
+    params: Record<string, string>
+  ): Promise<any> {
     const url = new URL(`${this.baseUrl}/${endpoint}`);
     url.searchParams.set("guid", this.guid);
     for (const [key, value] of Object.entries(params)) {
@@ -77,25 +80,31 @@ export class AbrClient {
 
     // JSONP endpoint typically ignores Accept header but we set it anyway
     const response = await fetch(url.toString(), {
-      headers: { "Accept": "application/json" }
+      headers: { Accept: "application/json" },
     });
 
     if (!response.ok) {
-      throw new Error(`ABR API request failed: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `ABR API request failed: ${response.status} ${response.statusText}`
+      );
     }
 
     const text = await response.text();
     const jsonStr = stripJsonp(text);
-    
+
     try {
       const data = JSON.parse(jsonStr);
       // ABR API returns a "Message" field on error/no results
-      if (data.Message && typeof data.Message === "string" && data.Message.length > 0) {
-         // Sometimes Message is just a warning, but for simple lookups it often means not found or invalid GUID
-         // We'll let the caller handle empty results if it's just "No records found"
-         if (data.Message.includes("No record found")) {
-             return null;
-         }
+      if (
+        data.Message &&
+        typeof data.Message === "string" &&
+        data.Message.length > 0
+      ) {
+        // Sometimes Message is just a warning, but for simple lookups it often means not found or invalid GUID
+        // We'll let the caller handle empty results if it's just "No records found"
+        if (data.Message.includes("No record found")) {
+          return null;
+        }
       }
       return data;
     } catch (e) {
@@ -103,35 +112,41 @@ export class AbrClient {
     }
   }
 
-  async searchByAbn(abn: string, includeHistorical = false): Promise<AbrLookupResult | null> {
+  async searchByAbn(
+    abn: string,
+    includeHistorical = false
+  ): Promise<AbrLookupResult | null> {
     const normalised = normaliseAbn(abn);
     if (!validateAbnChecksum(normalised)) {
       throw new Error(`Invalid ABN checksum: ${abn}`);
     }
 
-    const data = await this.fetchJson("AbnDetails.aspx", {
+    const data = (await this.fetchJson("AbnDetails.aspx", {
       abn: normalised,
-      includeHistoricalDetails: includeHistorical ? "y" : "n"
-    }) as AbrJsonAbnDetails;
+      includeHistoricalDetails: includeHistorical ? "y" : "n",
+    })) as AbrJsonAbnDetails;
 
     if (!data || !data.Abn) return null;
 
     return this.mapAbnDetailsToResult(data);
   }
 
-  async searchByName(name: string, maxResults = 10): Promise<AbrLookupResult[]> {
-    const data = await this.fetchJson("MatchingNames.aspx", {
+  async searchByName(
+    name: string,
+    maxResults = 10
+  ): Promise<AbrLookupResult[]> {
+    const data = (await this.fetchJson("MatchingNames.aspx", {
       name,
-      maxResults: String(maxResults)
-    }) as AbrJsonNameSearchResponse;
+      maxResults: String(maxResults),
+    })) as AbrJsonNameSearchResponse;
 
     if (!data || !data.Names) return [];
 
-    // The name search returns summary data. 
+    // The name search returns summary data.
     // Ideally we might want full details, but that requires N+1 calls.
     // For now, we map what we have.
     // Note: Name search results in JSON API are limited.
-    return data.Names.map(n => ({
+    return data.Names.map((n) => ({
       abn: n.Abn,
       abnStatus: n.AbnStatus as AbnStatus,
       abnStatusEffectiveFrom: "", // Not provided in search
@@ -141,9 +156,15 @@ export class AbrClient {
       entityTypeCode: null,
       gst: { status: "Unknown", effectiveFrom: null, effectiveTo: null },
       dgr: { isDgr: false, effectiveFrom: null, effectiveTo: null },
-      businessNames: [{ name: n.Name, isTradingName: n.NameType === "Trading Name", effectiveFrom: "" }],
+      businessNames: [
+        {
+          name: n.Name,
+          isTradingName: n.NameType === "Trading Name",
+          effectiveFrom: "",
+        },
+      ],
       mainBusinessLocation: { state: n.State, postcode: n.Postcode },
-      score: n.Score
+      score: n.Score,
     }));
   }
 
@@ -152,14 +173,16 @@ export class AbrClient {
     const gstRegistered = !!data.Gst;
     let gstEffectiveFrom: string | null = null;
     if (gstRegistered && data.Gst) {
-        // data.Gst is often the date string itself in some versions, or an object?
-        // Checking ABR docs: "Gst": "2000-07-01"
-        gstEffectiveFrom = data.Gst;
+      // data.Gst is often the date string itself in some versions, or an object?
+      // Checking ABR docs: "Gst": "2000-07-01"
+      gstEffectiveFrom = data.Gst;
     }
 
     return {
       abn: data.Abn,
-      abnStatus: (data.AbnStatus === "Active" ? "Active" : "Cancelled") as AbnStatus,
+      abnStatus: (data.AbnStatus === "Active"
+        ? "Active"
+        : "Cancelled") as AbnStatus,
       abnStatusEffectiveFrom: data.AbnStatusEffectiveFrom,
       acn: data.Acn || null,
       entityName: data.EntityName,
@@ -168,18 +191,18 @@ export class AbrClient {
       gst: {
         status: gstRegistered ? "Registered" : "Not Registered",
         effectiveFrom: gstEffectiveFrom,
-        effectiveTo: null
+        effectiveTo: null,
       },
       dgr: { isDgr: false, effectiveFrom: null, effectiveTo: null }, // JSON API doesn't always expose DGR easily
-      businessNames: (data.BusinessName || []).map(bn => ({
+      businessNames: (data.BusinessName || []).map((bn) => ({
         name: bn,
         isTradingName: true, // JSON API groups them generally
-        effectiveFrom: ""
+        effectiveFrom: "",
       })),
       mainBusinessLocation: {
         state: data.AddressState,
-        postcode: data.AddressPostcode
-      }
+        postcode: data.AddressPostcode,
+      },
     };
   }
 }

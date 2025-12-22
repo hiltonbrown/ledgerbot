@@ -18,7 +18,7 @@ export const abn_search_entity = tool({
     // We leverage the service which handles Name vs ABN, but this tool is specifically "Search Entity" (usually by name)
     // but users might type an ABN here too.
     const result = await abrService.lookup(query);
-    
+
     // We limit results manually if needed, though client does it too
     const limitedResults = result.results.slice(0, maxResults);
 
@@ -35,7 +35,7 @@ export const abn_search_entity = tool({
         dgrStatus: entry.dgr.isDgr ? "Registered" : "Not Registered",
         dgrStatusFrom: entry.dgr.effectiveFrom,
         entityType: entry.entityType,
-        businessNames: entry.businessNames.map(bn => bn.name),
+        businessNames: entry.businessNames.map((bn) => bn.name),
       };
     });
 

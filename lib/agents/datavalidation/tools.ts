@@ -1,14 +1,12 @@
 import { tool } from "ai";
 import { z } from "zod";
-import {
-  getLatestVerification,
-  getVerificationSummary, // Need to implement this query
-  listContacts,
-} from "@/lib/db/queries/datavalidation";
 import { abrService } from "@/lib/abr/service";
-import { validateAbnChecksum, validateAcnChecksum, normaliseAbn } from "@/lib/abr/utils";
+import {
+  normaliseAbn,
+  validateAbnChecksum,
+  validateAcnChecksum,
+} from "@/lib/abr/utils";
 import { asicDatasetService } from "@/lib/services/asic-dataset-service";
-import { verificationService } from "@/lib/services/verification-service";
 
 export const dataValidationTools = {
   validateABN: tool({
@@ -19,23 +17,23 @@ export const dataValidationTools = {
     execute: async ({ abn }) => {
       const cleanAbn = normaliseAbn(abn);
       const validFormat = validateAbnChecksum(cleanAbn);
-      
+
       if (!validFormat) {
         return {
           valid: false,
           error: "Invalid ABN checksum or format",
         };
       }
-      
+
       const searchResult = await abrService.lookup(cleanAbn);
-      
+
       if (searchResult.results.length === 0) {
-          return {
-              valid: true, // Format is valid
-              formatted: cleanAbn,
-              found: false,
-              message: "ABN format is valid but not found in ABR"
-          }
+        return {
+          valid: true, // Format is valid
+          formatted: cleanAbn,
+          found: false,
+          message: "ABN format is valid but not found in ABR",
+        };
       }
 
       return {
@@ -56,7 +54,7 @@ export const dataValidationTools = {
     execute: async ({ acn }) => {
       const cleanAcn = normaliseAbn(acn);
       const validFormat = validateAcnChecksum(cleanAcn);
-      
+
       if (!validFormat) {
         return {
           valid: false,
@@ -77,9 +75,9 @@ export const dataValidationTools = {
     inputSchema: z.object({
       contactId: z.string().describe("The Xero Contact ID to verify"),
     }),
-    execute: async ({ contactId }) => {
-      return { error: "Not implemented: requires DB fetch logic" };
-    },
+    execute: async ({ contactId }) => ({
+      error: "Not implemented: requires DB fetch logic",
+    }),
   }),
 
   searchBusinessByName: tool({
@@ -101,9 +99,9 @@ export const dataValidationTools = {
     execute: async ({ abn }) => {
       const cleanAbn = normaliseAbn(abn);
       const searchResult = await abrService.lookup(cleanAbn);
-      
+
       if (searchResult.results.length === 0) return { found: false };
-      
+
       const record = searchResult.results[0];
       return {
         found: true,
@@ -116,8 +114,6 @@ export const dataValidationTools = {
   getVerificationSummary: tool({
     description: "Get summary statistics of contact verifications",
     inputSchema: z.object({}),
-    execute: async () => {
-      return { error: "UserId context required" };
-    },
+    execute: async () => ({ error: "UserId context required" }),
   }),
 };

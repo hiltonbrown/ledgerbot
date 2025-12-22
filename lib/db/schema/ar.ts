@@ -25,17 +25,23 @@ export const arContact = pgTable(
         onDelete: "cascade",
         onUpdate: "cascade",
       }),
+    tenantId: varchar("tenantId", { length: 255 }).notNull().default("legacy"),
     name: varchar("name", { length: 255 }).notNull(),
     email: varchar("email", { length: 255 }),
     phone: varchar("phone", { length: 50 }),
     externalRef: varchar("externalRef", { length: 255 }), // Xero contact ID
+    xeroUpdatedDateUtc: timestamp("xeroUpdatedDateUtc"),
     metadata: jsonb("metadata").$type<Record<string, unknown>>(),
     createdAt: timestamp("createdAt").notNull().defaultNow(),
     updatedAt: timestamp("updatedAt").notNull().defaultNow(),
   },
   (table) => ({
     userIdIdx: index("ar_contact_user_id_idx").on(table.userId),
+    tenantIdIdx: index("ar_contact_tenant_id_idx").on(table.tenantId),
     externalRefIdx: index("ar_contact_external_ref_idx").on(table.externalRef),
+    tenantExternalRefUnq: uniqueIndex(
+      "ar_contact_tenant_external_ref_unique"
+    ).on(table.tenantId, table.externalRef),
   })
 );
 
@@ -52,6 +58,7 @@ export const arInvoice = pgTable(
         onDelete: "cascade",
         onUpdate: "cascade",
       }),
+    tenantId: varchar("tenantId", { length: 255 }).notNull().default("legacy"),
     contactId: uuid("contactId")
       .notNull()
       .references(() => arContact.id),
@@ -85,19 +92,21 @@ export const arInvoice = pgTable(
       enum: ["Current", "1-30", "31-60", "61-90", "90+"],
     }),
     externalRef: varchar("externalRef", { length: 255 }).notNull(), // Xero invoice ID
+    xeroUpdatedDateUtc: timestamp("xeroUpdatedDateUtc"),
     metadata: jsonb("metadata").$type<Record<string, unknown>>(),
     createdAt: timestamp("createdAt").notNull().defaultNow(),
     updatedAt: timestamp("updatedAt").notNull().defaultNow(),
   },
   (table) => ({
     userIdIdx: index("ar_invoice_user_id_idx").on(table.userId),
+    tenantIdIdx: index("ar_invoice_tenant_id_idx").on(table.tenantId),
     contactIdIdx: index("ar_invoice_contact_id_idx").on(table.contactId),
     statusIdx: index("ar_invoice_status_idx").on(table.status),
     dueDateIdx: index("ar_invoice_due_date_idx").on(table.dueDate),
     externalRefIdx: index("ar_invoice_external_ref_idx").on(table.externalRef),
-    externalRefUserIdUnique: uniqueIndex(
-      "ar_invoice_external_ref_user_id_unique"
-    ).on(table.externalRef, table.userId),
+    tenantExternalRefUnq: uniqueIndex(
+      "ar_invoice_tenant_external_ref_unique"
+    ).on(table.tenantId, table.externalRef),
   })
 );
 
@@ -108,6 +117,7 @@ export const arPayment = pgTable(
   "ArPayment",
   {
     id: uuid("id").primaryKey().notNull().defaultRandom(),
+    tenantId: varchar("tenantId", { length: 255 }).notNull().default("legacy"),
     invoiceId: uuid("invoiceId")
       .notNull()
       .references(() => arInvoice.id, { onDelete: "cascade" }),
@@ -121,6 +131,7 @@ export const arPayment = pgTable(
     createdAt: timestamp("createdAt").notNull().defaultNow(),
   },
   (table) => ({
+    tenantIdIdx: index("ar_payment_tenant_id_idx").on(table.tenantId),
     invoiceIdIdx: index("ar_payment_invoice_id_idx").on(table.invoiceId),
     contactIdIdx: index("ar_payment_contact_id_idx").on(table.contactId),
     paidAtIdx: index("ar_payment_paid_at_idx").on(table.paidAt),
@@ -141,6 +152,7 @@ export const arCustomerHistory = pgTable(
         onDelete: "cascade",
         onUpdate: "cascade",
       }),
+    tenantId: varchar("tenantId", { length: 255 }).notNull().default("legacy"),
     customerId: uuid("customerId")
       .notNull()
       .references(() => arContact.id, { onDelete: "cascade" }),
@@ -176,15 +188,16 @@ export const arCustomerHistory = pgTable(
   },
   (table) => ({
     userIdIdx: index("ar_customer_history_user_id_idx").on(table.userId),
+    tenantIdIdx: index("ar_customer_history_tenant_id_idx").on(table.tenantId),
     customerIdIdx: index("ar_customer_history_customer_id_idx").on(
       table.customerId
     ),
     computedAtIdx: index("ar_customer_history_computed_at_idx").on(
       table.computedAt
     ),
-    userIdCustomerIdUnique: uniqueIndex(
-      "ar_customer_history_user_id_customer_id_unique"
-    ).on(table.userId, table.customerId),
+    tenantCustomerIdUnique: uniqueIndex(
+      "ar_customer_history_tenant_customer_id_unique"
+    ).on(table.tenantId, table.customerId),
   })
 );
 
@@ -195,6 +208,7 @@ export const arReminder = pgTable(
   "ArReminder",
   {
     id: uuid("id").primaryKey().notNull().defaultRandom(),
+    tenantId: varchar("tenantId", { length: 255 }).notNull().default("legacy"),
     invoiceId: uuid("invoiceId")
       .notNull()
       .references(() => arInvoice.id, { onDelete: "cascade" }),
@@ -207,6 +221,7 @@ export const arReminder = pgTable(
     createdAt: timestamp("createdAt").notNull().defaultNow(),
   },
   (table) => ({
+    tenantIdIdx: index("ar_reminder_tenant_id_idx").on(table.tenantId),
     invoiceIdIdx: index("ar_reminder_invoice_id_idx").on(table.invoiceId),
     plannedAtIdx: index("ar_reminder_planned_at_idx").on(table.plannedAt),
     sentIdx: index("ar_reminder_sent_idx").on(table.sent),
@@ -226,6 +241,7 @@ export const arJobRun = pgTable(
         onDelete: "cascade",
         onUpdate: "cascade",
       }),
+    tenantId: varchar("tenantId", { length: 255 }).notNull().default("legacy"),
     startedAt: timestamp("startedAt").notNull().defaultNow(),
     completedAt: timestamp("completedAt"),
     status: varchar("status", { length: 20 }).notNull().default("running"), // running, success, failed
@@ -242,6 +258,7 @@ export const arJobRun = pgTable(
   },
   (table) => ({
     userIdIdx: index("ar_job_run_user_id_idx").on(table.userId),
+    tenantIdIdx: index("ar_job_run_tenant_id_idx").on(table.tenantId),
     statusIdx: index("ar_job_run_status_idx").on(table.status),
     startedAtIdx: index("ar_job_run_started_at_idx").on(table.startedAt),
   })
@@ -260,6 +277,7 @@ export const arCommsArtefact = pgTable(
         onDelete: "cascade",
         onUpdate: "cascade",
       }),
+    tenantId: varchar("tenantId", { length: 255 }).notNull().default("legacy"),
     invoiceId: uuid("invoiceId")
       .notNull()
       .references(() => arInvoice.id, { onDelete: "cascade" }),
@@ -272,6 +290,7 @@ export const arCommsArtefact = pgTable(
   },
   (table) => ({
     userIdIdx: index("ar_comms_artefact_user_id_idx").on(table.userId),
+    tenantIdIdx: index("ar_comms_artefact_tenant_id_idx").on(table.tenantId),
     invoiceIdIdx: index("ar_comms_artefact_invoice_id_idx").on(table.invoiceId),
     channelIdx: index("ar_comms_artefact_channel_idx").on(table.channel),
     createdAtIdx: index("ar_comms_artefact_created_at_idx").on(table.createdAt),
@@ -291,6 +310,7 @@ export const arNote = pgTable(
         onDelete: "cascade",
         onUpdate: "cascade",
       }),
+    tenantId: varchar("tenantId", { length: 255 }).notNull().default("legacy"),
     invoiceId: uuid("invoiceId")
       .notNull()
       .references(() => arInvoice.id, { onDelete: "cascade" }),
@@ -302,6 +322,7 @@ export const arNote = pgTable(
     createdAt: timestamp("createdAt").notNull().defaultNow(),
   },
   (table) => ({
+    tenantIdIdx: index("ar_note_tenant_id_idx").on(table.tenantId),
     invoiceIdIdx: index("ar_note_invoice_id_idx").on(table.invoiceId),
     userIdIdx: index("ar_note_user_id_idx").on(table.userId),
   })
@@ -320,6 +341,7 @@ export const arCreditNote = pgTable(
         onDelete: "cascade",
         onUpdate: "cascade",
       }),
+    tenantId: varchar("tenantId", { length: 255 }).notNull().default("legacy"),
     contactId: uuid("contactId")
       .notNull()
       .references(() => arContact.id, { onDelete: "cascade" }),
@@ -349,15 +371,16 @@ export const arCreditNote = pgTable(
   },
   (table) => ({
     userIdIdx: index("ar_credit_note_user_id_idx").on(table.userId),
+    tenantIdIdx: index("ar_credit_note_tenant_id_idx").on(table.tenantId),
     contactIdIdx: index("ar_credit_note_contact_id_idx").on(table.contactId),
     statusIdx: index("ar_credit_note_status_idx").on(table.status),
     issueDateIdx: index("ar_credit_note_issue_date_idx").on(table.issueDate),
     externalRefIdx: index("ar_credit_note_external_ref_idx").on(
       table.externalRef
     ),
-    externalRefUserIdUnique: uniqueIndex(
-      "ar_credit_note_external_ref_user_id_unique"
-    ).on(table.externalRef, table.userId),
+    tenantExternalRefUnq: uniqueIndex(
+      "ar_credit_note_tenant_external_ref_unique"
+    ).on(table.tenantId, table.externalRef),
   })
 );
 
@@ -389,6 +412,7 @@ export const arFollowUpContext = pgTable(
         onDelete: "cascade",
         onUpdate: "cascade",
       }),
+    tenantId: varchar("tenantId", { length: 255 }).notNull().default("legacy"),
     contactId: uuid("contactId")
       .notNull()
       .references(() => arContact.id, { onDelete: "cascade" }),
@@ -398,6 +422,7 @@ export const arFollowUpContext = pgTable(
     updatedAt: timestamp("updatedAt").notNull().defaultNow(),
   },
   (table) => ({
+    tenantIdIdx: index("ar_followup_context_tenant_id_idx").on(table.tenantId),
     userContactIdx: index("ar_followup_context_user_contact_idx").on(
       table.userId,
       table.contactId
@@ -421,6 +446,7 @@ export const arOverpayment = pgTable(
         onDelete: "cascade",
         onUpdate: "cascade",
       }),
+    tenantId: varchar("tenantId", { length: 255 }).notNull().default("legacy"),
     contactId: uuid("contactId")
       .notNull()
       .references(() => arContact.id, { onDelete: "cascade" }),
@@ -449,13 +475,14 @@ export const arOverpayment = pgTable(
   },
   (table) => ({
     userIdIdx: index("ar_overpayment_user_id_idx").on(table.userId),
+    tenantIdIdx: index("ar_overpayment_tenant_id_idx").on(table.tenantId),
     contactIdIdx: index("ar_overpayment_contact_id_idx").on(table.contactId),
     externalRefIdx: index("ar_overpayment_external_ref_idx").on(
       table.externalRef
     ),
-    externalRefUserIdUnique: uniqueIndex(
-      "ar_overpayment_external_ref_user_id_unique"
-    ).on(table.externalRef, table.userId),
+    tenantExternalRefUnq: uniqueIndex(
+      "ar_overpayment_tenant_external_ref_unique"
+    ).on(table.tenantId, table.externalRef),
   })
 );
 
@@ -472,6 +499,7 @@ export const arPrepayment = pgTable(
         onDelete: "cascade",
         onUpdate: "cascade",
       }),
+    tenantId: varchar("tenantId", { length: 255 }).notNull().default("legacy"),
     contactId: uuid("contactId")
       .notNull()
       .references(() => arContact.id, { onDelete: "cascade" }),
@@ -500,15 +528,19 @@ export const arPrepayment = pgTable(
   },
   (table) => ({
     userIdIdx: index("ar_prepayment_user_id_idx").on(table.userId),
+    tenantIdIdx: index("ar_prepayment_tenant_id_idx").on(table.tenantId),
     contactIdIdx: index("ar_prepayment_contact_id_idx").on(table.contactId),
     externalRefIdx: index("ar_prepayment_external_ref_idx").on(
       table.externalRef
     ),
-    externalRefUserIdUnique: uniqueIndex(
-      "ar_prepayment_external_ref_user_id_unique"
-    ).on(table.externalRef, table.userId),
+    tenantExternalRefUnq: uniqueIndex(
+      "ar_prepayment_tenant_external_ref_unique"
+    ).on(table.tenantId, table.externalRef),
   })
 );
+
+export type ArPrepayment = InferSelectModel<typeof arPrepayment>;
+export type ArPrepaymentInsert = typeof arPrepayment.$inferInsert;
 
 export type ArPrepayment = InferSelectModel<typeof arPrepayment>;
 export type ArPrepaymentInsert = typeof arPrepayment.$inferInsert;

@@ -19,8 +19,8 @@ export function validateAbnChecksum(abn: string): boolean {
 
   // ABN cannot start with 0 (after normalisation, though usually handled by subtraction)
   // Actually, the subtraction step handles the 0 check effectively as (0-1) would mess up the weights if not allowed?
-  // The ATO says "11 digit number". 
-  
+  // The ATO says "11 digit number".
+
   const weights = [10, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19];
   const digits = abn.split("").map((d) => Number.parseInt(d, 10));
 
@@ -28,9 +28,10 @@ export function validateAbnChecksum(abn: string): boolean {
   digits[0] -= 1;
 
   // 2. Multiply each digit by its weighting factor & 3. Sum the results
-  const sum = digits.reduce((prev, curr, index) => {
-    return prev + curr * weights[index];
-  }, 0);
+  const sum = digits.reduce(
+    (prev, curr, index) => prev + curr * weights[index],
+    0
+  );
 
   // 4. Divide by 89. If the remainder is 0, the ABN is valid.
   return sum % 89 === 0;
@@ -49,9 +50,10 @@ export function validateAcnChecksum(acn: string): boolean {
   const digits = acn.split("").map((d) => Number.parseInt(d, 10));
   const checkDigit = digits.pop()!; // The last digit is the check digit
 
-  const sum = digits.reduce((prev, curr, index) => {
-    return prev + curr * weights[index];
-  }, 0);
+  const sum = digits.reduce(
+    (prev, curr, index) => prev + curr * weights[index],
+    0
+  );
 
   const remainder = sum % 10;
   const complement = 10 - remainder;
@@ -64,7 +66,10 @@ export function validateAcnChecksum(acn: string): boolean {
  * Classifies a search query string.
  * Supports natural language by extracting potential ABNs.
  */
-export function classifyAbrQuery(input: string): { kind: AbrQueryKind; value: string } {
+export function classifyAbrQuery(input: string): {
+  kind: AbrQueryKind;
+  value: string;
+} {
   const normalised = normaliseAbn(input);
 
   // Check for direct 11-digit ABN match

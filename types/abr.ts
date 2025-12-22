@@ -29,9 +29,9 @@ export interface AbrLookupResult {
   abn: string;
   abnStatus: AbnStatus;
   abnStatusEffectiveFrom: string; // ISO Date
-  
+
   acn: string | null;
-  
+
   entityName: string;
   entityType: string; // e.g., "Australian Private Company"
   entityTypeCode: string | null;
@@ -41,7 +41,7 @@ export interface AbrLookupResult {
 
   businessNames: BusinessNameRecord[];
   mainBusinessLocation: BusinessLocation;
-  
+
   score?: number; // For name search relevance
 }
 

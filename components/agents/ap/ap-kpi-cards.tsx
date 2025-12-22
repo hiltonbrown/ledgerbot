@@ -9,6 +9,7 @@ export type APKPIs = {
   daysPayableOutstanding: number;
   overdueBills?: number;
   overdueAmount?: number;
+  lastSyncedAt?: string;
 };
 
 type APKPICardsProps = {

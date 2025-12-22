@@ -19,8 +19,6 @@ import {
   paginateXeroAPI,
   persistTokenSet,
 } from "@/lib/xero/client-helpers";
-import { getDecryptedConnection } from "@/lib/xero/connection-manager";
-import { encryptToken } from "@/lib/xero/encryption";
 import type { ParsedXeroError } from "@/lib/xero/error-handler";
 import {
   extractCorrelationId,
@@ -35,13 +33,8 @@ import {
   generateRateLimitUserMessage,
   logRateLimitStatus,
   type RateLimitInfo,
-  shouldWaitForRateLimit,
 } from "@/lib/xero/rate-limit-handler";
-import {
-  upsertContacts,
-  upsertInvoices,
-  upsertPayments,
-} from "@/lib/xero/sync-store";
+import { upsertContacts, upsertInvoices } from "@/lib/xero/sync-store";
 import type { DecryptedXeroConnection } from "@/lib/xero/types";
 
 /**

@@ -1,12 +1,10 @@
-import { count, desc, eq, inArray, sql } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db/queries";
 import {
   dvContacts,
   dvVerificationResults,
-  dvWebhookEvents,
 } from "@/lib/db/schema/datavalidation"; // Adjusted import path to match implementation
 import type {
-  VerificationIssue,
   VerificationResult,
   XeroContactRecord,
 } from "@/types/datavalidation";
