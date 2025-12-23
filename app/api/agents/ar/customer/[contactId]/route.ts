@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
-import { db } from "@/lib/db/queries";
+import { db, getActiveXeroConnection } from "@/lib/db/queries";
 import {
   getInvoiceArtefacts,
   getInvoiceNotes,
@@ -74,10 +74,17 @@ export async function GET(
       return new NextResponse("Contact not found", { status: 404 });
     }
 
+    // Get active Xero connection for tenantId
+    const xeroConnection = await getActiveXeroConnection(user.id);
+    if (!xeroConnection) {
+      return new NextResponse("Xero connection not found", { status: 404 });
+    }
+
     // Get all invoices for this contact (including paid ones)
     const asOf = new Date();
     const allInvoicesResult = await listInvoicesDue({
       userId: user.id,
+      tenantId: xeroConnection.tenantId,
       asOf,
       minDaysOverdue: 0,
       customerId: contactId,

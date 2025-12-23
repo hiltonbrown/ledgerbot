@@ -4,7 +4,11 @@ import { type CoreMessage, streamText } from "ai";
 import { NextResponse } from "next/server";
 import { myProvider } from "@/lib/ai/providers";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
-import { getChatById, saveChat } from "@/lib/db/queries";
+import {
+  getActiveXeroConnection,
+  getChatById,
+  saveChat,
+} from "@/lib/db/queries";
 import {
   buildCallScriptTool,
   buildEmailReminderTool,

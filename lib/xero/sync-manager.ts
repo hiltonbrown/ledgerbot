@@ -144,14 +144,14 @@ export async function startSyncJob(
         abortController.signal
       );
 
-      if (job.status !== "cancelled") {
+      if ((job.status as JobStatus) !== "cancelled") {
         job.status = "success";
         job.progress = 100;
         job.message = "Sync completed successfully";
         job.result = result;
       }
     } catch (error: any) {
-      if (error.name === "AbortError" || job.status === "cancelled") {
+      if (error.name === "AbortError" || (job.status as JobStatus) === "cancelled") {
         job.status = "cancelled";
       } else {
         job.status = "failed";

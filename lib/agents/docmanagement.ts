@@ -627,7 +627,7 @@ export function formatAnswerWithCitations(
   return attachCitations(answer, doc);
 }
 
-import { generateText } from "ai";
+import { generateText, stepCountIs } from "ai";
 import { myProvider } from "@/lib/ai/providers";
 import { executeXeroMCPTool } from "@/lib/ai/xero-mcp-client";
 
@@ -759,7 +759,7 @@ export async function respondWithCitations({
     system: SYSTEM_INSTRUCTIONS,
     messages,
     tools: getDocManagementTools(),
-    maxSteps: 5,
+    stopWhen: stepCountIs(5),
   });
 
   return formatAnswerWithCitations(rawAnswer, activeDoc);

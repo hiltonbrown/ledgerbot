@@ -12,8 +12,11 @@ import { toast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import type { AgeingReportItem, ARKPIs } from "@/lib/actions/ar";
-import { getAgeingReportData, getARKPIs } from "@/lib/actions/ar";
-import { getActiveXeroConnection } from "@/lib/db/queries";
+import {
+  getActiveXeroConnectionAction,
+  getAgeingReportData,
+  getARKPIs,
+} from "@/lib/actions/ar";
 
 export default function AgeingReportPage() {
   const { userId } = useAuth();
@@ -58,7 +61,7 @@ export default function AgeingReportPage() {
           toast({ type: "success", description: "Sync complete." });
           if (activeConnection) loadData(activeConnection.tenantId);
           // Refresh connection to get new lastSyncAt
-          const conn = await getActiveXeroConnection(userId!);
+          const conn = await getActiveXeroConnectionAction();
           setActiveConnection(conn);
         } else if (job.status === "failed") {
           setIsSyncing(false);
@@ -110,7 +113,7 @@ export default function AgeingReportPage() {
     if (!userId) return;
 
     (async () => {
-      const conn = await getActiveXeroConnection(userId);
+      const conn = await getActiveXeroConnectionAction();
       if (conn) {
         setActiveConnection(conn);
         await loadData(conn.tenantId);

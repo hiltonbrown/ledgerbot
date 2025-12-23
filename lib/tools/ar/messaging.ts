@@ -418,7 +418,7 @@ export const syncXeroTool = tool({
 
 // Helper functions
 
-function generateEmailContent(
+export function generateEmailContent(
   invoice: Awaited<ReturnType<typeof getInvoiceWithContact>>,
   tone: "polite" | "firm" | "final"
 ): { subject: string; body: string } {

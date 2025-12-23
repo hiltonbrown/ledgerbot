@@ -541,6 +541,3 @@ export const arPrepayment = pgTable(
 
 export type ArPrepayment = InferSelectModel<typeof arPrepayment>;
 export type ArPrepaymentInsert = typeof arPrepayment.$inferInsert;
-
-export type ArPrepayment = InferSelectModel<typeof arPrepayment>;
-export type ArPrepaymentInsert = typeof arPrepayment.$inferInsert;

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
 import { listInvoicesDue } from "@/lib/db/queries/ar";
+import { getActiveXeroConnection } from "@/lib/db/queries";
 
 export const maxDuration = 60;
 
@@ -50,9 +51,16 @@ export async function GET(req: Request) {
     const asOfParam = searchParams.get("asOf");
     const asOf = asOfParam ? new Date(asOfParam) : new Date();
 
+    // Get active Xero connection for tenantId
+    const xeroConnection = await getActiveXeroConnection(user.id);
+    if (!xeroConnection) {
+      return new NextResponse("Xero connection not found", { status: 404 });
+    }
+
     // Get all due invoices (0+ days overdue)
     const result = await listInvoicesDue({
       userId: user.id,
+      tenantId: xeroConnection.tenantId,
       asOf,
       minDaysOverdue: 0,
     });

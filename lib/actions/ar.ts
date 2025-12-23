@@ -3,7 +3,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { differenceInDays } from "date-fns";
 import { and, desc, eq, sql } from "drizzle-orm";
-import { db } from "@/lib/db/queries";
+import { db, getActiveXeroConnection } from "@/lib/db/queries";
 import {
   arContact,
   arCreditNote,
@@ -190,13 +190,19 @@ export async function getAgeingReportData(
 }
 
 export async function getCustomerInvoiceDetails(
-  contactId: string,
-  tenantId: string
+  contactId: string
 ) {
   const { userId } = await auth();
   if (!userId) {
     throw new Error("Unauthorized");
   }
+
+  // Get active Xero connection for tenantId
+  const xeroConnection = await getActiveXeroConnection(userId);
+  if (!xeroConnection) {
+    throw new Error("Xero connection not found");
+  }
+  const tenantId = xeroConnection.tenantId;
 
   // Verify the contact belongs to the authenticated user and tenant
   const contact = await db.query.arContact.findFirst({
@@ -416,4 +422,17 @@ export async function getCustomerFollowUpData(
       currency: inv.currency || "AUD",
     })),
   };
+}
+
+/**
+ * Server action to get the active Xero connection for the authenticated user
+ */
+export async function getActiveXeroConnectionAction() {
+  const { userId } = await auth();
+  if (!userId) {
+    return null;
+  }
+
+  const { getActiveXeroConnection } = await import("@/lib/db/queries");
+  return await getActiveXeroConnection(userId);
 }
