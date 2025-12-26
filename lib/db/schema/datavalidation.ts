@@ -6,6 +6,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import type { VerificationIssue } from "@/types/datavalidation";
@@ -34,8 +35,8 @@ export const dvContacts = pgTable(
     updatedAt: timestamp("updated_at").defaultNow(),
   },
   (table) => ({
-    userXeroContactIdx: index("dv_contacts_user_xero_idx").on(
-      table.userId,
+    tenantContactIdx: uniqueIndex("dv_contacts_tenant_xero_idx").on(
+      table.xeroTenantId,
       table.xeroContactId
     ),
     taxNumberIdx: index("dv_contacts_tax_number_idx").on(table.taxNumber),
@@ -104,12 +105,13 @@ export const dvAsicBusinessNames = pgTable(
 );
 
 // Webhook event log
-export const dvWebhookEvents = pgTable("dv_webhook_events", {
+export const webhookEvents = pgTable("webhook_events", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").references(() => user.id),
-  eventType: text("event_type").notNull(), // CONTACT_CREATE, CONTACT_UPDATE
-  xeroContactId: text("xero_contact_id").notNull(),
+  userId: uuid("user_id").references(() => user.id), // Nullable for system events
+  resourceId: text("resource_id").notNull(), // Generic ID (ContactID, InvoiceID, etc.)
   xeroTenantId: text("xero_tenant_id").notNull(),
+  eventType: text("event_type").notNull(), // CREATE, UPDATE
+  eventCategory: text("event_category").notNull(), // CONTACT, INVOICE
   payload: jsonb("payload"),
   processedAt: timestamp("processed_at"),
   createdAt: timestamp("created_at").defaultNow(),

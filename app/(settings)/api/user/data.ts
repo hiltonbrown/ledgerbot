@@ -31,8 +31,8 @@ const loadDefaultToneGrammar = () => {
 };
 
 // Helper function to add timeout to promises
-const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> => {
-  return Promise.race([
+const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> =>
+  Promise.race([
     promise,
     new Promise<T>((_, reject) =>
       setTimeout(
@@ -41,7 +41,6 @@ const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> => {
       )
     ),
   ]);
-};
 
 export type UserSettings = {
   name: string;

@@ -1867,6 +1867,23 @@ export async function updateRateLimitInfo(
   }
 }
 
+export async function updateConnectionLastSyncedAt(
+  connectionId: string,
+  syncedAt: Date
+): Promise<void> {
+  try {
+    await db
+      .update(xeroConnection)
+      .set({
+        lastSyncedAt: syncedAt,
+        updatedAt: new Date(),
+      })
+      .where(eq(xeroConnection.id, connectionId));
+  } catch (_error) {
+    console.error("Failed to update last synced at timestamp:", _error);
+  }
+}
+
 // ============================================================================
 // Agent Trace Queries
 // ============================================================================
@@ -2169,3 +2186,37 @@ export async function deleteExpiredArFollowUpContexts(): Promise<number> {
     );
   }
 }
+
+/**
+ * Gets an active Xero connection for a tenant (System context, no user check)
+ * Used for webhooks and background jobs
+ */
+export async function getXeroConnectionByTenantIdSystem(
+  tenantId: string
+): Promise<XeroConnection | undefined> {
+  try {
+    const [connection] = await db
+      .select()
+      .from(xeroConnection)
+      .where(
+        and(
+          eq(xeroConnection.tenantId, tenantId),
+          eq(xeroConnection.isActive, true)
+        )
+      )
+      .orderBy(desc(xeroConnection.updatedAt))
+      .limit(1);
+
+    return connection;
+  } catch (_error) {
+    console.error(
+      "Failed to get Xero connection by tenant ID (System):",
+      _error
+    );
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get Xero connection by tenant ID"
+    );
+  }
+}
+

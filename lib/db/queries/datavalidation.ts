@@ -1,15 +1,41 @@
-import { count, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db/queries";
 import {
   dvContacts,
   dvVerificationResults,
-  dvWebhookEvents,
+  webhookEvents,
 } from "@/lib/db/schema/datavalidation"; // Adjusted import path to match implementation
 import type {
-  VerificationIssue,
   VerificationResult,
   XeroContactRecord,
 } from "@/types/datavalidation";
+// ... (rest of imports)
+
+// ... (rest of file)
+
+/**
+ * Get all contact IDs for a tenant (for reconciliation)
+ */
+export async function getAllContactIds(tenantId: string) {
+  const result = await db.query.dvContacts.findMany({
+    where: eq(dvContacts.xeroTenantId, tenantId),
+    columns: {
+      xeroContactId: true,
+    },
+  });
+  return result.map((r) => r.xeroContactId);
+}
+
+/**
+ * Get the last webhook event for a tenant
+ */
+export async function getLastWebhookEvent(tenantId: string) {
+  return db.query.webhookEvents.findFirst({
+    where: eq(webhookEvents.xeroTenantId, tenantId),
+    orderBy: [desc(webhookEvents.createdAt)],
+  });
+}
+
 // import { users } from "@/lib/db/schema"; // Ensure user/users consistency
 
 /**
@@ -20,15 +46,20 @@ export async function upsertContact(
   contact: XeroContactRecord,
   tenantId: string
 ) {
+  // Check for existing contact by Tenant + XeroID (Natural Key)
   const existing = await db.query.dvContacts.findFirst({
     where: (t, { and, eq }) =>
-      and(eq(t.userId, userId), eq(t.xeroContactId, contact.contactId)),
+      and(
+        eq(t.xeroTenantId, tenantId),
+        eq(t.xeroContactId, contact.contactId)
+      ),
   });
 
   if (existing) {
     return db
       .update(dvContacts)
       .set({
+        userId, // Update last modifier
         name: contact.name,
         taxNumber: contact.taxNumber,
         companyNumber: contact.companyNumber,
@@ -85,10 +116,11 @@ export async function saveVerificationResult(
 }
 
 /**
- * Get contacts for a user with pagination and filtering
+ * Get contacts for a user with pagination and filtering, scoped to a tenant
  */
 export async function listContacts(
   userId: string,
+  tenantId: string,
   options: {
     page: number;
     pageSize: number;
@@ -105,7 +137,7 @@ export async function listContacts(
   const contacts = await db.query.dvContacts.findMany({
     where: (t, { and, eq, ilike }) =>
       and(
-        eq(t.userId, userId),
+        eq(t.xeroTenantId, tenantId),
         options.search ? ilike(t.name, `%${options.search}%`) : undefined
       ),
     limit: options.pageSize,
@@ -117,11 +149,11 @@ export async function listContacts(
 }
 
 /**
- * Get verification summary statistics
+ * Get verification summary statistics for a specific tenant
  */
-export async function getVerificationSummary(userId: string) {
+export async function getVerificationSummary(userId: string, tenantId: string) {
   const contacts = await db.query.dvContacts.findMany({
-    where: eq(dvContacts.userId, userId),
+    where: (t, { eq }) => eq(t.xeroTenantId, tenantId),
     with: {
       // We'd ideally join with verification results here,
       // but for now we'll do a separate count or basic stats
@@ -173,3 +205,20 @@ export async function getLatestVerification(contactId: string) {
     orderBy: [desc(dvVerificationResults.verifiedAt)],
   });
 }
+
+/**
+ * Hard delete a contact
+ */
+export async function deleteContact(tenantId: string, xeroContactId: string) {
+  return db
+    .delete(dvContacts)
+    .where(
+      and(
+        eq(dvContacts.xeroTenantId, tenantId),
+        eq(dvContacts.xeroContactId, xeroContactId)
+      )
+    )
+    .returning();
+}
+
+

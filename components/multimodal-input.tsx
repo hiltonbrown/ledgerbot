@@ -263,9 +263,10 @@ function PureMultimodalInput({
     [chatId]
   );
 
-  const _modelResolver = useMemo(() => {
-    return myProvider.languageModel(selectedModelId);
-  }, [selectedModelId]);
+  const _modelResolver = useMemo(
+    () => myProvider.languageModel(selectedModelId),
+    [selectedModelId]
+  );
 
   const contextProps = useMemo(
     () => ({
@@ -369,7 +370,7 @@ function PureMultimodalInput({
 
       <input
         accept="image/*,.pdf,.docx,.xlsx,.csv"
-        className="-left-4 -top-4 fixed size-0.5 opacity-0"
+        className="fixed -top-4 -left-4 size-0.5 opacity-0"
         multiple
         onChange={handleFileChange}
         ref={fileInputRef}

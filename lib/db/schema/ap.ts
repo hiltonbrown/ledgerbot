@@ -32,6 +32,7 @@ export const apContact = pgTable(
     userId: uuid("userId")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    tenantId: varchar("tenantId", { length: 255 }).notNull().default("legacy"),
     name: varchar("name", { length: 255 }).notNull(),
     abn: varchar("abn", { length: 11 }), // Australian Business Number
     email: varchar("email", { length: 255 }),
@@ -41,15 +42,22 @@ export const apContact = pgTable(
     paymentTerms: varchar("paymentTerms", { length: 50 }), // e.g., "Net 30"
     defaultAccount: varchar("defaultAccount", { length: 50 }), // Default expense account code
     externalRef: varchar("externalRef", { length: 255 }), // Xero contact ID
+    xeroUpdatedDateUtc: timestamp("xeroUpdatedDateUtc"),
+    xeroModifiedDateUtc: timestamp("xeroModifiedDateUtc"),
     metadata: jsonb("metadata").$type<Record<string, unknown>>(),
     createdAt: timestamp("createdAt").notNull().defaultNow(),
     updatedAt: timestamp("updatedAt").notNull().defaultNow(),
   },
   (table) => ({
     userIdIdx: index("ap_contact_user_id_idx").on(table.userId),
+    tenantIdIdx: index("ap_contact_tenant_id_idx").on(table.tenantId),
     externalRefIdx: index("ap_contact_external_ref_idx").on(table.externalRef),
     statusIdx: index("ap_contact_status_idx").on(table.status),
     riskLevelIdx: index("ap_contact_risk_level_idx").on(table.riskLevel),
+    // Composite index for efficient lookups by tenant and external ref
+    tenantExternalRefUnq: uniqueIndex(
+      "ap_contact_tenant_external_ref_unique"
+    ).on(table.tenantId, table.externalRef),
   })
 );
 
@@ -67,6 +75,7 @@ export const apBill = pgTable(
     userId: uuid("userId")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    tenantId: varchar("tenantId", { length: 255 }).notNull().default("legacy"),
     contactId: uuid("contactId")
       .notNull()
       .references(() => apContact.id),
@@ -90,6 +99,8 @@ export const apBill = pgTable(
     hasAttachment: boolean("hasAttachment").default(false),
     attachmentUrl: text("attachmentUrl"),
     externalRef: varchar("externalRef", { length: 255 }), // Xero invoice ID
+    xeroUpdatedDateUtc: timestamp("xeroUpdatedDateUtc"),
+    xeroModifiedDateUtc: timestamp("xeroModifiedDateUtc"),
     lineItems:
       jsonb("lineItems").$type<
         Array<{
@@ -109,13 +120,16 @@ export const apBill = pgTable(
   },
   (table) => ({
     userIdIdx: index("ap_bill_user_id_idx").on(table.userId),
+    tenantIdIdx: index("ap_bill_tenant_id_idx").on(table.tenantId),
     contactIdIdx: index("ap_bill_contact_id_idx").on(table.contactId),
     statusIdx: index("ap_bill_status_idx").on(table.status),
     dueDateIdx: index("ap_bill_due_date_idx").on(table.dueDate),
     externalRefIdx: index("ap_bill_external_ref_idx").on(table.externalRef),
-    externalRefUserIdUnique: uniqueIndex(
-      "ap_bill_external_ref_user_id_unique"
-    ).on(table.externalRef, table.userId),
+    // Composite index for efficient lookups by tenant and external ref
+    tenantExternalRefUnq: uniqueIndex("ap_bill_tenant_external_ref_unique").on(
+      table.tenantId,
+      table.externalRef
+    ),
   })
 );
 
@@ -130,6 +144,7 @@ export const apPayment = pgTable(
   "ApPayment",
   {
     id: uuid("id").primaryKey().notNull().defaultRandom(),
+    tenantId: varchar("tenantId", { length: 255 }).notNull().default("legacy"),
     billId: uuid("billId")
       .notNull()
       .references(() => apBill.id, { onDelete: "cascade" }),
@@ -139,10 +154,13 @@ export const apPayment = pgTable(
     reference: varchar("reference", { length: 255 }), // Payment reference or transaction ID
     bankAccount: varchar("bankAccount", { length: 100 }), // Bank account used for payment
     externalRef: varchar("externalRef", { length: 255 }), // Xero payment ID
+    xeroUpdatedDateUtc: timestamp("xeroUpdatedDateUtc"),
+    xeroModifiedDateUtc: timestamp("xeroModifiedDateUtc"),
     metadata: jsonb("metadata").$type<Record<string, unknown>>(),
     createdAt: timestamp("createdAt").notNull().defaultNow(),
   },
   (table) => ({
+    tenantIdIdx: index("ap_payment_tenant_id_idx").on(table.tenantId),
     billIdIdx: index("ap_payment_bill_id_idx").on(table.billId),
     paidAtIdx: index("ap_payment_paid_at_idx").on(table.paidAt),
     externalRefIdx: index("ap_payment_external_ref_idx").on(table.externalRef),

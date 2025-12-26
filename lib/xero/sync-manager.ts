@@ -27,11 +27,154 @@ export type SyncResult = {
 };
 
 /**
- * Main entry point to sync a tenant
+ * Progress callback type
  */
-export async function syncTenant(
+export type SyncProgress = (status: {
+  type: "progress" | "error" | "complete";
+  message: string;
+  data?: any;
+}) => void;
+
+/**
+ * Job status type
+ */
+export type JobStatus =
+  | "pending"
+  | "running"
+  | "success"
+  | "failed"
+  | "cancelled";
+
+/**
+ * Sync job interface
+ */
+export interface SyncJob {
+  id: string;
+  userId: string;
+  tenantId: string;
+  status: JobStatus;
+  progress: number; // 0-100
+  message: string;
+  result?: SyncResult;
+  error?: string;
+  startedAt?: Date;
+  completedAt?: Date;
+  abortController: AbortController;
+}
+
+/**
+ * In-memory job store
+ */
+const jobStore = new Map<string, SyncJob>();
+
+/**
+ * Get a job by ID
+ */
+export function getSyncJob(jobId: string): SyncJob | undefined {
+  return jobStore.get(jobId);
+}
+
+/**
+ * Cancel a sync job
+ */
+export function cancelSyncJob(jobId: string): boolean {
+  const job = jobStore.get(jobId);
+  if (job && (job.status === "pending" || job.status === "running")) {
+    job.status = "cancelled";
+    job.message = "Cancelled by user";
+    job.abortController.abort();
+    return true;
+  }
+  return false;
+}
+
+/**
+ * In-memory locks for active syncs (per tenant)
+ */
+const tenantLocks = new Set<string>();
+
+/**
+ * Main entry point to sync a tenant via queue
+ */
+export async function startSyncJob(
   userId: string,
   tenantId: string
+): Promise<SyncJob> {
+  const jobId = `sync_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const abortController = new AbortController();
+
+  const job: SyncJob = {
+    id: jobId,
+    userId,
+    tenantId,
+    status: "pending",
+    progress: 0,
+    message: "Waiting to start...",
+    abortController,
+  };
+
+  jobStore.set(jobId, job);
+
+  // Background execution
+  (async () => {
+    const lockKey = `${userId}:${tenantId}`;
+
+    // Check lock
+    if (tenantLocks.has(lockKey)) {
+      job.status = "failed";
+      job.error = "A sync is already in progress for this organisation.";
+      return;
+    }
+
+    tenantLocks.add(lockKey);
+    job.status = "running";
+    job.startedAt = new Date();
+
+    try {
+      const result = await syncTenant(
+        userId,
+        tenantId,
+        (progress) => {
+          job.message = progress.message;
+          // Map internal steps to 0-100 progress roughly
+          if (progress.message.includes("contacts")) job.progress = 20;
+          if (progress.message.includes("invoices")) job.progress = 50;
+          if (progress.message.includes("payments")) job.progress = 80;
+        },
+        abortController.signal
+      );
+
+      if ((job.status as JobStatus) !== "cancelled") {
+        job.status = "success";
+        job.progress = 100;
+        job.message = "Sync completed successfully";
+        job.result = result;
+      }
+    } catch (error: any) {
+      if (error.name === "AbortError" || (job.status as JobStatus) === "cancelled") {
+        job.status = "cancelled";
+      } else {
+        job.status = "failed";
+        job.error = error.message;
+      }
+    } finally {
+      job.completedAt = new Date();
+      tenantLocks.delete(lockKey);
+      // Optional: Cleanup old jobs from memory after some time
+    }
+  })();
+
+  return job;
+}
+
+/**
+ * Core sync logic (Internal)
+ */
+async function syncTenant(
+  userId: string,
+  tenantId: string,
+  onProgress?: SyncProgress,
+  signal?: AbortSignal
 ): Promise<SyncResult> {
   const result: SyncResult = {
     success: true,
@@ -43,81 +186,34 @@ export async function syncTenant(
   };
 
   try {
-    // 1. Get Xero Client (using existing robustness logic)
-    // Note: getRobustXeroClient verifies connection and handles token refresh
-    // We pass userId, but we need to ensure we get the client for the specific tenant
-    // Ideally getRobustXeroClient should support tenantId, but for now we assume
-    // the user might have multiple connections.
-    // TODO: Update getRobustXeroClient to accept optional tenantId if we support
-    // syncing non-active tenants. For now, we assume we are syncing the user's
-    // connections.
-    // Actually, getRobustXeroClient finds the *active* connection for the user.
-    // If we want to sync a specific tenant, we might need a lower-level function
-    // or update getRobustXeroClient.
-    // For this implementation, let's assume we update getRobustXeroClient primarily,
-    // but here we can just fetch the specific connection and use it if needed.
-    // However, for simplicity and reuse, let's use the helper but note the limitation.
-    //
-    // Actually, to support multi-tenancy properly, we MUST be able to get a client
-    // for a specific tenantId.
-    // Let's assume getRobustXeroClient works for the user's *primary* purpose,
-    // but for background sync we might need to iterate.
-    //
-    // As per plan, I should update getRobustXeroClient to take tenantId.
-    // I will do that in a subsequent step. For now, I will assume it works or
-    // I will fetch the connection manually here if needed.
-    //
-    // WAIT: I already planned to update `getRobustXeroClient`. I should do that.
-    // But I can write this file first, assuming `getRobustXeroClient` signature update.
+    if (signal?.aborted) throw new Error("Sync cancelled");
 
-    // For now, I will use getRobustXeroClient(userId, tenantId) and update the helper next.
+    onProgress?.({ type: "progress", message: "Connecting to Xero..." });
     const { client, connection } = await getRobustXeroClient(userId, tenantId);
 
-    if (connection.tenantId !== tenantId) {
-      throw new Error(
-        `Connection mismatch: Expected ${tenantId}, got ${connection.tenantId}`
-      );
-    }
-
-    console.log(
-      `[Sync] Starting sync for tenant ${tenantId} (${connection.tenantName})`
-    );
+    // 1. Sync Contacts
+    if (signal?.aborted) throw new Error("Sync cancelled");
+    onProgress?.({ type: "progress", message: "Syncing contacts..." });
+    result.contactsSynced = await syncContacts(client, tenantId);
 
     // 2. Sync Invoices
-    try {
-      result.invoicesSynced = await syncInvoices(client, tenantId);
-    } catch (err: any) {
-      console.error(`[Sync] Error syncing invoices: ${err.message}`);
-      result.errors.push(`Invoices: ${err.message}`);
-    }
+    if (signal?.aborted) throw new Error("Sync cancelled");
+    onProgress?.({ type: "progress", message: "Syncing invoices..." });
+    result.invoicesSynced = await syncInvoices(client, tenantId);
 
-    // 3. Sync Contacts
-    try {
-      result.contactsSynced = await syncContacts(client, tenantId);
-    } catch (err: any) {
-      console.error(`[Sync] Error syncing contacts: ${err.message}`);
-      result.errors.push(`Contacts: ${err.message}`);
-    }
+    // 3. Sync Payments
+    if (signal?.aborted) throw new Error("Sync cancelled");
+    onProgress?.({ type: "progress", message: "Syncing payments..." });
+    result.paymentsSynced = await syncPayments(client, tenantId);
 
-    // 4. Sync Payments
-    try {
-      result.paymentsSynced = await syncPayments(client, tenantId);
-    } catch (err: any) {
-      console.error(`[Sync] Error syncing payments: ${err.message}`);
-      result.errors.push(`Payments: ${err.message}`);
-    }
-
-    // 5. Sync Credit Notes
-    try {
-      result.creditNotesSynced = await syncCreditNotes(client, tenantId);
-    } catch (err: any) {
-      console.error(`[Sync] Error syncing credit notes: ${err.message}`);
-      result.errors.push(`Credit Notes: ${err.message}`);
-    }
+    // 4. Sync Credit Notes
+    if (signal?.aborted) throw new Error("Sync cancelled");
+    onProgress?.({ type: "progress", message: "Syncing credit notes..." });
+    result.creditNotesSynced = await syncCreditNotes(client, tenantId);
   } catch (error: any) {
-    console.error(`[Sync] Fatal error syncing tenant ${tenantId}:`, error);
-    result.success = false;
-    result.errors.push(`Fatal: ${error.message}`);
+    if (error.name === "AbortError") throw error;
+    console.error(`[Sync] error syncing tenant ${tenantId}:`, error);
+    throw error;
   }
 
   return result;

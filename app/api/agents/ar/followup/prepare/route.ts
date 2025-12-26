@@ -4,7 +4,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getUserSettings } from "@/app/(settings)/api/user/data";
 import { getCustomerFollowUpData } from "@/lib/actions/ar";
-import { db, saveArFollowUpContext } from "@/lib/db/queries";
+import { db, getActiveXeroConnection, saveArFollowUpContext } from "@/lib/db/queries";
 import { arContact } from "@/lib/db/schema/ar";
 import {
   type FollowUpTone,
@@ -58,8 +58,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Contact not found" }, { status: 404 });
     }
 
+    // Get active Xero connection for tenantId
+    const xeroConnection = await getActiveXeroConnection(userId);
+    if (!xeroConnection) {
+      return NextResponse.json({ error: "Xero connection not found" }, { status: 404 });
+    }
+
     // Get comprehensive AR data
-    const arData = await getCustomerFollowUpData(contactId, userId);
+    const arData = await getCustomerFollowUpData(contactId, userId, xeroConnection.tenantId);
 
     // Get user settings for sender information
     console.log("[AR Follow-up Prepare] Fetching user settings");

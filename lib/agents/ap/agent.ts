@@ -2,17 +2,7 @@ import "server-only";
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import {
-  assessPaymentRiskTool,
-  checkDuplicateBillsTool,
-  createAPXeroTools,
-  extractInvoiceDataTool,
-  generateEmailDraftTool,
-  generatePaymentProposalTool,
-  matchVendorTool,
-  suggestBillCodingTool,
-  validateABNTool,
-} from "./tools";
+import { createAPTools, createAPXeroTools } from "./tools";
 
 // Load system prompt from markdown file
 const SYSTEM_INSTRUCTIONS = readFileSync(
@@ -21,34 +11,11 @@ const SYSTEM_INSTRUCTIONS = readFileSync(
 );
 
 /**
- * Accounts Payable (AP) Agent Tools
- *
- * Assists with supplier bill management, vendor validation, coding suggestions,
- * approval workflows, payment runs, and vendor communication for Australian businesses.
- *
- * Features:
- * - Vendor intake and ABN validation
- * - Bill extraction and GST-aware coding suggestions
- * - Approval workflow tracking and reminders
- * - Payment run proposals with risk assessment
- * - Email draft generation (no direct sending)
- * - Xero integration for real-time financial data (when connected)
- */
-
-/**
  * Get base AP agent tools (without Xero integration)
+ * @param userId - User ID for context
  */
-export function getAPAgentTools() {
-  return {
-    extractInvoiceData: extractInvoiceDataTool,
-    matchVendor: matchVendorTool,
-    validateABN: validateABNTool,
-    suggestBillCoding: suggestBillCodingTool,
-    checkDuplicateBills: checkDuplicateBillsTool,
-    generatePaymentProposal: generatePaymentProposalTool,
-    assessPaymentRisk: assessPaymentRiskTool,
-    generateEmailDraft: generateEmailDraftTool,
-  };
+export function getAPAgentTools(userId: string) {
+  return createAPTools(userId);
 }
 
 /**
@@ -66,19 +33,7 @@ export function getAPAgentTools() {
  * @returns Tools object with Xero tools included
  */
 export function getAPAgentToolsWithXero(userId: string) {
-  const xeroTools = createAPXeroTools(userId);
-
-  return {
-    extractInvoiceData: extractInvoiceDataTool,
-    matchVendor: matchVendorTool,
-    validateABN: validateABNTool,
-    suggestBillCoding: suggestBillCodingTool,
-    checkDuplicateBills: checkDuplicateBillsTool,
-    generatePaymentProposal: generatePaymentProposalTool,
-    assessPaymentRisk: assessPaymentRiskTool,
-    generateEmailDraft: generateEmailDraftTool,
-    ...xeroTools,
-  };
+  return createAPXeroTools(userId);
 }
 
 /**

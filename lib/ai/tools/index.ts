@@ -18,5 +18,5 @@ export const defaultSelectedTools: ToolId[] = [
   "abn_search_entity",
   "abn_get_details",
   "abn_validate_xero_contact",
-  "abn_verify_xero_invoice"
+  "abn_verify_xero_invoice",
 ];

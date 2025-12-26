@@ -1,7 +1,16 @@
-// import { getRobustXeroClient } from "@/lib/xero/client"; // Use for Xero tools if needed
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { tool } from "ai";
 import { z } from "zod";
 import { dataValidationTools } from "@/lib/agents/datavalidation/tools";
+import { getRobustXeroClient } from "@/lib/xero/client-helpers";
+import { syncContacts } from "@/lib/xero/sync-manager";
+
+// Load system prompt from markdown file
+const SYSTEM_INSTRUCTIONS = readFileSync(
+  join(process.cwd(), "prompts/datavalidation-system-prompt.md"),
+  "utf-8"
+);
 
 export const dataValidationAgentConfig = {
   name: "Data Validation Agent",
@@ -21,21 +30,21 @@ export function getDataValidationAgentTools() {
 }
 
 export async function getDataValidationAgentToolsWithXero(userId: string) {
-  // If we had user-specific tools (like syncXero), we'd inject context here
   return {
     ...dataValidationTools,
-    // Add user-specific tools here
     syncXeroContacts: tool({
-      description: "Trigger synchronization of Xero contacts",
+      description: "Trigger synchronization of Xero contacts for validation.",
       inputSchema: z.object({
         tenantId: z.string().describe("The Xero tenant ID to sync"),
       }),
       execute: async ({ tenantId }) => {
-        // Placeholder: This would trigger the sync logic
-        // await syncManager.syncContacts(userId, tenantId);
+        const { client } = await getRobustXeroClient(userId, tenantId);
+        const count = await syncContacts(client, tenantId);
+
         return {
-          message: "Sync started",
-          jobId: "job_" + Date.now(),
+          success: true,
+          message: `Synchronized ${count} contacts from Xero.`,
+          syncedCount: count,
         };
       },
     }),
@@ -43,9 +52,5 @@ export async function getDataValidationAgentToolsWithXero(userId: string) {
 }
 
 export function getDataValidationAgentSystemPrompt() {
-  // Return a placeholder or read from a file.
-  // In this architecture, it seems we read from markdown files in `prompts/`.
-  // We will return the filename or the content if we load it here.
-  // For now, let's assume the UI/Chat handler checks `prompts/datavalidation-system-prompt.md`
-  return "You are the Data Validation Agent.";
+  return SYSTEM_INSTRUCTIONS;
 }

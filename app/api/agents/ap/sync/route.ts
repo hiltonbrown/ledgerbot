@@ -1,17 +1,29 @@
+import { generateText } from "ai";
+import { and, eq, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { myProvider } from "@/lib/ai/providers";
 import { executeXeroMCPTool } from "@/lib/ai/xero-mcp-client";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
-import { getActiveXeroConnection } from "@/lib/db/queries";
-import { upsertBills, upsertContacts } from "@/lib/db/queries/ap";
-import type { ApBillInsert, ApContactInsert } from "@/lib/db/schema/ap";
+import {
+  db,
+  getActiveXeroConnection,
+  updateConnectionLastSyncedAt,
+} from "@/lib/db/queries";
+import {
+  createCommsArtefact,
+  upsertBills,
+  upsertContacts,
+} from "@/lib/db/queries/ap";
+import type { ApBill, ApBillInsert, ApContactInsert } from "@/lib/db/schema/ap";
+import { apBill, apContact } from "@/lib/db/schema/ap";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 300; // 5 minutes
 
 /**
  * POST /api/agents/ap/sync
- * Sync bills and payments from Xero for the current user
+ * Production-ready sync for bills and suppliers from Xero
  */
 export async function POST() {
   try {
@@ -20,119 +32,134 @@ export async function POST() {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    // Check for active Xero connection
     const xeroConnection = await getActiveXeroConnection(user.id);
     if (!xeroConnection) {
       return NextResponse.json(
         {
           success: false,
-          error:
-            "No active Xero connection found. Please connect to Xero first.",
+          error: "No active Xero connection found.",
         },
         { status: 400 }
       );
     }
 
-    console.log("[AP Sync] Starting sync for user:", user.id);
+    const tenantId = xeroConnection.tenantId;
+    const lastSyncedAt = xeroConnection.lastSyncedAt;
+    const ifModifiedSince = lastSyncedAt
+      ? lastSyncedAt.toISOString()
+      : undefined;
 
-    // Step 1: Fetch suppliers (ACCPAY contacts)
+    console.log(`[AP Sync] Syncing tenant ${tenantId} for user ${user.id}`);
+
+    // 1. Fetch updated contacts from Xero
     const contactsResult = await executeXeroMCPTool(
       user.id,
       "xero_list_contacts",
-      { limit: 1000 }
+      {
+        ifModifiedSince,
+        limit: 1000,
+      }
     );
 
     const contacts = JSON.parse(contactsResult.content[0].text);
-    console.log(
-      "[AP Sync] Fetched contacts:",
-      Array.isArray(contacts) ? contacts.length : 0
-    );
-
-    // Filter for suppliers (IsSupplier = true)
     const suppliers = Array.isArray(contacts)
-      ? contacts.filter((c: { isSupplier?: boolean }) => c.isSupplier)
+      ? contacts.filter((c: any) => c.isSupplier)
       : [];
 
-    // Step 2: Upsert suppliers to database
-    const supplierInserts: Omit<ApContactInsert, "userId">[] = suppliers.map(
-      (supplier: {
-        contactID: string;
-        name: string;
-        emailAddress?: string;
-        phone?: string;
-        taxNumber?: string;
-        contactStatus?: string;
-      }) => ({
-        name: supplier.name,
-        email: supplier.emailAddress,
-        phone: supplier.phone,
-        // Remove spaces from ABN (Xero formats as "11 000 111 000", we need "11000111000")
-        abn: supplier.taxNumber?.replace(/\s/g, ""),
-        externalRef: supplier.contactID,
-        status:
-          supplier.contactStatus === "ACTIVE"
-            ? ("active" as const)
-            : ("inactive" as const),
-        riskLevel: "low" as const,
+    // 2. Upsert suppliers
+    const supplierInserts: Omit<ApContactInsert, "userId" | "tenantId">[] =
+      suppliers.map((s: any) => ({
+        name: s.name,
+        email: s.emailAddress,
+        phone: s.phone,
+        abn: s.taxNumber?.replace(/\s/g, ""),
+        externalRef: s.contactID,
+        status: s.contactStatus === "ACTIVE" ? "active" : "inactive",
+        riskLevel: "low",
+        xeroUpdatedDateUtc: s.updatedDateUTC
+          ? new Date(s.updatedDateUTC)
+          : new Date(),
+        xeroModifiedDateUtc: s.updatedDateUTC
+          ? new Date(s.updatedDateUTC)
+          : new Date(),
         metadata: {},
-      })
+      }));
+
+    const upsertedSuppliers = await upsertContacts(
+      user.id,
+      tenantId,
+      supplierInserts
     );
 
-    const upsertedSuppliers = await upsertContacts(user.id, supplierInserts);
-    console.log("[AP Sync] Upserted suppliers:", upsertedSuppliers.length);
-
-    // Create a map of externalRef to contactId
+    // 3. Build comprehensive contact map (externalRef -> internalId) for this tenant
+    // This avoids N+1 queries during bill processing
     const supplierMap = new Map<string, string>();
-    for (const supplier of upsertedSuppliers) {
-      if (supplier.externalRef) {
-        supplierMap.set(supplier.externalRef, supplier.id);
-      }
+    const allContacts = await db
+      .select({ id: apContact.id, externalRef: apContact.externalRef })
+      .from(apContact)
+      .where(eq(apContact.tenantId, tenantId));
+
+    for (const c of allContacts) {
+      if (c.externalRef) supplierMap.set(c.externalRef, c.id);
     }
 
-    // Step 3: Fetch bills (ACCPAY invoices)
+    // 4. Fetch updated bills (ACCPAY) from Xero
     const billsResult = await executeXeroMCPTool(
       user.id,
       "xero_list_invoices",
       {
         invoiceType: "ACCPAY",
+        ifModifiedSince,
         limit: 1000,
       }
     );
 
     const bills = JSON.parse(billsResult.content[0].text);
-    console.log(
-      "[AP Sync] Fetched bills:",
-      Array.isArray(bills) ? bills.length : 0
-    );
+    const billList = Array.isArray(bills) ? bills : [];
 
-    // Step 4: Upsert bills to database
-    const billInserts: Omit<ApBillInsert, "userId">[] = [];
+    // 5. Pre-fetch existing bills for commentary change detection
+    const billXeroIds = billList.map((b: any) => b.invoiceID);
+    const existingBillsMap = new Map<string, ApBill>();
 
-    for (const bill of Array.isArray(bills) ? bills : []) {
+    if (billXeroIds.length > 0) {
+      const CHUNK_SIZE = 500;
+      for (let i = 0; i < billXeroIds.length; i += CHUNK_SIZE) {
+        const chunk = billXeroIds.slice(i, i + CHUNK_SIZE);
+        const existing = await db
+          .select()
+          .from(apBill)
+          .where(
+            and(
+              eq(apBill.tenantId, tenantId),
+              inArray(apBill.externalRef, chunk)
+            )
+          );
+        for (const b of existing) {
+          if (b.externalRef) existingBillsMap.set(b.externalRef, b);
+        }
+      }
+    }
+
+    // 6. Process and Upsert Bills
+    const billInserts: Omit<ApBillInsert, "userId" | "tenantId">[] = [];
+    const billsToCheckForCommentary: {
+      newBill: any;
+      oldBill: ApBill | undefined;
+    }[] = [];
+
+    for (const bill of billList) {
       const contactId = supplierMap.get(bill.contact?.contactID);
-      if (!contactId) {
-        console.warn(
-          "[AP Sync] Skipping bill - supplier not found:",
-          bill.invoiceNumber
-        );
-        continue;
-      }
+      if (!contactId) continue;
 
-      // Map Xero status to our status
       let status = "draft";
-      if (bill.status === "PAID") {
-        status = "paid";
-      } else if (bill.status === "AUTHORISED") {
-        status = "approved";
-      } else if (bill.status === "VOIDED") {
-        status = "cancelled";
-      }
+      if (bill.status === "PAID") status = "paid";
+      else if (bill.status === "AUTHORISED") status = "approved";
+      else if (bill.status === "VOIDED") status = "cancelled";
 
-      // Calculate days overdue
       const dueDate = new Date(bill.dueDate || bill.date);
       const isOverdue = dueDate < new Date() && status !== "paid";
 
-      billInserts.push({
+      const billInsert = {
         contactId,
         number: bill.invoiceNumber || bill.invoiceID,
         reference: bill.reference,
@@ -146,54 +173,106 @@ export async function POST() {
         status: isOverdue && status === "approved" ? "overdue" : status,
         approvalStatus:
           status === "approved" || status === "paid" ? "approved" : "pending",
-        hasAttachment: false,
+        hasAttachment: bill.hasAttachments || false,
         externalRef: bill.invoiceID,
+        xeroUpdatedDateUtc: bill.updatedDateUTC
+          ? new Date(bill.updatedDateUTC)
+          : new Date(),
+        xeroModifiedDateUtc: bill.updatedDateUTC
+          ? new Date(bill.updatedDateUTC)
+          : new Date(),
         lineItems:
-          bill.lineItems?.map(
-            (item: {
-              description?: string;
-              accountCode?: string;
-              quantity?: number;
-              unitAmount?: number;
-              lineAmount?: number;
-              taxType?: string;
-              taxAmount?: number;
-            }) => ({
-              description: item.description || "",
-              accountCode: item.accountCode,
-              quantity: item.quantity || 1,
-              unitAmount: item.unitAmount || 0,
-              lineAmount: item.lineAmount || 0,
-              taxType: item.taxType,
-              taxAmount: item.taxAmount || 0,
-            })
-          ) || [],
+          bill.lineItems?.map((item: any) => ({
+            description: item.description || "",
+            accountCode: item.accountCode,
+            quantity: item.quantity || 1,
+            unitAmount: item.unitAmount || 0,
+            lineAmount: item.lineAmount || 0,
+            taxType: item.taxType,
+            taxAmount: item.taxAmount || 0,
+          })) || [],
         metadata: {},
+      };
+
+      billInserts.push(billInsert);
+      billsToCheckForCommentary.push({
+        newBill: billInsert,
+        oldBill: existingBillsMap.get(bill.invoiceID),
       });
     }
 
-    const upsertedBills = await upsertBills(user.id, billInserts);
-    console.log("[AP Sync] Upserted bills:", upsertedBills.length);
+    const upsertedBills = await upsertBills(user.id, tenantId, billInserts);
+
+    // 7. Generate Commentary
+    let commentaryCount = 0;
+    const MAX_COMMENTARY_UPDATES = 20;
+
+    for (const { newBill, oldBill } of billsToCheckForCommentary) {
+      if (commentaryCount >= MAX_COMMENTARY_UPDATES) break;
+
+      let shouldRegenerate = !oldBill;
+      if (oldBill) {
+        if (newBill.status !== oldBill.status) shouldRegenerate = true;
+        const oldTotal = Number.parseFloat(oldBill.total);
+        const newTotal = Number.parseFloat(newBill.total);
+        if (oldTotal > 0 && Math.abs((newTotal - oldTotal) / oldTotal) > 0.05)
+          shouldRegenerate = true;
+      }
+
+      if (shouldRegenerate) {
+        const targetBill = upsertedBills.find(
+          (b) => b.externalRef === newBill.externalRef
+        );
+        if (targetBill) {
+          await regenerateCommentary(user.id, targetBill);
+          commentaryCount++;
+        }
+      }
+    }
+
+    await updateConnectionLastSyncedAt(xeroConnection.id, new Date());
 
     return NextResponse.json({
       success: true,
       summary: {
         suppliersSync: upsertedSuppliers.length,
         billsSync: upsertedBills.length,
+        commentaryUpdates: commentaryCount,
         timestamp: new Date().toISOString(),
       },
     });
   } catch (error) {
     console.error("[AP Sync API] Error:", error);
     return NextResponse.json(
-      {
-        success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to sync AP data from Xero",
-      },
+      { success: false, error: "Failed to sync AP data." },
       { status: 500 }
     );
+  }
+}
+
+async function regenerateCommentary(userId: string, bill: ApBill) {
+  try {
+    const { text: commentary } = await generateText({
+      model: myProvider.languageModel("anthropic-claude-sonnet-4-5"),
+      system:
+        "You are an expert accounts payable analyst. Generate a brief, professional commentary.",
+      prompt: `Analyze this bill:
+      Amount: ${bill.total} ${bill.currency}
+      Due: ${bill.dueDate instanceof Date ? bill.dueDate.toDateString() : String(bill.dueDate)}
+      Status: ${bill.status}
+      Paid: ${bill.amountPaid}`,
+    });
+
+    await createCommsArtefact({
+      userId,
+      billId: bill.id,
+      contactId: bill.contactId,
+      purpose: "internal_commentary",
+      channel: "system",
+      body: commentary,
+      metadata: { generatedAt: new Date().toISOString() },
+    });
+  } catch (error) {
+    console.error(`[AP Sync] Commentary failed for ${bill.id}:`, error);
   }
 }

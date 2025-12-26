@@ -2,7 +2,11 @@ import { tool } from "ai";
 import type { Invoice } from "xero-node";
 import { z } from "zod";
 import { abrService } from "@/lib/abr/service";
-import { normaliseAbn, validateAbnChecksum, validateAcnChecksum } from "@/lib/abr/utils";
+import {
+  normaliseAbn,
+  validateAbnChecksum,
+  validateAcnChecksum,
+} from "@/lib/abr/utils";
 import { getRobustXeroClient } from "@/lib/xero/client-helpers";
 
 // Simplified extraction
@@ -13,17 +17,17 @@ function extractIdentifierFromInvoice(invoice: Invoice) {
     invoice.contact?.taxNumber,
     invoice.contact?.companyNumber,
     invoice.contact?.accountNumber,
-    invoice.contact?.name 
+    invoice.contact?.name,
   ];
 
   for (const candidate of candidates) {
     if (!candidate) continue;
     const clean = normaliseAbn(candidate);
     if (clean.length === 11 && validateAbnChecksum(clean)) {
-        return { kind: "ABN", digits: clean };
+      return { kind: "ABN", digits: clean };
     }
     if (clean.length === 9 && validateAcnChecksum(clean)) {
-        return { kind: "ACN", digits: clean };
+      return { kind: "ACN", digits: clean };
     }
   }
   return null;
@@ -172,7 +176,10 @@ export const abn_verify_xero_invoice = ({ userId }: { userId: string }) =>
         });
       }
 
-      if (identifier.kind === "ABN" && !validateAbnChecksum(identifier.digits)) {
+      if (
+        identifier.kind === "ABN" &&
+        !validateAbnChecksum(identifier.digits)
+      ) {
         return buildErrorResult({
           xeroInvoiceId,
           supplierName: invoice.contact?.name,
@@ -183,7 +190,10 @@ export const abn_verify_xero_invoice = ({ userId }: { userId: string }) =>
         });
       }
 
-      if (identifier.kind === "ACN" && !validateAcnChecksum(identifier.digits)) {
+      if (
+        identifier.kind === "ACN" &&
+        !validateAcnChecksum(identifier.digits)
+      ) {
         return buildErrorResult({
           xeroInvoiceId,
           supplierName: invoice.contact?.name,
@@ -197,30 +207,30 @@ export const abn_verify_xero_invoice = ({ userId }: { userId: string }) =>
       // Lookup
       let abrRecord = null;
       if (identifier.kind === "ABN") {
-          const result = await abrService.lookup(identifier.digits, true);
-          if (result.results.length > 0) {
-              abrRecord = result.results[0];
-          }
+        const result = await abrService.lookup(identifier.digits, true);
+        if (result.results.length > 0) {
+          abrRecord = result.results[0];
+        }
       } else {
-          return buildErrorResult({
-              xeroInvoiceId,
-              supplierName: invoice.contact?.name,
-              invoiceDate,
-              identifier: identifier.digits,
-              message: "ACN lookup not supported yet",
-              status: "invalid",
-          });
+        return buildErrorResult({
+          xeroInvoiceId,
+          supplierName: invoice.contact?.name,
+          invoiceDate,
+          identifier: identifier.digits,
+          message: "ACN lookup not supported yet",
+          status: "invalid",
+        });
       }
 
       if (!abrRecord) {
-          return buildErrorResult({
-              xeroInvoiceId,
-              supplierName: invoice.contact?.name,
-              invoiceDate,
-              identifier: identifier.digits,
-              message: "ABN not found in ABR",
-              status: "not_found",
-          });
+        return buildErrorResult({
+          xeroInvoiceId,
+          supplierName: invoice.contact?.name,
+          invoiceDate,
+          identifier: identifier.digits,
+          message: "ABN not found in ABR",
+          status: "not_found",
+        });
       }
 
       const numbersMatch = abrRecord.abn === identifier.digits;
@@ -230,15 +240,20 @@ export const abn_verify_xero_invoice = ({ userId }: { userId: string }) =>
         abrRecord.entityName
       );
 
-      const abnEffectiveDate = abrRecord.abnStatusEffectiveFrom ? new Date(abrRecord.abnStatusEffectiveFrom) : null;
-      const abnActiveOnInvoiceDate = abrRecord.abnStatus === "Active"
+      const abnEffectiveDate = abrRecord.abnStatusEffectiveFrom
+        ? new Date(abrRecord.abnStatusEffectiveFrom)
+        : null;
+      const abnActiveOnInvoiceDate =
+        abrRecord.abnStatus === "Active"
           ? !abnEffectiveDate ||
             (invoiceDate
               ? abnEffectiveDate <= invoiceDate
               : abnEffectiveDate <= new Date())
           : false;
 
-      const gstEffectiveDate = abrRecord.gst.effectiveFrom ? new Date(abrRecord.gst.effectiveFrom) : null;
+      const gstEffectiveDate = abrRecord.gst.effectiveFrom
+        ? new Date(abrRecord.gst.effectiveFrom)
+        : null;
       const gstRegisteredOnInvoiceDate =
         abrRecord.gst.status === "Registered"
           ? !gstEffectiveDate ||

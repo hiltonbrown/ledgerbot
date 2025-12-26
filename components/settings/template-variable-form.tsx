@@ -218,14 +218,16 @@ export function TemplateVariableForm({
   }, [formState.customVariables]);
 
   // Validate Industry Context field
-  const industryContextValidation = useMemo(() => {
-    return validateVariables(formState.industryContext, definedVariables);
-  }, [formState.industryContext, definedVariables]);
+  const industryContextValidation = useMemo(
+    () => validateVariables(formState.industryContext, definedVariables),
+    [formState.industryContext, definedVariables]
+  );
 
   // Validate Chart of Accounts field
-  const chartOfAccountsValidation = useMemo(() => {
-    return validateVariables(formState.chartOfAccounts, definedVariables);
-  }, [formState.chartOfAccounts, definedVariables]);
+  const chartOfAccountsValidation = useMemo(
+    () => validateVariables(formState.chartOfAccounts, definedVariables),
+    [formState.chartOfAccounts, definedVariables]
+  );
 
   const handleInputChange =
     (field: keyof typeof formState) =>

@@ -627,6 +627,10 @@ export function formatAnswerWithCitations(
   return attachCitations(answer, doc);
 }
 
+import { generateText, stepCountIs } from "ai";
+import { myProvider } from "@/lib/ai/providers";
+import { executeXeroMCPTool } from "@/lib/ai/xero-mcp-client";
+
 const pdfLoadTool = tool({
   description: "Load and index a PDF from a stored context file or public URL",
   inputSchema: PdfLoadSchema,
@@ -635,9 +639,8 @@ const pdfLoadTool = tool({
     docId?: string;
     fileUrl?: string;
   }) => {
-    const userId = "user"; // Simplified for migration
     const doc = await ensureDocumentLoaded({
-      userId,
+      userId: "system", // Should be injected via context in production
       contextFileId: context.contextFileId ?? context.docId,
       docId: context.docId,
       fileUrl: context.fileUrl,
@@ -657,10 +660,54 @@ const pdfLoadTool = tool({
   },
 });
 
+const ragSearchTool = tool({
+  description:
+    "Search for specific information within the active document using keyword and semantic matching.",
+  inputSchema: _RagSearchSchema,
+  execute: async ({ query, k, docId, contextFileId }) => {
+    const doc = await _ensureDocForTool({
+      userId: "system",
+      docId,
+      contextFileId,
+    });
+    return _searchDocumentChunks(doc, query, k);
+  },
+});
+
+const pdfCiteTool = tool({
+  description:
+    "Locate the exact page and clause for a given statement in the active document.",
+  inputSchema: _PdfCiteSchema,
+  execute: async ({ answerSpan, docId, contextFileId }) => {
+    const doc = await _ensureDocForTool({
+      userId: "system",
+      docId,
+      contextFileId,
+    });
+    return locateCitationClause(doc, answerSpan);
+  },
+});
+
+const xeroQueryTool = tool({
+  description:
+    "Query Xero for accounting data to enrich document analysis (e.g. check invoice status, contact details).",
+  inputSchema: _XeroQuerySchema,
+  execute: async ({ resource, params }) => {
+    // For now, mapping resource to a default tool. In production, this would be more flexible.
+    const toolName = resource.startsWith("xero_")
+      ? resource
+      : `xero_list_${resource}`;
+    const result = await executeXeroMCPTool("system", toolName, params || {});
+    return result.content[0].text;
+  },
+});
+
 export function getDocManagementTools() {
   return {
     pdf_load: pdfLoadTool,
-    // TODO: Implement remaining tools (rag_search, pdf_cite, xero_query) with proper migration to new agent pattern
+    rag_search: ragSearchTool,
+    pdf_cite: pdfCiteTool,
+    xero_query: xeroQueryTool,
   };
 }
 
@@ -699,7 +746,7 @@ export async function respondWithCitations({
     throw new Error("A user message is required.");
   }
 
-  const { activeDoc } = await prepareDocAgentRun({
+  const { activeDoc, messages } = await prepareDocAgentRun({
     userId,
     message,
     docId,
@@ -707,8 +754,13 @@ export async function respondWithCitations({
     history,
   });
 
-  // For now, return a simple response. TODO: Implement full agent logic with Vercel AI SDK
-  const rawText = `Document analysis response for: ${message}`;
+  const { text: rawAnswer } = await generateText({
+    model: myProvider.languageModel("anthropic-claude-sonnet-4-5"),
+    system: SYSTEM_INSTRUCTIONS,
+    messages,
+    tools: getDocManagementTools(),
+    stopWhen: stepCountIs(5),
+  });
 
-  return formatAnswerWithCitations(rawText, activeDoc);
+  return formatAnswerWithCitations(rawAnswer, activeDoc);
 }

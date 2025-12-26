@@ -187,7 +187,7 @@ export const ReasoningContent = memo(
       {...props}
     >
       <div className="relative">
-        <div className="-left-2 absolute top-0 h-full w-1 rounded-full bg-gradient-to-b from-purple-400 to-blue-400 dark:from-purple-600 dark:to-blue-600" />
+        <div className="absolute top-0 -left-2 h-full w-1 rounded-full bg-gradient-to-b from-purple-400 to-blue-400 dark:from-purple-600 dark:to-blue-600" />
         <Response className="ml-2 grid gap-2 text-purple-900/90 text-sm leading-relaxed dark:text-purple-100/90">
           {children}
         </Response>

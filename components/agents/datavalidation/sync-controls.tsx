@@ -9,14 +9,14 @@ import {
 } from "@/app/agents/datavalidation/actions";
 import { Button } from "@/components/ui/button";
 
-export function SyncControls() {
+export function SyncControls({ tenantId }: { tenantId: string }) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
 
   const handleSync = async () => {
     setIsSyncing(true);
     try {
-      const result = await syncContactsAction();
+      const result = await syncContactsAction(tenantId);
       if (result.success) {
         toast.success(`Synced ${result.count} contacts from Xero`);
       } else {
@@ -33,7 +33,7 @@ export function SyncControls() {
     setIsVerifying(true);
     try {
       toast.info("Starting bulk verification...");
-      const result = await bulkVerifyContactsAction();
+      const result = await bulkVerifyContactsAction(tenantId);
       if (result.success) {
         toast.success(
           `Verified ${result.count} contacts. ${result.errors ? `(${result.errors.length} failed)` : ""}`

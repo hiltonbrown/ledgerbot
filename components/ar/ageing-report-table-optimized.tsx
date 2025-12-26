@@ -79,27 +79,35 @@ export function AgeingReportTableOptimized({
   );
 
   // Memoized filtered data
-  const filteredData = useMemo(() => {
-    return data.filter((item) => {
-      if (filterMinBalance && item.totalOutstanding < Number(filterMinBalance))
-        return false;
-      if (filterMinRisk && item.riskScore < Number(filterMinRisk)) return false;
-      if (filterHas90Plus === "yes" && item.ageing90Plus <= 0) return false;
-      return true;
-    });
-  }, [data, filterMinBalance, filterMinRisk, filterHas90Plus]);
+  const filteredData = useMemo(
+    () =>
+      data.filter((item) => {
+        if (
+          filterMinBalance &&
+          item.totalOutstanding < Number(filterMinBalance)
+        )
+          return false;
+        if (filterMinRisk && item.riskScore < Number(filterMinRisk))
+          return false;
+        if (filterHas90Plus === "yes" && item.ageing90Plus <= 0) return false;
+        return true;
+      }),
+    [data, filterMinBalance, filterMinRisk, filterHas90Plus]
+  );
 
   // Memoized sorted data
-  const sortedData = useMemo(() => {
-    return [...filteredData].sort((a, b) => {
-      const aValue = a[sortField];
-      const bValue = b[sortField];
+  const sortedData = useMemo(
+    () =>
+      [...filteredData].sort((a, b) => {
+        const aValue = a[sortField];
+        const bValue = b[sortField];
 
-      if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
-      if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
-      return 0;
-    });
-  }, [filteredData, sortField, sortDirection]);
+        if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
+        if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
+        return 0;
+      }),
+    [filteredData, sortField, sortDirection]
+  );
 
   // Pagination calculations
   const totalPages = Math.ceil(sortedData.length / PAGE_SIZE);

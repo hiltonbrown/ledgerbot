@@ -1,7 +1,5 @@
 import crypto from "crypto";
 import { type NextRequest, NextResponse } from "next/server";
-import { upsertContact } from "@/lib/db/queries/datavalidation";
-import { createXeroClient } from "@/lib/xero/connection-manager";
 
 // Webhook key from Xero Developer Portal
 const WEBHOOK_KEY = process.env.XERO_WEBHOOK_KEY;

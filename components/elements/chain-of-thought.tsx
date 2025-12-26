@@ -142,7 +142,7 @@ export const ChainOfThoughtStep = memo(
       >
         <div className="relative mt-0.5">
           <Icon className="size-4" />
-          <div className="-mx-px absolute top-7 bottom-0 left-1/2 w-px bg-border" />
+          <div className="absolute top-7 bottom-0 left-1/2 -mx-px w-px bg-border" />
         </div>
         <div className="flex-1 space-y-2">
           <div>{label}</div>
@@ -183,20 +183,18 @@ export type ChainOfThoughtContentProps = ComponentProps<
 >;
 
 export const ChainOfThoughtContent = memo(
-  ({ className, children, ...props }: ChainOfThoughtContentProps) => {
-    return (
-      <CollapsibleContent
-        className={cn(
-          "mt-2 space-y-3",
-          "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 text-popover-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in",
-          className
-        )}
-        {...props}
-      >
-        {children}
-      </CollapsibleContent>
-    );
-  }
+  ({ className, children, ...props }: ChainOfThoughtContentProps) => (
+    <CollapsibleContent
+      className={cn(
+        "mt-2 space-y-3",
+        "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 text-popover-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in",
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </CollapsibleContent>
+  )
 );
 
 export type ChainOfThoughtImageProps = ComponentProps<"div"> & {

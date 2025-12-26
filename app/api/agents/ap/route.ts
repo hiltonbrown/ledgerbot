@@ -2,17 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { type CoreMessage, streamText } from "ai";
 import { NextResponse } from "next/server";
-import {
-  assessPaymentRiskTool,
-  checkDuplicateBillsTool,
-  createAPXeroTools,
-  extractInvoiceDataTool,
-  generateEmailDraftTool,
-  generatePaymentProposalTool,
-  matchVendorTool,
-  suggestBillCodingTool,
-  validateABNTool,
-} from "@/lib/agents/ap/tools";
+import { createAPTools, createAPXeroTools } from "@/lib/agents/ap/tools";
 import type { APAgentSettings } from "@/lib/agents/ap/types";
 import { myProvider } from "@/lib/ai/providers";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
@@ -34,25 +24,6 @@ const SYSTEM_INSTRUCTIONS = readFileSync(
  * POST /api/agents/ap
  *
  * Handles AP agent chat requests with streaming responses.
- *
- * Features:
- * - Conditional Xero tool integration based on user connection
- * - Real-time streaming with step-by-step execution
- * - Token usage tracking and logging
- * - Support for custom model selection
- *
- * Request body:
- * {
- *   messages: CoreMessage[],
- *   settings?: {
- *     model?: string,
- *     autoApprovalThreshold?: number,
- *     requireABN?: boolean,
- *     gstValidation?: boolean,
- *     duplicateCheckDays?: number,
- *     defaultPaymentTerms?: string
- *   }
- * }
  */
 export async function POST(req: Request) {
   try {
@@ -80,24 +51,14 @@ export async function POST(req: Request) {
 
     // Determine which tools to use based on Xero connection
     const xeroConnection = await getActiveXeroConnection(user.id);
-    const xeroTools = xeroConnection ? createAPXeroTools(user.id) : {};
+    const tools = xeroConnection
+      ? createAPXeroTools(user.id)
+      : createAPTools(user.id);
 
     if (xeroConnection) {
       console.log("[AP Agent] Using agent with Xero tools");
-      console.log(`[AP Agent] Xero organisation: ${xeroConnection.tenantName}`);
     } else {
       console.log("[AP Agent] Using base agent (no Xero connection)");
-    }
-
-    // Log agent configuration
-    if (settings) {
-      console.log("[AP Agent] Settings:", {
-        model: settings.model || "anthropic-claude-sonnet-4-5",
-        autoApprovalThreshold: settings.autoApprovalThreshold,
-        requireABN: settings.requireABN,
-        gstValidation: settings.gstValidation,
-        duplicateCheckDays: settings.duplicateCheckDays,
-      });
     }
 
     const result = streamText({
@@ -106,17 +67,7 @@ export async function POST(req: Request) {
       ),
       system: SYSTEM_INSTRUCTIONS,
       messages,
-      tools: {
-        extractInvoiceData: extractInvoiceDataTool,
-        matchVendor: matchVendorTool,
-        validateABN: validateABNTool,
-        suggestBillCoding: suggestBillCodingTool,
-        checkDuplicateBills: checkDuplicateBillsTool,
-        generatePaymentProposal: generatePaymentProposalTool,
-        assessPaymentRisk: assessPaymentRiskTool,
-        generateEmailDraft: generateEmailDraftTool,
-        ...xeroTools,
-      },
+      tools,
     });
 
     return result.toTextStreamResponse();

@@ -2,6 +2,7 @@ import "server-only";
 
 import { z } from "zod";
 import { listInvoicesDue } from "@/lib/db/queries/ar";
+import { getActiveXeroConnection } from "@/lib/db/queries";
 import { asOfOrToday } from "@/lib/util/dates";
 import { redactLog } from "@/lib/util/redact";
 
@@ -45,6 +46,13 @@ export type ArDunningWorkflowOutput = {
   }>;
 };
 
+import {
+  createCommsArtefact,
+  getInvoiceWithContact,
+} from "@/lib/db/queries/ar";
+import type { ArCommsArtefactInsert } from "@/lib/db/schema/ar";
+import { generateEmailContent } from "@/lib/tools/ar/messaging";
+
 /**
  * Execute AR Dunning Cycle workflow
  */
@@ -60,11 +68,18 @@ export async function executeArDunningWorkflow(
     const tone = input.tone ?? "polite";
     const autoConfirm = input.autoConfirm ?? false;
 
+    // Get active Xero connection for tenantId
+    const xeroConnection = await getActiveXeroConnection(input.userId);
+    if (!xeroConnection) {
+      throw new Error("Xero connection not found");
+    }
+
     // Step 2: Fetch - Get invoices
     console.log("[AR Dunning] Step 2: Fetching invoices");
 
     const result = await listInvoicesDue({
       userId: input.userId,
+      tenantId: xeroConnection.tenantId,
       asOf: asOfDate,
       minDaysOverdue,
     });
@@ -146,9 +161,38 @@ export async function executeArDunningWorkflow(
         "[AR Dunning] Step 5: Generating artefacts (autoConfirm=true)"
       );
 
-      // TODO: In production, call buildEmailReminderTool for each invoice
-      // For now, create mock artefacts
-      artefactsCreated = plan.length;
+      for (const item of plan) {
+        try {
+          const invoice = await getInvoiceWithContact(item.invoiceId);
+          if (!invoice) continue;
+
+          const { subject, body } = generateEmailContent(
+            invoice,
+            item.tone as "polite" | "firm" | "final"
+          );
+
+          const artefact: ArCommsArtefactInsert = {
+            userId: input.userId,
+            invoiceId: item.invoiceId,
+            channel: "email",
+            subject,
+            body,
+            tone: item.tone,
+            metadata: {
+              workflow: "dunning_cycle",
+              generatedAt: new Date().toISOString(),
+            },
+          };
+
+          await createCommsArtefact(artefact);
+          artefactsCreated++;
+        } catch (err) {
+          console.error(
+            `[AR Dunning] Failed to create artefact for ${item.invoiceNumber}:`,
+            err
+          );
+        }
+      }
       commsEnabled = true;
     } else {
       console.log("[AR Dunning] Step 5: Skipped (autoConfirm=false)");

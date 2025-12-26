@@ -1,23 +1,10 @@
 "use client";
 
-import {
-  AlertTriangle,
-  CheckCircle2,
-  ExternalLink,
-  Info,
-  RefreshCw,
-} from "lucide-react";
+import { AlertTriangle, ExternalLink, Info, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {
   Sheet,

@@ -20,6 +20,7 @@ export default async function Layout({
     tenantId: connection.tenantId,
     tenantName: connection.tenantName ?? null,
     isActive: connection.isActive,
+    lastSyncedAt: connection.lastSyncedAt?.toISOString() ?? null,
   }));
   const isCollapsed = cookieStore.get("sidebar_state")?.value !== "true";
 

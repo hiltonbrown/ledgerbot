@@ -152,9 +152,7 @@ export function parseCsv(
   }
 
   // Filter out completely empty rows (all cells are empty strings)
-  rows = rows.filter((row) => {
-    return row.some((cell) => (cell || "").trim() !== "");
-  });
+  rows = rows.filter((row) => row.some((cell) => (cell || "").trim() !== ""));
 
   return {
     header,

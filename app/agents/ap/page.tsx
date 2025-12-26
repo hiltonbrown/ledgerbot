@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDistanceToNow } from "date-fns";
 import { Calendar, CreditCard, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -72,13 +73,15 @@ export default function AccountsPayableAgentPage() {
   }, []);
 
   // Sync from Xero
-  const handleSyncFromXero = async () => {
+  const handleSyncFromXero = useCallback(async (background = false) => {
     try {
       setIsSyncing(true);
-      toast({
-        type: "success",
-        description: "Syncing from Xero - Fetching bills and suppliers...",
-      });
+      if (!background) {
+        toast({
+          type: "success",
+          description: "Syncing from Xero - Fetching bills and suppliers...",
+        });
+      }
 
       const response = await fetch("/api/agents/ap/sync", {
         method: "POST",
@@ -87,13 +90,21 @@ export default function AccountsPayableAgentPage() {
       const data = await response.json();
 
       if (data.success) {
-        toast({
-          type: "success",
-          description: `Synced ${data.summary.suppliersSync} suppliers and ${data.summary.billsSync} bills`,
-        });
+        if (!background) {
+          toast({
+            type: "success",
+            description: `Synced ${data.summary.suppliersSync} suppliers and ${data.summary.billsSync} bills`,
+          });
+        }
 
         // Reload data
-        await Promise.all([loadKPIs(), loadCreditors(activeFilter)]);
+        // Note: activeFilter is not available in useCallback dependency without causing loops or stale closures if not careful
+        // But since this is inside the component, we can access the state ref or just reload all.
+        // To be safe and clean, we'll trigger reload here.
+        // Actually, we can't easily access 'activeFilter' here if we wrap in useCallback without adding it to deps.
+        // If we add it to deps, handleSyncFromXero changes every time filter changes. That's fine.
+      } else if (background) {
+        console.error("Background sync failed:", data.error);
       } else {
         toast({
           type: "error",
@@ -102,12 +113,29 @@ export default function AccountsPayableAgentPage() {
       }
     } catch (error) {
       console.error("Error syncing from Xero:", error);
-      toast({
-        type: "error",
-        description: "An error occurred while syncing from Xero",
-      });
+      if (!background) {
+        toast({
+          type: "error",
+          description: "An error occurred while syncing from Xero",
+        });
+      }
     } finally {
       setIsSyncing(false);
+      // Always reload KPIs to update "Last Synced" time
+      // We need to call loadKPIs() and loadCreditors() here.
+      // Since they are state setting functions, we can call them.
+      // But we need to make sure we don't create infinite loops.
+      // Let's return true if success so the caller can reload.
+      return true;
+    }
+  }, []);
+
+  // Sync and reload wrapper
+  const triggerSync = async (background = false) => {
+    const success = await handleSyncFromXero(background);
+    if (success) {
+      loadKPIs();
+      loadCreditors(activeFilter);
     }
   };
 
@@ -121,7 +149,10 @@ export default function AccountsPayableAgentPage() {
   useEffect(() => {
     loadKPIs();
     loadCreditors();
-  }, [loadCreditors, loadKPIs]);
+    // Trigger background sync on mount
+    triggerSync(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount
 
   // Calculate filter counts
   const filterCounts = {
@@ -142,21 +173,29 @@ export default function AccountsPayableAgentPage() {
             <CreditCard className="h-8 w-8 text-primary" />
             Accounts Payable Agent
           </h1>
-          <p className="text-muted-foreground">
-            Manage supplier payments, detect risks, and track cash flow
-          </p>
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <p>Manage supplier payments, detect risks, and track cash flow</p>
+            {kpis?.lastSyncedAt && (
+              <span className="text-xs">
+                • Last synced:{" "}
+                {formatDistanceToNow(new Date(kpis.lastSyncedAt), {
+                  addSuffix: true,
+                })}
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex gap-2">
           <Button
             className="gap-2"
             disabled={isSyncing}
-            onClick={handleSyncFromXero}
+            onClick={() => triggerSync(false)}
             variant="outline"
           >
             <RefreshCw
               className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`}
             />
-            Sync from Xero
+            {isSyncing ? "Syncing..." : "Sync from Xero"}
           </Button>
           <Button
             className="gap-2"
