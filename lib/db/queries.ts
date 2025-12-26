@@ -2186,3 +2186,37 @@ export async function deleteExpiredArFollowUpContexts(): Promise<number> {
     );
   }
 }
+
+/**
+ * Gets an active Xero connection for a tenant (System context, no user check)
+ * Used for webhooks and background jobs
+ */
+export async function getXeroConnectionByTenantIdSystem(
+  tenantId: string
+): Promise<XeroConnection | undefined> {
+  try {
+    const [connection] = await db
+      .select()
+      .from(xeroConnection)
+      .where(
+        and(
+          eq(xeroConnection.tenantId, tenantId),
+          eq(xeroConnection.isActive, true)
+        )
+      )
+      .orderBy(desc(xeroConnection.updatedAt))
+      .limit(1);
+
+    return connection;
+  } catch (_error) {
+    console.error(
+      "Failed to get Xero connection by tenant ID (System):",
+      _error
+    );
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get Xero connection by tenant ID"
+    );
+  }
+}
+

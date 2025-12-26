@@ -1,5 +1,5 @@
 import type { AbrSearchResult } from "@/types/abr";
-import { getAbrClient } from "./client";
+import { AbrError, getAbrClient } from "./client";
 import { classifyAbrQuery } from "./utils";
 
 export class AbrService {
@@ -26,25 +26,27 @@ export class AbrService {
           query,
           kind: "ABN",
           results: [],
-          error: error instanceof Error ? error.message : "ABN Lookup Failed",
+          error:
+            error instanceof AbrError
+              ? { code: error.code, message: error.message }
+              : {
+                  code: "API_ERROR",
+                  message:
+                    error instanceof Error ? error.message : "ABN Lookup Failed",
+                },
         };
       }
     }
 
     if (classification.kind === "ACN") {
-      // The JSON API doesn't have a direct "SearchByACN" that returns full details
-      // in the same way, or at least the client I wrote mostly focused on ABN.
-      // However, usually one converts ACN to ABN or uses the ACN endpoint.
-      // For now, we will return an error or empty for ACN if strictly not implemented in client yet,
-      // but let's see if we can just search it as a name or similar?
-      // Actually ABR "SearchByASIC" exists.
-      // But for this task, let's focus on ABN and Name as primary.
-      // If we classify as ACN, we can try treating it as a raw search or fail.
       return {
         query,
         kind: "ACN",
         results: [],
-        error: "ACN lookup not fully implemented in this version",
+        error: {
+          code: "API_ERROR", // Or NOT_FOUND if we consider it "not supported"
+          message: "ACN lookup not fully implemented in this version",
+        },
       };
     }
 
@@ -65,7 +67,14 @@ export class AbrService {
           query,
           kind: "BusinessName",
           results: [],
-          error: error instanceof Error ? error.message : "Name Search Failed",
+          error:
+            error instanceof AbrError
+              ? { code: error.code, message: error.message }
+              : {
+                  code: "API_ERROR",
+                  message:
+                    error instanceof Error ? error.message : "Name Search Failed",
+                },
         };
       }
     }

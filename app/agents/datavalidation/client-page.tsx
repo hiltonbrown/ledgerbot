@@ -13,9 +13,10 @@ interface ClientPageProps {
     stats: any;
     contacts: any[];
   };
+  tenantId: string;
 }
 
-export function ClientPage({ initialData }: ClientPageProps) {
+export function ClientPage({ initialData, tenantId }: ClientPageProps) {
   const [search, setSearch] = useState("");
   const [contacts, setContacts] = useState(initialData.contacts);
   const [selectedContact, setSelectedContact] =
@@ -31,7 +32,7 @@ export function ClientPage({ initialData }: ClientPageProps) {
 
   const handleVerify = async (contactId: string) => {
     // Optimistic update or waiting state could go here
-    const result = await verifyContactAction(contactId);
+    const result = await verifyContactAction(tenantId, contactId);
     if (result.success && result.data) {
       setContacts((prev) =>
         prev.map((c) =>
