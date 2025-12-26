@@ -76,10 +76,10 @@ export async function processWebhookPayload(payload: XeroWebhookPayload) {
           await handleContactEvent(event);
         } else if (event.eventCategory === "INVOICE") {
             // Placeholder for Prompt 3 extension
-            console.log(`[Xero Webhook] Invoice event received: ${event.resourceId}`);
+            console.log("[Xero Webhook] Invoice event received:", { resourceId: event.resourceId });
         }
       } catch (error) {
-        console.error(`[Xero Webhook] Error processing event ${event.resourceId}:`, error);
+        console.error("[Xero Webhook] Error processing event:", { resourceId: event.resourceId, error });
         throw error;
       }
     })
@@ -90,14 +90,16 @@ export async function processWebhookPayload(payload: XeroWebhookPayload) {
 
 async function handleContactEvent(event: XeroWebhookEvent) {
   console.log(
-    `[Xero Webhook] Contact event: ${event.eventType} for ${event.resourceId}`
+    "[Xero Webhook] Contact event:",
+    { eventType: event.eventType, resourceId: event.resourceId }
   );
 
   // 1. Get Connection
   const connection = await getXeroConnectionByTenantIdSystem(event.tenantId);
   if (!connection) {
     console.warn(
-      `[Xero Webhook] No active connection for tenant ${event.tenantId}. Skipping.`
+      "[Xero Webhook] No active connection for tenant. Skipping.",
+      { tenantId: event.tenantId }
     );
     return;
   }
@@ -119,7 +121,8 @@ async function handleContactEvent(event: XeroWebhookEvent) {
     if (!c || String(c.contactStatus) === "ARCHIVED") {
       await deleteContact(event.tenantId, event.resourceId);
       console.log(
-        `[Xero Webhook] Deleted/Archived contact ${event.resourceId}`
+        "[Xero Webhook] Deleted/Archived contact",
+        { resourceId: event.resourceId }
       );
       return;
     }
@@ -144,11 +147,11 @@ async function handleContactEvent(event: XeroWebhookEvent) {
     };
 
     await upsertContact(connection.userId, record, event.tenantId);
-    console.log(`[Xero Webhook] Synced contact ${event.resourceId}`);
+    console.log("[Xero Webhook] Synced contact", { resourceId: event.resourceId });
   } catch (err) {
     console.error(
-      `[Xero Webhook] Failed to sync contact ${event.resourceId}`,
-      err
+      "[Xero Webhook] Failed to sync contact",
+      { resourceId: event.resourceId, error: err }
     );
     throw err;
   }
