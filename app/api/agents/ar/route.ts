@@ -53,7 +53,10 @@ export async function POST(req: Request) {
 
     const activeConnection = await getActiveXeroConnection(user.id);
     if (!activeConnection) {
-      return NextResponse.json({ error: "No active Xero connection" }, { status: 400 });
+      return NextResponse.json(
+        { error: "No active Xero connection" },
+        { status: 400 }
+      );
     }
 
     const tenantId = activeConnection.tenantId;

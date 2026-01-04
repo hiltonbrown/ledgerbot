@@ -110,11 +110,10 @@ export class AbrClient {
         if (
           data.Message &&
           typeof data.Message === "string" &&
-          data.Message.length > 0
+          data.Message.length > 0 &&
+          data.Message.includes("No record found")
         ) {
-          if (data.Message.includes("No record found")) {
-            return { data: null, rawResponse };
-          }
+          return { data: null, rawResponse };
         }
         return { data, rawResponse };
       } catch (e) {
@@ -197,7 +196,7 @@ export class AbrClient {
       ],
       mainBusinessLocation: { state: n.State, postcode: n.Postcode },
       score: n.Score,
-      rawResponse: rawResponse, // We share the same raw response for all list items
+      rawResponse, // We share the same raw response for all list items
       lookupTimestamp,
     }));
   }

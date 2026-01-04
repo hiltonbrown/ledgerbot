@@ -37,13 +37,13 @@ export async function POST(request: Request) {
 
     // Process payload
     const payload: XeroWebhookPayload = JSON.parse(rawBody);
-    
+
     // We process asynchronously to respond quickly to Xero (they expect 200 OK within 5s)
     // In Vercel serverless, we should use waitUntil if available or keep it simple.
     // For critical data consistency, we should await. Xero's timeout is generous enough for simple DB inserts.
     // If we do heavy fetching, we should offload to a queue (Inngest/bull/etc).
     // For this prototype/CLI context, we await to ensure it runs.
-    
+
     await processWebhookPayload(payload);
 
     return NextResponse.json({ status: "OK" });

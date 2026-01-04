@@ -104,7 +104,25 @@ export async function POST() {
     }
 
     // 4. Fetch updated bills (ACCPAY) from Xero
-    const billsResult = await executeXeroMCPTool(
+    // We perform two fetches to ensure data integrity for AP Ageing:
+    // A. Fetch ALL 'AUTHORISED' (unpaid) bills to ensure our list of open bills is complete.
+    //    We do NOT use ifModifiedSince here because we need the full list of what's currently open,
+    //    regardless of when it was last modified.
+    const openBillsResult = await executeXeroMCPTool(
+      user.id,
+      "xero_list_invoices",
+      {
+        invoiceType: "ACCPAY",
+        status: "AUTHORISED",
+        limit: 1000,
+      }
+    );
+
+    // B. Fetch any bills modified since the last sync.
+    //    This catches bills that were paid, voided, or edited recently.
+    //    If this is the first sync (no ifModifiedSince), this acts as a catch-all but might be redundant
+    //    with step A for authorised bills. That's okay, we deduplicate below.
+    const recentBillsResult = await executeXeroMCPTool(
       user.id,
       "xero_list_invoices",
       {
@@ -114,8 +132,25 @@ export async function POST() {
       }
     );
 
-    const bills = JSON.parse(billsResult.content[0].text);
-    const billList = Array.isArray(bills) ? bills : [];
+    const openBills = JSON.parse(openBillsResult.content[0].text);
+    const recentBills = JSON.parse(recentBillsResult.content[0].text);
+
+    const openBillList = Array.isArray(openBills) ? openBills : [];
+    const recentBillList = Array.isArray(recentBills) ? recentBills : [];
+
+    // Merge and Deduplicate
+    const billMap = new Map<string, any>();
+    for (const bill of openBillList) {
+      billMap.set(bill.invoiceID, bill);
+    }
+    for (const bill of recentBillList) {
+      billMap.set(bill.invoiceID, bill); // Recent updates overwrite open bills if they overlap (which is good)
+    }
+    const billList = Array.from(billMap.values());
+
+    console.log(
+      `[AP Sync] Fetched ${openBillList.length} open bills and ${recentBillList.length} recent updates. Total unique: ${billList.length}`
+    );
 
     // 5. Pre-fetch existing bills for commentary change detection
     const billXeroIds = billList.map((b: any) => b.invoiceID);

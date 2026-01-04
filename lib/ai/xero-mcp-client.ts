@@ -415,25 +415,28 @@ export const xeroMCPTools: XeroMCPTool[] = [
   {
     name: "xero_get_profit_and_loss",
     description:
-      "Get comprehensive profit and loss report from Xero for a specified date range. IMPORTANT: This report includes ALL financial transactions: sales invoices, bills, credit notes, bank transactions, manual journal entries, and payments. Uses the accounting basis configured in Xero (typically ACCRUAL, meaning revenue/expenses recognized when incurred, not when paid). The report may show different totals than invoice lists because it includes bank transactions, journal entries, and other adjustments. For transaction-level analysis, use xero_list_invoices, xero_list_credit_notes, xero_get_bank_transactions, and xero_list_journal_entries separately.",
+      "Get comprehensive profit and loss report from Xero for a specified date range. IMPORTANT LIMITS: (1) The range between fromDate and toDate cannot exceed 365 days. (2) The maximum number of comparative periods is 11. This report includes ALL financial transactions: sales invoices, bills, credit notes, bank transactions, manual journal entries, and payments. Uses the accounting basis configured in Xero.",
     inputSchema: {
       type: "object",
       properties: {
         fromDate: {
           type: "string",
-          description: "Start date for the report (YYYY-MM-DD format)",
+          description:
+            "Start date for the report (YYYY-MM-DD format). Must be within 365 days of toDate.",
         },
         toDate: {
           type: "string",
-          description: "End date for the report (YYYY-MM-DD format)",
+          description:
+            "End date for the report (YYYY-MM-DD format). Must be within 365 days of fromDate.",
         },
         periods: {
           type: "number",
-          description: "Number of periods to compare (optional)",
+          description:
+            "Number of comparative periods to include (1-11). Example: to compare with previous months.",
         },
         timeframe: {
           type: "string",
-          description: "Reporting period: MONTH, QUARTER, or YEAR (optional)",
+          description: "Reporting period frequency (MONTH, QUARTER, YEAR)",
           enum: ["MONTH", "QUARTER", "YEAR"],
         },
       },
@@ -2037,6 +2040,30 @@ async function executeXeroToolOperation(
 
         if (!fromDate || !toDate) {
           throw new Error("fromDate and toDate are required");
+        }
+
+        // Validate date range (max 365 days)
+        const start = new Date(fromDate as string);
+        const end = new Date(toDate as string);
+
+        if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+          throw new Error("Invalid date format. Please use YYYY-MM-DD.");
+        }
+
+        const diffTime = Math.abs(end.getTime() - start.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays > 365) {
+          throw new Error(
+            `Date range between fromDate (${fromDate}) and toDate (${toDate}) is ${diffDays} days, which exceeds the 365-day limit allowed by Xero P&L report. Please request a shorter range (e.g., split into multiple 12-month requests).`
+          );
+        }
+
+        // Validate periods (max 11)
+        if (periods !== undefined && (periods < 1 || periods > 11)) {
+          throw new Error(
+            `The 'periods' parameter must be between 1 and 11 (Xero limit). You requested ${periods}.`
+          );
         }
 
         const response = await client.accountingApi.getReportProfitAndLoss(

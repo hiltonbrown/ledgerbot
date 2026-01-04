@@ -151,7 +151,10 @@ export async function startSyncJob(
         job.result = result;
       }
     } catch (error: any) {
-      if (error.name === "AbortError" || (job.status as JobStatus) === "cancelled") {
+      if (
+        error.name === "AbortError" ||
+        (job.status as JobStatus) === "cancelled"
+      ) {
         job.status = "cancelled";
       } else {
         job.status = "failed";

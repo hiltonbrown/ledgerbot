@@ -3,17 +3,25 @@
 import { UserButton } from "@clerk/nextjs";
 import { Home, Moon, Settings2, Sun, Users } from "lucide-react";
 import { useTheme } from "next-themes";
-
-import { SidebarMenu, SidebarMenuItem } from "@/components/ui/sidebar";
+import {
+  SidebarMenu,
+  SidebarMenuItem,
+  useSidebar,
+} from "@/components/ui/sidebar";
 import { sidebarUserButtonAppearance } from "@/lib/clerk/appearance";
 
 export function NavUser() {
   const { setTheme, resolvedTheme } = useTheme();
+  const { state } = useSidebar();
+  const isCollapsed = state === "collapsed";
 
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <UserButton appearance={sidebarUserButtonAppearance}>
+        <UserButton
+          appearance={sidebarUserButtonAppearance}
+          showName={!isCollapsed}
+        >
           <UserButton.MenuItems>
             <UserButton.Link
               href="/"

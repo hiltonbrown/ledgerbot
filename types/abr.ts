@@ -50,7 +50,7 @@ export interface AbrLookupResult {
   mainBusinessLocation: BusinessLocation;
 
   score?: number; // For name search relevance
-  
+
   // Auditing fields
   rawResponse: string;
   lookupTimestamp: string; // ISO Date

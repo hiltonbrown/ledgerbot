@@ -62,7 +62,8 @@ export const clerkAppearance = {
     alert: "border border-border bg-card text-card-foreground",
     alertText: "text-sm",
     // UserButton and UserProfile styling
-    userButtonAvatarBox: "border-2 border-border shadow-sm",
+    userButtonAvatarBox: "order-first border-2 border-border shadow-sm",
+    userButtonTrigger: "flex items-center gap-2",
     userButtonPopoverCard:
       "bg-popover text-popover-foreground border border-border shadow-lg",
     userButtonPopoverActionButton:
@@ -70,6 +71,8 @@ export const clerkAppearance = {
     userButtonPopoverActionButtonText: "text-foreground",
     userButtonPopoverActionButtonIcon: "text-foreground",
     userButtonPopoverFooter: "border-t border-border",
+    userButtonOuterIdentifier:
+      "order-last text-foreground font-medium truncate",
     // Profile page specific styling
     profileSectionPrimaryButton:
       "bg-primary text-primary-foreground hover:bg-primary/90 font-medium transition-colors shadow-sm",
@@ -107,9 +110,9 @@ export const sidebarUserButtonAppearance = {
     userButtonBox:
       "bg-sidebar border border-sidebar-border text-sidebar-foreground shadow-sm transition-all hover:border-sidebar-ring/80 hover:shadow-md rounded-lg",
     userButtonTrigger:
-      "w-full rounded-lg px-2 py-1.5 text-sm font-medium leading-tight data-[state=open]:ring-2 data-[state=open]:ring-sidebar-ring data-[state=open]:ring-offset-2 data-[state=open]:ring-offset-sidebar",
+      "w-full flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium leading-tight data-[state=open]:ring-2 data-[state=open]:ring-sidebar-ring data-[state=open]:ring-offset-2 data-[state=open]:ring-offset-sidebar",
     userButtonAvatarBox:
-      "border-2 border-sidebar-ring/40 bg-sidebar text-sidebar-foreground shadow-sm",
+      "order-first border-2 border-sidebar-ring/40 bg-sidebar text-sidebar-foreground shadow-sm",
     userButtonPopoverCard:
       "bg-sidebar text-sidebar-foreground border border-sidebar-border shadow-xl",
     userButtonPopoverActionButton:
@@ -118,5 +121,7 @@ export const sidebarUserButtonAppearance = {
       "text-sidebar-foreground text-sm font-medium leading-tight",
     userButtonPopoverActionButtonIcon: "text-sidebar-foreground",
     userButtonPopoverFooter: "border-t border-sidebar-border bg-sidebar",
+    userButtonOuterIdentifier:
+      "order-last text-sidebar-foreground font-medium truncate",
   },
 } as const;

@@ -1,6 +1,5 @@
-import { describe, expect, test, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { AbrClient, AbrError } from "@/lib/abr/client";
-import { abnLookupConfig } from "@/lib/abr/config";
 
 // Mock config to ensure enabled
 vi.mock("@/lib/abr/config", () => ({

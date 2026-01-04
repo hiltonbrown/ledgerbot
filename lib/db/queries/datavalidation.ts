@@ -49,10 +49,7 @@ export async function upsertContact(
   // Check for existing contact by Tenant + XeroID (Natural Key)
   const existing = await db.query.dvContacts.findFirst({
     where: (t, { and, eq }) =>
-      and(
-        eq(t.xeroTenantId, tenantId),
-        eq(t.xeroContactId, contact.contactId)
-      ),
+      and(eq(t.xeroTenantId, tenantId), eq(t.xeroContactId, contact.contactId)),
   });
 
   if (existing) {
@@ -220,5 +217,3 @@ export async function deleteContact(tenantId: string, xeroContactId: string) {
     )
     .returning();
 }
-
-

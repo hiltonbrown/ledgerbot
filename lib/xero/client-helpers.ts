@@ -209,27 +209,66 @@ export async function paginateXeroAPI<T>(
 
     let pageResults: T[];
     let headers: any;
+    let pageAttempts = 0;
+    const MAX_PAGE_RETRIES = 3;
+    let pageSuccess = false;
 
-    try {
-      const response = await fetchPage(currentPage, effectivePageSize);
-      pageResults = response.results;
-      headers = response.headers;
-    } catch (error) {
-      console.error(
-        `[paginateXeroAPI] Error fetching page ${currentPage}:`,
-        error
-      );
-      // If we've already got some results, return what we have
-      if (allResults.length > 0) {
-        console.warn(
-          `[paginateXeroAPI] Returning ${allResults.length} results collected before error`
+    while (!pageSuccess && pageAttempts <= MAX_PAGE_RETRIES) {
+      try {
+        const response = await fetchPage(currentPage, effectivePageSize);
+        pageResults = response.results;
+        headers = response.headers;
+        pageSuccess = true;
+      } catch (error: any) {
+        pageAttempts++;
+
+        // Extract rate limit info if available in error response
+        let rateLimitInfo: ReturnType<typeof extractRateLimitInfo> | undefined;
+        if (error?.response?.headers) {
+          rateLimitInfo = extractRateLimitInfo(error.response.headers);
+          if (
+            connectionId &&
+            (rateLimitInfo.minuteRemaining !== undefined ||
+              rateLimitInfo.dayRemaining !== undefined)
+          ) {
+            await updateRateLimitInfo(connectionId, rateLimitInfo);
+          }
+        }
+
+        // Check if 429 Rate Limit Error
+        if (
+          error?.response?.status === 429 &&
+          pageAttempts <= MAX_PAGE_RETRIES
+        ) {
+          const retryAfter = rateLimitInfo?.retryAfter;
+          const waitMs = retryAfter
+            ? retryAfter * 1000
+            : calculateBackoffDelay(pageAttempts - 1);
+
+          console.warn(
+            `⚠️ [paginateXeroAPI] 429 Rate Limit on page ${currentPage} (attempt ${pageAttempts}/${MAX_PAGE_RETRIES}). Waiting ${Math.ceil(waitMs / 1000)}s...`
+          );
+
+          await new Promise((resolve) => setTimeout(resolve, waitMs));
+          continue; // Retry
+        }
+
+        console.error(
+          `[paginateXeroAPI] Error fetching page ${currentPage} (attempt ${pageAttempts}):`,
+          error
         );
-        break;
+
+        // Fail hard on non-transient errors or max retries
+        throw error;
       }
-      throw error;
     }
 
-    // Track rate limit info from response headers
+    // This should theoretically not be reached if pageSuccess is false (throws above),
+    // but typescript might complain if pageResults is used unassigned.
+    // @ts-expect-error
+    if (!pageSuccess) break; // Safety break
+
+    // Track rate limit info from successful response headers
     if (headers && connectionId) {
       const rateLimitInfo = extractRateLimitInfo(headers);
       if (

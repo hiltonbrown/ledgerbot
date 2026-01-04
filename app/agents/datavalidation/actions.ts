@@ -1,6 +1,5 @@
 "use server";
 
-import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db, db as drizzleDb } from "@/lib/db/queries";
 import {
@@ -13,7 +12,6 @@ import {
   saveVerificationResult,
   upsertContact,
 } from "@/lib/db/queries/datavalidation";
-import { dvContacts } from "@/lib/db/schema/datavalidation";
 import { verificationService } from "@/lib/services/verification-service";
 import {
   getRobustXeroClient,
@@ -121,11 +119,11 @@ export async function syncContactsAction(tenantId: string) {
 export async function bulkVerifyContactsAction(tenantId: string) {
   try {
     const userId = await getUserId();
-    
+
     // Security check
     const connection = await getXeroConnectionByTenantId(userId, tenantId);
     if (!connection) {
-       return { success: false, error: "Unauthorized access to tenant" };
+      return { success: false, error: "Unauthorized access to tenant" };
     }
 
     // 1. Fetch all contacts for this tenant (Shared Cache)
@@ -181,16 +179,13 @@ export async function bulkVerifyContactsAction(tenantId: string) {
   }
 }
 
-export async function verifyContactAction(
-  tenantId: string,
-  contactId: string
-) {
+export async function verifyContactAction(tenantId: string, contactId: string) {
   try {
     const userId = await getUserId();
     // Security check
     const connection = await getXeroConnectionByTenantId(userId, tenantId);
     if (!connection) {
-       return { success: false, error: "Unauthorized access to tenant" };
+      return { success: false, error: "Unauthorized access to tenant" };
     }
 
     // 1. Fetch contact from DB
@@ -225,13 +220,13 @@ export async function getDashboardData(
   search = ""
 ) {
   const userId = await getUserId();
-  
+
   // Security check
   const connection = await getXeroConnectionByTenantId(userId, tenantId);
   if (!connection) {
-      // In a server action used for data fetching, we might want to return empty structure or throw
-      // For now, throw so UI Error Boundary catches it, or return empty
-      throw new Error("Unauthorized access to tenant");
+    // In a server action used for data fetching, we might want to return empty structure or throw
+    // For now, throw so UI Error Boundary catches it, or return empty
+    throw new Error("Unauthorized access to tenant");
   }
 
   const stats = await getVerificationSummary(userId, tenantId);
@@ -266,8 +261,8 @@ export async function getDashboardData(
 
   return {
     stats: {
-        ...stats,
-        lastWebhookReceived: lastWebhook?.createdAt || null,
+      ...stats,
+      lastWebhookReceived: lastWebhook?.createdAt || null,
     },
     contacts: enrichedContacts,
   };

@@ -32,7 +32,9 @@ export class AbrService {
               : {
                   code: "API_ERROR",
                   message:
-                    error instanceof Error ? error.message : "ABN Lookup Failed",
+                    error instanceof Error
+                      ? error.message
+                      : "ABN Lookup Failed",
                 },
         };
       }
@@ -73,7 +75,9 @@ export class AbrService {
               : {
                   code: "API_ERROR",
                   message:
-                    error instanceof Error ? error.message : "Name Search Failed",
+                    error instanceof Error
+                      ? error.message
+                      : "Name Search Failed",
                 },
         };
       }

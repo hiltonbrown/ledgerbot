@@ -1,16 +1,9 @@
 import crypto from "node:crypto";
-import {
-  db,
-  getXeroConnectionByTenantIdSystem,
-} from "@/lib/db/queries";
-import {
-  deleteContact,
-  upsertContact,
-} from "@/lib/db/queries/datavalidation";
+import { db, getXeroConnectionByTenantIdSystem } from "@/lib/db/queries";
+import { deleteContact, upsertContact } from "@/lib/db/queries/datavalidation";
 import { webhookEvents } from "@/lib/db/schema/datavalidation";
 import { getRobustXeroClient } from "@/lib/xero/client-helpers";
 import type { XeroContactRecord } from "@/types/datavalidation";
-import { eq } from "drizzle-orm";
 
 export interface XeroWebhookEvent {
   resourceUrl: string;
@@ -75,11 +68,16 @@ export async function processWebhookPayload(payload: XeroWebhookPayload) {
         if (event.eventCategory === "CONTACT") {
           await handleContactEvent(event);
         } else if (event.eventCategory === "INVOICE") {
-            // Placeholder for Prompt 3 extension
-            console.log("[Xero Webhook] Invoice event received:", { resourceId: event.resourceId });
+          // Placeholder for Prompt 3 extension
+          console.log("[Xero Webhook] Invoice event received:", {
+            resourceId: event.resourceId,
+          });
         }
       } catch (error) {
-        console.error("[Xero Webhook] Error processing event:", { resourceId: event.resourceId, error });
+        console.error("[Xero Webhook] Error processing event:", {
+          resourceId: event.resourceId,
+          error,
+        });
         throw error;
       }
     })
@@ -89,18 +87,17 @@ export async function processWebhookPayload(payload: XeroWebhookPayload) {
 }
 
 async function handleContactEvent(event: XeroWebhookEvent) {
-  console.log(
-    "[Xero Webhook] Contact event:",
-    { eventType: event.eventType, resourceId: event.resourceId }
-  );
+  console.log("[Xero Webhook] Contact event:", {
+    eventType: event.eventType,
+    resourceId: event.resourceId,
+  });
 
   // 1. Get Connection
   const connection = await getXeroConnectionByTenantIdSystem(event.tenantId);
   if (!connection) {
-    console.warn(
-      "[Xero Webhook] No active connection for tenant. Skipping.",
-      { tenantId: event.tenantId }
-    );
+    console.warn("[Xero Webhook] No active connection for tenant. Skipping.", {
+      tenantId: event.tenantId,
+    });
     return;
   }
 
@@ -120,10 +117,9 @@ async function handleContactEvent(event: XeroWebhookEvent) {
     // If contact not found or ARCHIVED, treat as delete
     if (!c || String(c.contactStatus) === "ARCHIVED") {
       await deleteContact(event.tenantId, event.resourceId);
-      console.log(
-        "[Xero Webhook] Deleted/Archived contact",
-        { resourceId: event.resourceId }
-      );
+      console.log("[Xero Webhook] Deleted/Archived contact", {
+        resourceId: event.resourceId,
+      });
       return;
     }
 
@@ -147,12 +143,14 @@ async function handleContactEvent(event: XeroWebhookEvent) {
     };
 
     await upsertContact(connection.userId, record, event.tenantId);
-    console.log("[Xero Webhook] Synced contact", { resourceId: event.resourceId });
+    console.log("[Xero Webhook] Synced contact", {
+      resourceId: event.resourceId,
+    });
   } catch (err) {
-    console.error(
-      "[Xero Webhook] Failed to sync contact",
-      { resourceId: event.resourceId, error: err }
-    );
+    console.error("[Xero Webhook] Failed to sync contact", {
+      resourceId: event.resourceId,
+      error: err,
+    });
     throw err;
   }
 }

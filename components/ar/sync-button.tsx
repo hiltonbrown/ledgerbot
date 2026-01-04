@@ -24,7 +24,7 @@ export function SyncButton() {
 
       if (data.success) {
         toast.success("Sync complete", {
-          description: `Synced ${data.contactsSynced} contacts and ${data.invoicesSynced} invoices${data.isUsingMock ? " (using mock data)" : ""}`,
+          description: `Synced ${data.contactsSynced} contacts and ${data.invoicesSynced} invoices`,
         });
 
         // Refresh the page to show updated data

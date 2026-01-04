@@ -81,7 +81,7 @@ describe("AP Agent Sync Logic", () => {
       { id: "internal_contact_1", externalRef: "contact_1" },
     ]);
 
-    // Mock Xero Invoices response
+    // Mock Xero Invoices response 1: Open Bills (AUTHORISED)
     (executeXeroMCPTool as any).mockResolvedValueOnce({
       content: [
         {
@@ -91,6 +91,7 @@ describe("AP Agent Sync Logic", () => {
               contact: { contactID: "contact_1" },
               invoiceNumber: "INV-001",
               total: 100,
+              status: "AUTHORISED",
               date: "2023-01-02T00:00:00Z",
               dueDate: "2023-01-10T00:00:00Z",
               updatedDateUTC: "2023-01-02T00:00:00Z",
@@ -100,9 +101,30 @@ describe("AP Agent Sync Logic", () => {
       ],
     });
 
+    // Mock Xero Invoices response 2: Recent Bills (Modified)
+    (executeXeroMCPTool as any).mockResolvedValueOnce({
+      content: [
+        {
+          text: JSON.stringify([
+            {
+              invoiceID: "inv_2", // New modified bill
+              contact: { contactID: "contact_1" },
+              invoiceNumber: "INV-002",
+              total: 200,
+              status: "PAID",
+              date: "2023-01-03T00:00:00Z",
+              dueDate: "2023-01-11T00:00:00Z",
+              updatedDateUTC: "2023-01-04T00:00:00Z",
+            },
+          ]),
+        },
+      ],
+    });
+
     // Mock Upsert Bills response
     (upsertBills as any).mockResolvedValue([
       { id: "internal_bill_1", externalRef: "inv_1" },
+      { id: "internal_bill_2", externalRef: "inv_2" },
     ]);
 
     // Mock fallback contact fetch (not needed if contact found in upsert)
@@ -122,7 +144,17 @@ describe("AP Agent Sync Logic", () => {
       })
     );
 
-    // Verify fetching invoices with ifModifiedSince
+    // Verify fetching open bills (AUTHORISED) - Should NOT have ifModifiedSince
+    expect(executeXeroMCPTool).toHaveBeenCalledWith(
+      mockUser.id,
+      "xero_list_invoices",
+      expect.objectContaining({
+        invoiceType: "ACCPAY",
+        status: "AUTHORISED",
+      })
+    );
+
+    // Verify fetching recent bills (Incremental) - Should have ifModifiedSince
     expect(executeXeroMCPTool).toHaveBeenCalledWith(
       mockUser.id,
       "xero_list_invoices",

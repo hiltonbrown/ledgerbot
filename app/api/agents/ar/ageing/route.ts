@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth/clerk-helpers";
-import { listInvoicesDue } from "@/lib/db/queries/ar";
 import { getActiveXeroConnection } from "@/lib/db/queries";
+import { listInvoicesDue } from "@/lib/db/queries/ar";
 
 export const maxDuration = 60;
 

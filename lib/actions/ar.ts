@@ -189,9 +189,7 @@ export async function getAgeingReportData(
     .filter((item) => item.totalOutstanding !== 0);
 }
 
-export async function getCustomerInvoiceDetails(
-  contactId: string
-) {
+export async function getCustomerInvoiceDetails(contactId: string) {
   const { userId } = await auth();
   if (!userId) {
     throw new Error("Unauthorized");

@@ -349,19 +349,25 @@ export function createXeroTools(userId: string) {
 
     xero_get_profit_and_loss: tool({
       description:
-        "Get comprehensive profit and loss report from Xero for a specified date range. IMPORTANT: This report includes ALL financial transactions: sales invoices, bills, credit notes, bank transactions, manual journal entries, and payments. Uses the accounting basis configured in Xero (typically ACCRUAL, meaning revenue/expenses recognized when incurred, not when paid). The report may show different totals than invoice lists because it includes bank transactions, journal entries, and other adjustments. For transaction-level analysis, use xero_list_invoices, xero_list_credit_notes, xero_get_bank_transactions, and xero_list_journal_entries separately.",
+        "Get comprehensive profit and loss report from Xero for a specified date range. IMPORTANT LIMITS: (1) The range between fromDate and toDate cannot exceed 365 days. (2) The maximum number of comparative periods is 11. To analyze longer durations, make multiple calls. This report includes ALL financial transactions: sales invoices, bills, credit notes, bank transactions, manual journal entries, and payments. Uses the accounting basis configured in Xero.",
       inputSchema: z.object({
         fromDate: z
           .string()
-          .describe("Start date for the report (YYYY-MM-DD format)"),
+          .describe(
+            "Start date for the report (YYYY-MM-DD format). Must be within 365 days of toDate."
+          ),
         toDate: z
           .string()
-          .describe("End date for the report (YYYY-MM-DD format)"),
+          .describe(
+            "End date for the report (YYYY-MM-DD format). Must be within 365 days of fromDate."
+          ),
         periods: z
           .number()
+          .min(1)
+          .max(11)
           .optional()
           .describe(
-            "Number of periods to compare (e.g., 12 for monthly comparison)"
+            "Number of comparative periods to include (1-11). Example: to compare with previous months."
           ),
         timeframe: z
           .enum(["MONTH", "QUARTER", "YEAR"])

@@ -31,7 +31,7 @@ export default async function DataValidationPage({
       <div className="flex h-full items-center justify-center p-8">
         <div className="text-center">
           <h2 className="font-bold text-2xl">No Organization Selected</h2>
-          <p className="text-muted-foreground mt-2">
+          <p className="mt-2 text-muted-foreground">
             Please connect a Xero organization or select one from the settings.
           </p>
         </div>

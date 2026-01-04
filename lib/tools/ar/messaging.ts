@@ -347,8 +347,7 @@ export const postNoteTool = tool({
  * Sync invoices and contacts from Xero
  */
 export const syncXeroTool = tool({
-  description:
-    "Synchronise invoices and contacts from Xero (or mock data if not configured)",
+  description: "Synchronise invoices and contacts from Xero",
   inputSchema: z.object({
     userId: z.string().describe("User ID"),
     tenantId: z.string().describe("Xero Tenant ID"),
@@ -411,7 +410,6 @@ export const syncXeroTool = tool({
     return {
       contactsSynced: contacts.length,
       invoicesSynced: invoices.length,
-      isUsingMock: xero.isUsingMock,
     };
   },
 });
@@ -530,7 +528,13 @@ export const buildCallScriptTool = tool({
       .default(false)
       .describe("Include payment plan options in script"),
   }),
-  execute: async ({ userId, tenantId, contactId, tone, includePaymentPlan }) => {
+  execute: async ({
+    userId,
+    tenantId,
+    contactId,
+    tone,
+    includePaymentPlan,
+  }) => {
     // Get all invoices for this contact
     const invoices = await listInvoicesDue({
       userId,

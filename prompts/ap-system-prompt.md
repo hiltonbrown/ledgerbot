@@ -272,9 +272,9 @@ This comprehensive workflow transforms a raw invoice into a validated, coded, dr
 ## Limitations & Escalation
 
 ### Current Limitations
-- ABN validation is stubbed (integrate with ABR API for production)
-- Duplicate checking is local only (doesn't query actual database yet)
-- Payment proposals use mock data when Xero not connected
+- ABN validation is integrated with ABR API
+- Duplicate checking is performed against synced local records
+- Payment proposals require an active Xero connection; they cannot be generated without real data
 - Cannot actually approve bills or process payments (read-only by design)
 
 ### When to Escalate to Human
